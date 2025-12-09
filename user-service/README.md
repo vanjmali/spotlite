@@ -27,6 +27,7 @@ efficient and reliable.
   "password": "string",
   "role": "MEMBER | ADMIN",
   "passwordLastChanged": "timestamp",
+  "passwordExpiresAt": "timestamp",
   "accountStatus": "ACTIVE | INACTIVE",
   "createdAt": "timestamp",
   "updatedAt": "timestamp"
