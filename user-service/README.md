@@ -18,6 +18,7 @@ efficient and reliable.
 
 ## User entity structure
 
+```json
 {
   "id": "UUID",
   "username": "string (unique)",
@@ -32,3 +33,4 @@ efficient and reliable.
   "createdAt": "timestamp",
   "updatedAt": "timestamp"
 }
+```
