@@ -9,9 +9,9 @@ For education purposes only.
 - `api-gateway` – Traefik-based edge for routing, TLS termination, and service discovery.
 - `user-service` – Authentication, authorization, and account management.
 - `content-service` – Catalog of artists, albums, songs, and genres.
-- `ratings-service` – Song rating endpoints and aggregation.
-- `subscriptions-service` – Manages user subscriptions to artists/genres.
-- `notifications-service` – Queues and delivers user notifications.
+- `rating-service` – Song rating endpoints and aggregation.
+- `subscription-service` – Manages user subscriptions to artists/genres.
+- `notification-service` – Queues and delivers user notifications.
 - `recommendation-service` – Personalized recommendations and feeds.
 - `analytics-service` – Activity tracking and analytics endpoints.
 
@@ -38,7 +38,7 @@ docker compose up -d --build user-service
 
 Create a feature branch, make changes, and submit a pull request.
 
-`develop` branch is the main development branch. While the `main` branch is the production branch.
+`develop` is the default development branch. `stable` is the protected production branch.
 
 ## License
 
