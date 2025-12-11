@@ -32,5 +32,5 @@ jobs:
 
             - name: Run tests
               run: |
-                  cd spotlite/${{ matrix.service }}
+                  cd ${{ matrix.service }}
                   go test -v ./...
