@@ -1,0 +1,33 @@
+package mongo
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+const connectionString = "mongodb://localhost:27017/"
+
+func InitMongoClient() (*mongo.Client, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	clientOptions := options.Client().ApplyURI(connectionString)
+	client, err := mongo.Connect(ctx, clientOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect: %w", err)
+	}
+
+	if err = client.Ping(ctx, nil); err != nil {
+		err := client.Disconnect(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("failed to disconnect server: %w", err)
+		}
+		return nil, fmt.Errorf("failed to ping serve: %w", err)
+	}
+
+	return client, nil
+}
