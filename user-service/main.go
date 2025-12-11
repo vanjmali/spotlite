@@ -5,11 +5,13 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/vanjmali/spotlite/user-service/handlers"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mongo"
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/routers"
 	"github.com/vanjmali/spotlite/user-service/services"
+	"github.com/vanjmali/spotlite/user-service/validation"
 )
 
 func main() {
@@ -19,9 +21,20 @@ func main() {
 	}
 	defer client.Disconnect(context.Background())
 
+	val := validator.New()
+	err = val.RegisterValidation("strongpassword", validation.CheckStrongPassword)
+	if err != nil {
+		log.Fatalf("Failed to register custom validator: %v", err)
+	}
+
+	err = val.RegisterValidation("validusername", validation.CheckValidUsername)
+	if err != nil {
+		log.Fatalf("Failed to register custom validator: %v", err)
+	}
+
 	repo := repositories.NewRepository("user_service_db", "users", client)
 	service := services.NewUserService(*repo)
-	handler := handlers.NewUserHandler(*service)
+	handler := handlers.NewUserHandler(*service, *val)
 
 	router := routers.HandleRequests(handler)
 

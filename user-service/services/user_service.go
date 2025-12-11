@@ -11,6 +11,7 @@ import (
 
 var (
 	ErrUsernameTaken = errors.New("username is already taken")
+	ErrEmailTaken    = errors.New("email is already taken")
 )
 
 type UserService struct {
@@ -25,12 +26,21 @@ func NewUserService(r repositories.UserRepository) *UserService {
 
 func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistrationDto) error {
 	exists, err := s.r.ExistsByUsername(ctx, reqDto.Username)
+
 	if err != nil {
 		return err
 	}
-
 	if exists {
 		return ErrUsernameTaken
+	}
+
+	exists, err = s.r.ExistsByEmail(ctx, reqDto.Email)
+
+	if err != nil {
+		return err
+	}
+	if exists {
+		return ErrEmailTaken
 	}
 
 	userEntity := mappers.ToUserEntity(reqDto)

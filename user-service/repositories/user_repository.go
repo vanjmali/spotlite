@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/vanjmali/spotlite/user-service/models"
 	"go.mongodb.org/mongo-driver/bson"
@@ -42,6 +43,25 @@ func (r *UserRepository) ExistsByUsername(ctx context.Context, username string) 
 		return true, nil
 	}
 
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return false, nil
+	}
+
+	return false, err
+}
+
+func (r *UserRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
+	var user models.User
+	c := r.Client.Database(r.DbName).Collection(r.CollName)
+
+	fmt.Println(email)
+	filter := bson.M{"email": email}
+	err := c.FindOne(ctx, filter).Decode(&user)
+
+	if err == nil {
+		return true, nil
+	}
+	fmt.Println(err)
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		return false, nil
 	}
