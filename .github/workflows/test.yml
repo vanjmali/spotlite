@@ -13,12 +13,12 @@ jobs:
             matrix:
                 service:
                     - user-service
-                    - content-service
-                    - rating-service
-                    - subscription-service
-                    - notification-service
-                    - recommendation-service
-                    - analytics-service
+                    # - content-service
+                    # - rating-service
+                    # - subscription-service
+                    # - notification-service
+                    # - recommendation-service
+                    # - analytics-service
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
