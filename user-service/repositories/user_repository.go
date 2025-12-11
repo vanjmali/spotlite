@@ -31,6 +31,20 @@ func (r *UserRepository) Create(ctx context.Context, user models.User) error {
 	return nil
 }
 
+func (r *UserRepository) FindUserByEmailAndPassword(ctx context.Context, email, passwordHash string) (*models.User, error) {
+	var user models.User
+	c := r.Client.Database(r.DbName).Collection(r.CollName)
+
+	filter := bson.M{"email": email, "password": passwordHash}
+
+	err := c.FindOne(ctx, filter).Decode(&user)
+
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (r *UserRepository) ExistsByUsername(ctx context.Context, username string) (bool, error) {
 	var user models.User
 	c := r.Client.Database(r.DbName).Collection(r.CollName)

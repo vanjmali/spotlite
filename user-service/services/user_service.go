@@ -6,7 +6,9 @@ import (
 
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/mappers"
+	"github.com/vanjmali/spotlite/user-service/models"
 	"github.com/vanjmali/spotlite/user-service/repositories"
+	"github.com/vanjmali/spotlite/user-service/utils/auth"
 )
 
 var (
@@ -50,4 +52,17 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	}
 
 	return nil
+}
+
+func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) (*models.User, error) {
+	hashedPassword, err := auth.HashPassword(loginDto.Password)
+	if err != nil {
+		return nil, err
+	}
+	user, err := s.r.FindUserByEmailAndPassword(ctx, loginDto.Email, hashedPassword)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
