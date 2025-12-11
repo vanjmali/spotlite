@@ -1,0 +1,36 @@
+name: Test Go
+
+on:
+    push:
+        branches: ["ci/cd-test"]
+    pull_request:
+        branches: ["ci/cd-test"]
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                service:
+                    - user-service
+                    - content-service
+                    - rating-service
+                    - subscription-service
+                    - notification-service
+                    - recommendation-service
+                    - analytics-service
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Go
+              uses: actions/setup-go@v4
+              with:
+                  go-version: '1.22'
+                  cache: true
+                  cache-dependency-path: 'spotlite/${{ matrix.service }}/go.sum'
+
+            - name: Run tests
+              run: |
+                  cd spotlite/${{ matrix.service }}
+                  go test -v ./...
