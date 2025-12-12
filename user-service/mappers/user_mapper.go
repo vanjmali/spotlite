@@ -11,7 +11,7 @@ import (
 
 func ToUserEntity(u *dtos.UserRegistrationDto) *entities.User {
 	now := time.Now()
-	expiryDate := time.Now().Add(-60 * 24 * time.Hour)
+	expiryDate := time.Now().Add(60 * 24 * time.Hour)
 
 	hashedPassword, _ := auth.HashPassword(u.Password)
 
