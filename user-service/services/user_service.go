@@ -3,13 +3,21 @@ package services
 import (
 	"context"
 	"errors"
+	"strings"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/mappers"
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
 )
+
+// TODO: Convert to .env
+const key string = "superSecretPassword123"
+
+var hmacSampleSecret []byte = []byte(key)
 
 var (
 	ErrUsernameTaken = errors.New("username is already taken")
@@ -67,4 +75,18 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) (*
 	}
 
 	return user, nil
+}
+
+func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (string, error) {
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub":      user.ID,
+		"name":     strings.Join([]string{user.FirstName, user.LastName}, " "),
+		"username": user.Username,
+		"role":     user.Role,
+		"iat":      time.Now().Unix(),
+	})
+
+	tokenString, err := token.SignedString(hmacSampleSecret)
+	return tokenString, err
 }

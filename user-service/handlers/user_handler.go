@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -56,6 +57,14 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	token, err := h.s.CreateNewToken(r.Context(), user)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Println(err)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
+		return
+	}
+	w.Header().Add("authorization", token)
 	json.NewEncoder(w).Encode(user)
 
 }
