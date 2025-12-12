@@ -11,6 +11,7 @@ import (
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/services"
 	"github.com/vanjmali/spotlite/user-service/validation"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserHandler struct {
@@ -31,6 +32,32 @@ func sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
 
 func (h *UserHandler) validateUserRegistration(dto *dtos.UserRegistrationDto) error {
 	return h.v.Struct(dto)
+}
+
+func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var req dtos.UserLoginDto
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		sendErrorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	user, err := h.s.Login(r.Context(), &req)
+	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid credentials!"})
+		return
+	}
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
+		return
+	}
+
+	json.NewEncoder(w).Encode(user)
+
 }
 
 func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request) {

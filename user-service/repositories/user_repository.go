@@ -31,11 +31,11 @@ func (r *UserRepository) Create(ctx context.Context, user entities.User) error {
 	return nil
 }
 
-func (r *UserRepository) FindUserByEmailAndPassword(ctx context.Context, email, passwordHash string) (*models.User, error) {
-	var user models.User
+func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (*entities.User, error) {
+	var user entities.User
 	c := r.Client.Database(r.DbName).Collection(r.CollName)
 
-	filter := bson.M{"email": email, "password": passwordHash}
+	filter := bson.M{"email": email}
 
 	err := c.FindOne(ctx, filter).Decode(&user)
 

@@ -9,6 +9,6 @@ func HandleRequests(h *handlers.UserHandler) *mux.Router {
 	r := mux.NewRouter()
 
 	r.HandleFunc("/register", h.HandleRegistration).Methods("POST")
-
+	r.HandleFunc("/login", h.HandleLogin).Methods("POST")
 	return r
 }

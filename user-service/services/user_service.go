@@ -5,8 +5,8 @@ import (
 	"errors"
 
 	"github.com/vanjmali/spotlite/user-service/dtos"
+	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/mappers"
-	"github.com/vanjmali/spotlite/user-service/models"
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
 )
@@ -54,12 +54,14 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	return nil
 }
 
-func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) (*models.User, error) {
-	hashedPassword, err := auth.HashPassword(loginDto.Password)
+func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) (*entities.User, error) {
+
+	user, err := s.r.FindUserByEmail(ctx, loginDto.Email)
+
 	if err != nil {
 		return nil, err
 	}
-	user, err := s.r.FindUserByEmailAndPassword(ctx, loginDto.Email, hashedPassword)
+	err = auth.CompareHashAndPassword(user.Password, loginDto.Password)
 	if err != nil {
 		return nil, err
 	}
