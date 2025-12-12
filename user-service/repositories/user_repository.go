@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/vanjmali/spotlite/user-service/models"
+	"github.com/vanjmali/spotlite/user-service/entities"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -20,7 +20,7 @@ func NewRepository(dbName string, collName string, c *mongo.Client) *UserReposit
 	return &r
 }
 
-func (r *UserRepository) Create(ctx context.Context, user models.User) error {
+func (r *UserRepository) Create(ctx context.Context, user entities.User) error {
 	c := r.Client.Database(r.DbName).Collection(r.CollName)
 
 	_, err := c.InsertOne(ctx, user)
@@ -32,7 +32,7 @@ func (r *UserRepository) Create(ctx context.Context, user models.User) error {
 }
 
 func (r *UserRepository) ExistsByUsername(ctx context.Context, username string) (bool, error) {
-	var user models.User
+	var user entities.User
 	c := r.Client.Database(r.DbName).Collection(r.CollName)
 
 	filter := bson.M{"username": username}
@@ -50,7 +50,7 @@ func (r *UserRepository) ExistsByUsername(ctx context.Context, username string) 
 }
 
 func (r *UserRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
-	var user models.User
+	var user entities.User
 	c := r.Client.Database(r.DbName).Collection(r.CollName)
 
 	filter := bson.M{"email": email}

@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/vanjmali/spotlite/user-service/dtos"
-	"github.com/vanjmali/spotlite/user-service/models"
+	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/services"
 	"github.com/vanjmali/spotlite/user-service/validation"
 )
@@ -25,7 +25,7 @@ func NewUserHandler(s services.UserService, v validator.Validate) *UserHandler {
 
 func sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
 	w.WriteHeader(statusCode)
-	errorResponse := models.ErrorResponse{Status: statusCode, Message: message}
+	errorResponse := entities.ErrorResponse{Status: statusCode, Message: message}
 	json.NewEncoder(w).Encode(errorResponse)
 }
 
@@ -50,11 +50,11 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		var errors []models.FieldError
+		var errors []entities.FieldError
 
 		for _, err := range err.(validator.ValidationErrors) {
 
-			errors = append(errors, models.FieldError{
+			errors = append(errors, entities.FieldError{
 				Field:   strings.ToLower(err.Field()),
 				Message: validation.GetErrorMsg(err),
 			})
