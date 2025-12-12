@@ -51,6 +51,11 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid credentials!"})
 		return
 	}
+	if errors.Is(err, services.ErrExpiredPassword) {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Password expired!"})
+		return
+	}
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})

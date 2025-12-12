@@ -20,8 +20,9 @@ const key string = "superSecretPassword123"
 var hmacSampleSecret []byte = []byte(key)
 
 var (
-	ErrUsernameTaken = errors.New("username is already taken")
-	ErrEmailTaken    = errors.New("email is already taken")
+	ErrUsernameTaken   = errors.New("username is already taken")
+	ErrEmailTaken      = errors.New("email is already taken")
+	ErrExpiredPassword = errors.New("your password is expired")
 )
 
 type UserService struct {
@@ -65,10 +66,14 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) (*entities.User, error) {
 
 	user, err := s.r.FindUserByEmail(ctx, loginDto.Email)
-
 	if err != nil {
 		return nil, err
 	}
+
+	if time.Now().After(user.PasswordExpiresAt) {
+		return nil, ErrExpiredPassword
+	}
+
 	err = auth.CompareHashAndPassword(user.Password, loginDto.Password)
 	if err != nil {
 		return nil, err
