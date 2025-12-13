@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -56,6 +55,11 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(map[string]string{"error": "Password expired!"})
 		return
 	}
+	if errors.Is(err, services.ErrUserInnactive) {
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "User is innactive!"})
+		return
+	}
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
@@ -65,7 +69,6 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	token, err := h.s.CreateNewToken(r.Context(), user)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Println(err)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
 		return
 	}

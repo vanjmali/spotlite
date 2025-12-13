@@ -23,6 +23,7 @@ var (
 	ErrUsernameTaken   = errors.New("username is already taken")
 	ErrEmailTaken      = errors.New("email is already taken")
 	ErrExpiredPassword = errors.New("your password is expired")
+	ErrUserInnactive   = errors.New("user status is innactive")
 )
 
 type UserService struct {
@@ -68,6 +69,10 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) (*
 	user, err := s.r.FindUserByEmail(ctx, loginDto.Email)
 	if err != nil {
 		return nil, err
+	}
+
+	if user.AccountStatus == entities.StatusInactive {
+		return nil, ErrUserInnactive
 	}
 
 	if time.Now().After(user.PasswordExpiresAt) {
