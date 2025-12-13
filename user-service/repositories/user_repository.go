@@ -9,6 +9,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
+var (
+	TokenExpiredErr = errors.New("invalid token")
+)
+
 type UserRepository struct {
 	DbName   string
 	CollName string
@@ -20,6 +24,7 @@ func NewRepository(dbName string, collName string, c *mongo.Client) *UserReposit
 	return &r
 }
 
+// Create func, inserts a new user into the database,
 func (r *UserRepository) Create(ctx context.Context, user entities.User) error {
 	c := r.Client.Database(r.DbName).Collection(r.CollName)
 
@@ -29,6 +34,42 @@ func (r *UserRepository) Create(ctx context.Context, user entities.User) error {
 	}
 
 	return nil
+}
+
+// ActiveAndRevokeToken func, that activates the account and revokes the token in one database trip,
+func (r *UserRepository) ActiveAndRevokeToken(ctx context.Context, token string) error {
+	c := r.Client.Database(r.DbName).Collection(r.CollName)
+
+	// define filtering parameters,
+	filter := bson.M{
+		"account_status": "INACTIVE",
+		"token.type":     "ACCOUNT_VERIFICATION",
+		"token.content":  token,
+	}
+
+	// define set (set a field value to a new one) and unset (fully remove a field) operations,
+	update := bson.M{
+		"$set":   bson.M{"account_status": "ACTIVE"},
+		"$unset": bson.M{"token": ""},
+	}
+
+	// calls the update one method which will atomically (all or nothing) update the document
+	res, err := c.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	/*
+		matched count refers to a number of document that have been found while modified count the
+		number of documents that were modified, the result for both should always be one because
+		there is only one account which is inactive, has the given account verification token and
+		has to be updated
+	*/
+	if res.MatchedCount == 1 && res.ModifiedCount == 1 {
+		return nil
+	}
+
+	return TokenExpiredErr
 }
 
 func (r *UserRepository) ExistsByUsername(ctx context.Context, username string) (bool, error) {

@@ -1,19 +1,28 @@
 package mappers
 
 import (
+	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func ToUserEntity(u *dtos.UserRegistrationDto) *entities.User {
+var (
+	PasswordHashingErr = errors.New("an error has occurred while hashing password")
+)
+
+func ToUserEntity(u *dtos.UserRegistrationDto) (*entities.User, error) {
 	now := time.Now()
 	expiryDate := time.Now().Add(60 * 24 * time.Hour)
 
-	hashedPassword, _ := auth.HashPassword(u.Password)
+	hashedPassword, err := auth.HashPassword(u.Password)
+	if err != nil {
+		return nil, PasswordHashingErr
+	}
 
 	return &entities.User{
 		ID:                  primitive.NewObjectID(),
@@ -28,5 +37,9 @@ func ToUserEntity(u *dtos.UserRegistrationDto) *entities.User {
 		UpdatedAt:           now,
 		PasswordLastChanged: now,
 		PasswordExpiresAt:   expiryDate,
-	}
+		Token: entities.Token{
+			Content: uuid.New().String(),
+			Type:    entities.AccountVerification,
+		},
+	}, nil
 }
