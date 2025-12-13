@@ -143,6 +143,7 @@ func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (
 		"username": user.Username,
 		"role":     user.Role,
 		"iat":      time.Now().Unix(),
+		"exp":      time.Minute,
 	})
 
 	tokenString, err := token.SignedString(hmacSampleSecret)
