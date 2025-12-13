@@ -27,7 +27,7 @@ const (
 )
 
 type User struct {
-	ID                  primitive.ObjectID `bson:"_id, omitempty"`
+	ID                  primitive.ObjectID `bson:"_id,omitempty"`
 	Username            string             `bson:"username"`
 	FirstName           string             `bson:"first_name"`
 	LastName            string             `bson:"last_name"`
@@ -40,11 +40,17 @@ type User struct {
 	CreatedAt           time.Time          `bson:"created_at"`
 	UpdatedAt           time.Time          `bson:"updated_at"`
 	Token               Token              `bson:"token"`
+	OTPCode             OTPCode            `bson:"otp_code"`
 }
 
 type Token struct {
 	Type    TokenType `bson:"type"`
 	Content string    `bson:"content"`
+}
+
+type OTPCode struct {
+	Content string    `bson:"content"`
+	Expiry  time.Time `bson:"expiry"`
 }
 
 func (r *UserRole) SetBSON(raw bson.RawValue) error {

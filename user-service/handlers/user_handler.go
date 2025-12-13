@@ -48,41 +48,32 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	var req dtos.UserLoginDto
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		sendErrorResponse(w, http.StatusInternalServerError, err.Error())
+		sendErrorResponse(w, http.StatusBadRequest, "invalid payload")
 		return
 	}
 
-	user, err := h.s.Login(r.Context(), &req)
-	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid credentials!"})
+	err = h.s.Login(r.Context(), &req)
+
+	switch {
+	case errors.Is(err, bcrypt.ErrMismatchedHashAndPassword):
+		sendErrorResponse(w, http.StatusUnauthorized, "invalid credentials")
 		return
-	}
-	if errors.Is(err, services.ErrExpiredPassword) {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Password expired!"})
+	case errors.Is(err, services.ErrExpiredPassword):
+		sendErrorResponse(w, http.StatusUnauthorized, "password expired")
 		return
-	}
-	if errors.Is(err, services.ErrUserInnactive) {
-		w.WriteHeader(http.StatusUnauthorized)
-		json.NewEncoder(w).Encode(map[string]string{"error": "User is innactive!"})
+	case errors.Is(err, services.ErrExpiredPassword):
+		sendErrorResponse(w, http.StatusUnauthorized, "user is innactive")
 		return
-	}
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
+	case err != nil:
+		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
 		return
 	}
 
-	token, err := h.s.CreateNewToken(r.Context(), user)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
-		return
-	}
-	w.Header().Add("authorization", token)
-	json.NewEncoder(w).Encode(user)
-
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]any{
+		"otp_required": true,
+		"message":      "OTP sent to email",
+	})
 }
 
 // HandleRegistration func, handles user registration requests and returns adequate responses
@@ -100,8 +91,7 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 	// validates request field values
 	if err := h.validateUserRegistration(&req); err != nil {
 		if _, ok := err.(*validator.InvalidValidationError); ok {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Internal validation error"})
+			sendErrorResponse(w, http.StatusUnauthorized, "an unexpected error has occurred")
 			return
 		}
 
@@ -169,4 +159,35 @@ func (h *UserHandler) HandleAccountVerification(w http.ResponseWriter, r *http.R
 	// handle account verification success
 	http.Redirect(w, r, VerificationSuccessUrl, http.StatusSeeOther)
 	return
+}
+
+func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var req dtos.VerifyLoginOtpDto
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendErrorResponse(w, http.StatusBadRequest, "invalid payload")
+		return
+	}
+
+	user, err := h.s.VerifyLoginOtp(r.Context(), &req)
+
+	if errors.Is(err, services.ErrOtpExpired) || errors.Is(err, services.ErrOtpInvalid) {
+		sendErrorResponse(w, http.StatusUnauthorized, "unauthorized request")
+		return
+	}
+
+	if err != nil {
+		sendErrorResponse(w, http.StatusUnauthorized, "an unexpected error has occurred")
+		return
+	}
+
+	token, err := h.s.CreateNewToken(r.Context(), user)
+	if err != nil {
+		sendErrorResponse(w, http.StatusUnauthorized, "an unexpected error has occurred")
+		return
+	}
+
+	w.Header().Add("authorization", token)
+	json.NewEncoder(w).Encode(map[string]string{"token": token})
 }

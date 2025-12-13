@@ -12,6 +12,7 @@ import (
 	"github.com/vanjmali/spotlite/user-service/mappers"
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // TODO: Convert to .env
@@ -24,6 +25,9 @@ var (
 	ErrEmailTaken      = errors.New("email is already taken")
 	ErrExpiredPassword = errors.New("your password is expired")
 	ErrUserInnactive   = errors.New("user status is innactive")
+	ErrOtpRequired     = errors.New("otp required")
+	ErrOtpInvalid      = errors.New("invalid otp")
+	ErrOtpExpired      = errors.New("expired otp")
 )
 
 type UserService struct {
@@ -93,27 +97,42 @@ func (s *UserService) VerifyAccount(ctx context.Context, token string) error {
 	return nil
 }
 
-func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) (*entities.User, error) {
+func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) error {
 
 	user, err := s.r.FindUserByEmail(ctx, loginDto.Email)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if user.AccountStatus == entities.StatusInactive {
-		return nil, ErrUserInnactive
+		return ErrUserInnactive
 	}
 
 	if time.Now().After(user.PasswordExpiresAt) {
-		return nil, ErrExpiredPassword
+		return ErrExpiredPassword
 	}
 
 	err = auth.CompareHashAndPassword(user.Password, loginDto.Password)
 	if err != nil {
-		return nil, err
+		return err
+	}
+	// otp
+	otp, err := auth.GenerateOTP()
+	if err != nil {
+		return err
 	}
 
-	return user, nil
+	otpHash, _ := bcrypt.GenerateFromPassword([]byte(otp), bcrypt.DefaultCost)
+
+	// TODO: make time NOT be hardcoded
+	if err := s.r.SetLoginOtp(ctx, user.ID, string(otpHash), time.Now().Add(5*time.Minute)); err != nil {
+		return err
+	}
+	if err := s.ms.SendLoginOtp(user.Email, otp); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (string, error) {
@@ -128,4 +147,31 @@ func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (
 
 	tokenString, err := token.SignedString(hmacSampleSecret)
 	return tokenString, err
+}
+
+func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginOtpDto) (*entities.User, error) {
+	user, err := s.r.FindUserByEmail(ctx, dto.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	if user.AccountStatus == entities.StatusInactive {
+		return nil, ErrUserInnactive
+	}
+
+	if user.OTPCode.Content == "" {
+		return nil, ErrOtpInvalid
+	}
+
+	if time.Now().After(user.OTPCode.Expiry) {
+		_ = s.r.ClearLoginOtp(ctx, user.ID)
+		return nil, ErrOtpExpired
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.OTPCode.Content), []byte(dto.Code)); err != nil {
+		return nil, ErrOtpInvalid
+	}
+
+	_ = s.r.ClearLoginOtp(ctx, user.ID)
+	return user, nil
 }

@@ -34,3 +34,19 @@ func (ms *MailService) sendAccountVerificationEmail(mailto string, token string)
 		log.Fatalf("failed to send mail: %s", err)
 	}
 }
+
+func (ms *MailService) SendLoginOtp(mailto string, otp string) error {
+	m := mail.NewMsg()
+
+	if err := m.From("mail@spotlite.com"); err != nil {
+		return err
+	}
+	if err := m.To(mailto); err != nil {
+		return err
+	}
+
+	m.Subject("OTP Code")
+	m.SetBodyString(mail.TypeTextHTML, fmt.Sprintf("<h1>OTP Code</h1><h2>%s</h2>", otp))
+
+	return ms.c.DialAndSend(m)
+}
