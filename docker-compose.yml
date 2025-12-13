@@ -1,0 +1,36 @@
+services:
+  traefik:
+    image: traefik:v3
+    ports:
+      - 80:80
+      - 8080:8080 # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./api-gateway/traefik.yml:/etc/traefik/traefik.yml:ro
+
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: ../Dockerfile.microservice
+      args:
+        - BINARY_NAME=user-service
+    expose:
+      - "8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.user.rule=PathPrefix(`/api/users`)"
+      - "traefik.http.routers.user.entrypoints=web"
+      - "traefik.http.routers.user.middlewares=user-strip-prefix"
+      - "traefik.http.services.user.loadbalancer.server.port=8000"
+
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "4200:4200"
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+  #     - "traefik.http.routers.frontend.entrypoints=web"
+  #     - "traefik.http.services.frontend.loadbalancer.server.port=4200"

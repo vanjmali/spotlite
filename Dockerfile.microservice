@@ -1,0 +1,27 @@
+# Stage 1 (Build)
+FROM golang:1.25.5-alpine AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum /app/
+RUN go mod download
+
+COPY . .
+
+ARG BINARY_NAME
+RUN CGO_ENABLED=0 go build \
+	-ldflags="-s -w" \
+	-v \
+	-trimpath \
+	-o ${BINARY_NAME} \
+	main.go
+
+# Stage 2 (Final)
+FROM gcr.io/distroless/static:latest
+
+WORKDIR /app
+ARG BINARY_NAME
+
+COPY --from=builder /app/${BINARY_NAME} /usr/bin/
+
+ENTRYPOINT ["/usr/bin/${BINARY_NAME}"]

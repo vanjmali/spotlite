@@ -1,0 +1,13 @@
+entryPoints:
+  web:
+    address: ":80"
+  dashboard:
+    address: ":8080"
+
+providers:
+  docker:
+    exposedByDefault: false
+
+api:
+  dashboard: true
+  insecure: true  # disable in production
