@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// TODO: remove hardcoded url
 const connectionString = "mongodb://localhost:27017/"
 
 func InitMongoClient() (*mongo.Client, error) {
