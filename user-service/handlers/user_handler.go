@@ -14,6 +14,7 @@ import (
 	"github.com/vanjmali/spotlite/user-service/validation"
 )
 
+// TODO: set verification success/failure URLS to custom success/failure pages in the client app,
 const (
 	VerificationSuccessUrl = "https://google.com"
 	VerificationFailureUrl = "https://apple.com"

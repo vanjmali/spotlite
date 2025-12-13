@@ -22,6 +22,7 @@ func main() {
 	}
 	defer dbClient.Disconnect(context.Background())
 
+	// TODO: remove hardcoded values
 	mailClient, err := mailing.InitClient("localhost", 1025, "", "")
 	if err != nil {
 		log.Fatalf("FATAL: Cannot start application without mailing service: %v", err)
@@ -38,7 +39,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to register custom validator: %v", err)
 	}
-
+	
+	// TODO: remove hardcoded values
 	repo := repositories.NewRepository("user_service_db", "users", dbClient)
 	ms := services.InitMailingService(mailClient)
 	us := services.NewUserService(*repo, *ms)
