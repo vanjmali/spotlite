@@ -1,13 +1,19 @@
-name: Test Go
+name: Build and Test Go Services
 
 on:
     push:
-        branches: ["ci/cd-test"]
     pull_request:
-        branches: ["ci/cd-test"]
+
+env:
+    GO_VERSION: '1.25.5'
+
+# Cancel the in-progress workflow when PR is updated
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-    test:
+    build-and-test:
         runs-on: ubuntu-latest
         strategy:
             matrix:
@@ -19,6 +25,9 @@ jobs:
                     # - notification-service
                     # - recommendation-service
                     # - analytics-service
+        defaults:
+            run:
+                working-directory: ${{ matrix.service }}
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
@@ -26,11 +35,14 @@ jobs:
             - name: Set up Go
               uses: actions/setup-go@v4
               with:
-                  go-version: '1.25.5'
+                  go-version: ${{ env.GO_VERSION }}
                   cache: true
-                  cache-dependency-path: 'spotlite/${{ matrix.service }}/go.sum'
+                  cache-dependency-path: "${{ matrix.service }}/go.sum"
 
-            - name: Run tests
+            - name: Build
               run: |
-                  cd ${{ matrix.service }}
+                  go build ./...
+
+            - name: Test
+              run: |
                   go test -v ./...
