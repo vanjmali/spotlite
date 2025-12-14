@@ -12,6 +12,7 @@ import (
 	"github.com/vanjmali/spotlite/user-service/mappers"
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -107,7 +108,7 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 	if err != nil {
 		return err
 	}
-	// otp
+
 	otp, err := auth.GenerateOTP()
 	if err != nil {
 		return err
@@ -134,7 +135,7 @@ func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (
 		"username": user.Username,
 		"role":     user.Role,
 		"iat":      time.Now().Unix(),
-		"exp":      time.Minute,
+		"exp":      time.Now().Add(15 * time.Minute).Unix(),
 	})
 
 	tokenString, err := token.SignedString(hmacSampleSecret)
@@ -166,4 +167,8 @@ func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginO
 
 	_ = s.r.ClearLoginOtp(ctx, user.ID)
 	return user, nil
+}
+
+func (s *UserService) FindByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
+	return s.r.FindUserByID(ctx, id)
 }

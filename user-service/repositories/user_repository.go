@@ -21,7 +21,7 @@ type UserRepository struct {
 	Client   *mongo.Client
 }
 
-func NewRepository(dbName string, collName string, c *mongo.Client) *UserRepository {
+func NewUserRepository(dbName string, collName string, c *mongo.Client) *UserRepository {
 	r := UserRepository{Client: c, DbName: dbName, CollName: collName}
 	return &r
 }
@@ -78,9 +78,9 @@ func (r *UserRepository) SetLoginOtp(ctx context.Context, userId primitive.Objec
 	_, err := c.UpdateOne(ctx,
 		bson.M{"_id": userId},
 		bson.M{"$set": bson.M{
-			"otp_code.hash": hash,
-			"otp_code.expiry":  expiry,
-			"updated_at":       time.Now(),
+			"otp_code.hash":   hash,
+			"otp_code.expiry": expiry,
+			"updated_at":      time.Now(),
 		}},
 	)
 	return err
@@ -105,6 +105,14 @@ func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (*en
 	err := c.FindOne(ctx, filter).Decode(&user)
 
 	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+func (r *UserRepository) FindUserByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
+	var user entities.User
+	c := r.Client.Database(r.DbName).Collection(r.CollName)
+	if err := c.FindOne(ctx, bson.M{"_id": id}).Decode(&user); err != nil {
 		return nil, err
 	}
 	return &user, nil

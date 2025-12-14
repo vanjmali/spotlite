@@ -24,12 +24,13 @@ const (
 )
 
 type UserHandler struct {
-	s *services.UserService
-	v *validator.Validate
+	s   *services.UserService
+	v   *validator.Validate
+	rts *services.RefreshTokenService
 }
 
-func NewUserHandler(s services.UserService, v validator.Validate) *UserHandler {
-	h := UserHandler{s: &s, v: &v}
+func NewUserHandler(s services.UserService, v validator.Validate, rts services.RefreshTokenService) *UserHandler {
+	h := UserHandler{s: &s, v: &v, rts: &rts}
 	return &h
 }
 
@@ -63,7 +64,7 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, services.ErrExpiredPassword):
 		sendErrorResponse(w, http.StatusUnauthorized, "password expired")
 		return
-	case errors.Is(err, services.ErrExpiredPassword):
+	case errors.Is(err, services.ErrUserInnactive):
 		sendErrorResponse(w, http.StatusUnauthorized, "user is innactive")
 		return
 	case err != nil:
@@ -167,7 +168,6 @@ func (h *UserHandler) HandleAccountVerification(w http.ResponseWriter, r *http.R
 
 	// handle account verification success
 	http.Redirect(w, r, VerificationSuccessUrl, http.StatusSeeOther)
-	return
 }
 
 func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Request) {
@@ -182,7 +182,7 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 	user, err := h.s.VerifyLoginOtp(r.Context(), &req)
 
 	if errors.Is(err, services.ErrOtpExpired) || errors.Is(err, services.ErrOtpInvalid) {
-		sendErrorResponse(w, http.StatusUnauthorized, "unauthorized request")
+		sendErrorResponse(w, http.StatusUnauthorized, "unauthorized request!!!")
 		return
 	}
 
@@ -197,6 +197,14 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	w.Header().Add("authorization", token)
-	json.NewEncoder(w).Encode(map[string]string{"token": token})
+	refresh, err := h.rts.IssueRefreshToken(r.Context(), user.ID)
+	if err != nil {
+		sendErrorResponse(w, http.StatusInternalServerError, "an expected error has occurred")
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]any{
+		"access_token":  token,
+		"refresh_token": refresh,
+	})
 }
