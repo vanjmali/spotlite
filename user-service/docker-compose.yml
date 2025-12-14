@@ -3,8 +3,6 @@ services:
     build:
       context: ./user-service
       dockerfile: ../Dockerfile.microservice
-      args:
-        - BINARY_NAME=user-service
     environment:
       DB_HOST: user-mongodb
       DB_PORT: 27017
