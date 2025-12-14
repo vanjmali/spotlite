@@ -32,7 +32,7 @@ func main() {
 		log.Fatalf("Failed to register custom validator: %v", err)
 	}
 
-	repo := repositories.NewRepository("user_service_db", "users", client)
+	repo := repositories.NewRepository(mongo.DatabaseName(), "users", client)
 	service := services.NewUserService(*repo)
 	handler := handlers.NewUserHandler(*service, *val)
 

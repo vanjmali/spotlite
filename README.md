@@ -26,19 +26,36 @@ For education purposes only.
 
 Prerequisites: Go 1.22+, Node.js v24.x, Docker, and Docker Compose.
 
-```bash
-# start everything
-docker compose up --build
+Setup:
 
-# rebuild and restart one component (example: user-service)
-docker compose up -d --build user-service
-```
+1. Copy `.env.example` to `.env`
+2. If running on Windows, in `.env`, uncomment the `COMPOSE_FILE` for Windows.
+3. Populate .env with your own values if needed.
+
+Start everything:
+`docker compose up --build`
+
+Rebuild/restart one service (example: user-service):
+`docker compose up -d --build user-service`
 
 ## Contributing
 
 Create a feature branch, make changes, and submit a pull request.
 
 `develop` branch is the main development branch. While the `main` branch is the production branch.
+
+### Creating new services
+
+#### Docker
+
+Each service has a `docker-compose.yml` file that gives instructions for Docker on how to run it as well as its dependencies.
+
+You can use the `Dockerfile.microservice` for building the service image. See other services for examples.
+
+The dependecies used should have a prefix, usually the name of the service, i.e. `user-service` has a prefix `user-` (e.g. `user-mongodb`).
+This avoids name conflicts with other service during development.
+
+The `COMPOSE_FILE` variable in `.env.example` and `.env` should be updated to include the new service, for both shells displayed.
 
 ## License
 

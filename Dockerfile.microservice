@@ -13,15 +13,14 @@ RUN CGO_ENABLED=0 go build \
 	-ldflags="-s -w" \
 	-v \
 	-trimpath \
-	-o ${BINARY_NAME} \
+	-o /app/build.bin \
 	main.go
 
 # Stage 2 (Final)
 FROM gcr.io/distroless/static:latest
 
 WORKDIR /app
-ARG BINARY_NAME
 
-COPY --from=builder /app/${BINARY_NAME} /usr/bin/
+COPY --from=builder /app/build.bin /usr/bin/service
 
-ENTRYPOINT ["/usr/bin/${BINARY_NAME}"]
+ENTRYPOINT ["/usr/bin/service"]

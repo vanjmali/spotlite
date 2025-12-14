@@ -4,8 +4,8 @@ API Gateway is a Traefik-based edge for routing, TLS termination, and service di
 
 ## Usage
 
-- Exposes entrypoints `web` (:80) and `dashboard` (:8080).
-- Loads static config from [`traefik.yml`](./traefik.yml).
+- Exposes entrypoints `web` (:3000) and `dashboard` (:8080).
+- Loads static config from [`traefik.yml`](./traefik.yml) (or [`traefik.dev.yml`](./traefik.dev.yml) for development).
 - Uses Docker labels on services to create routers/services automatically.
 - Watches [`dynamic/`](./dynamic/) for optional file-based middlewares/routers (hot-reloaded).
 
