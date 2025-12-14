@@ -12,5 +12,7 @@
   "[scss]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
-  "prettier.enableDebugLogs": false
+  "prettier.enableDebugLogs": false,
+  "angular.enable-strict-mode-prompt": false,
+  "angularLanguageService.enableStrictTemplates": false
 }

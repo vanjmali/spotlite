@@ -1,0 +1,103 @@
+import { inject, Injectable, signal } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+
+// TODO: Consider using Angular validators or a validation library for better scalability
+export interface ValidationResult {
+  isValid: boolean;
+  error?: string;
+}
+
+@Injectable()
+export class LoginStore {
+  private _auth = inject(AuthService);
+  private _router = inject(Router);
+
+  public readonly emailSg = signal<string | null>(null);
+  public readonly loadingSg = signal(false);
+  public readonly errorSg = signal<string | null>(null);
+
+  public clearError(): void {
+    this.errorSg.set(null);
+  }
+
+  public async checkEmailAndSendOtp(rawEmail: string): Promise<boolean> {
+    this.errorSg.set(null);
+    const email = (rawEmail ?? '').trim();
+
+    if (!email) {
+      this.errorSg.set('Please enter your email address.');
+      return false;
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(email)) {
+      this.errorSg.set('Invalid email address.');
+      return false;
+    }
+
+    this.loadingSg.set(true);
+    const res = await this._auth.checkEmail(email);
+    this.loadingSg.set(false);
+    if (!res.exists) {
+      this.errorSg.set('User not found.');
+      return false;
+    }
+
+    await this._auth.sendOtp(email);
+    this.emailSg.set(email);
+    this.errorSg.set(null); // Clear error before navigating to OTP
+    this._router.navigate(['/login/otp']);
+    return true;
+  }
+
+  public async verifyOtp(code: string): Promise<boolean> {
+    this.errorSg.set(null);
+    if (!/^[0-9]{6}$/.test(code)) {
+      this.errorSg.set('Enter the 6-digit code');
+      return false;
+    }
+    const email = this.emailSg();
+    if (!email) {
+      this.errorSg.set('Missing email');
+      return false;
+    }
+    this.loadingSg.set(true);
+    const status = await this._auth.verifyOtp(email, code);
+    this.loadingSg.set(false);
+
+    switch (status) {
+      case 'success':
+        return true;
+      case 'expired':
+        this.errorSg.set('Verification code has expired');
+        return false;
+      case 'invalid':
+        this.errorSg.set('Invalid code');
+        return false;
+    }
+  }
+
+  public async loginWithPassword(password: string): Promise<boolean> {
+    this.errorSg.set(null);
+    const email = this.emailSg() ?? '';
+    if (!password) {
+      this.errorSg.set('Please enter your password.');
+      return false;
+    }
+    this.loadingSg.set(true);
+    const ok = await this._auth.login(email, password);
+    this.loadingSg.set(false);
+    if (!ok) {
+      this.errorSg.set('Incorrect password.');
+      return false;
+    }
+    return true;
+  }
+
+  public async resendOtp(): Promise<void> {
+    const email = this.emailSg();
+    if (!email) return;
+    await this._auth.sendOtp(email);
+  }
+}

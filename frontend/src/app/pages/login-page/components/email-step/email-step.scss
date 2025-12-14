@@ -1,0 +1,49 @@
+:host {
+  width: 100%;
+}
+
+.email-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+
+  &__title {
+    margin: 20px;
+    font-size: 48px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  &__signup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__signup-text {
+    font-size: 14px;
+    color: #b3b3b3;
+  }
+
+  &__signup-link {
+    font-size: 14px;
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 200ms ease;
+
+    &:hover {
+      transform: scale(1.1);
+    }
+  }
+}

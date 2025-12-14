@@ -1,0 +1,26 @@
+<div class="otp-step">
+  <h2 class="otp-step__title">Enter the 6-digit code we sent to {{ store.emailSg() }}</h2>
+
+  <div class="otp-step__input-container">
+    <app-otp-input [(value)]="codeSg" [required]="true" />
+  </div>
+
+  <div class="otp-step__actions">
+    <button type="button" class="btn-secondary" (click)="resend()" [disabled]="loadingSg()">
+      Resend Code
+    </button>
+    <button type="button" class="btn-primary" (click)="verify()" [disabled]="loadingSg()">
+      {{ loadingSg() ? 'Verifying...' : 'Verify' }}
+    </button>
+  </div>
+
+  <div class="otp-step__password-prompt">
+    <a
+      routerLink="/login/password"
+      class="otp-step__password-prompt-link"
+      [class.otp-step__password-prompt-link--disabled]="loadingSg()"
+    >
+      Log in with password
+    </a>
+  </div>
+</div>
