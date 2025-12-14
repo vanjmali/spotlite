@@ -41,10 +41,8 @@ func NewUserService(r repositories.UserRepository, ms MailService) *UserService 
 	return &s
 }
 
-/*
-Register func, handles registration business logic such as username, email existence validation,
-sending verification mails
-*/
+// Register func, handles registration business logic such as username, email existence validation,
+// sending verification mails
 func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistrationDto) error {
 	// checks if the username is already taken,
 	exists, err := s.r.ExistsByUsername(ctx, reqDto.Username)
@@ -66,11 +64,9 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 		return ErrEmailTaken
 	}
 
-	/**
-		if both the username and email are unique we convert the dto into the user entity,
-		the mapper method does all the heavy lifting and sets the default field values and
-		hashes the password,
-	**/
+	// if both the username and email are unique we convert the dto into the user entity,
+	// the mapper method does all the heavy lifting and sets the default field values and
+	// hashes the password,
 	userEntity, err := mappers.ToUserEntity(reqDto)
 	if err != nil {
 		return err
@@ -83,18 +79,13 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	}
 
 	// sends account verification email,
-	s.ms.sendAccountVerificationEmail(reqDto.Email, userEntity.Token.Content)
+	s.ms.sendAccountVerificationEmail(reqDto.Email, userEntity.EmailVerification.Token)
 	return nil
 }
 
 // VerifyAccount func, handles account verification business logic
 func (s *UserService) VerifyAccount(ctx context.Context, token string) error {
-	err := s.r.ActiveAndRevokeToken(ctx, token)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.r.ActiveAndRevokeToken(ctx, token)
 }
 
 func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) error {

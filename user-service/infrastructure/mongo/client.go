@@ -23,10 +23,8 @@ func InitMongoClient() (*mongo.Client, error) {
 	}
 
 	if err = client.Ping(ctx, nil); err != nil {
-		err := client.Disconnect(context.Background())
-		if err != nil {
-			return nil, fmt.Errorf("failed to disconnect server: %w", err)
-		}
+		// Ignoring disconnect errors to prioritize `ping` failure
+		_ = client.Disconnect(context.Background())
 		return nil, fmt.Errorf("failed to ping serve: %w", err)
 	}
 

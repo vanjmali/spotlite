@@ -44,15 +44,15 @@ func (r *UserRepository) ActiveAndRevokeToken(ctx context.Context, token string)
 
 	// define filtering parameters,
 	filter := bson.M{
-		"account_status": "INACTIVE",
-		"token.type":     "ACCOUNT_VERIFICATION",
-		"token.content":  token,
+		"account_status":           entities.StatusInactive,
+		"email_verification.type":  entities.AccountVerification,
+		"email_verification.token": token,
 	}
 
 	// define set (set a field value to a new one) and unset (fully remove a field) operations,
 	update := bson.M{
-		"$set":   bson.M{"account_status": "ACTIVE"},
-		"$unset": bson.M{"token": ""},
+		"$set":   bson.M{"account_status": entities.StatusActive},
+		"$unset": bson.M{"email_verification": ""},
 	}
 
 	// calls the update one method which will atomically (all or nothing) update the document
@@ -61,12 +61,10 @@ func (r *UserRepository) ActiveAndRevokeToken(ctx context.Context, token string)
 		return err
 	}
 
-	/*
-		matched count refers to a number of document that have been found while modified count the
-		number of documents that were modified, the result for both should always be one because
-		there is only one account which is inactive, has the given account verification token and
-		has to be updated
-	*/
+	// matched count refers to a number of document that have been found while modified count the
+	// number of documents that were modified, the result for both should always be one because
+	// there is only one account which is inactive, has the given account verification token and
+	// has to be updated
 	if res.MatchedCount == 1 && res.ModifiedCount == 1 {
 		return nil
 	}
