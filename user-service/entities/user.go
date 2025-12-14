@@ -39,12 +39,12 @@ type User struct {
 	AccountStatus       AccountStatus      `bson:"account_status"`
 	CreatedAt           time.Time          `bson:"created_at"`
 	UpdatedAt           time.Time          `bson:"updated_at"`
-	Token               Token              `bson:"token"`
+	EmailVerification   EmailVerification  `bson:"email_verification"`
 }
 
-type Token struct {
-	Type    TokenType `bson:"type"`
-	Content string    `bson:"content"`
+type EmailVerification struct {
+	Type  TokenType `bson:"type"`
+	Token string    `bson:"token"`
 }
 
 func (r *UserRole) SetBSON(raw bson.RawValue) error {

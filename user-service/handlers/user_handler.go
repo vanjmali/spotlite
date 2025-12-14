@@ -3,6 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -49,15 +51,24 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 	var req dtos.UserRegistrationDto
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		sendErrorResponse(w, http.StatusInternalServerError, err.Error())
+		if err == io.EOF {
+			sendErrorResponse(w, http.StatusBadRequest, "request body can't be empty")
+			return
+		}
+
+		if _, ok := err.(*json.SyntaxError); ok {
+			sendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON format: %s", err))
+			return
+		}
+
+		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred while processing your request")
 		return
 	}
 
 	// validates request field values
 	if err := h.validateUserRegistration(&req); err != nil {
 		if _, ok := err.(*validator.InvalidValidationError); ok {
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(map[string]string{"error": "Internal validation error"})
+			sendErrorResponse(w, http.StatusInternalServerError, "internal validation error")
 			return
 		}
 
@@ -73,7 +84,6 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"status": "error",
 			"errors": errors,
 		})
 		return
@@ -95,10 +105,8 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusNoContent)
 }
 
-/*
-HandleAccountVerification func, handles user account verification requests and redirects to success/failure pages
-depending on the result
-*/
+// HandleAccountVerification func, handles user account verification requests and redirects to success/failure pages
+// depending on the result
 func (h *UserHandler) HandleAccountVerification(w http.ResponseWriter, r *http.Request) {
 	// fetches token query parameter value
 	token := r.URL.Query().Get("token")

@@ -27,6 +27,7 @@ func (ms *MailService) sendAccountVerificationEmail(mailto string, token string)
 	}
 
 	m.Subject("Account verification")
+	// TODO: change domain to a environment variable...
 	m.SetBodyString(mail.TypeTextHTML,
 		fmt.Sprintf("<span>Click <a href='http://localhost:8000/verify?token=%s'>here</a> to verify your account.</span>", token))
 

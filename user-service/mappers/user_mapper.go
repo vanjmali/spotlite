@@ -37,9 +37,9 @@ func ToUserEntity(u *dtos.UserRegistrationDto) (*entities.User, error) {
 		UpdatedAt:           now,
 		PasswordLastChanged: now,
 		PasswordExpiresAt:   expiryDate,
-		Token: entities.Token{
-			Content: uuid.New().String(),
-			Type:    entities.AccountVerification,
+		EmailVerification: entities.EmailVerification{
+			Token: uuid.New().String(),
+			Type:  entities.AccountVerification,
 		},
 	}, nil
 }
