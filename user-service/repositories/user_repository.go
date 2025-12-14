@@ -3,9 +3,11 @@ package repositories
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -68,6 +70,44 @@ func (r *UserRepository) ActiveAndRevokeToken(ctx context.Context, token string)
 	}
 
 	return TokenExpiredErr
+}
+
+func (r *UserRepository) SetLoginOtp(ctx context.Context, userId primitive.ObjectID, hash string, expiry time.Time) error {
+	c := r.Client.Database(r.DbName).Collection(r.CollName)
+
+	_, err := c.UpdateOne(ctx,
+		bson.M{"_id": userId},
+		bson.M{"$set": bson.M{
+			"otp_code.hash": hash,
+			"otp_code.expiry":  expiry,
+			"updated_at":       time.Now(),
+		}},
+	)
+	return err
+}
+
+func (r *UserRepository) ClearLoginOtp(ctx context.Context, userId primitive.ObjectID) error {
+	c := r.Client.Database(r.DbName).Collection(r.CollName)
+
+	_, err := c.UpdateOne(ctx,
+		bson.M{"_id": userId},
+		bson.M{"$unset": bson.M{"otp_code": ""}},
+	)
+	return err
+}
+
+func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (*entities.User, error) {
+	var user entities.User
+	c := r.Client.Database(r.DbName).Collection(r.CollName)
+
+	filter := bson.M{"email": email}
+
+	err := c.FindOne(ctx, filter).Decode(&user)
+
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
 
 func (r *UserRepository) ExistsByUsername(ctx context.Context, username string) (bool, error) {
