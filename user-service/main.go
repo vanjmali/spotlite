@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -12,8 +13,11 @@ import (
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/routers"
 	"github.com/vanjmali/spotlite/user-service/services"
+	"github.com/vanjmali/spotlite/user-service/utils"
 	"github.com/vanjmali/spotlite/user-service/validation"
 )
+
+var port = utils.GetEnv("APP_PORT", "8000")
 
 func main() {
 	dbClient, err := mongo.InitMongoClient()
@@ -22,8 +26,7 @@ func main() {
 	}
 	defer dbClient.Disconnect(context.Background())
 
-	// TODO: remove hardcoded values
-	mailClient, err := mailing.InitClient("localhost", 1025, "", "")
+	mailClient, err := mailing.InitClientFromEnv()
 	if err != nil {
 		log.Fatalf("FATAL: Cannot start application without mailing service: %v", err)
 	}
@@ -47,6 +50,7 @@ func main() {
 
 	router := routers.HandleRequests(h)
 
-	log.Println("Server starting on port 8000...")
-	log.Fatal(http.ListenAndServe(":8000", router))
+	addr := fmt.Sprintf(":%s", port)
+	log.Printf("Server starting on port %s...", addr)
+	log.Fatal(http.ListenAndServe(addr, router))
 }

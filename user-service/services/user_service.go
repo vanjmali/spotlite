@@ -11,14 +11,13 @@ import (
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/mappers"
 	"github.com/vanjmali/spotlite/user-service/repositories"
+	"github.com/vanjmali/spotlite/user-service/utils"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// TODO: Convert to .env
-const key string = "superSecretPassword123"
-
-var hmacSampleSecret []byte = []byte(key)
+var hmacSampleSecret = []byte(utils.MustGetEnv("APP_JWT_SECRET"))
+var loginOtpTTL = utils.MustGetDurationEnv("APP_LOGIN_OTP_TTL_MINUTES", time.Minute)
 
 var (
 	ErrUsernameTaken   = errors.New("username is already taken")
@@ -124,8 +123,7 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 
 	otpHash, _ := bcrypt.GenerateFromPassword([]byte(otp), bcrypt.DefaultCost)
 
-	// TODO: make time NOT be hardcoded
-	if err := s.r.SetLoginOtp(ctx, user.ID, string(otpHash), time.Now().Add(5*time.Minute)); err != nil {
+	if err := s.r.SetLoginOtp(ctx, user.ID, string(otpHash), time.Now().Add(loginOtpTTL)); err != nil {
 		return err
 	}
 	if err := s.ms.SendLoginOtp(user.Email, otp); err != nil {
