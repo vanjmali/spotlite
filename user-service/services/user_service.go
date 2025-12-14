@@ -73,10 +73,5 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 
 // VerifyAccount func, handles account verification business logic
 func (s *UserService) VerifyAccount(ctx context.Context, token string) error {
-	err := s.r.ActiveAndRevokeToken(ctx, token)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return s.r.ActiveAndRevokeToken(ctx, token)
 }
