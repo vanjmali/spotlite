@@ -49,8 +49,8 @@ type EmailVerification struct {
 }
 
 type OTPCode struct {
-	Content string    `bson:"content"`
-	Expiry  time.Time `bson:"expiry"`
+	Hash   string    `bson:"hash"`
+	Expiry time.Time `bson:"expiry"`
 }
 
 func (r *UserRole) SetBSON(raw bson.RawValue) error {

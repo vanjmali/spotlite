@@ -151,7 +151,7 @@ func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginO
 		return nil, ErrUserInnactive
 	}
 
-	if user.OTPCode.Content == "" {
+	if user.OTPCode.Hash == "" {
 		return nil, ErrOtpInvalid
 	}
 
@@ -160,7 +160,7 @@ func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginO
 		return nil, ErrOtpExpired
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.OTPCode.Content), []byte(dto.Code)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.OTPCode.Hash), []byte(dto.Code)); err != nil {
 		return nil, ErrOtpInvalid
 	}
 

@@ -78,7 +78,7 @@ func (r *UserRepository) SetLoginOtp(ctx context.Context, userId primitive.Objec
 	_, err := c.UpdateOne(ctx,
 		bson.M{"_id": userId},
 		bson.M{"$set": bson.M{
-			"otp_code.content": hash,
+			"otp_code.hash": hash,
 			"otp_code.expiry":  expiry,
 			"updated_at":       time.Now(),
 		}},
