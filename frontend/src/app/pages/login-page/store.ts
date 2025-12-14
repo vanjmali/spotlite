@@ -51,6 +51,45 @@ export class LoginStore {
     return true;
   }
 
+  public async validateCredentials(email: string, password: string): Promise<boolean> {
+    this.errorSg.set(null);
+    const trimmedEmail = (email ?? '').trim();
+    const trimmedPassword = (password ?? '').trim();
+
+    if (!trimmedEmail) {
+      this.errorSg.set('Please enter your email address.');
+      return false;
+    }
+
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(trimmedEmail)) {
+      this.errorSg.set('Invalid email address.');
+      return false;
+    }
+
+    if (!trimmedPassword) {
+      this.errorSg.set('Please enter your password.');
+      return false;
+    }
+
+    // Validate credentials against backend
+    this.loadingSg.set(true);
+    const isValid = await this._auth.login(trimmedEmail, trimmedPassword);
+    this.loadingSg.set(false);
+
+    if (!isValid) {
+      this.errorSg.set('Invalid email or password.');
+      return false;
+    }
+
+    // Credentials valid, send OTP
+    await this._auth.sendOtp(trimmedEmail);
+    this.emailSg.set(trimmedEmail);
+    this.errorSg.set(null);
+    this._router.navigate(['/login/otp']);
+    return true;
+  }
+
   public async verifyOtp(code: string): Promise<boolean> {
     this.errorSg.set(null);
     if (!/^[0-9]{6}$/.test(code)) {
@@ -76,23 +115,6 @@ export class LoginStore {
         this.errorSg.set('Invalid code');
         return false;
     }
-  }
-
-  public async loginWithPassword(password: string): Promise<boolean> {
-    this.errorSg.set(null);
-    const email = this.emailSg() ?? '';
-    if (!password) {
-      this.errorSg.set('Please enter your password.');
-      return false;
-    }
-    this.loadingSg.set(true);
-    const ok = await this._auth.login(email, password);
-    this.loadingSg.set(false);
-    if (!ok) {
-      this.errorSg.set('Incorrect password.');
-      return false;
-    }
-    return true;
   }
 
   public async resendOtp(): Promise<void> {

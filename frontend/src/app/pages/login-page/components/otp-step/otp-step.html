@@ -13,14 +13,4 @@
       {{ loadingSg() ? 'Verifying...' : 'Verify' }}
     </button>
   </div>
-
-  <div class="otp-step__password-prompt">
-    <a
-      routerLink="/login/password"
-      class="otp-step__password-prompt-link"
-      [class.otp-step__password-prompt-link--disabled]="loadingSg()"
-    >
-      Log in with password
-    </a>
-  </div>
 </div>

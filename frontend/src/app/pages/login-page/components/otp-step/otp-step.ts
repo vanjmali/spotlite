@@ -1,13 +1,12 @@
 import { Component, inject, signal, effect, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { OtpInputComponent } from '@app/shared/input';
 import { LoginStore } from '../../store';
 
 @Component({
   selector: 'app-otp-step',
   standalone: true,
-  imports: [CommonModule, RouterLink, OtpInputComponent],
+  imports: [CommonModule, OtpInputComponent],
   templateUrl: './otp-step.html',
   styleUrls: ['./otp-step.scss'],
 })

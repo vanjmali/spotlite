@@ -1,17 +1,16 @@
 import { Component, inject, signal, effect, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
-import { EmailInputComponent, PasswordInputComponent } from '@app/shared';
+import { EmailInputComponent, PasswordInputComponent } from '@app/shared/input';
 import { LoginStore } from '../../store';
 
 @Component({
-  selector: 'app-password-step',
+  selector: 'app-credentials-step',
   standalone: true,
-  imports: [CommonModule, RouterLink, EmailInputComponent, PasswordInputComponent],
-  templateUrl: './password-step.html',
-  styleUrls: ['./password-step.scss'],
+  imports: [CommonModule, EmailInputComponent, PasswordInputComponent],
+  templateUrl: './credentials-step.html',
+  styleUrls: ['./credentials-step.scss'],
 })
-export class PasswordStep {
+export class CredentialsStep {
   @ViewChild(EmailInputComponent) public emailInputSg!: EmailInputComponent;
   @ViewChild(PasswordInputComponent) public passwordInputSg!: PasswordInputComponent;
 
@@ -22,16 +21,10 @@ export class PasswordStep {
   public loadingSg = this.store.loadingSg;
 
   constructor() {
-    // Initialize email from store
-    const storedEmail = this.store.emailSg();
-    if (storedEmail) {
-      this.emailSg.set(storedEmail);
-    }
-
-    // Clear store error when entering password step
+    // Clear store error when entering credentials step
     this.store.clearError();
 
-    // Track store errors and set them on the password input
+    // Track store errors and set them on the appropriate input
     effect(() => {
       const storeError = this.store.errorSg();
       if (storeError && this.passwordInputSg) {
@@ -40,7 +33,7 @@ export class PasswordStep {
     });
   }
 
-  public submit(): void {
+  public async submit(): Promise<void> {
     // Validate both inputs
     const emailValidation = this.emailInputSg.validate();
     const passwordValidation = this.passwordInputSg.validate();
@@ -49,7 +42,10 @@ export class PasswordStep {
       return;
     }
 
+    const email = this.emailSg().trim();
     const password = this.passwordSg().trim();
-    void this.store.loginWithPassword(password);
+
+    // Validate credentials and send OTP
+    await this.store.validateCredentials(email, password);
   }
 }

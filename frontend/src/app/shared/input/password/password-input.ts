@@ -50,12 +50,6 @@ export class PasswordInputComponent {
       return { isValid: false, error };
     }
 
-    if (password && password.length < 4) {
-      const error = 'Password must be at least 4 characters';
-      this.errorSg.set(error);
-      return { isValid: false, error };
-    }
-
     this.errorSg.set('');
     return { isValid: true };
   }
