@@ -51,6 +51,6 @@ func main() {
 	router := routers.HandleRequests(h)
 
 	addr := fmt.Sprintf(":%s", port)
-	log.Printf("Server starting on port %s...", addr)
+	log.Printf("Listening on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, router))
 }
