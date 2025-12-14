@@ -8,7 +8,12 @@ import (
 func HandleRequests(h *handlers.UserHandler) *mux.Router {
 	r := mux.NewRouter()
 
-	r.HandleFunc("/users/", h.HandleRegistration).Methods("POST")
+	r.HandleFunc("/register", h.HandleRegistration).Methods("POST")
 
+	r.HandleFunc("/login", h.HandleLogin).Methods("POST")
+	r.HandleFunc("/login/verify-otp", h.HandleVerifyLoginOtp).Methods("POST")
+
+	// the verify endpoint is defined as a get so it can redirect when link click happens,
+	r.HandleFunc("/verify", h.HandleAccountVerification).Methods("GET", "POST")
 	return r
 }

@@ -9,11 +9,16 @@ For education purposes only.
 - `api-gateway` – Traefik-based edge for routing, TLS termination, and service discovery.
 - `user-service` – Authentication, authorization, and account management.
 - `content-service` – Catalog of artists, albums, songs, and genres.
-- `rating-service` – Song rating endpoints and aggregation.
-- `subscription-service` – Manages user subscriptions to artists/genres.
-- `notification-service` – Queues and delivers user notifications.
+- `ratings-service` – Song rating endpoints and aggregation.
+- `subscriptions-service` – Manages user subscriptions to artists/genres.
+- `notifications-service` – Queues and delivers user notifications.
 - `recommendation-service` – Personalized recommendations and feeds.
 - `analytics-service` – Activity tracking and analytics endpoints.
+
+> `api-gateway` is the main entrypoint and serves both frontend and backend services:
+>
+> - `frontend` is served at the root (`/`).
+> - other microservices are served at `/api/<service-name>/...` (e.g. `/api/users/...`); Traefik strips the `/api/<service-name>` prefix before forwarding the request.
 
 ## Tech stack
 
@@ -26,19 +31,35 @@ For education purposes only.
 
 Prerequisites: Go 1.22+, Node.js v24.x, Docker, and Docker Compose.
 
-```bash
-# start everything
-docker compose up --build
+Setup:
 
-# rebuild and restart one component (example: user-service)
-docker compose up -d --build user-service
-```
+1. Copy `.env.example` to `.env`
+2. Populate .env with your own values if needed.
+3. Start everything: `docker compose up --build`
+
+To rebuild/restart one service (example: user-service): `docker compose up -d --build user-service`
 
 ## Contributing
 
 Create a feature branch, make changes, and submit a pull request.
 
-`develop` is the default development branch. `stable` is the protected production branch.
+The `develop` branch is the main development branch; `main` is the production branch.
+
+### Creating new services
+
+#### Docker
+
+Each service has a `docker-compose.yml` file that gives instructions for Docker on how to run it as well as its dependencies.
+
+You can use the `Dockerfile.microservice` for building the service image. See other services for examples.
+
+The dependencies used should have a prefix, usually the name of the service, i.e. `user-service` has a prefix `user-` (e.g. `user-mongodb`).
+This avoids name conflicts with other services during development.
+
+The `COMPOSE_FILE` variable in `.env.example` and `.env` should be updated to include the new service, for both shells displayed.
+
+> [!NOTE]
+> In case you are getting a `WARN[0000] The "XYZ" variable is not set. Defaulting to a blank string.` message when running `docker compose up`; make sure to update your `.env` file.
 
 ## License
 
