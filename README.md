@@ -9,11 +9,16 @@ For education purposes only.
 - `api-gateway` – Traefik-based edge for routing, TLS termination, and service discovery.
 - `user-service` – Authentication, authorization, and account management.
 - `content-service` – Catalog of artists, albums, songs, and genres.
-- `rating-service` – Song rating endpoints and aggregation.
-- `subscription-service` – Manages user subscriptions to artists/genres.
-- `notification-service` – Queues and delivers user notifications.
+- `ratings-service` – Song rating endpoints and aggregation.
+- `subscriptions-service` – Manages user subscriptions to artists/genres.
+- `notifications-service` – Queues and delivers user notifications.
 - `recommendation-service` – Personalized recommendations and feeds.
 - `analytics-service` – Activity tracking and analytics endpoints.
+
+> `api-gateway` is the main entrypoint and serves both frontend and backend services:
+>
+> - `frontend` is served at the root (`/`).
+> - other microservices are served at `/api/<service-name>/...` (e.g. `/api/users/...`); Traefik strips the `/api/<service-name>` prefix before forwarding the request.
 
 ## Tech stack
 
@@ -29,14 +34,10 @@ Prerequisites: Go 1.22+, Node.js v24.x, Docker, and Docker Compose.
 Setup:
 
 1. Copy `.env.example` to `.env`
-2. If running on Windows, in `.env`, uncomment the `COMPOSE_FILE` for Windows.
-3. Populate .env with your own values if needed.
+2. Populate .env with your own values if needed.
+3. Start everything: `docker compose up --build`
 
-Start everything:
-`docker compose up --build`
-
-Rebuild/restart one service (example: user-service):
-`docker compose up -d --build user-service`
+To rebuild/restart one service (example: user-service): `docker compose up -d --build user-service`
 
 ## Contributing
 
