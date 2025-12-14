@@ -42,7 +42,7 @@ Rebuild/restart one service (example: user-service):
 
 Create a feature branch, make changes, and submit a pull request.
 
-`develop` branch is the main development branch. While the `main` branch is the production branch.
+The `develop` branch is the main development branch; `main` is the production branch.
 
 ### Creating new services
 
@@ -52,10 +52,13 @@ Each service has a `docker-compose.yml` file that gives instructions for Docker 
 
 You can use the `Dockerfile.microservice` for building the service image. See other services for examples.
 
-The dependecies used should have a prefix, usually the name of the service, i.e. `user-service` has a prefix `user-` (e.g. `user-mongodb`).
-This avoids name conflicts with other service during development.
+The dependencies used should have a prefix, usually the name of the service, i.e. `user-service` has a prefix `user-` (e.g. `user-mongodb`).
+This avoids name conflicts with other services during development.
 
 The `COMPOSE_FILE` variable in `.env.example` and `.env` should be updated to include the new service, for both shells displayed.
+
+> [!NOTE]
+> In case you are getting a `WARN[0000] The "XYZ" variable is not set. Defaulting to a blank string.` message when running `docker compose up`; make sure to update your `.env` file.
 
 ## License
 
