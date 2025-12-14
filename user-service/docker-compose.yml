@@ -1,0 +1,62 @@
+services:
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: ../Dockerfile.microservice
+    environment:
+      DB_HOST: user-mongodb
+      DB_PORT: 27017
+      DB_USER: ${SRV_USER_MONGO_USERNAME}
+      DB_PASS: ${SRV_USER_MONGO_PASSWORD}
+      DB_NAME: ${SRV_USER_MONGO_DATABASE}
+      SMTP_HOST: ${SRV_USER_SMTP_HOST}
+      SMTP_PORT: ${SRV_USER_SMTP_PORT}
+      SMTP_USER: ${SRV_USER_SMTP_USERNAME}
+      SMTP_PASS: ${SRV_USER_SMTP_PASSWORD}
+      APP_JWT_SECRET: ${SRV_USER_JWT_SECRET}
+      APP_VERIFICATION_SUCCESS_URL: ${SRV_USER_VERIFICATION_SUCCESS_URL}
+      APP_VERIFICATION_FAILURE_URL: ${SRV_USER_VERIFICATION_FAILURE_URL}
+      APP_LOGIN_OTP_TTL_MINUTES: ${SRV_USER_LOGIN_OTP_TTL_MINUTES}
+      APP_PORT: 8000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.user.rule=PathPrefix(`/api/users`)"
+      - "traefik.http.routers.user.middlewares=user-strip-prefix"
+      - "traefik.http.middlewares.user-strip-prefix.stripprefix.prefixes=/api/users"
+      - "traefik.http.middlewares.user-strip-prefix.stripprefix.forceslash=false"
+      - "traefik.http.services.user.loadbalancer.server.port=8000"
+    depends_on:
+      user-mongodb:
+        condition: service_healthy
+    networks:
+      - api-gateway
+      - user-internal
+
+  user-mongodb:
+    image: mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${SRV_USER_MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${SRV_USER_MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${SRV_USER_MONGO_DATABASE}
+      SRV_USER_MONGO_USERNAME: ${SRV_USER_MONGO_USERNAME}
+      SRV_USER_MONGO_PASSWORD: ${SRV_USER_MONGO_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --username $SRV_USER_MONGO_ROOT_USERNAME --password $SRV_USER_MONGO_ROOT_PASSWORD --authenticationDatabase admin --eval 'db.adminCommand(\"ping\")'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - user-mongo-data:/data/db
+      - ./user-service/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - user-internal
+
+networks:
+  # Connects to Traefik
+  api-gateway:
+  # Creates a private network for this microservice
+  user-internal:
+    internal: true
+
+volumes:
+  user-mongo-data:

@@ -1,0 +1,16 @@
+name: spotlite
+
+services:
+  api-gateway:
+    image: traefik:v3
+    ports:
+      - ${APP_HTTP_PORT:-80}:80
+      - ${APP_HTTPS_PORT:-443}:443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./api-gateway/traefik.yml:/etc/traefik/traefik.yml:ro
+    networks:
+      - api-gateway
+
+networks:
+  api-gateway:

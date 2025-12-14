@@ -1,0 +1,29 @@
+entryPoints:
+  web:
+    # Plain HTTP; only used to redirect to HTTPS in production.
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    # Primary HTTPS entrypoint.
+    address: ":443"
+    http:
+      tls:
+        # Uses the default ACME resolver
+        certResolver: default
+
+providers:
+  docker:
+    # Only expose services that set `traefik.enable=true`.
+    exposedByDefault: false
+    # Watch containers on this network.
+    network: api-gateway
+
+api:
+  # Traefik dashboard/API; stay off in prod (overridden on in dev).
+  dashboard: false
+  insecure: false

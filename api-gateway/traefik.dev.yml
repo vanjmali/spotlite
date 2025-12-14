@@ -1,0 +1,18 @@
+entryPoints:
+  web:
+    # Plain HTTP for local development
+    address: ":80"
+  websecure:
+    # HTTPS entrypoint; will serve self-signed cert if none provided.
+    address: ":443"
+    http:
+      tls: true
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: api-gateway
+
+api:
+  dashboard: true
+  insecure: true
