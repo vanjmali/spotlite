@@ -1,6 +1,7 @@
 package mailing
 
 import (
+	"crypto/tls"
 	"log"
 	"strconv"
 
@@ -16,10 +17,12 @@ type MailClient struct {
 func InitClient(host string, port int, username string, password string) (*mail.Client, error) {
 	c, err := mail.NewClient(host,
 		mail.WithPort(port),
-		mail.WithSMTPAuth(mail.SMTPAuthPlain),
+		// TODO: configurable TLS
+		mail.WithSMTPAuth(mail.SMTPAuthPlainNoEnc),
 		mail.WithUsername(username),
 		mail.WithPassword(password),
-		mail.WithTLSPolicy(mail.NoTLS))
+		mail.WithTLSPolicy(mail.NoTLS),
+		mail.WithTLSConfig(&tls.Config{InsecureSkipVerify: true}))
 
 	if err != nil {
 		log.Fatalf("failed to create mail client: %s", err)
