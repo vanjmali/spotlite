@@ -1,0 +1,18 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+build/
+
+# test artifacts
+coverage/
+
+# editor / OS
+.vscode/
+.idea/
+.DS_Store
+
+# lockfiles / generated JSON you don't want formatted
+package-lock.json
+pnpm-lock.yaml
