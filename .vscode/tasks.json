@@ -1,0 +1,59 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Format",
+			"type": "shell",
+			"command": "golangci-lint",
+			"args": [
+				"fmt",
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "never",
+				"focus": true,
+				"panel": "shared",
+				"showReuseMessage": true,
+				"clear": true
+			},
+			"options": {
+				"statusbar": {
+					"label": "Format",
+					"detail": "Format all source files",
+					"color": "#ffa"
+				}
+			},
+			"icon": {
+				"color": "terminal.ansiYellow",
+				"id": "folder",
+			}
+		},
+		{
+			"label": "Lint",
+			"type": "shell",
+			"command": "golangci-lint",
+			"args": [
+				"run"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": true,
+				"panel": "shared",
+				"showReuseMessage": false,
+				"clear": true
+			},
+			"options": {
+				"statusbar": {
+					"label": "Lint",
+					"detail": "Lint all source files",
+					"color": "#ffa"
+				}
+			},
+			"icon": {
+				"color": "terminal.ansiYellow",
+				"id": "sparkle-filled",
+			}
+		}
+	]
+}

@@ -1,0 +1,121 @@
+version: "2"
+
+formatters:
+  settings:
+    golines:
+      max-len: 120
+      shorten-comments: true
+      reformat-tags: false
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
+    - golines
+
+linters:
+  disable:
+    - errcheck
+  enable:
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - canonicalheader
+    - copyloopvar
+    - dupl
+    - durationcheck
+    - errname
+    - errorlint
+    - exhaustive
+    - exptostd
+    - fatcontext
+    - forbidigo
+    # - funlen
+    - gocheckcompilerdirectives
+    - gochecksumtype
+    # - gocognit
+    - goconst
+    - gocritic
+    # - gocyclo
+    - godot
+    - gomoddirectives
+    - goprintffuncname
+    - gosec
+    - iface
+    - intrange
+    - loggercheck
+    - makezero
+    - mirror
+    - musttag
+    - nakedret
+    # - nestif
+    - nilerr
+    - nilnesserr
+    - nilnil
+    - noctx
+    - nolintlint
+    - nosprintfhostport
+    - perfsprint
+    - predeclared
+    - promlinter
+    - protogetter
+    - reassign
+    - recvcheck
+    - revive
+    - rowserrcheck
+    - sloglint
+    - spancheck
+    - sqlclosecheck
+    - testableexamples
+    - testifylint
+    - tparallel
+    - unconvert
+    - unparam
+    - usestdlibvars
+    - usetesting
+    - wastedassign
+    - whitespace
+  settings:
+    cyclop:
+      max-complexity: 15
+    errcheck:
+      exclude-functions:
+        - (*bytes.Buffer).Write([]byte)
+        - (*os.File).Close
+        - (ssh.Conn).Close
+        - (net.Conn).Close
+    gocritic:
+      disabled-checks:
+        - ifElseChain
+    gosec:
+      config:
+        G301: "0755"
+        G302: "0644"
+        G306: "0644"
+    revive:
+      rules:
+        # https://github.com/mgechev/revive/blob/HEAD/RULES_DESCRIPTIONS.md#exported
+        - name: exported
+          # disabled: true
+  exclusions:
+    rules:
+      - path: '(.+)_test\.go'
+        linters:
+          - funlen
+          - goconst
+      - text: "subtests should call"
+        linters:
+          - tparallel
+      # allow comapre with io.EOF and unix.ENOTDIR
+      - source: "(.+)(\\!|\\=)\\=\\ (io\\.EOF|unix\\.ENOTDIR)"
+        linters:
+          - errorlint
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+  relative-path-mode: cfg
