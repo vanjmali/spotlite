@@ -44,11 +44,11 @@ func main() {
 	}
 
 	// TODO: remove hardcoded values
-	userRepo := repositories.NewUserRepository("user_service_db", "users", dbClient)
+	userRepo := repositories.NewUserRepository(mongo.DatabaseName(), "users", dbClient)
 	ms := services.InitMailingService(mailClient)
 	us := services.NewUserService(*userRepo, *ms)
 
-	rtRepo := repositories.NewRefreshTokenRepository("user_service_db", repositories.RefreshTokensColl, dbClient)
+	rtRepo := repositories.NewRefreshTokenRepository(mongo.DatabaseName(), repositories.RefreshTokensColl, dbClient)
 	if err := rtRepo.EnsureRefreshIndexes(context.Background()); err != nil {
 		log.Fatalf("Failed to ensure refresh token indexes: %v", err)
 	}
