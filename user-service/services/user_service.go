@@ -11,15 +11,13 @@ import (
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/mappers"
 	"github.com/vanjmali/spotlite/user-service/repositories"
+	"github.com/vanjmali/spotlite/user-service/utils"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// TODO: Convert to .env
-const key string = "superSecretPassword123"
-
-var hmacSampleSecret []byte = []byte(key)
+var hmacSampleSecret = []byte(utils.MustGetEnv("APP_JWT_SECRET"))
+var loginOtpTTL = utils.MustGetDurationEnv("APP_LOGIN_OTP_TTL_MINUTES", time.Minute)
 
 var (
 	ErrUsernameTaken   = errors.New("username is already taken")

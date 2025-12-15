@@ -13,14 +13,14 @@ import (
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/services"
+	"github.com/vanjmali/spotlite/user-service/utils"
 	"github.com/vanjmali/spotlite/user-service/validation"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// TODO: set verification success/failure URLS to custom success/failure pages in the client app,
-const (
-	VerificationSuccessUrl = "https://google.com"
-	VerificationFailureUrl = "https://apple.com"
+var (
+	VerificationSuccessUrl = utils.MustGetEnv("APP_VERIFICATION_SUCCESS_URL")
+	VerificationFailureUrl = utils.MustGetEnv("APP_VERIFICATION_FAILURE_URL")
 )
 
 type UserHandler struct {
@@ -182,7 +182,7 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 	user, err := h.s.VerifyLoginOtp(r.Context(), &req)
 
 	if errors.Is(err, services.ErrOtpExpired) || errors.Is(err, services.ErrOtpInvalid) {
-		sendErrorResponse(w, http.StatusUnauthorized, "unauthorized request!!!")
+		sendErrorResponse(w, http.StatusUnauthorized, "unauthorized request")
 		return
 	}
 
