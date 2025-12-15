@@ -17,7 +17,7 @@ import (
 	"github.com/vanjmali/spotlite/user-service/validation"
 )
 
-var port = utils.GetEnv("APP_PORT", "8000")
+var port = utils.GetEnv("APP_PORT", "3000")
 
 func main() {
 	dbClient, err := mongo.InitMongoClient()

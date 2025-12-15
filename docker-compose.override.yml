@@ -1,0 +1,51 @@
+# Extra modications for development environment.
+# This file is automatically merged into `docker-compose.yml` by Docker when no `-f` flag is provided.
+
+services:
+  api-gateway:
+    ports:
+      - 8080:8080
+    volumes:
+      - ./api-gateway/traefik.dev.yml:/etc/traefik/traefik.yml:ro
+
+  # Mailhog is a local SMTP server for testing email sending
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    ports:
+      - 1025:1025 # SMTP
+      - 8025:8025 # Web UI Dashbaord
+    networks:
+      # We'll keep mailhog in the api-gateway network
+      # so services that use it can access it.
+      # In production, this will be its own accessible service, likely external.
+      - api-gateway
+
+  # --- User Service ---
+  # For local development
+
+  user-mongodb:
+    ports:
+      - 3101:27017 # expose MongoDB port
+
+  user-mongo-express: # MongoDB GUI
+    image: mongo-express:1
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=api-gateway"
+      - "traefik.http.routers.user-mongo-express.rule=PathPrefix(`/dev/user-service`)"
+      - "traefik.http.middlewares.user-mongo-express-strip-prefix.stripprefix.forceslash=false"
+      - "traefik.http.services.user-mongo-express.loadbalancer.server.port=8081"
+    environment:
+      ME_CONFIG_BASICAUTH: "false"
+      ME_CONFIG_SITE_BASEURL: /dev/user-service
+      ME_CONFIG_MONGODB_URL: mongodb://${SRV_USER_MONGO_ROOT_USERNAME}:${SRV_USER_MONGO_ROOT_PASSWORD}@user-mongodb:27017/?authSource=admin
+    depends_on:
+      user-mongodb:
+        condition: service_healthy
+    networks:
+      - api-gateway
+      - user-internal
+
+networks:
+  api-gateway:
+  user-internal:
