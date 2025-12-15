@@ -12,8 +12,7 @@ services:
       - "traefik.http.middlewares.user-mongo-express-strip-prefix.stripprefix.forceslash=false"
       - "traefik.http.services.user-mongo-express.loadbalancer.server.port=8081"
     environment:
-      ME_CONFIG_BASICAUTH_USERNAME: admin
-      ME_CONFIG_BASICAUTH_PASSWORD: admin
+      ME_CONFIG_BASICAUTH: "false"
       ME_CONFIG_SITE_BASEURL: /dev/user-service
       ME_CONFIG_MONGODB_URL: mongodb://${SRV_USER_MONGO_ROOT_USERNAME}:${SRV_USER_MONGO_ROOT_PASSWORD}@user-mongodb:27017/?authSource=admin
     depends_on:
