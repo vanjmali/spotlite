@@ -167,7 +167,6 @@ func (h *UserHandler) HandleAccountVerification(w http.ResponseWriter, r *http.R
 
 	// handle account verification success
 	http.Redirect(w, r, VerificationSuccessUrl, http.StatusSeeOther)
-	return
 }
 
 func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Request) {
