@@ -20,6 +20,9 @@ For education purposes only.
 > - `frontend` is served at the root (`/`).
 > - other microservices are served at `/api/<service-name>/...` (e.g. `/api/users/...`); Traefik strips the `/api/<service-name>` prefix before forwarding the request.
 
+> [!NOTE] Read `README.md` located in each service for more details.
+> Such as the port acccssible and the environment variables used for development.
+
 ## Tech stack
 
 - Backend: Go >= 1.22, REST/JSON APIs, containerized per service.
