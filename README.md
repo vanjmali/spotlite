@@ -48,7 +48,7 @@ To run in development mode, follow the [Setup](#setup) steps.
 
 There are additional services available for local development:
 
-- `localhost:8000` - Traefik dashboard
+- `localhost:8080` - Traefik dashboard
 - `localhost:3101` - User Service MongoDB direct connection
 - `localhost:3000/dev/user-service` - [Mongo Express](https://github.com/mongo-express/mongo-express) to User Service
 
