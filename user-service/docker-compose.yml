@@ -20,11 +20,12 @@ services:
       APP_PORT: 8000
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.user.rule=PathPrefix(`/api/users`)"
-      - "traefik.http.routers.user.middlewares=user-strip-prefix"
-      - "traefik.http.middlewares.user-strip-prefix.stripprefix.prefixes=/api/users"
-      - "traefik.http.middlewares.user-strip-prefix.stripprefix.forceslash=false"
-      - "traefik.http.services.user.loadbalancer.server.port=8000"
+      - "traefik.docker.network=api-gateway"
+      - "traefik.http.routers.user-service.rule=PathPrefix(`/api/users`)"
+      - "traefik.http.routers.user-service.middlewares=user-service-strip-prefix"
+      - "traefik.http.middlewares.user-service-strip-prefix.stripprefix.prefixes=/api/users"
+      - "traefik.http.middlewares.user-service-strip-prefix.stripprefix.forceslash=false"
+      - "traefik.http.services.user-service.loadbalancer.server.port=8000"
     depends_on:
       user-mongodb:
         condition: service_healthy
@@ -56,7 +57,6 @@ networks:
   api-gateway:
   # Creates a private network for this microservice
   user-internal:
-    internal: true
 
 volumes:
   user-mongo-data:
