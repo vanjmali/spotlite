@@ -16,24 +16,35 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var hmacSampleSecret = []byte(utils.MustGetEnv("APP_JWT_SECRET"))
-var loginOtpTTL = utils.MustGetDurationEnv("APP_LOGIN_OTP_TTL_MINUTES", time.Minute)
-
 var (
-	ErrUsernameTaken   = errors.New("username is already taken")
-	ErrEmailTaken      = errors.New("email is already taken")
-	ErrExpiredPassword = errors.New("your password is expired")
-	ErrUserInnactive   = errors.New("user status is innactive")
-	ErrOtpRequired     = errors.New("otp required")
-	ErrOtpInvalid      = errors.New("invalid otp")
-	ErrOtpExpired      = errors.New("expired otp")
+	hmacSampleSecret = []byte(utils.MustGetEnv("APP_JWT_SECRET"))
+	loginOtpTTL      = utils.MustGetDurationEnv("APP_LOGIN_OTP_TTL_MINUTES", time.Minute)
 )
 
+var (
+	// ErrUsernameTaken indicates the supplied username already exists.
+	ErrUsernameTaken = errors.New("username is already taken")
+	// ErrEmailTaken indicates the supplied email already exists.
+	ErrEmailTaken = errors.New("email is already taken")
+	// ErrExpiredPassword signals that the user's password has expired.
+	ErrExpiredPassword = errors.New("your password is expired")
+	// ErrUserInnactive marks an inactive account status.
+	ErrUserInnactive = errors.New("user status is innactive")
+	// ErrOtpRequired indicates login requires an OTP code.
+	ErrOtpRequired = errors.New("otp required")
+	// ErrOtpInvalid indicates a provided OTP is wrong.
+	ErrOtpInvalid = errors.New("invalid otp")
+	// ErrOtpExpired indicates the OTP is no longer valid.
+	ErrOtpExpired = errors.New("expired otp")
+)
+
+// UserService contains business logic for user onboarding, login and account maintenance.
 type UserService struct {
 	r  *repositories.UserRepository
 	ms *MailService
 }
 
+// NewUserService builds a UserService with repository and mail dependencies.
 func NewUserService(r repositories.UserRepository, ms MailService) *UserService {
 	s := UserService{r: &r, ms: &ms}
 
@@ -41,11 +52,10 @@ func NewUserService(r repositories.UserRepository, ms MailService) *UserService 
 }
 
 // Register func, handles registration business logic such as username, email existence validation,
-// sending verification mails
+// sending verification mails.
 func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistrationDto) error {
 	// checks if the username is already taken,
 	exists, err := s.r.ExistsByUsername(ctx, reqDto.Username)
-
 	if err != nil {
 		return err
 	}
@@ -55,7 +65,6 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 
 	// checks if the email is already taken,
 	exists, err = s.r.ExistsByEmail(ctx, reqDto.Email)
-
 	if err != nil {
 		return err
 	}
@@ -82,13 +91,13 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	return nil
 }
 
-// VerifyAccount func, handles account verification business logic
+// VerifyAccount func, handles account verification business logic.
 func (s *UserService) VerifyAccount(ctx context.Context, token string) error {
 	return s.r.ActiveAndRevokeToken(ctx, token)
 }
 
+// Login validates credentials, checks account status, and issues a login OTP.
 func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) error {
-
 	user, err := s.r.FindUserByEmail(ctx, loginDto.Email)
 	if err != nil {
 		return err
@@ -124,8 +133,8 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 	return nil
 }
 
+// CreateNewToken issues a signed JWT for the authenticated user.
 func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (string, error) {
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub":      user.ID,
 		"name":     strings.Join([]string{user.FirstName, user.LastName}, " "),
@@ -139,6 +148,7 @@ func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (
 	return tokenString, err
 }
 
+// VerifyLoginOtp compares the provided OTP with the stored hash and clears it on success.
 func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginOtpDto) (*entities.User, error) {
 	user, err := s.r.FindUserByEmail(ctx, dto.Email)
 	if err != nil {

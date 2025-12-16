@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/vanjmali/spotlite/user-service/handlers"
@@ -24,14 +24,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("FATAL: Cannot start application without DB connection: %v", err)
 	}
-	defer dbClient.Disconnect(context.Background())
 
 	mailClient, err := mailing.InitClientFromEnv()
 	if err != nil {
+		_ = dbClient.Disconnect(context.Background())
 		log.Fatalf("FATAL: Cannot start application without mailing service: %v", err)
 	}
-	defer mailClient.Close()
-
 	val := validator.New()
 	err = val.RegisterValidation("strongpassword", validation.CheckStrongPassword)
 	if err != nil {
@@ -43,6 +41,9 @@ func main() {
 		log.Fatalf("Failed to register custom validator: %v", err)
 	}
 
+	defer dbClient.Disconnect(context.Background())
+	defer mailClient.Close()
+
 	repo := repositories.NewRepository(mongo.DatabaseName(), "users", dbClient)
 	ms := services.InitMailingService(mailClient)
 	us := services.NewUserService(*repo, *ms)
@@ -50,7 +51,17 @@ func main() {
 
 	router := routers.HandleRequests(h)
 
-	addr := fmt.Sprintf(":%s", port)
+	addr := ":" + port
 	log.Printf("Listening on %s", addr)
-	log.Fatal(http.ListenAndServe(addr, router))
+	server := &http.Server{
+		Addr:         addr,
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Printf("server failed: %v", err)
+	}
 }
