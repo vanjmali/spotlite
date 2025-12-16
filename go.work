@@ -1,0 +1,11 @@
+go 1.25.5
+
+use (
+	./analytics-service
+	./content-service
+	./notification-service
+	./rating-service
+	./recommendation-service
+	./subscription-service
+	./user-service
+)
