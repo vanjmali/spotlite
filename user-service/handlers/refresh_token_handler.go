@@ -28,7 +28,7 @@ func (h *RefreshTokenHandler) HandleRefreshToken(w http.ResponseWriter, r *http.
 
 	userID, err := h.s.GetRefreshTokenId(r.Context(), req.RefreshToken)
 	if err != nil {
-		sendErrorResponse(w, http.StatusUnauthorized, "unauthorized!!!")
+		sendErrorResponse(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
