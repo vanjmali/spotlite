@@ -225,8 +225,12 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]any{
+	b := map[string]any{
 		"access_token":  token,
 		"refresh_token": refresh,
-	})
+	}
+
+	if err := json.NewEncoder(w).Encode(b); err != nil {
+		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
+	}
 }

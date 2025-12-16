@@ -117,6 +117,7 @@ func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (*en
 	}
 	return &user, nil
 }
+
 func (r *UserRepository) FindUserByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
 	var user entities.User
 	c := r.Client.Database(r.DbName).Collection(r.CollName)

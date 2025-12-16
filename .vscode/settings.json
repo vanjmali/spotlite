@@ -18,5 +18,8 @@
 	"[scss]": {
 		"editor.defaultFormatter": "esbenp.prettier-vscode"
 	},
-	"prettier.enableDebugLogs": false
+	"prettier.enableDebugLogs": false,
+	"[go]": {
+		"editor.defaultFormatter": "golang.go"
+	}
 }

@@ -11,9 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-var (
-	ErrRefreshInvalid = errors.New("invalid refresh token")
-)
+var ErrRefreshInvalid = errors.New("invalid refresh token")
 
 type RefreshTokenService struct {
 	r *repositories.RefreshTokenRepository
@@ -38,7 +36,7 @@ func (s *RefreshTokenService) IssueRefreshToken(ctx context.Context, userID prim
 		ExpiresAt: now.Add(30 * 24 * time.Hour),
 	}
 
-	_, err = s.r.InsertRefreshToken(ctx, doc)
+	_, err = s.r.InsertToken(ctx, doc)
 	if err != nil {
 		return "", err
 	}
@@ -49,7 +47,7 @@ func (s *RefreshTokenService) IssueRefreshToken(ctx context.Context, userID prim
 func (s *RefreshTokenService) GetRefreshTokenId(ctx context.Context, refreshToken string) (primitive.ObjectID, error) {
 	hash := auth.HashRefreshToken(refreshToken)
 
-	old, err := s.r.FindActiveRefreshByHash(ctx, hash)
+	old, err := s.r.FindActiveByHash(ctx, hash)
 	if err != nil || old == nil {
 		return primitive.NilObjectID, ErrRefreshInvalid
 	}

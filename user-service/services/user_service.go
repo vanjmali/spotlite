@@ -17,10 +17,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var (
-	hmacSampleSecret = []byte(utils.MustGetEnv("APP_JWT_SECRET"))
-	loginOtpTTL      = utils.MustGetDurationEnv("APP_LOGIN_OTP_TTL_MINUTES", time.Minute)
-)
+var hmacSampleSecret = []byte(utils.MustGetEnv("APP_JWT_SECRET"))
 
 var (
 	// ErrUsernameTaken indicates the supplied username already exists.
@@ -30,17 +27,15 @@ var (
 	// ErrExpiredPassword signals that the user's password has expired.
 	ErrExpiredPassword = errors.New("your password is expired")
 	// ErrUserInnactive marks an inactive account status.
-	ErrUserInnactive   = errors.New("user status is innactive")
+	ErrUserInnactive = errors.New("user status is innactive")
 	// ErrOtpRequired indicates login requires an OTP code.
-	ErrOtpRequired     = errors.New("otp required")
+	ErrOtpRequired = errors.New("otp required")
 	// ErrOtpInvalid indicates a provided OTP is wrong.
-	ErrOtpInvalid      = errors.New("invalid otp")
+	ErrOtpInvalid = errors.New("invalid otp")
 	// ErrOtpExpired indicates the OTP is no longer valid.
-	ErrOtpExpired      = errors.New("expired otp")
-	// ErrBadCredentials indicates the credentials are invalid
-	ErrBadCredentials  = errors.New("invalid credentials")
-
-	
+	ErrOtpExpired = errors.New("expired otp")
+	// ErrBadCredentials indicates the credentials are invalid.
+	ErrBadCredentials = errors.New("invalid credentials")
 )
 
 // UserService contains business logic for user onboarding, login and account maintenance.
