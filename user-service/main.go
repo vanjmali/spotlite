@@ -44,7 +44,7 @@ func main() {
 	defer dbClient.Disconnect(context.Background())
 	defer mailClient.Close()
 
-	repo := repositories.NewRepository(mongo.DatabaseName(), "users", dbClient)
+	userRepo := repositories.NewRepository(mongo.DatabaseName(), "users", dbClient)
 	ms := services.InitMailingService(mailClient)
 	us := services.NewUserService(*userRepo, *ms)
 
