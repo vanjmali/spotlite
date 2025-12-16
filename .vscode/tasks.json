@@ -4,16 +4,14 @@
 		{
 			"label": "Format",
 			"type": "shell",
-			"command": "golangci-lint",
+			"command": "node",
 			"args": [
-				"fmt",
+				"${workspaceFolder}/.vscode/scripts/helper.js",
+				"fmt"
 			],
 			"presentation": {
 				"echo": true,
-				"reveal": "never",
-				"focus": true,
 				"panel": "shared",
-				"showReuseMessage": true,
 				"clear": true
 			},
 			"options": {
@@ -31,16 +29,14 @@
 		{
 			"label": "Lint",
 			"type": "shell",
-			"command": "golangci-lint",
+			"command": "node",
 			"args": [
-				"run"
+				"${workspaceFolder}/.vscode/scripts/helper.js",
+				"lint"
 			],
 			"presentation": {
 				"echo": true,
-				"reveal": "always",
-				"focus": true,
 				"panel": "shared",
-				"showReuseMessage": false,
 				"clear": true
 			},
 			"options": {
@@ -54,6 +50,6 @@
 				"color": "terminal.ansiYellow",
 				"id": "sparkle-filled",
 			}
-		}
+		},
 	]
 }

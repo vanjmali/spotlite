@@ -44,7 +44,15 @@ To rebuild/restart one service (example: user-service): `docker compose up -d --
 
 ## Development
 
-To run in development mode, follow the [Setup](#setup) steps.
+### Golang Setup
+
+Install [`golangci-lint`](https://golangci-lint.run/docs/welcome/install/local/) to lint Go code.
+
+### Frontend Setup
+
+See [`frontend/README.md`](frontend/README.md).
+
+### Development Services
 
 There are additional services available for local development:
 
