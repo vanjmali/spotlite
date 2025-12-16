@@ -2,6 +2,7 @@ name: Build and Test Go Services
 
 on:
   push:
+    branches: [stable, develop]
   pull_request:
 
 env:
