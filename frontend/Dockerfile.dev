@@ -1,10 +1,10 @@
 FROM node:24-alpine
 WORKDIR /app
 
+# We only need dependencies for development that is stored in its own volume
+# Source files are mounted from host machine without node_modules - avoiding any permissions issues
 COPY package*.json .
 RUN npm ci
-
-# COPY . .
 
 EXPOSE 3000
 CMD ["npm", "run", "start"]
