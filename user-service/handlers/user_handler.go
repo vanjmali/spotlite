@@ -10,11 +10,11 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/services"
-	"github.com/vanjmali/spotlite/user-service/utils"
 	"github.com/vanjmali/spotlite/user-service/validation"
 )
 

@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/handlers"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mailing"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mongo"
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/routers"
 	"github.com/vanjmali/spotlite/user-service/services"
-	"github.com/vanjmali/spotlite/user-service/utils"
 	"github.com/vanjmali/spotlite/user-service/validation"
 )
 

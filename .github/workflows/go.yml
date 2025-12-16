@@ -19,6 +19,7 @@ jobs:
     strategy:
       matrix:
         service: &services
+          - common-lib
           - user-service
           # - content-service
           # - rating-service
