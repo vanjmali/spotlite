@@ -27,5 +27,16 @@
 	},
 	"[go.sum]": {
 		"editor.defaultFormatter": "golang.go"
+	},
+	"material-icon-theme.folders.associations": {
+		"api-gateway": "home",
+		"common-lib": "shared",
+		"user-service": "secure",
+		"analytics-service": "constant",
+		"content-service": "content",
+		"notification-service": "event",
+		"rating-service": "sandbox",
+		"recommendation-service": "context",
+		"subscription-service": "connection"
 	}
 }
