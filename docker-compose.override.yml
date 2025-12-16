@@ -20,6 +20,26 @@ services:
       # In production, this will be its own accessible service, likely external.
       - api-gateway
 
+  # --- Frontend ---
+  # For hot reload
+
+  frontend:
+    command: npm run start -- --host 0.0.0.0 --port 3000
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    labels:
+      traefik.http.services.frontend.loadbalancer.server.port: "3000"
+    volumes:
+      - ./frontend/:/app
+      # keep node_modules in a separate volume, out of the bind mount
+      # this ensures that node_modules folder does not break permissions by Docker
+      # and quicker polling for source files
+      - frontend-node-modules:/app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true # reliable file watching on Docker for Win/Mac
+      - NG_CLI_ANALYTICS=false # disable telemetry
+
   # --- User Service ---
   # For local development
 
@@ -30,11 +50,11 @@ services:
   user-mongo-express: # MongoDB GUI
     image: mongo-express:1
     labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=api-gateway"
-      - "traefik.http.routers.user-mongo-express.rule=PathPrefix(`/dev/user-service`)"
-      - "traefik.http.middlewares.user-mongo-express-strip-prefix.stripprefix.forceslash=false"
-      - "traefik.http.services.user-mongo-express.loadbalancer.server.port=8081"
+      traefik.enable: true
+      traefik.docker.network: api-gateway
+      traefik.http.routers.user-mongo-express.rule: PathPrefix(`/dev/user-service`)
+      traefik.http.middlewares.user-mongo-express-strip-prefix.stripprefix.forceslash: false
+      traefik.http.services.user-mongo-express.loadbalancer.server.port: 8081
     environment:
       ME_CONFIG_BASICAUTH: "false"
       ME_CONFIG_SITE_BASEURL: /dev/user-service
@@ -45,6 +65,9 @@ services:
     networks:
       - api-gateway
       - user-internal
+
+volumes:
+  frontend-node-modules:
 
 networks:
   api-gateway:

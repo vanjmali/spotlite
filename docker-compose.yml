@@ -16,6 +16,7 @@ networks:
   api-gateway:
 
 include:
+  - frontend/docker-compose.yml
   - user-service/docker-compose.yml
   # - content-service/docker-compose.yml
   # - ratings-service/docker-compose.yml
@@ -23,4 +24,3 @@ include:
   # - notifications-service/docker-compose.yml
   # - recommendation-service/docker-compose.yml
   # - analytics-service/docker-compose.yml
-  # - frontend/docker-compose.yml
