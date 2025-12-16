@@ -2,12 +2,12 @@ name: Build and Test Go Services
 
 on:
   push:
-    branches: [stable, develop]
   pull_request:
 
 env:
   GO_VERSION: "1.25.5"
 
+# Cancel the in-progress workflow when PR is updated
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
