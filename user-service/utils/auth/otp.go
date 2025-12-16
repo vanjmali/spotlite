@@ -6,6 +6,7 @@ import (
 	"math/big"
 )
 
+// GenerateOTP returns a zero-padded six-digit numeric one-time password.
 func GenerateOTP() (string, error) {
 	n, err := rand.Int(rand.Reader, big.NewInt(1000000))
 	if err != nil {

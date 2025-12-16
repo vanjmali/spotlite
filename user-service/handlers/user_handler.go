@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 
@@ -18,10 +19,13 @@ import (
 )
 
 var (
+	// VerificationSuccessUrl redirects the user after a successful account verification.
 	VerificationSuccessUrl = utils.MustGetEnv("APP_VERIFICATION_SUCCESS_URL")
+	// VerificationFailureUrl redirects the user when verification fails.
 	VerificationFailureUrl = utils.MustGetEnv("APP_VERIFICATION_FAILURE_URL")
 )
 
+// UserHandler wires HTTP handlers to the user service and validators.
 type UserHandler struct {
 	s   *services.UserService
 	v   *validator.Validate
@@ -36,14 +40,18 @@ func NewUserHandler(s services.UserService, v validator.Validate, rts services.R
 func sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
 	w.WriteHeader(statusCode)
 	errorResponse := entities.ErrorResponse{Status: statusCode, Message: message}
-	json.NewEncoder(w).Encode(errorResponse)
+	if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
+		log.Printf("failed to write error response: %v", err)
+		http.Error(w, "failed to write response", http.StatusInternalServerError)
+	}
 }
 
-// validateUserRegistration func, validates registration request dto field values,
+// validateUserRegistration func, validates registration request dto field values,.
 func (h *UserHandler) validateUserRegistration(dto *dtos.UserRegistrationDto) error {
 	return h.v.Struct(dto)
 }
 
+// HandleLogin authenticates user credentials and triggers OTP delivery.
 func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -64,7 +72,7 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		sendErrorResponse(w, http.StatusUnauthorized, "password expired")
 		return
 	case errors.Is(err, services.ErrUserInnactive):
-		sendErrorResponse(w, http.StatusUnauthorized, "user is innactive")
+		sendErrorResponse(w, http.StatusUnauthorized, "user is inactive")
 		return
 	case err != nil:
 		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
@@ -72,13 +80,16 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]any{
+	if err := json.NewEncoder(w).Encode(map[string]any{
 		"otp_required": true,
 		"message":      "OTP sent to email",
-	})
+	}); err != nil {
+		log.Printf("failed to write login response: %v", err)
+		http.Error(w, "failed to write response", http.StatusInternalServerError)
+	}
 }
 
-// HandleRegistration func, handles user registration requests and returns adequate responses
+// HandleRegistration func, handles user registration requests and returns adequate responses.
 func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -91,36 +102,47 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		if _, ok := err.(*json.SyntaxError); ok {
+		syntaxError := &json.SyntaxError{}
+		if errors.As(err, &syntaxError) {
 			sendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON format: %s", err))
 			return
 		}
 
-		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred while processing your request")
+		sendErrorResponse(
+			w,
+			http.StatusInternalServerError,
+			"an unexpected error has occurred while processing your request",
+		)
 		return
 	}
 
 	// validates request field values
 	if err := h.validateUserRegistration(&req); err != nil {
-		if _, ok := err.(*validator.InvalidValidationError); ok {
+		invalidValidationError := &validator.InvalidValidationError{}
+		if errors.As(err, &invalidValidationError) {
 			sendErrorResponse(w, http.StatusInternalServerError, "internal validation error")
 			return
 		}
 
-		var errors []entities.FieldError
+		var fieldErrors []entities.FieldError
 
-		for _, err := range err.(validator.ValidationErrors) {
+		var validationErrs validator.ValidationErrors
+		_ = errors.As(err, &validationErrs)
 
-			errors = append(errors, entities.FieldError{
-				Field:   strings.ToLower(err.Field()),
-				Message: validation.GetErrorMsg(err),
+		for _, verr := range validationErrs {
+			fieldErrors = append(fieldErrors, entities.FieldError{
+				Field:   strings.ToLower(verr.Field()),
+				Message: validation.GetErrorMsg(verr),
 			})
 		}
 
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"errors": errors,
-		})
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"errors": fieldErrors,
+		}); err != nil {
+			log.Printf("failed to write validation errors: %v", err)
+			http.Error(w, "failed to write response", http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -141,7 +163,7 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 }
 
 // HandleAccountVerification func, handles user account verification requests and redirects to success/failure pages
-// depending on the result
+// depending on the result.
 func (h *UserHandler) HandleAccountVerification(w http.ResponseWriter, r *http.Request) {
 	// fetches token query parameter value
 	token := r.URL.Query().Get("token")
@@ -156,7 +178,7 @@ func (h *UserHandler) HandleAccountVerification(w http.ResponseWriter, r *http.R
 	err := h.s.VerifyAccount(r.Context(), token)
 	if err != nil {
 		switch {
-		case errors.Is(err, repositories.TokenExpiredErr):
+		case errors.Is(err, repositories.ErrTokenExpired):
 			http.Redirect(w, r, VerificationFailureUrl, http.StatusSeeOther)
 			return
 		default:
@@ -169,6 +191,7 @@ func (h *UserHandler) HandleAccountVerification(w http.ResponseWriter, r *http.R
 	http.Redirect(w, r, VerificationSuccessUrl, http.StatusSeeOther)
 }
 
+// HandleVerifyLoginOtp validates the OTP and issues a JWT token on success.
 func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 

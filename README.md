@@ -34,23 +34,47 @@ For education purposes only.
 
 Prerequisites: Go 1.22+, Node.js v24.x, Docker, and Docker Compose.
 
-Setup:
+Steps:
 
 1. Copy `.env.example` to `.env`
 2. Populate .env with your own values if needed.
-3. Start everything: `docker compose up --build`
+3. Start everything: `docker compose up --build -d`
 
 To rebuild/restart one service (example: user-service): `docker compose up -d --build user-service`
 
 ## Development
 
-To run in development mode, follow the [Setup](#setup) steps.
+### Golang Setup
+
+Install [`golangci-lint`](https://golangci-lint.run/docs/welcome/install/local/) to lint Go code.
+
+### Frontend Setup
+
+See [`frontend/README.md`](frontend/README.md).
+
+### Development Services
 
 There are additional services available for local development:
 
 - `localhost:8080` - Traefik dashboard
 - `localhost:3101` - User Service's MongoDB direct connection
 - `localhost:3000/dev/user-service` - [Mongo Express](https://github.com/mongo-express/mongo-express) to User Service
+
+### Useful commands
+
+#### Docker
+
+- `docker compose up -d --build <service-name>` - Rebuild and restart a specific service.
+  - `docker compose up -d --build` - Rebuild and (re)start all services.
+- `docker compose logs <service-name>` - Show logs for a specific service.
+  - `docker compose logs -f <service-name>` - Follow logs for a specific service.
+- `docker compose down -v` - Stop and remove all containers, **volumes** (`-v`), and networks. (complete reset)
+
+#### MongoDB
+
+You can install [`mongosh`](https://www.mongodb.com/docs/mongodb-shell/) command line tool to communicate with the database via a shell.
+
+- `mongosh mongodb://localhost:3101/user-service --username mongo --password 123456` - connect to User Service's database
 
 ## Contributing
 
