@@ -15,7 +15,6 @@ import (
 	"github.com/vanjmali/spotlite/user-service/services"
 	"github.com/vanjmali/spotlite/user-service/utils"
 	"github.com/vanjmali/spotlite/user-service/validation"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -58,7 +57,7 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	err = h.s.Login(r.Context(), &req)
 
 	switch {
-	case errors.Is(err, bcrypt.ErrMismatchedHashAndPassword):
+	case errors.Is(err, services.ErrBadCredentials):
 		sendErrorResponse(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	case errors.Is(err, services.ErrExpiredPassword):
@@ -187,13 +186,13 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err != nil {
-		sendErrorResponse(w, http.StatusUnauthorized, "an unexpected error has occurred")
+		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
 		return
 	}
 
 	token, err := h.s.CreateNewToken(r.Context(), user)
 	if err != nil {
-		sendErrorResponse(w, http.StatusUnauthorized, "an unexpected error has occurred")
+		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
 		return
 	}
 

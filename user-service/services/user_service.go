@@ -28,6 +28,7 @@ var (
 	ErrOtpRequired     = errors.New("otp required")
 	ErrOtpInvalid      = errors.New("invalid otp")
 	ErrOtpExpired      = errors.New("expired otp")
+	ErrBadCredentials  = errors.New("invalid credentials")
 )
 
 type UserService struct {
@@ -105,7 +106,7 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 
 	err = auth.CompareHashAndPassword(user.Password, loginDto.Password)
 	if err != nil {
-		return err
+		return ErrBadCredentials
 	}
 
 	otp, err := auth.GenerateOTP()
