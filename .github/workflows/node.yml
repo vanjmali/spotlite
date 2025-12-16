@@ -2,6 +2,7 @@ name: Build Frontend
 
 on:
   push:
+    branches: [stable, develop]
   pull_request:
 
 env:
