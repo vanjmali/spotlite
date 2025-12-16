@@ -5,7 +5,7 @@ services:
     image: traefik:v3
     ports:
       - ${APP_HTTP_PORT?See README.md "Setup" section}:80
-      - ${APP_HTTPS_PORT?:-443}:443
+      - ${APP_HTTPS_PORT?}:443
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./api-gateway/traefik.dev.yml:/etc/traefik/traefik.yml:ro
