@@ -29,11 +29,18 @@ var (
 	ErrEmailTaken = errors.New("email is already taken")
 	// ErrExpiredPassword signals that the user's password has expired.
 	ErrExpiredPassword = errors.New("your password is expired")
+	// ErrUserInnactive marks an inactive account status.
 	ErrUserInnactive   = errors.New("user status is innactive")
+	// ErrOtpRequired indicates login requires an OTP code.
 	ErrOtpRequired     = errors.New("otp required")
+	// ErrOtpInvalid indicates a provided OTP is wrong.
 	ErrOtpInvalid      = errors.New("invalid otp")
+	// ErrOtpExpired indicates the OTP is no longer valid.
 	ErrOtpExpired      = errors.New("expired otp")
+	// ErrBadCredentials indicates the credentials are invalid
 	ErrBadCredentials  = errors.New("invalid credentials")
+
+	
 )
 
 // UserService contains business logic for user onboarding, login and account maintenance.
