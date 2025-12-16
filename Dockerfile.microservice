@@ -1,4 +1,5 @@
-FROM golang:1.25.5-alpine AS build
+# Stage 1 (Build)
+FROM golang:1.25.5-alpine AS builder
 
 WORKDIR /app
 
@@ -18,10 +19,11 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 	-o /app/build.bin \
 	main.go
 
+# Stage 2 (Final)
 FROM gcr.io/distroless/static:latest
 
 WORKDIR /app
 
-COPY --from=build /app/build.bin /usr/bin/service
+COPY --from=builder /app/build.bin /usr/bin/service
 
 ENTRYPOINT ["/usr/bin/service"]
