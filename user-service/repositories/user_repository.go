@@ -118,6 +118,15 @@ func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (*en
 	return &user, nil
 }
 
+func (r *UserRepository) FindUserByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
+	var user entities.User
+	c := r.Client.Database(r.DbName).Collection(r.CollName)
+	if err := c.FindOne(ctx, bson.M{"_id": id}).Decode(&user); err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 // ExistsByUsername reports whether a username already exists.
 func (r *UserRepository) ExistsByUsername(ctx context.Context, username string) (bool, error) {
 	var user entities.User

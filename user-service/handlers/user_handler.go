@@ -16,7 +16,6 @@ import (
 	"github.com/vanjmali/spotlite/user-service/services"
 	"github.com/vanjmali/spotlite/user-service/utils"
 	"github.com/vanjmali/spotlite/user-service/validation"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -28,13 +27,13 @@ var (
 
 // UserHandler wires HTTP handlers to the user service and validators.
 type UserHandler struct {
-	s *services.UserService
-	v *validator.Validate
+	s   *services.UserService
+	v   *validator.Validate
+	rts *services.RefreshTokenService
 }
 
-// NewUserHandler constructs a UserHandler with service and validator dependencies.
-func NewUserHandler(s services.UserService, v validator.Validate) *UserHandler {
-	h := UserHandler{s: &s, v: &v}
+func NewUserHandler(s services.UserService, v validator.Validate, rts services.RefreshTokenService) *UserHandler {
+	h := UserHandler{s: &s, v: &v, rts: &rts}
 	return &h
 }
 
@@ -66,7 +65,7 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	err = h.s.Login(r.Context(), &req)
 
 	switch {
-	case errors.Is(err, bcrypt.ErrMismatchedHashAndPassword):
+	case errors.Is(err, services.ErrBadCredentials):
 		sendErrorResponse(w, http.StatusUnauthorized, "invalid credentials")
 		return
 	case errors.Is(err, services.ErrExpiredPassword):
@@ -210,19 +209,28 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err != nil {
-		sendErrorResponse(w, http.StatusUnauthorized, "an unexpected error has occurred")
+		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
 		return
 	}
 
 	token, err := h.s.CreateNewToken(r.Context(), user)
 	if err != nil {
-		sendErrorResponse(w, http.StatusUnauthorized, "an unexpected error has occurred")
+		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
 		return
 	}
 
-	w.Header().Add("authorization", token)
-	if err := json.NewEncoder(w).Encode(map[string]string{"token": token}); err != nil {
-		log.Printf("failed to write token response: %v", err)
-		http.Error(w, "failed to write response", http.StatusInternalServerError)
+	refresh, err := h.rts.IssueRefreshToken(r.Context(), user.ID)
+	if err != nil {
+		sendErrorResponse(w, http.StatusInternalServerError, "an expected error has occurred")
+		return
+	}
+
+	b := map[string]any{
+		"access_token":  token,
+		"refresh_token": refresh,
+	}
+
+	if err := json.NewEncoder(w).Encode(b); err != nil {
+		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
 	}
 }

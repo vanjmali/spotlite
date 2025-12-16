@@ -13,13 +13,11 @@ import (
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/utils"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var (
-	hmacSampleSecret = []byte(utils.MustGetEnv("APP_JWT_SECRET"))
-	loginOtpTTL      = utils.MustGetDurationEnv("APP_LOGIN_OTP_TTL_MINUTES", time.Minute)
-)
+var hmacSampleSecret = []byte(utils.MustGetEnv("APP_JWT_SECRET"))
 
 var (
 	// ErrUsernameTaken indicates the supplied username already exists.
@@ -36,6 +34,8 @@ var (
 	ErrOtpInvalid = errors.New("invalid otp")
 	// ErrOtpExpired indicates the OTP is no longer valid.
 	ErrOtpExpired = errors.New("expired otp")
+	// ErrBadCredentials indicates the credentials are invalid.
+	ErrBadCredentials = errors.New("invalid credentials")
 )
 
 // UserService contains business logic for user onboarding, login and account maintenance.
@@ -113,9 +113,9 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 
 	err = auth.CompareHashAndPassword(user.Password, loginDto.Password)
 	if err != nil {
-		return err
+		return ErrBadCredentials
 	}
-	// otp
+
 	otp, err := auth.GenerateOTP()
 	if err != nil {
 		return err
@@ -123,7 +123,8 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 
 	otpHash, _ := bcrypt.GenerateFromPassword([]byte(otp), bcrypt.DefaultCost)
 
-	if err := s.r.SetLoginOtp(ctx, user.ID, string(otpHash), time.Now().Add(loginOtpTTL)); err != nil {
+	// TODO: make time NOT be hardcoded
+	if err := s.r.SetLoginOtp(ctx, user.ID, string(otpHash), time.Now().Add(5*time.Minute)); err != nil {
 		return err
 	}
 	if err := s.ms.SendLoginOtp(user.Email, otp); err != nil {
@@ -141,7 +142,7 @@ func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (
 		"username": user.Username,
 		"role":     user.Role,
 		"iat":      time.Now().Unix(),
-		"exp":      time.Minute,
+		"exp":      time.Now().Add(15 * time.Minute).Unix(),
 	})
 
 	tokenString, err := token.SignedString(hmacSampleSecret)
@@ -174,4 +175,8 @@ func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginO
 
 	_ = s.r.ClearLoginOtp(ctx, user.ID)
 	return user, nil
+}
+
+func (s *UserService) FindByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
+	return s.r.FindUserByID(ctx, id)
 }

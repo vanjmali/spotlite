@@ -3,7 +3,7 @@ version: "2"
 formatters:
   settings:
     golines:
-      max-len: 120
+      max-len: 160
       shorten-comments: true
       reformat-tags: false
   enable:
