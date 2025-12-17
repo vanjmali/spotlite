@@ -12,7 +12,7 @@ import (
 func sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
 	w.WriteHeader(statusCode)
 	errorResponse := ErrorResponse{Status: statusCode, Message: message}
-	json.NewEncoder(w).Encode(errorResponse)
+	_ = json.NewEncoder(w).Encode(errorResponse)
 }
 
 // ErrorResponse represents a generic JSON error payload returned by the API.
