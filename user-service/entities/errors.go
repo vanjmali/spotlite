@@ -45,10 +45,14 @@ func Validate(w http.ResponseWriter, v *validator.Validate, s any) bool {
 		}
 
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		b := map[string]any{
 			"errors": errors,
-		})
-		return false
+		}
+		if err := json.NewEncoder(w).Encode(b); err != nil {
+			sendErrorResponse(w, http.StatusInternalServerError, "internal server error")
+			return false
+		}
+
 	}
 	return true
 }

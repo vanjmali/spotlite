@@ -44,11 +44,6 @@ func sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
 	}
 }
 
-// validateUserRegistration func, validates registration request dto field values,.
-func (h *UserHandler) validateUserRegistration(dto *dtos.UserRegistrationDto) error {
-	return h.v.Struct(dto)
-}
-
 func (h *UserHandler) HandleChangePassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -79,9 +74,13 @@ func (h *UserHandler) HandleChangePassword(w http.ResponseWriter, r *http.Reques
 	}
 	w.WriteHeader(http.StatusOK)
 
-	json.NewEncoder(w).Encode(map[string]any{
+	b := map[string]any{
 		"message": "Password changed successfully",
-	})
+	}
+	if err := json.NewEncoder(w).Encode(b); err != nil {
+		sendErrorResponse(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
 }
 
 // HandleLogin authenticates user credentials and triggers OTP delivery.
