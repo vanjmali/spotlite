@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/vanjmali/spotlite/user-service/entities"
@@ -43,29 +44,29 @@ func (r *RefreshTokenRepository) EnsureRefreshIndexes(ctx context.Context) error
 	return err
 }
 
-func (r *RefreshTokenRepository) InsertRefreshToken(ctx context.Context, refreshToken entities.RefreshToken) (primitive.ObjectID, error) {
-	res, err := r.refreshColl().InsertOne(ctx, refreshToken)
+func (r *RefreshTokenRepository) InsertToken(ctx context.Context, rt entities.RefreshToken) (primitive.ObjectID, error) {
+	res, err := r.refreshColl().InsertOne(ctx, rt)
 	if err != nil {
 		return primitive.NilObjectID, err
 	}
 	return res.InsertedID.(primitive.ObjectID), nil
 }
 
-func (r *RefreshTokenRepository) FindActiveRefreshByHash(ctx context.Context, hash string) (*entities.RefreshToken, error) {
+func (r *RefreshTokenRepository) FindActiveByHash(ctx context.Context, hash string) (*entities.RefreshToken, error) {
 	var rt entities.RefreshToken
 	err := r.refreshColl().FindOne(ctx, bson.M{
 		"token_hash": hash,
 		"revoked_at": bson.M{"$exists": false},
 	}).Decode(&rt)
 
-	if err == mongo.ErrNoDocuments {
-		return nil, nil
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return nil, mongo.ErrNoDocuments
 	}
 
 	return &rt, err
 }
 
-func (r *RefreshTokenRepository) RevokeRefreshByID(ctx context.Context, id primitive.ObjectID, when time.Time, replacedBy primitive.ObjectID) error {
+func (r *RefreshTokenRepository) RevokeByID(ctx context.Context, id primitive.ObjectID, when time.Time, replacedBy primitive.ObjectID) error {
 	_, err := r.refreshColl().UpdateByID(ctx, id, bson.M{
 		"$set": bson.M{
 			"revoked_at":     when,

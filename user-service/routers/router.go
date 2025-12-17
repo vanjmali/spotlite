@@ -5,6 +5,7 @@ import (
 	"github.com/vanjmali/spotlite/user-service/handlers"
 )
 
+// HandleRequests wires HTTP routes to user handlers.
 func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler) *mux.Router {
 	r := mux.NewRouter()
 

@@ -2,6 +2,8 @@
 	"recommendations": [
 		"esbenp.prettier-vscode",
 		"dbaeumer.vscode-eslint",
-		"angular.ng-template"
+		"angular.ng-template",
+		"ms-azuretools.vscode-containers",
+		"golang.go"
 	]
 }

@@ -11,17 +11,17 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-var (
-	PasswordHashingErr = errors.New("an error has occurred while hashing password")
-)
+// ErrPasswordHashing is returned when bcrypt hashing fails.
+var ErrPasswordHashing = errors.New("an error has occurred while hashing password")
 
+// ToUserEntity maps a registration DTO into a fully initialized User entity.
 func ToUserEntity(u *dtos.UserRegistrationDto) (*entities.User, error) {
 	now := time.Now()
 	expiryDate := time.Now().Add(60 * 24 * time.Hour)
 
 	hashedPassword, err := auth.HashPassword(u.Password)
 	if err != nil {
-		return nil, PasswordHashingErr
+		return nil, ErrPasswordHashing
 	}
 
 	return &entities.User{

@@ -44,7 +44,11 @@ func (h *RefreshTokenHandler) HandleRefreshToken(w http.ResponseWriter, r *http.
 		return
 	}
 
-	json.NewEncoder(w).Encode(dtos.RefreshResponse{
+	b := dtos.RefreshResponse{
 		AccessToken: access,
-	})
+	}
+
+	if err := json.NewEncoder(w).Encode(b); err != nil {
+		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
+	}
 }

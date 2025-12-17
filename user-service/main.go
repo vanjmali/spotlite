@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/vanjmali/spotlite/user-service/handlers"
@@ -17,48 +18,66 @@ import (
 	"github.com/vanjmali/spotlite/user-service/validation"
 )
 
-var port = utils.GetEnv("APP_PORT", "8000")
+var port = utils.GetEnv("APP_PORT", "3000")
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatalf("FATAL: %v", err)
+	}
+}
+
+func run() error {
 	dbClient, err := mongo.InitMongoClient()
 	if err != nil {
-		log.Fatalf("FATAL: Cannot start application without DB connection: %v", err)
+		return fmt.Errorf("cannot start application without DB connection: %w", err)
 	}
-	defer dbClient.Disconnect(context.Background())
 
 	mailClient, err := mailing.InitClientFromEnv()
 	if err != nil {
-		log.Fatalf("FATAL: Cannot start application without mailing service: %v", err)
+		_ = dbClient.Disconnect(context.Background())
+		return fmt.Errorf("cannot start application without mailing service: %w", err)
 	}
-	defer mailClient.Close()
 
 	val := validator.New()
-	err = val.RegisterValidation("strongpassword", validation.CheckStrongPassword)
-	if err != nil {
-		log.Fatalf("Failed to register custom validator: %v", err)
+	if err := val.RegisterValidation("strongpassword", validation.CheckStrongPassword); err != nil {
+		return fmt.Errorf("failed to register custom strongpassword validator: %w", err)
 	}
 
-	err = val.RegisterValidation("validusername", validation.CheckValidUsername)
-	if err != nil {
-		log.Fatalf("Failed to register custom validator: %v", err)
+	if err := val.RegisterValidation("validusername", validation.CheckValidUsername); err != nil {
+		return fmt.Errorf("failed to register custom validusername validator: %w", err)
 	}
 
-	// TODO: remove hardcoded values
-	userRepo := repositories.NewUserRepository(mongo.DatabaseName(), "users", dbClient)
+	defer dbClient.Disconnect(context.Background())
+	defer mailClient.Close()
+
+	userRepo := repositories.NewRepository(mongo.DatabaseName(), "users", dbClient)
 	ms := services.InitMailingService(mailClient)
 	us := services.NewUserService(*userRepo, *ms)
 
 	rtRepo := repositories.NewRefreshTokenRepository(mongo.DatabaseName(), repositories.RefreshTokensColl, dbClient)
 	if err := rtRepo.EnsureRefreshIndexes(context.Background()); err != nil {
-		log.Fatalf("Failed to ensure refresh token indexes: %v", err)
+		return fmt.Errorf("failed to ensure refresh token indexes: %w", err)
 	}
+
 	rts := services.NewRefreshTokenService(*rtRepo)
 	userH := handlers.NewUserHandler(*us, *val, *rts)
 	rtH := handlers.NewRefreshTokenHandler(*rts, *us)
 
 	router := routers.HandleRequests(userH, rtH)
 
-	addr := fmt.Sprintf(":%s", port)
+	addr := ":" + port
 	log.Printf("Listening on %s", addr)
-	log.Fatal(http.ListenAndServe(addr, router))
+	server := &http.Server{
+		Addr:         addr,
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return fmt.Errorf("failed to start server: %w", err)
+	}
+
+	return nil
 }

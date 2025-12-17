@@ -11,22 +11,23 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var (
-	TokenExpiredErr = errors.New("invalid token")
-)
+// ErrTokenExpired signals that the verification token was not found or already used.
+var ErrTokenExpired = errors.New("invalid token")
 
+// UserRepository provides data access helpers for user documents.
 type UserRepository struct {
 	DbName   string
 	CollName string
 	Client   *mongo.Client
 }
 
-func NewUserRepository(dbName string, collName string, c *mongo.Client) *UserRepository {
+// NewRepository constructs a UserRepository for the given database and collection.
+func NewRepository(dbName string, collName string, c *mongo.Client) *UserRepository {
 	r := UserRepository{Client: c, DbName: dbName, CollName: collName}
 	return &r
 }
 
-// Create func, inserts a new user into the database,
+// Create func, inserts a new user into the database.
 func (r *UserRepository) Create(ctx context.Context, user entities.User) error {
 	c := r.Client.Database(r.DbName).Collection(r.CollName)
 
@@ -38,7 +39,7 @@ func (r *UserRepository) Create(ctx context.Context, user entities.User) error {
 	return nil
 }
 
-// ActiveAndRevokeToken func, that activates the account and revokes the token in one database trip,
+// ActiveAndRevokeToken func, that activates the account and revokes the token in one database trip.
 func (r *UserRepository) ActiveAndRevokeToken(ctx context.Context, token string) error {
 	c := r.Client.Database(r.DbName).Collection(r.CollName)
 
@@ -69,7 +70,7 @@ func (r *UserRepository) ActiveAndRevokeToken(ctx context.Context, token string)
 		return nil
 	}
 
-	return TokenExpiredErr
+	return ErrTokenExpired
 }
 
 func (r *UserRepository) SetHashPassowrd(ctx context.Context, userId primitive.ObjectID, passwordHash string, newTime, expiresAt time.Time) error {
@@ -87,7 +88,13 @@ func (r *UserRepository) SetHashPassowrd(ctx context.Context, userId primitive.O
 	return err
 }
 
-func (r *UserRepository) SetLoginOtp(ctx context.Context, userId primitive.ObjectID, hash string, expiry time.Time) error {
+// SetLoginOtp stores the hashed OTP and expiry for a user.
+func (r *UserRepository) SetLoginOtp(
+	ctx context.Context,
+	userId primitive.ObjectID,
+	hash string,
+	expiry time.Time,
+) error {
 	c := r.Client.Database(r.DbName).Collection(r.CollName)
 
 	_, err := c.UpdateOne(ctx,
@@ -101,6 +108,7 @@ func (r *UserRepository) SetLoginOtp(ctx context.Context, userId primitive.Objec
 	return err
 }
 
+// ClearLoginOtp removes the stored OTP data for a user.
 func (r *UserRepository) ClearLoginOtp(ctx context.Context, userId primitive.ObjectID) error {
 	c := r.Client.Database(r.DbName).Collection(r.CollName)
 
@@ -111,6 +119,7 @@ func (r *UserRepository) ClearLoginOtp(ctx context.Context, userId primitive.Obj
 	return err
 }
 
+// FindUserByEmail fetches a user document by email.
 func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (*entities.User, error) {
 	var user entities.User
 	c := r.Client.Database(r.DbName).Collection(r.CollName)
@@ -118,12 +127,12 @@ func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (*en
 	filter := bson.M{"email": email}
 
 	err := c.FindOne(ctx, filter).Decode(&user)
-
 	if err != nil {
 		return nil, err
 	}
 	return &user, nil
 }
+
 func (r *UserRepository) FindUserByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
 	var user entities.User
 	c := r.Client.Database(r.DbName).Collection(r.CollName)
@@ -133,6 +142,7 @@ func (r *UserRepository) FindUserByID(ctx context.Context, id primitive.ObjectID
 	return &user, nil
 }
 
+// ExistsByUsername reports whether a username already exists.
 func (r *UserRepository) ExistsByUsername(ctx context.Context, username string) (bool, error) {
 	var user entities.User
 	c := r.Client.Database(r.DbName).Collection(r.CollName)
@@ -151,6 +161,7 @@ func (r *UserRepository) ExistsByUsername(ctx context.Context, username string) 
 	return false, err
 }
 
+// ExistsByEmail reports whether an email already exists.
 func (r *UserRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
 	var user entities.User
 	c := r.Client.Database(r.DbName).Collection(r.CollName)

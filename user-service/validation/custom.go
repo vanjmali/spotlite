@@ -7,6 +7,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
+// CheckStrongPassword enforces length and complexity constraints on passwords.
 func CheckStrongPassword(fl validator.FieldLevel) bool {
 	password := fl.Field().String()
 
@@ -22,6 +23,7 @@ func CheckStrongPassword(fl validator.FieldLevel) bool {
 	return hasUpper && hasLower && hasDigit && hasSymbol
 }
 
+// CheckValidUsername validates allowed characters and length for usernames.
 func CheckValidUsername(fl validator.FieldLevel) bool {
 	username := fl.Field().String()
 
@@ -35,15 +37,16 @@ func CheckValidUsername(fl validator.FieldLevel) bool {
 	return hasText || hasDigit
 }
 
+// GetErrorMsg maps validator tags to human-friendly error messages.
 func GetErrorMsg(fe validator.FieldError) string {
 
 	switch fe.Tag() {
 	case "required":
-		return fmt.Sprintf("%s is required", fe.Field())
+		return fe.Field() + " is required"
 	case "alpha":
-		return fmt.Sprintf("%s must contain only letters", fe.Field())
+		return fe.Field() + " must contain only letters"
 	case "min":
-		return fmt.Sprintf("%s is too short", fe.Field())
+		return fe.Field() + " is too short"
 	case "validusername":
 		return "Username must be 4-20 chars, contain letters and numbers, and only use dots/underscores"
 	case "strongpassword":
