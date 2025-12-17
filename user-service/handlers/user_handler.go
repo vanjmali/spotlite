@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/vanjmali/spotlite/user-service/dtos"
@@ -14,7 +13,6 @@ import (
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/services"
 	"github.com/vanjmali/spotlite/user-service/utils"
-	"github.com/vanjmali/spotlite/user-service/validation"
 )
 
 var (
@@ -42,6 +40,41 @@ func sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
 // validateUserRegistration func, validates registration request dto field values,
 func (h *UserHandler) validateUserRegistration(dto *dtos.UserRegistrationDto) error {
 	return h.v.Struct(dto)
+}
+
+func (h *UserHandler) HandleChangePassword(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var req dtos.ChangePasswordDto
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		sendErrorResponse(w, http.StatusBadRequest, "invalid payload")
+		return
+	}
+
+	if entities.Validate(w, h.v, req) != true {
+		return
+	}
+
+	err = h.s.ChangePassword(r.Context(), &req)
+
+	switch {
+	case errors.Is(err, services.ErrInvalidCurrentPassword):
+		sendErrorResponse(w, http.StatusBadRequest, "wrong current password")
+		return
+
+	case errors.Is(err, services.ErrPasswordTooNew):
+		sendErrorResponse(w, http.StatusBadRequest, "password changed too frequent")
+		return
+	case err != nil:
+		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+
+	json.NewEncoder(w).Encode(map[string]any{
+		"message": "Password changed successfully",
+	})
 }
 
 func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
@@ -101,26 +134,7 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 	}
 
 	// validates request field values
-	if err := h.validateUserRegistration(&req); err != nil {
-		if _, ok := err.(*validator.InvalidValidationError); ok {
-			sendErrorResponse(w, http.StatusInternalServerError, "internal validation error")
-			return
-		}
-
-		var errors []entities.FieldError
-
-		for _, err := range err.(validator.ValidationErrors) {
-
-			errors = append(errors, entities.FieldError{
-				Field:   strings.ToLower(err.Field()),
-				Message: validation.GetErrorMsg(err),
-			})
-		}
-
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"errors": errors,
-		})
+	if entities.Validate(w, h.v, req) != true {
 		return
 	}
 

@@ -36,6 +36,7 @@ func CheckValidUsername(fl validator.FieldLevel) bool {
 }
 
 func GetErrorMsg(fe validator.FieldError) string {
+
 	switch fe.Tag() {
 	case "required":
 		return fmt.Sprintf("%s is required", fe.Field())
@@ -49,6 +50,8 @@ func GetErrorMsg(fe validator.FieldError) string {
 		return "Password must be 10-20 chars, contain upper/lower case, a number, and a special character"
 	case "email":
 		return "Invalid email format"
+	case "nefield":
+		return fmt.Sprintf("%s must not match with %s", fe.Field(), fe.Param())
 	default:
 		return fmt.Sprintf("Validation failed on the '%s' tag", fe.Tag())
 	}

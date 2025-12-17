@@ -21,14 +21,16 @@ var hmacSampleSecret = []byte(utils.MustGetEnv("APP_JWT_SECRET"))
 var loginOtpTTL = utils.MustGetDurationEnv("APP_LOGIN_OTP_TTL_MINUTES", time.Minute)
 
 var (
-	ErrUsernameTaken   = errors.New("username is already taken")
-	ErrEmailTaken      = errors.New("email is already taken")
-	ErrExpiredPassword = errors.New("your password is expired")
-	ErrUserInnactive   = errors.New("user status is innactive")
-	ErrOtpRequired     = errors.New("otp required")
-	ErrOtpInvalid      = errors.New("invalid otp")
-	ErrOtpExpired      = errors.New("expired otp")
-	ErrBadCredentials  = errors.New("invalid credentials")
+	ErrUsernameTaken          = errors.New("username is already taken")
+	ErrEmailTaken             = errors.New("email is already taken")
+	ErrExpiredPassword        = errors.New("your password is expired")
+	ErrUserInnactive          = errors.New("user status is innactive")
+	ErrOtpRequired            = errors.New("otp required")
+	ErrOtpInvalid             = errors.New("invalid otp")
+	ErrOtpExpired             = errors.New("expired otp")
+	ErrBadCredentials         = errors.New("invalid credentials")
+	ErrInvalidCurrentPassword = errors.New("current password is incorrect")
+	ErrPasswordTooNew         = errors.New("password changed too frequent")
 )
 
 type UserService struct {
@@ -171,4 +173,36 @@ func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginO
 
 func (s *UserService) FindByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
 	return s.r.FindUserByID(ctx, id)
+}
+
+func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswordDto) error {
+	// TODO: remove email, use middleware when it's implemented
+	user, err := s.r.FindUserByEmail(ctx, dto.Email)
+	if err != nil {
+		return err
+	}
+
+	if user.PasswordLastChanged.Compare(time.Now().Add(-24*time.Hour)) >= 0 {
+		return ErrPasswordTooNew
+	}
+
+	err = auth.CompareHashAndPassword(user.Password, dto.CurrentPassword)
+	if err != nil {
+		return ErrInvalidCurrentPassword
+	}
+
+	hashedPassword, err := auth.HashPassword(dto.NewPassword)
+	if err != nil {
+		return err
+	}
+
+	newTime := time.Now()
+
+	expiresAt := newTime.Add(60 * 24 * time.Hour)
+
+	if err := s.r.SetHashPassowrd(ctx, user.ID, hashedPassword, newTime, expiresAt); err != nil {
+		return err
+	}
+
+	return err
 }
