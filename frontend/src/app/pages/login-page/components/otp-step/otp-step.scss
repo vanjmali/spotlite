@@ -1,0 +1,50 @@
+:host {
+  width: 100%;
+}
+
+.otp-step {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+
+  &__title {
+    font-size: 24px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  &__input-container {
+    display: flex;
+    justify-content: center;
+  }
+
+  &__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__password-prompt {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 8px;
+  }
+
+  &__password-prompt-link {
+    font-size: 14px;
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
+    transition: transform 200ms ease;
+
+    &:hover {
+      transform: scale(1.1);
+    }
+  }
+}

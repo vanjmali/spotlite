@@ -1,0 +1,63 @@
+:host {
+  width: 100%;
+}
+
+.email-input {
+  &__form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__label {
+    font-size: 15px;
+    font-weight: 500;
+    color: #fff;
+  }
+
+  &__input-wrapper {
+    display: flex;
+    align-items: center;
+    position: relative;
+  }
+
+  &__input {
+    padding: 12px;
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: #fff;
+    font-size: 16px;
+    transition: all 200ms ease;
+    width: 100%;
+    padding-right: 40px;
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    &:focus {
+      outline: none;
+      border-color: #fff;
+    }
+
+    &--error {
+      border-color: #f3727f;
+
+      &:hover,
+      &:focus {
+        border-color: #f3727f;
+      }
+    }
+  }
+
+  &__error {
+    font-size: 13px;
+    color: #f3727f;
+    margin-top: 4px;
+  }
+}

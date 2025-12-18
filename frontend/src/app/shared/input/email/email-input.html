@@ -1,0 +1,18 @@
+<div class="email-input">
+  <div class="email-input__form-group">
+    <label class="email-input__label" for="email">
+      {{ labelSg() }}
+    </label>
+    <div class="email-input__input-wrapper">
+      <input
+        class="email-input__input"
+        [class.email-input__input--error]="errorSg()"
+        id="email"
+        type="email"
+        [value]="valueSg()"
+        (input)="onValueChange($any($event.target).value)"
+      />
+    </div>
+  </div>
+  <app-error [message]="errorSg()" />
+</div>

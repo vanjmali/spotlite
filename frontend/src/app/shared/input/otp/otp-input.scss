@@ -1,0 +1,48 @@
+:host {
+  width: 100%;
+}
+
+.otp-input {
+  &__label {
+    font-size: 15px;
+    font-weight: 500;
+    color: #fff;
+  }
+
+  &__boxes {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  &__box {
+    width: 50px;
+    height: 50px;
+    padding: 0;
+    background-color: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: #fff;
+    font-size: 24px;
+    font-weight: 600;
+    text-align: center;
+    transition: all 200ms ease;
+    caret-color: #1ed760;
+
+    &:focus {
+      outline: none;
+      border-color: #fff;
+      box-shadow: 0 0 0 2px rgba(30, 215, 96, 0.2);
+    }
+
+    &--error {
+      border-color: #f3727f;
+
+      &:hover,
+      &:focus {
+        border-color: #f3727f;
+        box-shadow: 0 0 0 2px rgba(243, 114, 127, 0.2);
+      }
+    }
+  }
+}
