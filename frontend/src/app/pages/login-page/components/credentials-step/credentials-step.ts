@@ -1,4 +1,4 @@
-import { Component, inject, signal, effect, ViewChild } from '@angular/core';
+import { Component, inject, signal, effect, ViewChild, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EmailInputComponent, PasswordInputComponent } from '@app/shared/input';
 import { LoginStore } from '../../store';
@@ -10,7 +10,7 @@ import { LoginStore } from '../../store';
   templateUrl: './credentials-step.html',
   styleUrls: ['./credentials-step.scss'],
 })
-export class CredentialsStep {
+export class CredentialsStep implements OnDestroy {
   @ViewChild(EmailInputComponent) public emailInputSg!: EmailInputComponent;
   @ViewChild(PasswordInputComponent) public passwordInputSg!: PasswordInputComponent;
 
@@ -20,17 +20,16 @@ export class CredentialsStep {
   public passwordSg = signal<string>('');
   public loadingSg = this.store.loadingSg;
 
+  private readonly errorSyncEffect = effect(() => {
+    const storeError = this.store.errorSg();
+    if (storeError && this.passwordInputSg) {
+      this.passwordInputSg.errorSg.set(storeError);
+    }
+  });
+
   constructor() {
     // Clear store error when entering credentials step
     this.store.clearError();
-
-    // Track store errors and set them on the appropriate input
-    effect(() => {
-      const storeError = this.store.errorSg();
-      if (storeError && this.passwordInputSg) {
-        this.passwordInputSg.errorSg.set(storeError);
-      }
-    });
   }
 
   public async submit(): Promise<void> {
@@ -47,5 +46,9 @@ export class CredentialsStep {
 
     // Validate credentials and send OTP
     await this.store.validateCredentials(email, password);
+  }
+
+  public ngOnDestroy(): void {
+    this.errorSyncEffect.destroy();
   }
 }

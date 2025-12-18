@@ -15,6 +15,7 @@ import { ErrorComponent } from '../error';
 export class PasswordInputComponent {
   public readonly labelSg = input<string>('Password', { alias: 'label' });
   public readonly requiredSg = input<boolean>(false, { alias: 'required' });
+  private readonly MIN_PASSWORD_LENGTH = 8;
 
   // Two-way binding using model with aliases
   public readonly valueSg = model<string>('', {
@@ -46,6 +47,12 @@ export class PasswordInputComponent {
 
     if (this.requiredSg() && !password) {
       const error = 'Password is required';
+      this.errorSg.set(error);
+      return { isValid: false, error };
+    }
+
+    if (password && password.length < this.MIN_PASSWORD_LENGTH) {
+      const error = `Password must be at least ${this.MIN_PASSWORD_LENGTH} characters`;
       this.errorSg.set(error);
       return { isValid: false, error };
     }

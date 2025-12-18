@@ -12,14 +12,14 @@
         autocomplete="off"
         class="otp-input__box"
         [class.otp-input__box--error]="errorSg()"
-        [id]="'otp-' + $index"
+        #otpBox
         type="text"
         inputmode="numeric"
         maxlength="1"
-        [(ngModel)]="digitsSg()[$index]"
-        (input)="onDigitChange($index, $event.target.value)"
+        [value]="digitsSg()[$index]"
+        (input)="onDigitChange($index, $any($event.target).value)"
         (keydown)="onKeyDown($index, $event)"
-        (click)="$event.target.select()"
+        (click)="onBoxClick($event)"
       />
     }
   </div>

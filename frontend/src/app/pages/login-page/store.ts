@@ -1,6 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { EMAIL_PATTERN } from '../../shared/validation';
 
 // TODO: Consider using Angular validators or a validation library for better scalability
 export interface ValidationResult {
@@ -30,8 +31,7 @@ export class LoginStore {
       return false;
     }
 
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(email)) {
+    if (!EMAIL_PATTERN.test(email)) {
       this.errorSg.set('Invalid email address.');
       return false;
     }
@@ -61,8 +61,7 @@ export class LoginStore {
       return false;
     }
 
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(trimmedEmail)) {
+    if (!EMAIL_PATTERN.test(trimmedEmail)) {
       this.errorSg.set('Invalid email address.');
       return false;
     }

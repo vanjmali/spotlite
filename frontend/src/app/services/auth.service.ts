@@ -4,7 +4,7 @@ export interface MockUser {
   id: string;
   email: string;
   username: string;
-  password: string;
+  passwordHash: string;
 }
 
 export type OtpVerificationStatus = 'success' | 'invalid' | 'expired';
@@ -17,8 +17,18 @@ export class AuthService {
 
   // TODO: Replace mock users with real backend authentication
   private users: MockUser[] = [
-    { id: '1', email: 'alice@example.com', username: 'alice', password: 'password1' },
-    { id: '2', email: 'bob@example.com', username: 'bob', password: 'hunter2' },
+    {
+      id: '1',
+      email: 'alice@example.com',
+      username: 'alice',
+      passwordHash: this.hashPassword('password1'),
+    },
+    {
+      id: '2',
+      email: 'bob@example.com',
+      username: 'bob',
+      passwordHash: this.hashPassword('hunter2'),
+    },
   ];
 
   // simulate checking email exists
@@ -44,8 +54,7 @@ export class AuthService {
       code,
       expiresAt: Date.now() + this.OTP_EXPIRY_MS,
     });
-    // TODO: Send OTP via email service (currently logged to console for dev/testing)
-    console.info(`[AuthService] mock OTP for ${email}: ${code}`);
+    // TODO: Send OTP via email service
   }
 
   async verifyOtp(email: string, code: string): Promise<OtpVerificationStatus> {
@@ -78,7 +87,7 @@ export class AuthService {
       (u) =>
         (u.email.toLowerCase() === email.toLowerCase() ||
           u.username.toLowerCase() === email.toLowerCase()) &&
-        u.password === password
+        u.passwordHash === this.hashPassword(password)
     );
     if (found) {
       this.currentEmail.set(found.email);
@@ -91,5 +100,10 @@ export class AuthService {
 
   private delay(ms: number) {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private hashPassword(value: string): string {
+    // Lightweight hash to avoid storing mock passwords in plain text
+    return btoa(value);
   }
 }

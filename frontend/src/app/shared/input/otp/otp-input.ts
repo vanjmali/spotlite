@@ -1,19 +1,28 @@
-import { Component, input, model, signal, AfterViewInit } from '@angular/core';
+import {
+  Component,
+  input,
+  model,
+  signal,
+  AfterViewInit,
+  ElementRef,
+  QueryList,
+  ViewChildren,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { ValidationResult } from '../../../pages/login-page/store';
 import { ErrorComponent } from '../error';
 
 @Component({
   selector: 'app-otp-input',
   standalone: true,
-  imports: [CommonModule, FormsModule, ErrorComponent],
+  imports: [CommonModule, ErrorComponent],
   templateUrl: './otp-input.html',
   styleUrls: ['./otp-input.scss'],
 })
 export class OtpInputComponent implements AfterViewInit {
   public readonly labelSg = input<string>('', { alias: 'label' });
   public readonly requiredSg = input<boolean>(false, { alias: 'required' });
+  @ViewChildren('otpBox') private otpBoxes!: QueryList<ElementRef<HTMLInputElement>>;
 
   // Two-way binding using model with alias
   public readonly valueSg = model<string>('', {
@@ -27,17 +36,16 @@ export class OtpInputComponent implements AfterViewInit {
   public readonly errorSg = signal<string>('');
 
   public ngAfterViewInit(): void {
-    // Auto-focus the first input box
-    const firstInput = document.getElementById('otp-0') as HTMLInputElement;
-    firstInput?.focus();
+    this.focusBox(0);
   }
 
   public onDigitChange(index: number, value: string): void {
     // Only allow numbers
     const sanitized = value.replace(/[^0-9]/g, '');
     this.digitsSg.update((digits) => {
-      digits[index] = sanitized.slice(0, 1);
-      return digits;
+      const next = [...digits];
+      next[index] = sanitized.slice(0, 1);
+      return next;
     });
 
     // Update the full value
@@ -49,14 +57,7 @@ export class OtpInputComponent implements AfterViewInit {
 
     // Auto-focus next input if value entered
     if (sanitized && index < 5) {
-      setTimeout(() => {
-        const nextInput = document.getElementById(`otp-${index + 1}`) as HTMLInputElement;
-        if (nextInput) {
-          nextInput.focus();
-          // Select all text in the next input so typing replaces it
-          nextInput.select();
-        }
-      }, 0);
+      queueMicrotask(() => this.focusBox(index + 1, true));
     }
   }
 
@@ -78,8 +79,9 @@ export class OtpInputComponent implements AfterViewInit {
 
       // Clear the current box
       this.digitsSg.update((digits) => {
-        digits[index] = '';
-        return digits;
+        const next = [...digits];
+        next[index] = '';
+        return next;
       });
 
       // Update the full value
@@ -91,27 +93,18 @@ export class OtpInputComponent implements AfterViewInit {
 
       // Move focus to previous box if current is empty and index > 0
       if (index > 0 && !currentDigits[index]) {
-        const prevInput = document.getElementById(`otp-${index - 1}`) as HTMLInputElement;
-        prevInput?.focus();
+        this.focusBox(index - 1, true);
       }
     }
     // Handle left arrow - move to previous box
     else if (event.key === 'ArrowLeft' && index > 0) {
       event.preventDefault();
-      const prevInput = document.getElementById(`otp-${index - 1}`) as HTMLInputElement;
-      if (prevInput) {
-        prevInput.focus();
-        prevInput.select();
-      }
+      this.focusBox(index - 1, true);
     }
     // Handle right arrow - move to next box
     else if (event.key === 'ArrowRight' && index < 5) {
       event.preventDefault();
-      const nextInput = document.getElementById(`otp-${index + 1}`) as HTMLInputElement;
-      if (nextInput) {
-        nextInput.focus();
-        nextInput.select();
-      }
+      this.focusBox(index + 1, true);
     }
   }
 
@@ -132,5 +125,19 @@ export class OtpInputComponent implements AfterViewInit {
 
     this.errorSg.set('');
     return { isValid: true };
+  }
+
+  public onBoxClick(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    input?.select();
+  }
+
+  private focusBox(index: number, select = false): void {
+    const target = this.otpBoxes?.get(index)?.nativeElement;
+    if (!target) return;
+    target.focus();
+    if (select) {
+      target.select();
+    }
   }
 }

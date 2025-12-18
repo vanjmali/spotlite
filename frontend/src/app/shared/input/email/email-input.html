@@ -10,7 +10,7 @@
         id="email"
         type="email"
         [value]="valueSg()"
-        (input)="onValueChange($event.target.value)"
+        (input)="onValueChange($any($event.target).value)"
       />
     </div>
   </div>
