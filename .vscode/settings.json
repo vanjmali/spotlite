@@ -1,0 +1,36 @@
+{
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"editor.formatOnSave": true,
+	"editor.codeActionsOnSave": {
+		"source.fixAll.eslint": "explicit"
+	},
+	"eslint.validate": [
+		"javascript",
+		"typescript",
+		"html"
+	],
+	"[typescript]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"[html]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"[scss]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
+	"prettier.enableDebugLogs": false,
+	"[go]": {
+		"editor.defaultFormatter": "golang.go"
+	},
+	"material-icon-theme.folders.associations": {
+		"api-gateway": "home",
+		"common-lib": "shared",
+		"user-service": "secure",
+		"analytics-service": "constant",
+		"content-service": "content",
+		"notification-service": "event",
+		"rating-service": "sandbox",
+		"recommendation-service": "context",
+		"subscription-service": "connection"
+	}
+}

@@ -1,33 +1,32 @@
-# Spotlite — frontend
+# Spotlite - frontend
 
-Essential setup
+Frontend interface for Spotlite.
+
+## Setup
 
 - Requirements: Node 24+, npm
 - Install dependencies:
 
-```powershell
+```bash
+# intall dependencies
 cd frontend
 npm ci
-```
 
-- Start development server
-
-```powershell
+# run dev server
 npm run start
 ```
 
-Key scripts
+## Scripts
 
-- npm run start      — dev server
-- npm run build      — production build
-- npm run lint       — run ESLint (fail on warnings)
-- npm run lint:fix   — auto-fix lintable issues
-- npm run format     — format source with Prettier
-- npm run format:check — check formatting (CI)
+- `npm run start` - dev server
+- `npm run build` - production build
+- `npm run lint` - run ESLint (fail on warnings)
+- `npm run lint:fix` - auto-fix lintable issues
+- `npm run format` - format source with Prettier
+- `npm run format:check` - check formatting (CI)
 
-Notes
+## Notes
 
-- The project uses Angular 21 and SCSS. 
+- Angular 21 + SCSS.
 - Commit `package-lock.json` to ensure reproducible installs.
 - Recommended VS Code extensions: Prettier, ESLint, Angular Language Service.
-

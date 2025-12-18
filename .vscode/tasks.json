@@ -1,0 +1,55 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Format",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"${workspaceFolder}/.vscode/scripts/helper.js",
+				"fmt"
+			],
+			"presentation": {
+				"echo": true,
+				"panel": "shared",
+				"clear": true
+			},
+			"options": {
+				"statusbar": {
+					"label": "Format",
+					"detail": "Format all source files",
+					"color": "#ffa"
+				}
+			},
+			"icon": {
+				"color": "terminal.ansiYellow",
+				"id": "folder",
+			}
+		},
+		{
+			"label": "Lint",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"${workspaceFolder}/.vscode/scripts/helper.js",
+				"lint"
+			],
+			"presentation": {
+				"echo": true,
+				"panel": "shared",
+				"clear": true
+			},
+			"options": {
+				"statusbar": {
+					"label": "Lint",
+					"detail": "Lint all source files",
+					"color": "#ffa"
+				}
+			},
+			"icon": {
+				"color": "terminal.ansiYellow",
+				"id": "sparkle-filled",
+			}
+		},
+	]
+}

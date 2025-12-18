@@ -1,0 +1,61 @@
+package services
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/wneessen/go-mail"
+)
+
+// MailService sends transactional emails such as account verification and OTPs.
+type MailService struct {
+	c *mail.Client
+}
+
+// InitMailingService wraps the mail client with a service layer.
+func InitMailingService(client *mail.Client) *MailService {
+	ms := MailService{c: client}
+	return &ms
+}
+
+func (ms *MailService) sendAccountVerificationEmail(mailto string, token string) {
+	m := mail.NewMsg()
+	if err := m.From("mail@spotlite.com"); err != nil {
+		log.Fatalf("failed to set From address: %s", err)
+	}
+
+	if err := m.To(mailto); err != nil {
+		log.Fatalf("failed to set To address: %s", err)
+	}
+
+	m.Subject("Account verification")
+	// TODO: change domain to a environment variable...
+	m.SetBodyString(
+		mail.TypeTextHTML,
+		fmt.Sprintf(
+			"<span>Click <a href='http://localhost:3000/api/users/verify?token=%s'>here</a> to verify your account.</span>",
+			token,
+		),
+	)
+
+	if err := ms.c.DialAndSend(m); err != nil {
+		log.Fatalf("failed to send mail: %s", err)
+	}
+}
+
+// SendLoginOtp dispatches a one-time password email to the given recipient.
+func (ms *MailService) SendLoginOtp(mailto string, otp string) error {
+	m := mail.NewMsg()
+
+	if err := m.From("mail@spotlite.com"); err != nil {
+		return err
+	}
+	if err := m.To(mailto); err != nil {
+		return err
+	}
+
+	m.Subject("OTP Code")
+	m.SetBodyString(mail.TypeTextHTML, fmt.Sprintf("<h1>OTP Code</h1><h2>%s</h2>", otp))
+
+	return ms.c.DialAndSend(m)
+}
