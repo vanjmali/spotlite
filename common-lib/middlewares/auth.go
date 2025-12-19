@@ -2,7 +2,6 @@ package middlewares
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -26,7 +25,6 @@ func ValidateJWT(next http.HandlerFunc) http.HandlerFunc {
 		pubKey, err := utils2.GetPublicKey()
 		if err != nil {
 			_ = respond.InternalServerError(w)
-			fmt.Println(fmt.Sprintf("an error has occurred while fetching public key: %s", err))
 			return
 		}
 
