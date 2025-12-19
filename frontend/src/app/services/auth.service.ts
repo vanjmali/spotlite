@@ -105,7 +105,7 @@ export class AuthService {
     lastName: string,
     email: string,
     username: string,
-    passwordHash: string
+    password: string
   ): Promise<boolean> {
     await this.delay(400);
 
@@ -126,7 +126,7 @@ export class AuthService {
       lastName,
       email,
       username,
-      passwordHash,
+      passwordHash: this.hashPassword(password),
     };
 
     this.users.push(newUser);
