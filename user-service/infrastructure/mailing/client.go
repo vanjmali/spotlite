@@ -17,6 +17,7 @@ type MailClient struct {
 func InitClient(host string, port int, username string, password string) (*mail.Client, error) {
 	c, err := mail.NewClient(host,
 		mail.WithPort(port),
+		mail.WithTLSPolicy(mail.NoTLS), // Change Mandatory to NoTLS or TLSOptional
 		// TODO: configurable TLS
 		mail.WithSMTPAuth(mail.SMTPAuthPlainNoEnc),
 		mail.WithUsername(username),

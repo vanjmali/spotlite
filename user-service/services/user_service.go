@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"crypto/rsa"
 	"errors"
 	"strings"
 	"time"
@@ -11,13 +12,10 @@ import (
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/mappers"
 	"github.com/vanjmali/spotlite/user-service/repositories"
-	"github.com/vanjmali/spotlite/user-service/utils"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
-
-var hmacSampleSecret = []byte(utils.MustGetEnv("APP_JWT_SECRET"))
 
 var (
 	// ErrUsernameTaken indicates the supplied username already exists.
@@ -27,7 +25,7 @@ var (
 	// ErrExpiredPassword signals that the user's password has expired.
 	ErrExpiredPassword = errors.New("your password is expired")
 	// ErrUserInnactive marks an inactive account status.
-	ErrUserInnactive = errors.New("user status is innactive")
+	ErrUserInnactive = errors.New("user status is inactive")
 	// ErrOtpRequired indicates login requires an OTP code.
 	ErrOtpRequired = errors.New("otp required")
 	// ErrOtpInvalid indicates a provided OTP is wrong.
@@ -42,11 +40,12 @@ var (
 type UserService struct {
 	r  *repositories.UserRepository
 	ms *MailService
+	k  *rsa.PrivateKey
 }
 
 // NewUserService builds a UserService with repository and mail dependencies.
-func NewUserService(r repositories.UserRepository, ms MailService) *UserService {
-	s := UserService{r: &r, ms: &ms}
+func NewUserService(r repositories.UserRepository, ms MailService, k rsa.PrivateKey) *UserService {
+	s := UserService{r: &r, ms: &ms, k: &k}
 
 	return &s
 }
@@ -136,7 +135,7 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 
 // CreateNewToken issues a signed JWT for the authenticated user.
 func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 		"sub":      user.ID,
 		"name":     strings.Join([]string{user.FirstName, user.LastName}, " "),
 		"username": user.Username,
@@ -145,7 +144,7 @@ func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (
 		"exp":      time.Now().Add(15 * time.Minute).Unix(),
 	})
 
-	tokenString, err := token.SignedString(hmacSampleSecret)
+	tokenString, err := token.SignedString(s.k)
 	return tokenString, err
 }
 

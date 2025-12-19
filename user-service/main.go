@@ -15,6 +15,7 @@ import (
 	"github.com/vanjmali/spotlite/user-service/routers"
 	"github.com/vanjmali/spotlite/user-service/services"
 	"github.com/vanjmali/spotlite/user-service/utils"
+	"github.com/vanjmali/spotlite/user-service/utils/auth"
 	"github.com/vanjmali/spotlite/user-service/validation"
 )
 
@@ -50,9 +51,13 @@ func run() error {
 	defer dbClient.Disconnect(context.Background())
 	defer mailClient.Close()
 
+	k, err := auth.GetPrivateKey()
+	if err != nil {
+		return fmt.Errorf("failed to fetch signing keys: %w", err)
+	}
 	userRepo := repositories.NewRepository(mongo.DatabaseName(), "users", dbClient)
 	ms := services.InitMailingService(mailClient)
-	us := services.NewUserService(*userRepo, *ms)
+	us := services.NewUserService(*userRepo, *ms, *k)
 
 	rtRepo := repositories.NewRefreshTokenRepository(mongo.DatabaseName(), repositories.RefreshTokensColl, dbClient)
 	if err := rtRepo.EnsureRefreshIndexes(context.Background()); err != nil {
