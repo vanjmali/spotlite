@@ -42,7 +42,7 @@ linters:
     - gocritic
     # - gocyclo
     - godot
-    - gomoddirectives
+    # - gomoddirectives
     - goprintffuncname
     - gosec
     - iface

@@ -1,14 +1,24 @@
-# Stage 1 (Build)
-FROM golang:1.25.5-alpine AS builder
+FROM golang:1.25.5-alpine AS build
 
-WORKDIR /app
+# Build common-lib package
+WORKDIR /common-lib
 
-COPY go.mod go.sum /app/
+COPY --from=common-lib go.mod ./
 RUN --mount=type=cache,target=/go/pkg/mod \
 	--mount=type=cache,target=/root/.cache/go-build \
 	go mod download
 
-COPY . .
+COPY --from=common-lib ./ ./
+
+# Build app-service binary
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+	--mount=type=cache,target=/root/.cache/go-build \
+	go mod download
+
+COPY ./ ./
 
 RUN --mount=type=cache,target=/go/pkg/mod \
 	--mount=type=cache,target=/root/.cache/go-build \
@@ -19,11 +29,10 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 	-o /app/build.bin \
 	main.go
 
-# Stage 2 (Final)
 FROM gcr.io/distroless/static:latest
 
 WORKDIR /app
 
-COPY --from=builder /app/build.bin /usr/bin/service
+COPY --from=build /app/build.bin /usr/bin/service
 
 ENTRYPOINT ["/usr/bin/service"]
