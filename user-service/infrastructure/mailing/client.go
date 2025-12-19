@@ -4,7 +4,7 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/vanjmali/spotlite/user-service/utils"
+	"github.com/vanjmali/spotlite/common-lib/utils"
 	mail "github.com/wneessen/go-mail"
 )
 

@@ -1,6 +1,7 @@
 go 1.25.5
 
 use (
+	./common-lib
 	./analytics-service
 	./content-service
 	./notification-service

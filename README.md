@@ -14,6 +14,7 @@ For education purposes only.
 - `notifications-service` – Queues and delivers user notifications.
 - `recommendation-service` – Personalized recommendations and feeds.
 - `analytics-service` – Activity tracking and analytics endpoints.
+- `common-lib` – Shared Go library for common utilities and types.
 
 > `api-gateway` is the main entrypoint and serves both frontend and backend services:
 >

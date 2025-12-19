@@ -22,6 +22,12 @@
 	"[go]": {
 		"editor.defaultFormatter": "golang.go"
 	},
+	"[go.mod]": {
+		"editor.defaultFormatter": "golang.go"
+	},
+	"[go.sum]": {
+		"editor.defaultFormatter": "golang.go"
+	},
 	"material-icon-theme.folders.associations": {
 		"api-gateway": "home",
 		"common-lib": "shared",
