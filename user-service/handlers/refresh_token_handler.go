@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 
@@ -23,8 +22,6 @@ func NewRefreshTokenHandler(rts services.RefreshTokenService, us services.UserSe
 }
 
 func (h *RefreshTokenHandler) HandleRefreshToken(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	var req dtos.RefreshRequest
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
@@ -47,6 +44,7 @@ func (h *RefreshTokenHandler) HandleRefreshToken(w http.ResponseWriter, r *http.
 
 	access, err := h.us.CreateNewToken(r.Context(), user)
 	if err != nil {
+		log.Printf("failed to create new access token: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -55,7 +53,7 @@ func (h *RefreshTokenHandler) HandleRefreshToken(w http.ResponseWriter, r *http.
 		AccessToken: access,
 	}
 
-	if err := json.NewEncoder(w).Encode(b); err != nil {
-		_ = respond.InternalServerError(w)
+	if err := respond.OkJson(w, b); err != nil {
+		log.Printf("failed to write refresh token response: %v", err)
 	}
 }
