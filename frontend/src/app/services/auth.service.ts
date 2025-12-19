@@ -2,6 +2,8 @@ import { Injectable, signal } from '@angular/core';
 
 export interface MockUser {
   id: string;
+  firstName: string;
+  lastName: string;
   email: string;
   username: string;
   passwordHash: string;
@@ -16,20 +18,7 @@ export class AuthService {
   isAuthenticated = signal(false);
 
   // TODO: Replace mock users with real backend authentication
-  private users: MockUser[] = [
-    {
-      id: '1',
-      email: 'alice@example.com',
-      username: 'alice',
-      passwordHash: this.hashPassword('password1'),
-    },
-    {
-      id: '2',
-      email: 'bob@example.com',
-      username: 'bob',
-      passwordHash: this.hashPassword('hunter2'),
-    },
-  ];
+  private users: MockUser[] = [];
 
   // simulate checking email exists
   async checkEmail(email: string): Promise<{ exists: boolean; user?: MockUser }> {
@@ -96,6 +85,52 @@ export class AuthService {
     }
     this.isAuthenticated.set(false);
     return false;
+  }
+
+  // Check if email already exists
+  async checkEmailExists(email: string): Promise<boolean> {
+    await this.delay(300);
+    return this.users.some((u) => u.email.toLowerCase() === email.toLowerCase());
+  }
+
+  // Check if username already exists
+  async checkUsernameExists(username: string): Promise<boolean> {
+    await this.delay(300);
+    return this.users.some((u) => u.username.toLowerCase() === username.toLowerCase());
+  }
+
+  // Register new user (add to mock users)
+  async register(
+    firstName: string,
+    lastName: string,
+    email: string,
+    username: string,
+    passwordHash: string
+  ): Promise<boolean> {
+    await this.delay(400);
+
+    // Check if email exists
+    if (await this.checkEmailExists(email)) {
+      return false;
+    }
+
+    // Check if username exists
+    if (await this.checkUsernameExists(username)) {
+      return false;
+    }
+
+    // Add new user to mock users
+    const newUser: MockUser = {
+      id: (this.users.length + 1).toString(),
+      firstName,
+      lastName,
+      email,
+      username,
+      passwordHash,
+    };
+
+    this.users.push(newUser);
+    return true;
   }
 
   private delay(ms: number) {

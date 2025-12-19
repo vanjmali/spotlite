@@ -1,8 +1,13 @@
-import { Component, input, model, signal } from '@angular/core';
+import { Component, input, model, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { ValidationResult } from '../../../pages/login-page/store';
+import {
+  ValidationResult,
+  PASSWORD_PATTERNS,
+  MIN_PASSWORD_LENGTH,
+  VALIDATION_MESSAGES,
+} from '../../validation';
 import { ErrorComponent } from '../error';
 
 @Component({
@@ -15,7 +20,7 @@ import { ErrorComponent } from '../error';
 export class PasswordInputComponent {
   public readonly labelSg = input<string>('Password', { alias: 'label' });
   public readonly requiredSg = input<boolean>(false, { alias: 'required' });
-  private readonly MIN_PASSWORD_LENGTH = 8;
+  public readonly showCriteriaSg = input<boolean>(false, { alias: 'showCriteria' });
 
   // Two-way binding using model with aliases
   public readonly valueSg = model<string>('', {
@@ -27,6 +32,18 @@ export class PasswordInputComponent {
 
   // Internal error state
   public readonly errorSg = signal<string>('');
+
+  // Individual criteria signals
+  public readonly hasLetterSg = computed(() => PASSWORD_PATTERNS.letter.test(this.valueSg()));
+  public readonly hasNumberOrSpecialSg = computed(() =>
+    PASSWORD_PATTERNS.numberOrSpecial.test(this.valueSg())
+  );
+  public readonly hasMinLengthSg = computed(() => this.valueSg().length >= MIN_PASSWORD_LENGTH);
+
+  // Check if all criteria are met
+  public readonly allCriteriaMet = computed(
+    () => this.hasLetterSg() && this.hasNumberOrSpecialSg() && this.hasMinLengthSg()
+  );
 
   public onValueChange(newValue: string): void {
     this.valueSg.set(newValue);
@@ -43,18 +60,19 @@ export class PasswordInputComponent {
   }
 
   public validate(): ValidationResult {
-    const password = this.valueSg().trim();
+    const password = this.valueSg();
 
     if (this.requiredSg() && !password) {
-      const error = 'Password is required';
-      this.errorSg.set(error);
-      return { isValid: false, error };
+      this.errorSg.set(VALIDATION_MESSAGES.PASSWORD_REQUIRED);
+      return { isValid: false, error: VALIDATION_MESSAGES.PASSWORD_REQUIRED };
     }
 
-    if (password && password.length < this.MIN_PASSWORD_LENGTH) {
-      const error = `Password must be at least ${this.MIN_PASSWORD_LENGTH} characters`;
-      this.errorSg.set(error);
-      return { isValid: false, error };
+    // If criteria are shown, validate all criteria
+    if (this.showCriteriaSg()) {
+      if (!this.hasLetterSg() || !this.hasNumberOrSpecialSg() || !this.hasMinLengthSg()) {
+        this.errorSg.set(VALIDATION_MESSAGES.PASSWORD_CRITERIA);
+        return { isValid: false, error: VALIDATION_MESSAGES.PASSWORD_CRITERIA };
+      }
     }
 
     this.errorSg.set('');
