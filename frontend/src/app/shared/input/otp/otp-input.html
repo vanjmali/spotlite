@@ -1,0 +1,27 @@
+@let label = labelSg();
+
+<div class="otp-input">
+  @if (label) {
+    <label class="otp-input__label">
+      {{ label }}
+    </label>
+  }
+  <div class="otp-input__boxes">
+    @for (digit of digitsSg(); track $index) {
+      <input
+        autocomplete="off"
+        class="otp-input__box"
+        [class.otp-input__box--error]="errorSg()"
+        #otpBox
+        type="text"
+        inputmode="numeric"
+        maxlength="1"
+        [value]="digitsSg()[$index]"
+        (input)="onDigitChange($index, $any($event.target).value)"
+        (keydown)="onKeyDown($index, $event)"
+        (click)="onBoxClick($event)"
+      />
+    }
+  </div>
+</div>
+<app-error [message]="errorSg()" />

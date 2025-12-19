@@ -3,23 +3,20 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"log"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/vanjmali/spotlite/common-lib/requests"
+	"github.com/vanjmali/spotlite/common-lib/respond"
+	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/dtos"
-	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/services"
-	"github.com/vanjmali/spotlite/user-service/utils"
 )
 
 var (
-	// VerificationSuccessUrl redirects the user after a successful account verification.
 	VerificationSuccessUrl = utils.MustGetEnv("APP_VERIFICATION_SUCCESS_URL")
-	// VerificationFailureUrl redirects the user when verification fails.
 	VerificationFailureUrl = utils.MustGetEnv("APP_VERIFICATION_FAILURE_URL")
 )
 
@@ -35,41 +32,29 @@ func NewUserHandler(s services.UserService, v validator.Validate, rts services.R
 	return &h
 }
 
-func sendErrorResponse(w http.ResponseWriter, statusCode int, message string) {
-	w.WriteHeader(statusCode)
-	errorResponse := entities.ErrorResponse{Status: statusCode, Message: message}
-	if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
-		log.Printf("failed to write error response: %v", err)
-		http.Error(w, "failed to write response", http.StatusInternalServerError)
-	}
-}
-
 func (h *UserHandler) HandleChangePassword(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var req dtos.ChangePasswordDto
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		sendErrorResponse(w, http.StatusBadRequest, "invalid payload")
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
+		if err != nil {
+			log.Printf("failed to process change password request: %v", err)
+		}
 		return
 	}
 
-	if entities.Validate(w, h.v, req) != true {
-		return
-	}
-
-	err = h.s.ChangePassword(r.Context(), &req)
+	err := h.s.ChangePassword(r.Context(), &req)
 
 	switch {
 	case errors.Is(err, services.ErrInvalidCurrentPassword):
-		sendErrorResponse(w, http.StatusBadRequest, "wrong current password")
+		_ = respond.Unauthorized(w, "Invalid current password.")
 		return
 
-	case errors.Is(err, services.ErrPasswordTooNew):
-		sendErrorResponse(w, http.StatusBadRequest, "password changed too frequent")
+	case errors.Is(err, services.ErrTooFrequentPasswordChange):
+		_ = respond.BadRequest(w, "Password changed too frequently.")
 		return
 	case err != nil:
-		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
+		_ = respond.InternalServerError(w)
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -77,8 +62,9 @@ func (h *UserHandler) HandleChangePassword(w http.ResponseWriter, r *http.Reques
 	b := map[string]any{
 		"message": "Password changed successfully",
 	}
+
 	if err := json.NewEncoder(w).Encode(b); err != nil {
-		sendErrorResponse(w, http.StatusInternalServerError, "internal server error")
+		_ = respond.InternalServerError(w)
 		return
 	}
 }
@@ -88,26 +74,27 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var req dtos.UserLoginDto
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		sendErrorResponse(w, http.StatusBadRequest, "invalid payload")
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
+		if err != nil {
+			log.Printf("failed to process login request: %v", err)
+		}
 		return
 	}
 
-	err = h.s.Login(r.Context(), &req)
+	err := h.s.Login(r.Context(), &req)
 
 	switch {
 	case errors.Is(err, services.ErrBadCredentials):
-		sendErrorResponse(w, http.StatusUnauthorized, "invalid credentials")
+		_ = respond.Unauthorized(w, "Invalid credentials.")
 		return
 	case errors.Is(err, services.ErrExpiredPassword):
-		sendErrorResponse(w, http.StatusUnauthorized, "password expired")
+		_ = respond.Unauthorized(w, "Password expired.")
 		return
 	case errors.Is(err, services.ErrUserInnactive):
-		sendErrorResponse(w, http.StatusUnauthorized, "user is inactive")
+		_ = respond.Unauthorized(w, "User is inactive.")
 		return
 	case err != nil:
-		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
+		_ = respond.InternalServerError(w)
 		return
 	}
 
@@ -127,43 +114,31 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 
 	// trying to decode the registration request dto
 	var req dtos.UserRegistrationDto
-	err := json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		if err == io.EOF {
-			sendErrorResponse(w, http.StatusBadRequest, "request body can't be empty")
-			return
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
+		if err != nil {
+			log.Printf("failed to process registration request: %v", err)
 		}
-
-		syntaxError := &json.SyntaxError{}
-		if errors.As(err, &syntaxError) {
-			sendErrorResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid JSON format: %s", err))
-			return
-		}
-
-		sendErrorResponse(
-			w,
-			http.StatusInternalServerError,
-			"an unexpected error has occurred while processing your request",
-		)
-		return
-	}
-
-	// validates request field values
-	if entities.Validate(w, h.v, req) != true {
 		return
 	}
 
 	// initializes registration after decoding and validation went well
-	err = h.s.Register(r.Context(), &req)
+	err := h.s.Register(r.Context(), &req)
 	if err != nil {
+		var msg string
 		switch {
-		case errors.Is(err, services.ErrUsernameTaken) || errors.Is(err, services.ErrEmailTaken):
-			sendErrorResponse(w, http.StatusConflict, err.Error())
-			return
-		default:
-			sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
+		case errors.Is(err, services.ErrUsernameTaken):
+			msg = "Username is already taken."
+		case errors.Is(err, services.ErrEmailTaken):
+			msg = "Email is already taken."
+		}
+
+		if msg != "" {
+			_ = respond.Conflict(w, msg)
 			return
 		}
+
+		_ = respond.InternalServerError(w)
+		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
@@ -203,32 +178,34 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "application/json")
 
 	var req dtos.VerifyLoginOtpDto
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		sendErrorResponse(w, http.StatusBadRequest, "invalid payload")
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
+		if err != nil {
+			log.Printf("failed to process verify login otp request: %v", err)
+		}
 		return
 	}
 
 	user, err := h.s.VerifyLoginOtp(r.Context(), &req)
 
 	if errors.Is(err, services.ErrOtpExpired) || errors.Is(err, services.ErrOtpInvalid) {
-		sendErrorResponse(w, http.StatusUnauthorized, "unauthorized request")
+		_ = respond.Unauthorized(w, "Invalid or expired OTP.")
 		return
 	}
 
 	if err != nil {
-		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
+		_ = respond.InternalServerError(w)
 		return
 	}
 
 	token, err := h.s.CreateNewToken(r.Context(), user)
 	if err != nil {
-		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
+		_ = respond.InternalServerError(w)
 		return
 	}
 
 	refresh, err := h.rts.IssueRefreshToken(r.Context(), user.ID)
 	if err != nil {
-		sendErrorResponse(w, http.StatusInternalServerError, "an expected error has occurred")
+		_ = respond.InternalServerError(w)
 		return
 	}
 
@@ -238,6 +215,6 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := json.NewEncoder(w).Encode(b); err != nil {
-		sendErrorResponse(w, http.StatusInternalServerError, "an unexpected error has occurred")
+		_ = respond.InternalServerError(w)
 	}
 }

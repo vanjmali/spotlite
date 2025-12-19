@@ -8,13 +8,14 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/vanjmali/spotlite/common-lib/requests"
+	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/handlers"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mailing"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mongo"
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/routers"
 	"github.com/vanjmali/spotlite/user-service/services"
-	"github.com/vanjmali/spotlite/user-service/utils"
 	"github.com/vanjmali/spotlite/user-service/validation"
 )
 
@@ -38,13 +39,15 @@ func run() error {
 		return fmt.Errorf("cannot start application without mailing service: %w", err)
 	}
 
+	requests.RegisterCommonValidationMessages()
 	val := validator.New()
-	if err := val.RegisterValidation("strongpassword", validation.CheckStrongPassword); err != nil {
-		return fmt.Errorf("failed to register custom strongpassword validator: %w", err)
+
+	if err := requests.RegisterValidation(val, validation.CheckStrongPassword); err != nil {
+		return fmt.Errorf("failed to register custom validations: %w", err)
 	}
 
-	if err := val.RegisterValidation("validusername", validation.CheckValidUsername); err != nil {
-		return fmt.Errorf("failed to register custom validusername validator: %w", err)
+	if err := requests.RegisterValidation(val, validation.CheckValidUsername); err != nil {
+		return fmt.Errorf("failed to register custom validations: %w", err)
 	}
 
 	defer dbClient.Disconnect(context.Background())
@@ -61,7 +64,7 @@ func run() error {
 
 	rts := services.NewRefreshTokenService(*rtRepo)
 	userH := handlers.NewUserHandler(*us, *val, *rts)
-	rtH := handlers.NewRefreshTokenHandler(*rts, *us)
+	rtH := handlers.NewRefreshTokenHandler(*rts, *us, *val)
 
 	router := routers.HandleRequests(userH, rtH)
 

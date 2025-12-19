@@ -57,5 +57,13 @@ export default defineConfig([
     languageOptions: {
       parser: templateParser
     }
+  },
+
+  // Custom rules overrides
+  {
+    files: ['**/*.ts'],
+    rules: {
+      '@angular-eslint/no-input-rename': 'off'
+    }
   }
 ]);

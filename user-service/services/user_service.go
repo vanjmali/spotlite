@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/mappers"
 	"github.com/vanjmali/spotlite/user-service/repositories"
-	"github.com/vanjmali/spotlite/user-service/utils"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
@@ -21,16 +21,16 @@ var hmacSampleSecret = []byte(utils.MustGetEnv("APP_JWT_SECRET"))
 var loginOtpTTL = utils.MustGetDurationEnv("APP_LOGIN_OTP_TTL_MINUTES", time.Minute)
 
 var (
-	ErrUsernameTaken          = errors.New("username is already taken")
-	ErrEmailTaken             = errors.New("email is already taken")
-	ErrExpiredPassword        = errors.New("your password is expired")
-	ErrUserInnactive          = errors.New("user status is innactive")
-	ErrOtpRequired            = errors.New("otp required")
-	ErrOtpInvalid             = errors.New("invalid otp")
-	ErrOtpExpired             = errors.New("expired otp")
-	ErrBadCredentials         = errors.New("invalid credentials")
-	ErrInvalidCurrentPassword = errors.New("current password is incorrect")
-	ErrPasswordTooNew         = errors.New("password changed too frequent")
+	ErrUsernameTaken             = errors.New("username is already taken")
+	ErrEmailTaken                = errors.New("email is already taken")
+	ErrExpiredPassword           = errors.New("your password is expired")
+	ErrUserInnactive             = errors.New("user status is innactive")
+	ErrOtpRequired               = errors.New("otp required")
+	ErrOtpInvalid                = errors.New("invalid otp")
+	ErrOtpExpired                = errors.New("expired otp")
+	ErrBadCredentials            = errors.New("invalid credentials")
+	ErrInvalidCurrentPassword    = errors.New("current password is incorrect")
+	ErrTooFrequentPasswordChange = errors.New("password changed too frequent")
 )
 
 type UserService struct {
@@ -182,7 +182,7 @@ func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswo
 	}
 
 	if user.PasswordLastChanged.Compare(time.Now().Add(-24*time.Hour)) >= 0 {
-		return ErrPasswordTooNew
+		return ErrTooFrequentPasswordChange
 	}
 
 	err = auth.CompareHashAndPassword(user.Password, dto.CurrentPassword)
