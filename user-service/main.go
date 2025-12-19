@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/vanjmali/spotlite/common-lib/requests"
-	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/handlers"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mailing"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mongo"
@@ -42,12 +40,12 @@ func run() error {
 	}
 
 	val := validator.New()
-	if err := requests.RegisterValidation(val, validation.CheckStrongPassword); err != nil {
-		return fmt.Errorf("failed to register custom validations: %w", err)
+	if err := val.RegisterValidation("strongpassword", validation.CheckStrongPassword); err != nil {
+		return fmt.Errorf("failed to register custom strongpassword validator: %w", err)
 	}
 
-	if err := requests.RegisterValidation(val, validation.CheckValidUsername); err != nil {
-		return fmt.Errorf("failed to register custom validations: %w", err)
+	if err := val.RegisterValidation("validusername", validation.CheckValidUsername); err != nil {
+		return fmt.Errorf("failed to register custom validusername validator: %w", err)
 	}
 
 	defer dbClient.Disconnect(context.Background())
@@ -68,7 +66,7 @@ func run() error {
 
 	rts := services.NewRefreshTokenService(*rtRepo)
 	userH := handlers.NewUserHandler(*us, *val, *rts)
-	rtH := handlers.NewRefreshTokenHandler(*rts, *us, *val)
+	rtH := handlers.NewRefreshTokenHandler(*rts, *us)
 
 	router := routers.HandleRequests(userH, rtH)
 
