@@ -28,8 +28,7 @@ func Error(w http.ResponseWriter, e ErrorResponse) error {
 		e.Message = http.StatusText(e.HttpCode)
 	}
 
-	writeJson(w, e.HttpCode, r)
-	return nil
+	return writeJson(w, e.HttpCode, r)
 }
 
 // ValidationError issues a validation error response with field-level details.
