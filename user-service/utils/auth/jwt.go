@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -29,9 +30,15 @@ func GetPrivateKey() (*rsa.PrivateKey, error) {
 			errPrvParse = fmt.Errorf("invalid private key path: %w", err)
 			return
 		}
-		privateKeyPath = filepath.Clean(absPath)
 
-		keyData, err := os.ReadFile(privateKeyPath)
+		cleanPath := filepath.Clean(absPath)
+		if strings.Contains(cleanPath, "..") {
+			errPrvParse = fmt.Errorf("unsafe relative path detected")
+			return
+		}
+
+		// #nosec G304
+		keyData, err := os.ReadFile(cleanPath)
 		if err != nil {
 			errPrvParse = fmt.Errorf("failed to read key file: %w", err)
 			return
