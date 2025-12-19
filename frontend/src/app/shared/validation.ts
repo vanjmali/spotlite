@@ -21,17 +21,22 @@ export interface ValidationResult {
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
- * Password criteria patterns - used in PasswordInputComponent
+ * Password criteria patterns
+ * Must contain: uppercase, lowercase, digit, special char
  */
 export const PASSWORD_PATTERNS = {
-  // At least 1 letter (uppercase or lowercase)
-  letter: /[a-zA-Z]/,
+  // At least 1 uppercase letter
+  uppercase: /[A-Z]/,
 
-  // At least 1 number or special character
-  numberOrSpecial: /[0-9!@#$%^&*?]/,
-} as const;
+  // At least 1 lowercase letter
+  lowercase: /[a-z]/,
 
-/**
+  // At least 1 digit
+  digit: /\d/,
+
+  // At least 1 special character (matching backend: !@#$%^&*.)
+  special: /[!@#$%^&*.]/,
+} as const; /**
  * Minimum password length requirement
  */
 export const MIN_PASSWORD_LENGTH = 10;
@@ -57,7 +62,8 @@ export const VALIDATION_MESSAGES = {
   EMAIL_REQUIRED: 'Email address is required',
   EMAIL_INVALID: 'Please enter a valid email address',
   PASSWORD_REQUIRED: 'Password is required',
-  PASSWORD_CRITERIA: 'Password does not meet all criteria',
+  PASSWORD_CRITERIA:
+    'Password must contain uppercase, lowercase, number, special character, and be at least 10 characters',
   TEXT_REQUIRED: (label: string) => `${label} is required`,
   OTP_REQUIRED: 'OTP code is required',
   OTP_INVALID: 'Invalid OTP code.',

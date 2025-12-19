@@ -34,15 +34,20 @@ export class PasswordInputComponent {
   public readonly errorSg = signal<string>('');
 
   // Individual criteria signals
-  public readonly hasLetterSg = computed(() => PASSWORD_PATTERNS.letter.test(this.valueSg()));
-  public readonly hasNumberOrSpecialSg = computed(() =>
-    PASSWORD_PATTERNS.numberOrSpecial.test(this.valueSg())
-  );
+  public readonly hasUppercaseSg = computed(() => PASSWORD_PATTERNS.uppercase.test(this.valueSg()));
+  public readonly hasLowercaseSg = computed(() => PASSWORD_PATTERNS.lowercase.test(this.valueSg()));
+  public readonly hasDigitSg = computed(() => PASSWORD_PATTERNS.digit.test(this.valueSg()));
+  public readonly hasSpecialSg = computed(() => PASSWORD_PATTERNS.special.test(this.valueSg()));
   public readonly hasMinLengthSg = computed(() => this.valueSg().length >= MIN_PASSWORD_LENGTH);
 
   // Check if all criteria are met
   public readonly allCriteriaMet = computed(
-    () => this.hasLetterSg() && this.hasNumberOrSpecialSg() && this.hasMinLengthSg()
+    () =>
+      this.hasUppercaseSg() &&
+      this.hasLowercaseSg() &&
+      this.hasDigitSg() &&
+      this.hasSpecialSg() &&
+      this.hasMinLengthSg()
   );
 
   public onValueChange(newValue: string): void {
@@ -69,7 +74,13 @@ export class PasswordInputComponent {
 
     // If criteria are shown, validate all criteria
     if (this.showCriteriaSg()) {
-      if (!this.hasLetterSg() || !this.hasNumberOrSpecialSg() || !this.hasMinLengthSg()) {
+      if (
+        !this.hasUppercaseSg() ||
+        !this.hasLowercaseSg() ||
+        !this.hasDigitSg() ||
+        !this.hasSpecialSg() ||
+        !this.hasMinLengthSg()
+      ) {
         this.errorSg.set(VALIDATION_MESSAGES.PASSWORD_CRITERIA);
         return { isValid: false, error: VALIDATION_MESSAGES.PASSWORD_CRITERIA };
       }
