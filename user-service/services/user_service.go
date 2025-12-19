@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/mappers"
@@ -141,6 +140,7 @@ func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (
 		"name":     strings.Join([]string{user.FirstName, user.LastName}, " "),
 		"username": user.Username,
 		"role":     user.Role,
+		"status":   user.AccountStatus,
 		"iat":      time.Now().Unix(),
 		"exp":      time.Now().Add(15 * time.Minute).Unix(),
 	})

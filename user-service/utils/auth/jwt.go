@@ -17,30 +17,32 @@ var (
 	errPrvParse  error
 )
 
+// GetPrivateKey function is implemented as a singleton so that the key itself isn't read multiple
+// times from the disk.
 func GetPrivateKey() (*rsa.PrivateKey, error) {
 	prvOnce.Do(func() {
 		privateKeyPath := os.Getenv("JWT_PRIVATE_KEY_PATH")
 		if privateKeyPath == "" {
-			errPrvParse = fmt.Errorf("private key can't be found")
+			errPrvParse = fmt.Errorf("priv. key can't be found")
 			return
 		}
 
 		absPath, err := filepath.Abs(privateKeyPath)
 		if err != nil {
-			errPrvParse = fmt.Errorf("invalid private key path: %w", err)
+			errPrvParse = fmt.Errorf("invalid priv. key path: %w", err)
 			return
 		}
 
 		cleanPath := filepath.Clean(absPath)
 		if strings.Contains(cleanPath, "..") {
-			errPrvParse = fmt.Errorf("unsafe relative path detected")
+			errPrvParse = fmt.Errorf("unsafe priv. key relative path detected")
 			return
 		}
 
 		// #nosec G304
 		keyData, err := os.ReadFile(cleanPath)
 		if err != nil {
-			errPrvParse = fmt.Errorf("failed to read key file: %w", err)
+			errPrvParse = fmt.Errorf("failed to read priv. key file: %w", err)
 			return
 		}
 

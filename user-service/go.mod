@@ -3,10 +3,11 @@ module github.com/vanjmali/spotlite/user-service
 go 1.25.5
 
 require (
-	github.com/vanjmali/spotlite/common-lib v0.0.0
-	github.com/go-playground/validator/v10 v10.28.0
+	github.com/go-playground/validator/v10 v10.29.0
+	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
+	github.com/vanjmali/spotlite/common-lib v0.0.0
 	github.com/wneessen/go-mail v0.7.2
 	go.mongodb.org/mongo-driver v1.17.6
 	golang.org/x/crypto v0.46.0
@@ -15,10 +16,9 @@ require (
 replace github.com/vanjmali/spotlite/common-lib => ../common-lib
 
 require (
-	github.com/gabriel-vasile/mimetype v1.4.10 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.11 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
