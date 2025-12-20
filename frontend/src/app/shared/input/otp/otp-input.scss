@@ -1,3 +1,5 @@
+@use 'variables/colors' as *;
+
 :host {
   width: 100%;
 }
@@ -6,7 +8,7 @@
   &__label {
     font-size: 15px;
     font-weight: 500;
-    color: #fff;
+    color: $color-form-label;
   }
 
   &__boxes {
@@ -19,29 +21,29 @@
     width: 50px;
     height: 50px;
     padding: 0;
-    background-color: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background-color: $color-form-input-bg;
+    border: 1px solid $color-form-input-border;
     border-radius: 4px;
-    color: #fff;
+    color: $color-form-input-text;
     font-size: 24px;
     font-weight: 600;
     text-align: center;
     transition: all 200ms ease;
-    caret-color: #1ed760;
+    caret-color: $color-primary;
 
     &:focus {
       outline: none;
-      border-color: #fff;
-      box-shadow: 0 0 0 2px rgba(30, 215, 96, 0.2);
+      border-color: $color-form-input-border-focus;
+      box-shadow: 0 0 0 2px $color-primary-transparent-20;
     }
 
     &--error {
-      border-color: #f3727f;
+      border-color: $color-form-error;
 
       &:hover,
       &:focus {
-        border-color: #f3727f;
-        box-shadow: 0 0 0 2px rgba(243, 114, 127, 0.2);
+        border-color: $color-form-error;
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
       }
     }
   }

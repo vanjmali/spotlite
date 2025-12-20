@@ -5,6 +5,8 @@
 // custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
 
+@use 'variables/colors' as *;
+
 html {
   @include mat.theme(
     (
@@ -43,10 +45,20 @@ body {
 
 /* You can add global styles to this file, and also import other style files */
 
-// Primary Button (Spotify Green)
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+}
+
+// Primary Button (Purple Theme)
 .btn-primary {
-  background-color: #1ed760;
-  color: #000;
+  background-color: $color-primary;
+  color: $color-text-inverse;
   border: none;
   border-radius: 500px;
   padding: 12px 32px;
@@ -57,7 +69,7 @@ body {
   width: 100%;
 
   &:hover {
-    background-color: #1db954;
+    background-color: $color-primary-dark;
     transform: scale(1.04);
   }
 
@@ -70,9 +82,9 @@ body {
 .btn-secondary {
   padding: 10px 24px;
   background-color: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid $color-border-primary;
   border-radius: 24px;
-  color: #fff;
+  color: $color-text-primary;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -80,7 +92,7 @@ body {
   width: 100%;
 
   &:hover:not(:disabled) {
-    border-color: #fff;
+    border-color: $color-text-primary;
     transform: scale(1.04);
   }
 

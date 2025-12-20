@@ -1,10 +1,16 @@
+@use 'variables/colors' as *;
+@use 'mixins' as m;
+
 .login-page {
   height: 100%;
   display: flex;
   align-items: center;
-  background: black;
-  color: white;
+  background: $color-bg-primary;
+  color: $color-text-primary;
   flex-direction: column;
+  overflow-y: auto;
+
+  @include m.scrollbar;
 
   &__icon {
     width: 50px;
@@ -21,12 +27,12 @@
 
   &__signup-text {
     font-size: 14px;
-    color: #b3b3b3;
+    color: $color-text-secondary;
   }
 
   &__signup-link {
     font-size: 14px;
-    color: #fff;
+    color: $color-text-primary;
     font-weight: 700;
     text-decoration: none;
     cursor: pointer;

@@ -1,8 +1,7 @@
 import { Component, input, model, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ValidationResult } from '../../../pages/login-page/store';
-import { EMAIL_PATTERN } from '../../validation';
+import { ValidationResult, EMAIL_PATTERN, VALIDATION_MESSAGES } from '../../validation';
 import { ErrorComponent } from '../error';
 
 @Component({
@@ -25,24 +24,22 @@ export class EmailInputComponent {
   public readonly errorSg = signal<string>('');
 
   public onValueChange(newValue: string): void {
-    this.valueSg.set(newValue);
+    this.valueSg.set(newValue.trim());
     // Clear error when user starts typing
     this.errorSg.set('');
   }
 
   public validate(): ValidationResult {
-    const email = this.valueSg().trim();
+    const email = this.valueSg();
 
     if (this.requiredSg() && !email) {
-      const error = 'Email address is required';
-      this.errorSg.set(error);
-      return { isValid: false, error };
+      this.errorSg.set(VALIDATION_MESSAGES.EMAIL_REQUIRED);
+      return { isValid: false, error: VALIDATION_MESSAGES.EMAIL_REQUIRED };
     }
 
     if (email && !EMAIL_PATTERN.test(email)) {
-      const error = 'Please enter a valid email address';
-      this.errorSg.set(error);
-      return { isValid: false, error };
+      this.errorSg.set(VALIDATION_MESSAGES.EMAIL_INVALID);
+      return { isValid: false, error: VALIDATION_MESSAGES.EMAIL_INVALID };
     }
 
     this.errorSg.set('');
