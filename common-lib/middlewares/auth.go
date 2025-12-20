@@ -8,6 +8,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	utils2 "github.com/vanjmali/spotlite/common-lib/utils"
+	"github.com/vanjmali/spotlite/user-service/entities"
 )
 
 // ctxKey type is used to add data in the context while avoiding conflicts with other services
@@ -20,7 +21,7 @@ const (
 	RoleIdKey ctxKey = "role"
 )
 
-func ValidateJWT(next http.HandlerFunc) http.HandlerFunc {
+func ValidateJWT(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		pubKey, err := utils2.GetPublicKey()
 		if err != nil {
@@ -62,12 +63,13 @@ func ValidateJWT(next http.HandlerFunc) http.HandlerFunc {
 		}
 		ctx = context.WithValue(ctx, UserIdKey, userId)
 
-		role, ok := claims["role"].(string)
+		roleStr, ok := claims["role"].(string)
 		if !ok {
 			_ = respond.Unauthorized(w)
 			return
 		}
-		ctx = context.WithValue(ctx, RoleIdKey, role)
+		userRole := entities.UserRole(roleStr)
+		ctx = context.WithValue(ctx, RoleIdKey, userRole)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)
