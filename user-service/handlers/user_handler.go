@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -34,8 +33,6 @@ func NewUserHandler(s services.UserService, v validator.Validate, rts services.R
 
 // HandleLogin authenticates user credentials and triggers OTP delivery.
 func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	var req dtos.UserLoginDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
@@ -57,24 +54,18 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		_ = respond.Unauthorized(w, "User is inactive.")
 		return
 	case err != nil:
+		log.Printf("failed to login user: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(map[string]any{
-		"otp_required": true,
-		"message":      "OTP sent to email",
-	}); err != nil {
+	if err := respond.Ok(w, "OTP sent to email."); err != nil {
 		log.Printf("failed to write login response: %v", err)
-		http.Error(w, "failed to write response", http.StatusInternalServerError)
 	}
 }
 
 // HandleRegistration func, handles user registration requests and returns adequate responses.
 func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	// trying to decode the registration request dto
 	var req dtos.UserRegistrationDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
@@ -100,11 +91,12 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
+		log.Printf("failed to register user: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	respond.NoContent(w)
 }
 
 // HandleAccountVerification func, handles user account verification requests and redirects to success/failure pages
@@ -138,8 +130,6 @@ func (h *UserHandler) HandleAccountVerification(w http.ResponseWriter, r *http.R
 
 // HandleVerifyLoginOtp validates the OTP and issues a JWT token on success.
 func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	var req dtos.VerifyLoginOtpDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
@@ -156,18 +146,21 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err != nil {
+		log.Printf("failed to verify login otp: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
 
 	token, err := h.s.CreateNewToken(r.Context(), user)
 	if err != nil {
+		log.Printf("failed to create access token: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
 
 	refresh, err := h.rts.IssueRefreshToken(r.Context(), user.ID)
 	if err != nil {
+		log.Printf("failed to issue refresh token: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -177,7 +170,7 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 		"refresh_token": refresh,
 	}
 
-	if err := json.NewEncoder(w).Encode(b); err != nil {
-		_ = respond.InternalServerError(w)
+	if err := respond.OkJson(w, b); err != nil {
+		log.Printf("failed to write verify login otp response: %v", err)
 	}
 }
