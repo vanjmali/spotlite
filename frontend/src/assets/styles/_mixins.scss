@@ -1,0 +1,25 @@
+﻿@use 'variables/colors' as *;
+
+@mixin scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: $color-scrollbar-thumb transparent;
+
+  &::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: $color-scrollbar-thumb;
+    border-radius: 4px;
+    transition: background 200ms ease;
+
+    &:hover {
+      background: $color-scrollbar-thumb-hover;
+    }
+  }
+}

@@ -4,7 +4,7 @@
   width: 100%;
 }
 
-.email-input {
+.text-input {
   &__form-group {
     display: flex;
     flex-direction: column;
@@ -32,7 +32,6 @@
     font-size: 16px;
     transition: all 200ms ease;
     width: 100%;
-    padding-right: 40px;
 
     &::placeholder {
       color: $color-form-input-placeholder;
@@ -50,7 +49,6 @@
     &--error {
       border-color: $color-form-error;
 
-      &:hover,
       &:focus {
         border-color: $color-form-error;
       }
