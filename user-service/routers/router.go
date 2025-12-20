@@ -9,10 +9,12 @@ import (
 	"github.com/vanjmali/spotlite/user-service/handlers"
 )
 
+//nolint:unused // These are helper functions for future route protection
 func requireAuthenticated(next http.HandlerFunc) http.Handler {
 	return middlewares.ValidateJWT(middlewares.ValidatePermission(entities.RoleAdmin, entities.RoleMember)(next))
 }
 
+//nolint:unused // These are helper functions for future route protection
 func requireAdmin(next http.HandlerFunc) http.Handler {
 	return middlewares.ValidateJWT(middlewares.ValidatePermission(entities.RoleAdmin)(next))
 }
