@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface LoginResponse {
   message: string;
@@ -20,7 +21,7 @@ export class AuthService {
   readonly accessTokenSg = signal<string | null>(null);
   readonly refreshTokenSg = signal<string | null>(null);
 
-  private readonly API_BASE = 'http://localhost:3000/api/users'; // Traefik API Gateway on port 3000
+  private readonly API_BASE = environment.apiBaseUrl;
   private readonly http = inject(HttpClient);
 
   // Register new user with backend

@@ -20,3 +20,8 @@ type VerifyLoginOtpDto struct {
 	Email string `json:"email" validate:"required,email"`
 	Code  string `json:"code" validate:"required,len=6"`
 }
+
+// CheckEmailDto carries the email to check if it's already registered.
+type CheckEmailDto struct {
+	Email string `json:"email" validate:"required,email"`
+}
