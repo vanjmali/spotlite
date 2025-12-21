@@ -1,4 +1,4 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { VALIDATION_MESSAGES } from '@app/shared';
@@ -20,6 +20,7 @@ export class AuthService {
   readonly currentEmailSg = signal<string | null>(null);
   readonly accessTokenSg = signal<string | null>(null);
   readonly refreshTokenSg = signal<string | null>(null);
+  readonly isAuthenticatedSg = computed(() => !!this.accessTokenSg());
 
   private readonly API_BASE = 'http://localhost:3000/api/users'; // Traefik API Gateway on port 3000
   private readonly http = inject(HttpClient);
@@ -112,24 +113,49 @@ export class AuthService {
     }
   }
 
-  // Store tokens securely - access token in memory, refresh token and email in localStorage
+  // Store tokens securely - all tokens and email in localStorage
   private storeTokens(access: string, refresh: string, email: string): void {
     this.accessTokenSg.set(access);
     this.refreshTokenSg.set(refresh);
     this.currentEmailSg.set(email);
+    localStorage.setItem('access_token', access);
     localStorage.setItem('refresh_token', refresh);
     localStorage.setItem('user_email', email);
   }
 
+  // Check if access token is expired
+  private isTokenExpired(token: string | null = this.accessTokenSg()): boolean {
+    if (!token) return true;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      // exp is in seconds, Date.now() is in milliseconds
+      return payload.exp * 1000 < Date.now();
+    } catch {
+      return true;
+    }
+  }
+
   // Initialize auth on app startup - restore session from localStorage
   initializeAuth(): void {
+    const accessToken = localStorage.getItem('access_token');
     const refreshToken = localStorage.getItem('refresh_token');
     const userEmail = localStorage.getItem('user_email');
+
+    // Check if access token is expired
+    if (accessToken && this.isTokenExpired(accessToken)) {
+      this.logout();
+      return;
+    }
+
+    if (accessToken) {
+      this.accessTokenSg.set(accessToken);
+    }
     if (refreshToken) {
       this.refreshTokenSg.set(refreshToken);
-      if (userEmail) {
-        this.currentEmailSg.set(userEmail);
-      }
+    }
+    if (userEmail) {
+      this.currentEmailSg.set(userEmail);
     }
   }
 
@@ -145,6 +171,7 @@ export class AuthService {
         })
       );
       this.accessTokenSg.set(response.access_token);
+      localStorage.setItem('access_token', response.access_token);
       return true;
     } catch {
       this.logout();
@@ -173,6 +200,7 @@ export class AuthService {
     this.accessTokenSg.set(null);
     this.refreshTokenSg.set(null);
     this.currentEmailSg.set(null);
+    localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user_email');
   }

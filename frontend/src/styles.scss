@@ -18,11 +18,13 @@ html {
       density: 0,
     )
   );
+  overflow: hidden;
 }
 
 html,
 body {
   height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -104,6 +106,30 @@ body {
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+}
+
+// Light Button (White background with dark text)
+.btn-light {
+  background-color: $color-white;
+  color: $color-gray-900;
+  border: none;
+  border-radius: 500px;
+  padding: 10px 24px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 200ms ease;
+  text-decoration: none;
+  display: inline-block;
+
+  &:hover {
+    background-color: $color-gray-100;
+    transform: scale(1.04);
+  }
+
+  &:active {
+    transform: scale(0.98);
   }
 }
 

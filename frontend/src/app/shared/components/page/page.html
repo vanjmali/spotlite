@@ -1,0 +1,27 @@
+@let title = titleSg();
+
+<div class="page">
+  <header class="page__header">
+    <!-- Custom header component or simple title -->
+    @if (title) {
+      <h1 class="page__title">{{ title }}</h1>
+    } @else {
+      <ng-content select="[header]"></ng-content>
+    }
+  </header>
+
+  <div class="page__main">
+    <aside class="page__aside">
+      <ng-content select="[aside]"></ng-content>
+    </aside>
+
+    <main class="page__content">
+      <ng-content select="[content]"></ng-content>
+      <ng-content></ng-content>
+    </main>
+  </div>
+
+  <footer class="page__footer">
+    <ng-content select="[footer]"></ng-content>
+  </footer>
+</div>
