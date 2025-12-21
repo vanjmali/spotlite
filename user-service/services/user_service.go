@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/mappers"
@@ -44,8 +45,8 @@ type UserService struct {
 }
 
 // NewUserService builds a UserService with repository and mail dependencies.
-func NewUserService(r repositories.UserRepository, ms MailService, k rsa.PrivateKey) *UserService {
-	s := UserService{r: &r, ms: &ms, k: &k}
+func NewUserService(r repositories.UserRepository, ms MailService) *UserService {
+	s := UserService{r: &r, ms: &ms}
 
 	return &s
 }
@@ -145,7 +146,9 @@ func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (
 		"exp":      time.Now().Add(15 * time.Minute).Unix(),
 	})
 
-	tokenString, err := token.SignedString(s.k)
+	pk, _ := utils.GetPrivateKey()
+	tokenString, err := token.SignedString(pk)
+
 	return tokenString, err
 }
 

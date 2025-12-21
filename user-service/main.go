@@ -9,18 +9,17 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/vanjmali/spotlite/common-lib/requests"
-	utils2 "github.com/vanjmali/spotlite/common-lib/utils"
+	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/handlers"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mailing"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mongo"
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/routers"
 	"github.com/vanjmali/spotlite/user-service/services"
-	"github.com/vanjmali/spotlite/user-service/utils/auth"
 	"github.com/vanjmali/spotlite/user-service/validation"
 )
 
-var port = utils2.GetEnv("APP_PORT", "3000")
+var port = utils.GetEnv("APP_PORT", "3000")
 
 func main() {
 	if err := run(); err != nil {
@@ -52,13 +51,9 @@ func run() error {
 	defer dbClient.Disconnect(context.Background())
 	defer mailClient.Close()
 
-	k, err := auth.GetPrivateKey()
-	if err != nil {
-		return fmt.Errorf("failed to fetch signing keys: %w", err)
-	}
 	userRepo := repositories.NewRepository(mongo.DatabaseName(), "users", dbClient)
 	ms := services.InitMailingService(mailClient)
-	us := services.NewUserService(*userRepo, *ms, *k)
+	us := services.NewUserService(*userRepo, *ms)
 
 	rtRepo := repositories.NewRefreshTokenRepository(mongo.DatabaseName(), repositories.RefreshTokensColl, dbClient)
 	if err := rtRepo.EnsureRefreshIndexes(context.Background()); err != nil {

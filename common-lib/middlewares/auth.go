@@ -7,7 +7,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/vanjmali/spotlite/common-lib/respond"
-	utils2 "github.com/vanjmali/spotlite/common-lib/utils"
+	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/entities"
 )
 
@@ -23,11 +23,7 @@ const (
 
 func ValidateJWT(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		pubKey, err := utils2.GetPublicKey()
-		if err != nil {
-			_ = respond.InternalServerError(w)
-			return
-		}
+		pubKey, _ := utils.GetPublicKey()
 
 		tStr := extractToken(r.Header.Get("Authorization"))
 		t, err := jwt.Parse(tStr, func(token *jwt.Token) (interface{}, error) {

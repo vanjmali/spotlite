@@ -24,16 +24,16 @@ services:
   key-gen:
     image: alpine/openssl
     volumes:
-      - ./keys:/keys
+      - keys:/run/keys
     # a bash script which checks if the private key already exists in the keys directory and creates
     # public and private keys if needed,
     entrypoint: >
       sh -c "
-        if [ ! -f /keys/private.pem ]; then
+        if [ ! -f /run/keys/private.pem ]; then
           echo 'Generating RSA keys...' &&
-          openssl genrsa -out /keys/private.pem 2048 &&
-          openssl rsa -in /keys/private.pem -pubout > /keys/public.pem &&
-          chmod 644 /keys/private.pem /keys/public.pem;
+          openssl genrsa -out /run/keys/private.pem 2048 &&
+          openssl rsa -in /run/keys/private.pem -pubout > /run/keys/public.pem &&
+          chmod 644 /run/keys/private.pem /run/keys/public.pem;
         else
           echo 'Keys already exist, skipping generation.';
         fi"
@@ -66,7 +66,7 @@ services:
   # which the user service will need only in local dev. environment
   user-service:
     volumes:
-      - ./keys:/run/keys:ro
+      - keys:/run/keys:ro
     environment:
       JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
@@ -99,6 +99,7 @@ services:
 
 volumes:
   frontend-node-modules:
+  keys:
 
 networks:
   api-gateway:
