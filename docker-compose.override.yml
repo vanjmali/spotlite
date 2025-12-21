@@ -66,10 +66,10 @@ services:
   # which the user service will need only in local dev. environment
   user-service:
     volumes:
-      - ./keys:/etc/spotlite/keys:ro
+      - ./keys:/run/keys:ro
     environment:
-      JWT_PRIVATE_KEY_PATH: /etc/spotlite/keys/private.pem
-      JWT_PUBLIC_KEY_PATH: /etc/spotlite/keys/public.pem
+      JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
+      JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
     depends_on:
       key-gen:
         condition: service_completed_successfully
