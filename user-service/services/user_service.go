@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"crypto/rsa"
 	"errors"
 	"strings"
 	"time"
@@ -25,8 +24,8 @@ var (
 	ErrEmailTaken = errors.New("email is already taken")
 	// ErrExpiredPassword signals that the user's password has expired.
 	ErrExpiredPassword = errors.New("your password is expired")
-	// ErrUserInnactive marks an inactive account status.
-	ErrUserInnactive = errors.New("user status is inactive")
+	// ErrUserInactive marks an inactive account status.
+	ErrUserInactive = errors.New("user status is inactive")
 	// ErrOtpRequired indicates login requires an OTP code.
 	ErrOtpRequired = errors.New("otp required")
 	// ErrOtpInvalid indicates a provided OTP is wrong.
@@ -41,7 +40,6 @@ var (
 type UserService struct {
 	r  *repositories.UserRepository
 	ms *MailService
-	k  *rsa.PrivateKey
 }
 
 // NewUserService builds a UserService with repository and mail dependencies.
@@ -104,7 +102,7 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 	}
 
 	if user.AccountStatus == entities.StatusInactive {
-		return ErrUserInnactive
+		return ErrUserInactive
 	}
 
 	if time.Now().After(user.PasswordExpiresAt) {
@@ -160,7 +158,7 @@ func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginO
 	}
 
 	if user.AccountStatus == entities.StatusInactive {
-		return nil, ErrUserInnactive
+		return nil, ErrUserInactive
 	}
 
 	if user.OTPCode.Hash == "" {
