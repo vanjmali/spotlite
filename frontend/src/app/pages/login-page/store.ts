@@ -1,9 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { VALIDATION_MESSAGES } from '@app/shared/validation';
-
-// TODO: Consider using Angular validators or a validation library for better scalability
+import { VALIDATION_MESSAGES } from '@app/shared';
 
 @Injectable()
 export class LoginStore {
@@ -58,7 +56,7 @@ export class LoginStore {
           this.errorSg.set(VALIDATION_MESSAGES.OTP_INVALID_CODE);
           break;
         default:
-          this.errorSg.set(result.error || 'OTP verification failed');
+          this.errorSg.set(result.error || VALIDATION_MESSAGES.OTP_VERIFICATION_FAILED);
       }
       return false;
     }
@@ -69,6 +67,18 @@ export class LoginStore {
   }
 
   public async resendOtp(): Promise<void> {
-    this.errorSg.set('Resend OTP feature is not yet implemented');
+    this.errorSg.set(null);
+    const email = this.emailSg();
+    if (!email) {
+      this.errorSg.set(VALIDATION_MESSAGES.MISSING_EMAIL);
+      return;
+    }
+    this.loadingSg.set(true);
+    const result = await this._auth.resendOtp(email);
+    this.loadingSg.set(false);
+
+    if (!result.success) {
+      this.errorSg.set(result.error || VALIDATION_MESSAGES.OTP_RESEND_FAILED);
+    }
   }
 }

@@ -7,7 +7,7 @@ import {
   PASSWORD_PATTERNS,
   MIN_PASSWORD_LENGTH,
   VALIDATION_MESSAGES,
-} from '../../validation';
+} from '@app/shared';
 import { ErrorComponent } from '../error';
 
 @Component({

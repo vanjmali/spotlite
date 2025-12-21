@@ -1,4 +1,19 @@
-export { EmailInputComponent } from './input/email';
-export { OtpInputComponent } from './input/otp';
-export { PasswordInputComponent } from './input/password';
-export { ErrorComponent } from './input/error';
+export {
+  ErrorComponent,
+  OtpInputComponent,
+  PasswordInputComponent,
+  TextInputComponent,
+  EmailInputComponent,
+} from './components/input';
+export { MessageComponent } from './components/message';
+export { MessageType } from './enums';
+
+export {
+  EMAIL_PATTERN,
+  PASSWORD_PATTERNS,
+  MIN_PASSWORD_LENGTH,
+  USERNAME_PATTERN,
+  OTP_PATTERN,
+  VALIDATION_MESSAGES,
+  type ValidationResult,
+} from './validation';

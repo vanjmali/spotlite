@@ -1,6 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { VALIDATION_MESSAGES } from '@app/shared';
 
 export interface LoginResponse {
   message: string;
@@ -50,7 +51,7 @@ export class AuthService {
       const errorMsg =
         httpError?.error?.message ||
         httpError?.error?.errors?.[0]?.message ||
-        'Registration failed';
+        VALIDATION_MESSAGES.REGISTRATION_FAILED;
       return { success: false, error: errorMsg };
     }
   }
@@ -84,8 +85,7 @@ export class AuthService {
       return { success: true };
     } catch (error: unknown) {
       const httpError = error as { error?: { message?: string } };
-      const errorMsg =
-        httpError?.error?.message || 'Login failed. Check your credentials and try again.';
+      const errorMsg = httpError?.error?.message || VALIDATION_MESSAGES.LOGIN_FAILED;
       return { success: false, error: errorMsg };
     }
   }
@@ -149,6 +149,22 @@ export class AuthService {
     } catch {
       this.logout();
       return false;
+    }
+  }
+
+  // Resend OTP code to email during login
+  async resendOtp(email: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await firstValueFrom(
+        this.http.post<LoginResponse>(`${this.API_BASE}/login/resend-otp`, { email })
+      );
+
+      // If we reach here, response was successful (2xx status)
+      return { success: true };
+    } catch (error: unknown) {
+      const httpError = error as { error?: { message?: string } };
+      const errorMsg = httpError?.error?.message || VALIDATION_MESSAGES.OTP_RESEND_FAILED;
+      return { success: false, error: errorMsg };
     }
   }
 

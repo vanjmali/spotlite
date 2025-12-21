@@ -180,6 +180,36 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// HandleResendOtp resends the OTP code to the user's email if they have a valid login request
+func (h *UserHandler) HandleResendOtp(w http.ResponseWriter, r *http.Request) {
+	var req dtos.ResendOtpDto
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
+		if err != nil {
+			log.Printf("failed to process resend otp request: %v", err)
+		}
+		return
+	}
+
+	err := h.s.ResendLoginOtp(r.Context(), req.Email)
+
+	switch {
+	case errors.Is(err, services.ErrUserNotFound):
+		_ = respond.BadRequest(w, "Email not found.")
+		return
+	case errors.Is(err, services.ErrUserInnactive):
+		_ = respond.Unauthorized(w, "User is inactive.")
+		return
+	case err != nil:
+		log.Printf("failed to resend otp: %v", err)
+		_ = respond.InternalServerError(w)
+		return
+	}
+
+	if err := respond.Ok(w, "OTP resent to email."); err != nil {
+		log.Printf("failed to write resend otp response: %v", err)
+	}
+}
+
 // HandleCheckEmail checks if an email is already registered
 func (h *UserHandler) HandleCheckEmail(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
