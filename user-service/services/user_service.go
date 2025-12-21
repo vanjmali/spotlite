@@ -26,6 +26,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var hmacSampleSecret = []byte(utils.MustGetEnv("APP_JWT_SECRET"))
+
 var (
 	ErrUsernameTaken             = errors.New("username is already taken")
 	ErrEmailTaken                = errors.New("email is already taken")
