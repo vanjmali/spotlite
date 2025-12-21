@@ -37,7 +37,6 @@ services:
 
   user-mongodb:
     image: mongo:8.2
-    command: mongod --bind_ip_all
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${SRV_USER_MONGO_ROOT_USERNAME?}
       MONGO_INITDB_ROOT_PASSWORD: ${SRV_USER_MONGO_ROOT_PASSWORD?}
