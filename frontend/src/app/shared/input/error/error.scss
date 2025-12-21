@@ -1,3 +1,5 @@
+@use 'variables/colors' as *;
+
 .error {
   display: flex;
   align-items: center;
@@ -8,8 +10,8 @@
     width: 16px;
     height: 16px;
     background-color: transparent;
-    border: 1.5px solid #f3727f;
-    color: #f3727f;
+    border: 1.5px solid $color-form-error;
+    color: $color-form-error;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -21,6 +23,6 @@
 
   &__text {
     font-size: 13px;
-    color: #f3727f;
+    color: $color-form-error;
   }
 }

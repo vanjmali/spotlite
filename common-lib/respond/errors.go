@@ -1,8 +1,6 @@
 package respond
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 )
 
@@ -30,15 +28,7 @@ func Error(w http.ResponseWriter, e ErrorResponse) error {
 		e.Message = http.StatusText(e.HttpCode)
 	}
 
-	w.WriteHeader(e.HttpCode)
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(r); err != nil {
-		msg := fmt.Sprintf("failed to write response. Code '%d', Message: '%s'", e.HttpCode, e.Message)
-		http.Error(w, msg, http.StatusInternalServerError)
-		return fmt.Errorf("failed to write error response: %w", err)
-	}
-
-	return nil
+	return writeJson(w, e.HttpCode, r)
 }
 
 // ValidationError issues a validation error response with field-level details.

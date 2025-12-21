@@ -1,0 +1,19 @@
+<div class="text-input">
+  <div class="text-input__form-group">
+    <label class="text-input__label" for="text">
+      {{ labelSg() }}
+    </label>
+    <div class="text-input__input-wrapper">
+      <input
+        class="text-input__input"
+        [class.text-input__input--error]="errorSg()"
+        id="text"
+        type="text"
+        [placeholder]="placeholderSg()"
+        [value]="valueSg()"
+        (input)="onValueChange($event.target.value)"
+      />
+    </div>
+  </div>
+  <app-error [message]="errorSg()" />
+</div>

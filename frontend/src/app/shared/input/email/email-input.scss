@@ -1,3 +1,5 @@
+@use 'variables/colors' as *;
+
 :host {
   width: 100%;
 }
@@ -12,7 +14,7 @@
   &__label {
     font-size: 15px;
     font-weight: 500;
-    color: #fff;
+    color: $color-form-label;
   }
 
   &__input-wrapper {
@@ -23,41 +25,35 @@
 
   &__input {
     padding: 12px;
-    background-color: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background-color: $color-form-input-bg;
+    border: 1px solid $color-form-input-border;
     border-radius: 4px;
-    color: #fff;
+    color: $color-form-input-text;
     font-size: 16px;
     transition: all 200ms ease;
     width: 100%;
     padding-right: 40px;
 
     &::placeholder {
-      color: rgba(255, 255, 255, 0.5);
+      color: $color-form-input-placeholder;
     }
 
     &:hover {
-      border-color: rgba(255, 255, 255, 0.3);
+      border-color: $color-border-light;
     }
 
     &:focus {
       outline: none;
-      border-color: #fff;
+      border-color: $color-form-input-border-focus;
     }
 
     &--error {
-      border-color: #f3727f;
+      border-color: $color-form-error;
 
       &:hover,
       &:focus {
-        border-color: #f3727f;
+        border-color: $color-form-error;
       }
     }
-  }
-
-  &__error {
-    font-size: 13px;
-    color: #f3727f;
-    margin-top: 4px;
   }
 }

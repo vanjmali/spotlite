@@ -21,13 +21,13 @@ services:
       APP_LOGIN_OTP_TTL_MINUTES: ${SRV_USER_LOGIN_OTP_TTL_MINUTES?}
       APP_PORT: 3000
     labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=api-gateway"
-      - "traefik.http.routers.user-service.rule=PathPrefix(`/api/users`)"
-      - "traefik.http.routers.user-service.middlewares=user-service-strip-prefix"
-      - "traefik.http.middlewares.user-service-strip-prefix.stripprefix.prefixes=/api/users"
-      - "traefik.http.middlewares.user-service-strip-prefix.stripprefix.forceslash=false"
-      - "traefik.http.services.user-service.loadbalancer.server.port=3000"
+      traefik.enable: true
+      traefik.docker.network: api-gateway
+      traefik.http.routers.user-service.rule: PathPrefix(`/api/users`)
+      traefik.http.routers.user-service.middlewares: user-service-strip-prefix
+      traefik.http.middlewares.user-service-strip-prefix.stripprefix.prefixes: /api/users
+      traefik.http.middlewares.user-service-strip-prefix.stripprefix.forceslash: false
+      traefik.http.services.user-service.loadbalancer.server.port: 3000
     depends_on:
       user-mongodb:
         condition: service_healthy

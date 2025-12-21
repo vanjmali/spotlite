@@ -1,13 +1,9 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { EMAIL_PATTERN } from '../../shared/validation';
+import { VALIDATION_MESSAGES } from '@app/shared/validation';
 
 // TODO: Consider using Angular validators or a validation library for better scalability
-export interface ValidationResult {
-  isValid: boolean;
-  error?: string;
-}
 
 @Injectable()
 export class LoginStore {
@@ -22,68 +18,22 @@ export class LoginStore {
     this.errorSg.set(null);
   }
 
-  public async checkEmailAndSendOtp(rawEmail: string): Promise<boolean> {
-    this.errorSg.set(null);
-    const email = (rawEmail ?? '').trim();
-
-    if (!email) {
-      this.errorSg.set('Please enter your email address.');
-      return false;
-    }
-
-    if (!EMAIL_PATTERN.test(email)) {
-      this.errorSg.set('Invalid email address.');
-      return false;
-    }
-
-    this.loadingSg.set(true);
-    const res = await this._auth.checkEmail(email);
-    this.loadingSg.set(false);
-    if (!res.exists) {
-      this.errorSg.set('User not found.');
-      return false;
-    }
-
-    await this._auth.sendOtp(email);
-    this.emailSg.set(email);
-    this.errorSg.set(null); // Clear error before navigating to OTP
-    this._router.navigate(['/login/otp']);
-    return true;
-  }
-
   public async validateCredentials(email: string, password: string): Promise<boolean> {
     this.errorSg.set(null);
-    const trimmedEmail = (email ?? '').trim();
-    const trimmedPassword = (password ?? '').trim();
-
-    if (!trimmedEmail) {
-      this.errorSg.set('Please enter your email address.');
-      return false;
-    }
-
-    if (!EMAIL_PATTERN.test(trimmedEmail)) {
-      this.errorSg.set('Invalid email address.');
-      return false;
-    }
-
-    if (!trimmedPassword) {
-      this.errorSg.set('Please enter your password.');
-      return false;
-    }
 
     // Validate credentials against backend
     this.loadingSg.set(true);
-    const isValid = await this._auth.login(trimmedEmail, trimmedPassword);
+    const isValid = await this._auth.login(email, password);
     this.loadingSg.set(false);
 
     if (!isValid) {
-      this.errorSg.set('Invalid email or password.');
+      this.errorSg.set(VALIDATION_MESSAGES.INVALID_CREDENTIALS);
       return false;
     }
 
     // Credentials valid, send OTP
-    await this._auth.sendOtp(trimmedEmail);
-    this.emailSg.set(trimmedEmail);
+    await this._auth.sendOtp(email);
+    this.emailSg.set(email);
     this.errorSg.set(null);
     this._router.navigate(['/login/otp']);
     return true;
@@ -91,13 +41,9 @@ export class LoginStore {
 
   public async verifyOtp(code: string): Promise<boolean> {
     this.errorSg.set(null);
-    if (!/^[0-9]{6}$/.test(code)) {
-      this.errorSg.set('Enter the 6-digit code');
-      return false;
-    }
     const email = this.emailSg();
     if (!email) {
-      this.errorSg.set('Missing email');
+      this.errorSg.set(VALIDATION_MESSAGES.MISSING_EMAIL);
       return false;
     }
     this.loadingSg.set(true);
@@ -108,10 +54,10 @@ export class LoginStore {
       case 'success':
         return true;
       case 'expired':
-        this.errorSg.set('Verification code has expired');
+        this.errorSg.set(VALIDATION_MESSAGES.OTP_EXPIRED);
         return false;
       case 'invalid':
-        this.errorSg.set('Invalid code');
+        this.errorSg.set(VALIDATION_MESSAGES.OTP_INVALID_CODE);
         return false;
     }
   }

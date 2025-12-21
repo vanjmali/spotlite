@@ -1,0 +1,40 @@
+@let error = store.errorSg();
+@let loading = store.loadingSg();
+
+<div class="personal-info-step">
+  <h1 class="personal-info-step__title">Create Account</h1>
+
+  <div class="personal-info-step__content">
+    <app-text-input
+      label="First Name"
+      [required]="true"
+      [value]="firstNameSg()"
+      (valueChange)="firstNameSg.set($event)"
+      #firstNameInput
+    ></app-text-input>
+
+    <app-text-input
+      label="Last Name"
+      [required]="true"
+      [value]="lastNameSg()"
+      (valueChange)="lastNameSg.set($event)"
+      #lastNameInput
+    ></app-text-input>
+
+    <app-email-input
+      label="Email address"
+      [required]="true"
+      [value]="emailSg()"
+      (valueChange)="emailSg.set($event)"
+      #emailInput
+    ></app-email-input>
+  </div>
+
+  @if (error) {
+    <div class="personal-info-step__error">{{ error }}</div>
+  }
+
+  <div class="personal-info-step__actions">
+    <button class="btn-primary" (click)="submit()" [disabled]="loading">Continue</button>
+  </div>
+</div>

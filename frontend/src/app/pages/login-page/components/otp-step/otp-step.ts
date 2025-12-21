@@ -1,53 +1,46 @@
-import { Component, inject, signal, effect, ViewChild, OnDestroy } from '@angular/core';
+import { Component, inject, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { OtpInputComponent } from '@app/shared/input';
 import { LoginStore } from '../../store';
 
 @Component({
-  selector: 'app-otp-step',
+  selector: 'app-login-otp-step',
   standalone: true,
   imports: [CommonModule, OtpInputComponent],
   templateUrl: './otp-step.html',
   styleUrls: ['./otp-step.scss'],
 })
-export class OtpStep implements OnDestroy {
-  @ViewChild(OtpInputComponent) public otpInputSg!: OtpInputComponent;
+export class OtpStep {
+  public otpInputSg = viewChild(OtpInputComponent);
 
   public store = inject(LoginStore);
 
   public codeSg = signal<string>('');
   public loadingSg = this.store.loadingSg;
 
-  private readonly errorSyncEffect = effect(() => {
-    const storeError = this.store.errorSg();
-    if (storeError && this.otpInputSg) {
-      this.otpInputSg.errorSg.set(storeError);
-    }
-  });
-
-  constructor() {
-    // Clear store error when entering OTP step
-    this.store.clearError();
-  }
-
   public async verify(): Promise<void> {
+    // Clear store error at start
+    this.store.clearError();
+
+    const otpInput = this.otpInputSg();
+    if (!otpInput) return;
+
     // Validate OTP input
-    const validation = this.otpInputSg.validate();
+    const validation = otpInput.validate();
     if (!validation.isValid) {
       return;
     }
 
-    const code = this.codeSg();
+    // Send trimmed code to store
+    const code = this.codeSg().trim();
     const ok = await this.store.verifyOtp(code);
-    if (!ok) return;
+    if (!ok) {
+      return;
+    }
     // success: store sets authenticated state; nothing else here
   }
 
   public async resend(): Promise<void> {
     await this.store.resendOtp();
-  }
-
-  public ngOnDestroy(): void {
-    this.errorSyncEffect.destroy();
   }
 }

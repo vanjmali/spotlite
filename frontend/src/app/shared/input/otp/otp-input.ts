@@ -9,7 +9,7 @@ import {
   ViewChildren,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ValidationResult } from '../../../pages/login-page/store';
+import { ValidationResult, OTP_PATTERN, VALIDATION_MESSAGES } from '../../validation';
 import { ErrorComponent } from '../error';
 
 @Component({
@@ -109,18 +109,16 @@ export class OtpInputComponent implements AfterViewInit {
   }
 
   public validate(): ValidationResult {
-    const code = this.valueSg().trim();
+    const code = this.valueSg();
 
     if (this.requiredSg() && !code) {
-      const error = 'Please enter a 6-digit code';
-      this.errorSg.set(error);
-      return { isValid: false, error };
+      this.errorSg.set(VALIDATION_MESSAGES.OTP_REQUIRED);
+      return { isValid: false, error: VALIDATION_MESSAGES.OTP_REQUIRED };
     }
 
-    if (code && code.length !== 6) {
-      const error = 'Please enter a 6-digit code';
-      this.errorSg.set(error);
-      return { isValid: false, error };
+    if (code && !OTP_PATTERN.test(code)) {
+      this.errorSg.set(VALIDATION_MESSAGES.OTP_INVALID);
+      return { isValid: false, error: VALIDATION_MESSAGES.OTP_INVALID };
     }
 
     this.errorSg.set('');
