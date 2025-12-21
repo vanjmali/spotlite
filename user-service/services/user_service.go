@@ -39,8 +39,6 @@ var (
 	ErrOtpExpired = errors.New("expired otp")
 	// ErrBadCredentials indicates the credentials are invalid.
 	ErrBadCredentials = errors.New("invalid credentials")
-	// ErrEmailDelivery indicates the verification email could not be sent.
-	ErrEmailDelivery = errors.New("failed to send verification email")
 )
 
 // UserService contains business logic for user onboarding, login and account maintenance.

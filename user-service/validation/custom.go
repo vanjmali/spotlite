@@ -47,14 +47,19 @@ var CheckValidUsername = requests.CustomValidator{
 	},
 }
 
-// CheckValidName validates that a name contains only letters (including Unicode accented characters).
-func CheckValidName(fl validator.FieldLevel) bool {
-	name := fl.Field().String()
+var CheckValidName = requests.CustomValidator{
+	Tag: "validname",
+	Func: func(fl validator.FieldLevel) bool {
+		name := fl.Field().String()
 
-	// Allow letters (including accented Unicode letters like ć, č, š, đ, etc.) and spaces/hyphens
-	if !regexp.MustCompile(`^[\p{L}\s\-']{2,20}$`).MatchString(name) {
-		return false
-	}
+		// Allow letters (including accented Unicode letters like ć, č, š, đ, etc.) and spaces/hyphens
+		if !regexp.MustCompile(`^[\p{L}\s\-']{2,20}$`).MatchString(name) {
+			return false
+		}
 
-	return true
+		return true
+	},
+	ErrorMessage: func(fe validator.FieldError) string {
+		return fe.Field() + " must be 2-20 characters long and can contain letters, spaces, hyphens, and apostrophes."
+	},
 }

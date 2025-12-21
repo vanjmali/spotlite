@@ -25,3 +25,8 @@ type VerifyLoginOtpDto struct {
 type ResendOtpDto struct {
 	Email string `json:"email" validate:"required,email"`
 }
+
+// CheckEmailDto carries the email to check if it's already registered.
+type CheckEmailDto struct {
+	Email string `json:"email" validate:"required,email"`
+}

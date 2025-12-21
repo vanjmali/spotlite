@@ -3,7 +3,14 @@ package services
 import (
 	"log"
 
+	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/wneessen/go-mail"
+)
+
+var (
+	VerificationSuccessUrl = utils.MustGetEnv("APP_VERIFICATION_SUCCESS_URL")
+	VerificationFailureUrl = utils.MustGetEnv("APP_VERIFICATION_FAILURE_URL")
+	MailFromAddress        = utils.MustGetEnv("MAIL_FROM")
 )
 
 // MailService sends transactional emails such as account verification and OTPs.
@@ -19,7 +26,7 @@ func InitMailingService(client *mail.Client) *MailService {
 
 func (ms *MailService) sendAccountVerificationEmail(mailto string, token string) error {
 	m := mail.NewMsg()
-	if err := m.From("mail@spotlite.com"); err != nil {
+	if err := m.From(MailFromAddress); err != nil {
 		log.Printf("failed to set From address: %v", err)
 		return err
 	}
@@ -32,7 +39,7 @@ func (ms *MailService) sendAccountVerificationEmail(mailto string, token string)
 	m.Subject("Verify your Spotlite account")
 
 	// Render email template with verification URL
-	verificationURL := "http://localhost:3000/api/users/verify?token=" + token
+	verificationURL := VerificationSuccessUrl + "?token=" + token
 	emailBody, err := RenderVerificationEmail(verificationURL)
 	if err != nil {
 		log.Printf("failed to render verification email template: %v", err)
@@ -52,7 +59,7 @@ func (ms *MailService) sendAccountVerificationEmail(mailto string, token string)
 func (ms *MailService) SendLoginOtp(mailto string, otp string) error {
 	m := mail.NewMsg()
 
-	if err := m.From("mail@spotlite.com"); err != nil {
+	if err := m.From(MailFromAddress); err != nil {
 		log.Printf("failed to set From address: %v", err)
 		return err
 	}
