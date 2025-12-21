@@ -85,8 +85,6 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 			msg = "Username is already taken."
 		case errors.Is(err, services.ErrEmailTaken):
 			msg = "Email is already taken."
-		case errors.Is(err, services.ErrEmailDelivery):
-			msg = "Failed to send verification email."
 		default:
 			msg = "An unexpected error has occurred."
 		}
@@ -212,16 +210,17 @@ func (h *UserHandler) HandleResendOtp(w http.ResponseWriter, r *http.Request) {
 
 // HandleCheckEmail checks if an email is already registered
 func (h *UserHandler) HandleCheckEmail(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
 	vars := mux.Vars(r)
 	email := vars["email"]
-	if email == "" {
-		_ = respond.BadRequest(w, "email is required")
+
+	// Create DTO and validate the email parameter
+	dto := dtos.CheckEmailDto{Email: email}
+	if err := h.v.Struct(dto); err != nil {
+		_ = respond.BadRequest(w, "Invalid email format.")
 		return
 	}
 
-	exists, err := h.s.EmailExists(r.Context(), email)
+	exists, err := h.s.EmailExists(r.Context(), dto.Email)
 	if err != nil {
 		_ = respond.InternalServerError(w)
 		return

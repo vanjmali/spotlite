@@ -3,7 +3,6 @@ package routers
 import (
 	"net/http"
 
-	gorillaHandlers "github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/vanjmali/spotlite/user-service/handlers"
 )
@@ -25,12 +24,5 @@ func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler) 
 	// the verify endpoint is defined as a get so it can redirect when link click happens,
 	r.HandleFunc("/verify", h.HandleAccountVerification).Methods("GET", "POST")
 
-	// Wrap router with CORS handler from gorilla/handlers
-	corsHandler := gorillaHandlers.CORS(
-		gorillaHandlers.AllowedHeaders([]string{"Content-Type", "Authorization"}),
-		gorillaHandlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}),
-		gorillaHandlers.AllowedOrigins([]string{"*"}),
-	)
-
-	return corsHandler(r)
+	return r
 }
