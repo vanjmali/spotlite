@@ -3,8 +3,8 @@ package dtos
 // UserRegistrationDto represents the payload required to create a new user account.
 type UserRegistrationDto struct {
 	Username  string `json:"username" validate:"required,validusername"`
-	FirstName string `json:"firstName" validate:"required,alpha,min=2,max=20"`
-	LastName  string `json:"lastName" validate:"required,alpha,min=2,max=20"`
+	FirstName string `json:"firstName" validate:"required,validname,min=2,max=20"`
+	LastName  string `json:"lastName" validate:"required,validname,min=2,max=20"`
 	Email     string `json:"email" validate:"required,email"`
 	Password  string `json:"password" validate:"required,strongpassword"`
 }

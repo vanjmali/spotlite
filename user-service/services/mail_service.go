@@ -1,7 +1,6 @@
 package services
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/wneessen/go-mail"
@@ -18,29 +17,35 @@ func InitMailingService(client *mail.Client) *MailService {
 	return &ms
 }
 
-func (ms *MailService) sendAccountVerificationEmail(mailto string, token string) {
+func (ms *MailService) sendAccountVerificationEmail(mailto string, token string) error {
 	m := mail.NewMsg()
 	if err := m.From("mail@spotlite.com"); err != nil {
-		log.Fatalf("failed to set From address: %s", err)
+		log.Printf("failed to set From address: %v", err)
+		return err
 	}
 
 	if err := m.To(mailto); err != nil {
-		log.Fatalf("failed to set To address: %s", err)
+		log.Printf("failed to set To address: %v", err)
+		return err
 	}
 
-	m.Subject("Account verification")
-	// TODO: change domain to a environment variable...
-	m.SetBodyString(
-		mail.TypeTextHTML,
-		fmt.Sprintf(
-			"<span>Click <a href='http://localhost:3000/api/users/verify?token=%s'>here</a> to verify your account.</span>",
-			token,
-		),
-	)
+	m.Subject("Verify your Spotlite account")
 
-	if err := ms.c.DialAndSend(m); err != nil {
-		log.Fatalf("failed to send mail: %s", err)
+	// Render email template with verification URL
+	verificationURL := "http://localhost:3000/api/users/verify?token=" + token
+	emailBody, err := RenderVerificationEmail(verificationURL)
+	if err != nil {
+		log.Printf("failed to render verification email template: %v", err)
+		return err
 	}
+
+	m.SetBodyString(mail.TypeTextHTML, emailBody)
+
+	err = ms.c.DialAndSend(m)
+	if err != nil {
+		log.Printf("failed to send verification email: %v", err)
+	}
+	return err
 }
 
 // SendLoginOtp dispatches a one-time password email to the given recipient.
@@ -48,14 +53,28 @@ func (ms *MailService) SendLoginOtp(mailto string, otp string) error {
 	m := mail.NewMsg()
 
 	if err := m.From("mail@spotlite.com"); err != nil {
+		log.Printf("failed to set From address: %v", err)
 		return err
 	}
 	if err := m.To(mailto); err != nil {
+		log.Printf("failed to set To address: %v", err)
 		return err
 	}
 
-	m.Subject("OTP Code")
-	m.SetBodyString(mail.TypeTextHTML, fmt.Sprintf("<h1>OTP Code</h1><h2>%s</h2>", otp))
+	m.Subject("Your Spotlite Login Code")
 
-	return ms.c.DialAndSend(m)
+	// Render email template with OTP
+	emailBody, err := RenderLoginOtpEmail(otp)
+	if err != nil {
+		log.Printf("failed to render OTP email template: %v", err)
+		return err
+	}
+
+	m.SetBodyString(mail.TypeTextHTML, emailBody)
+
+	err = ms.c.DialAndSend(m)
+	if err != nil {
+		log.Printf("failed to send OTP email: %v", err)
+	}
+	return err
 }

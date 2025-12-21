@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/gorilla/mux"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/common-lib/utils"
@@ -84,6 +85,10 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 			msg = "Username is already taken."
 		case errors.Is(err, services.ErrEmailTaken):
 			msg = "Email is already taken."
+		case errors.Is(err, services.ErrEmailDelivery):
+			msg = "Failed to send verification email."
+		default:
+			msg = "An unexpected error has occurred."
 		}
 
 		if msg != "" {
@@ -173,4 +178,24 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 	if err := respond.OkJson(w, b); err != nil {
 		log.Printf("failed to write verify login otp response: %v", err)
 	}
+}
+
+// HandleCheckEmail checks if an email is already registered
+func (h *UserHandler) HandleCheckEmail(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	vars := mux.Vars(r)
+	email := vars["email"]
+	if email == "" {
+		_ = respond.BadRequest(w, "email is required")
+		return
+	}
+
+	exists, err := h.s.EmailExists(r.Context(), email)
+	if err != nil {
+		_ = respond.InternalServerError(w)
+		return
+	}
+
+	_ = respond.OkJson(w, map[string]bool{"exists": exists})
 }

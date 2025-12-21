@@ -44,17 +44,4 @@
     align-items: center;
     margin-top: 8px;
   }
-
-  &__password-prompt-link {
-    font-size: 14px;
-    color: $color-text-primary;
-    font-weight: 700;
-    text-decoration: none;
-    cursor: pointer;
-    transition: transform 200ms ease;
-
-    &:hover {
-      transform: scale(1.1);
-    }
-  }
 }

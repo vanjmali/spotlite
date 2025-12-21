@@ -1,6 +1,13 @@
 import { Routes } from '@angular/router';
-import { LoginPage } from './pages/login-page';
-import { RegistrationPage } from './pages/registration-page';
+import {
+  VerificationSuccessPage,
+  VerificationFailurePage,
+  CheckEmailPage,
+  LoginPage,
+  RegistrationPage,
+} from './pages';
+
+import { HomePage } from './pages/home-page';
 import { CredentialsStep, OtpStep } from './pages/login-page/components';
 import {
   PersonalInfoStep,
@@ -45,6 +52,22 @@ export const routes: Routes = [
         pathMatch: 'full',
       },
     ],
+  },
+  {
+    path: 'verification-success',
+    component: VerificationSuccessPage,
+  },
+  {
+    path: 'verification-failure',
+    component: VerificationFailurePage,
+  },
+  {
+    path: 'check-email',
+    component: CheckEmailPage,
+  },
+  {
+    path: 'home',
+    component: HomePage,
   },
   {
     path: '',

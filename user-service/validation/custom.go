@@ -46,3 +46,15 @@ var CheckValidUsername = requests.CustomValidator{
 		return fe.Field() + " must be 4-20 characters long, can contain letters, numbers, dots, and underscores, and must include at least one letter or number."
 	},
 }
+
+// CheckValidName validates that a name contains only letters (including Unicode accented characters).
+func CheckValidName(fl validator.FieldLevel) bool {
+	name := fl.Field().String()
+
+	// Allow letters (including accented Unicode letters like ć, č, š, đ, etc.) and spaces/hyphens
+	if !regexp.MustCompile(`^[\p{L}\s\-']{2,20}$`).MatchString(name) {
+		return false
+	}
+
+	return true
+}

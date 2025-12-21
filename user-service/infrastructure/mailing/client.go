@@ -17,10 +17,10 @@ type MailClient struct {
 func InitClient(host string, port int, username string, password string) (*mail.Client, error) {
 	c, err := mail.NewClient(host,
 		mail.WithPort(port),
-		// TODO: configurable TLS
 		mail.WithSMTPAuth(mail.SMTPAuthPlainNoEnc),
 		mail.WithUsername(username),
-		mail.WithPassword(password))
+		mail.WithPassword(password),
+		mail.WithTLSPolicy(mail.NoTLS)) // Disable TLS for local testing (Mailhog)
 	if err != nil {
 		log.Fatalf("failed to create mail client: %s", err)
 		return nil, err

@@ -21,6 +21,8 @@ export class PasswordInputComponent {
   public readonly labelSg = input<string>('Password', { alias: 'label' });
   public readonly requiredSg = input<boolean>(false, { alias: 'required' });
   public readonly showCriteriaSg = input<boolean>(false, { alias: 'showCriteria' });
+  public readonly minSg = input<number | null>(null, { alias: 'min' });
+  public readonly maxSg = input<number | null>(null, { alias: 'max' });
 
   // Two-way binding using model with aliases
   public readonly valueSg = model<string>('', {
@@ -66,10 +68,24 @@ export class PasswordInputComponent {
 
   public validate(): ValidationResult {
     const password = this.valueSg();
+    const min = this.minSg();
+    const max = this.maxSg();
 
     if (this.requiredSg() && !password) {
       this.errorSg.set(VALIDATION_MESSAGES.PASSWORD_REQUIRED);
       return { isValid: false, error: VALIDATION_MESSAGES.PASSWORD_REQUIRED };
+    }
+
+    if (min !== null && password.length < min) {
+      const error = `Password must be at least ${min} characters`;
+      this.errorSg.set(error);
+      return { isValid: false, error };
+    }
+
+    if (max !== null && password.length > max) {
+      const error = `Password must be at most ${max} characters`;
+      this.errorSg.set(error);
+      return { isValid: false, error };
     }
 
     // If criteria are shown, validate all criteria

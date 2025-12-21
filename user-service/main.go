@@ -48,6 +48,10 @@ func run() error {
 		return fmt.Errorf("failed to register custom validations: %w", err)
 	}
 
+	if err := val.RegisterValidation("validname", validation.CheckValidName); err != nil {
+		return fmt.Errorf("failed to register custom validname validator: %w", err)
+	}
+
 	defer dbClient.Disconnect(context.Background())
 	defer mailClient.Close()
 
