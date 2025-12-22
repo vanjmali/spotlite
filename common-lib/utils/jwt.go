@@ -70,4 +70,3 @@ func GetPublicKey() (*rsa.PublicKey, error) {
 func GetPrivateKey() (*rsa.PrivateKey, error) {
 	return loadKey("JWT_PRIVATE_KEY_PATH", jwt.ParseRSAPrivateKeyFromPEM)
 }
-

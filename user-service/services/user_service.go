@@ -144,7 +144,11 @@ func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (
 		"exp":      time.Now().Add(15 * time.Minute).Unix(),
 	})
 
-	pk, _ := utils.GetPrivateKey()
+	pk, err := utils.GetPrivateKey()
+	if err != nil {
+		return "", err
+	}
+
 	tokenString, err := token.SignedString(pk)
 
 	return tokenString, err
