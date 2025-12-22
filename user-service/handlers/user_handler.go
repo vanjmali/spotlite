@@ -16,8 +16,8 @@ import (
 )
 
 var (
-	VerificationSuccessUrl = utils.MustGetEnv("APP_VERIFICATION_SUCCESS_URL")
-	VerificationFailureUrl = utils.MustGetEnv("APP_VERIFICATION_FAILURE_URL")
+	VerificationSuccessUrl = utils.MustGetEnv("SRV_USER_VERIFICATION_SUCCESS_URL")
+	VerificationFailureUrl = utils.MustGetEnv("SRV_USER_VERIFICATION_FAILURE_URL")
 )
 
 // UserHandler wires HTTP handlers to the user service and validators.
