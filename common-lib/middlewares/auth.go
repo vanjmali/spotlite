@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/vanjmali/spotlite/common-lib/account"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/common-lib/utils"
-	"github.com/vanjmali/spotlite/user-service/entities"
 )
 
 // ctxKey type is used to add data in the context while avoiding conflicts with other services
@@ -64,7 +64,7 @@ func ValidateJWT(next http.Handler) http.HandlerFunc {
 			_ = respond.Unauthorized(w)
 			return
 		}
-		userRole := entities.UserRole(roleStr)
+		userRole := account.Role(roleStr)
 		ctx = context.WithValue(ctx, RoleIdKey, userRole)
 		r = r.WithContext(ctx)
 

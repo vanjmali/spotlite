@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/vanjmali/spotlite/common-lib/account"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
@@ -101,7 +102,7 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 		return err
 	}
 
-	if user.AccountStatus == entities.StatusInactive {
+	if user.AccountStatus == account.StatusInactive {
 		return ErrUserInactive
 	}
 
@@ -161,7 +162,7 @@ func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginO
 		return nil, err
 	}
 
-	if user.AccountStatus == entities.StatusInactive {
+	if user.AccountStatus == account.StatusInactive {
 		return nil, ErrUserInactive
 	}
 

@@ -1,23 +1,9 @@
 package routers
 
 import (
-	"net/http"
-
 	"github.com/gorilla/mux"
-	"github.com/vanjmali/spotlite/common-lib/middlewares"
-	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/handlers"
 )
-
-//nolint:unused // These are helper functions for future route protection
-func requireAuthenticated(next http.HandlerFunc) http.Handler {
-	return middlewares.ValidateJWT(middlewares.ValidatePermission(entities.RoleAdmin, entities.RoleMember)(next))
-}
-
-//nolint:unused // These are helper functions for future route protection
-func requireAdmin(next http.HandlerFunc) http.Handler {
-	return middlewares.ValidateJWT(middlewares.ValidatePermission(entities.RoleAdmin)(next))
-}
 
 // HandleRequests wires HTTP routes to user handlers.
 func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler) *mux.Router {

@@ -20,4 +20,3 @@
 *.rej
 Dockerfile
 docker-compose*.yml
-keys/
