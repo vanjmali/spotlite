@@ -20,6 +20,24 @@ services:
       # In production, this will be its own accessible service, likely external.
       - api-gateway
 
+  # KeyGen represents a service which generates keys that will be used in jwt signing and validation,
+  key-gen:
+    image: alpine/openssl
+    volumes:
+      - keys:/run/keys
+    # a bash script which checks if the private key already exists in the keys directory and creates
+    # public and private keys if needed,
+    entrypoint: >
+      sh -c "
+        if [ ! -f /run/keys/private.pem ]; then
+          echo 'Generating RSA keys...' &&
+          openssl genrsa -out /run/keys/private.pem 2048 &&
+          openssl rsa -in /run/keys/private.pem -pubout > /run/keys/public.pem &&
+          chmod 644 /run/keys/private.pem /run/keys/public.pem;
+        else
+          echo 'Keys already exist, skipping generation.';
+        fi"
+
   # --- Frontend ---
   # For hot reload
 
@@ -42,6 +60,19 @@ services:
 
   # --- User Service ---
   # For local development
+
+  # in the development environment we want the user service to depend on the key-gen, because
+  # without it JWTs can't be signed and validated. Also, we are defining volumes and env vars.
+  # which the user service will need only in local dev. environment
+  user-service:
+    volumes:
+      - keys:/run/keys:ro
+    environment:
+      JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
+      JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+    depends_on:
+      key-gen:
+        condition: service_completed_successfully
 
   user-mongodb:
     ports:
@@ -68,6 +99,7 @@ services:
 
 volumes:
   frontend-node-modules:
+  keys:
 
 networks:
   api-gateway:

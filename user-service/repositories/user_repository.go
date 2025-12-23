@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/vanjmali/spotlite/common-lib/account"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -45,14 +46,14 @@ func (r *UserRepository) ActiveAndRevokeToken(ctx context.Context, token string)
 
 	// define filtering parameters,
 	filter := bson.M{
-		"account_status":           entities.StatusInactive,
+		"account_status":           account.StatusInactive,
 		"email_verification.type":  entities.AccountVerification,
 		"email_verification.token": token,
 	}
 
 	// define set (set a field value to a new one) and unset (fully remove a field) operations,
 	update := bson.M{
-		"$set":   bson.M{"account_status": entities.StatusActive},
+		"$set":   bson.M{"account_status": account.StatusActive},
 		"$unset": bson.M{"email_verification": ""},
 	}
 
