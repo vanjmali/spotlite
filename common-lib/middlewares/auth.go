@@ -16,9 +16,9 @@ import (
 type ctxKey string
 
 const (
-	StatusKey ctxKey = "status"
-	UserIdKey ctxKey = "userId"
-	RoleIdKey ctxKey = "role"
+	statusKey ctxKey = "status"
+	userIdKey ctxKey = "userId"
+	roleIdKey ctxKey = "role"
 )
 
 func ValidateJWT(next http.Handler) http.HandlerFunc {
@@ -50,14 +50,14 @@ func ValidateJWT(next http.Handler) http.HandlerFunc {
 			_ = respond.Unauthorized(w)
 			return
 		}
-		ctx := context.WithValue(r.Context(), StatusKey, status)
+		ctx := context.WithValue(r.Context(), statusKey, status)
 
 		userId, ok := claims["sub"].(string)
 		if !ok {
 			_ = respond.Unauthorized(w)
 			return
 		}
-		ctx = context.WithValue(ctx, UserIdKey, userId)
+		ctx = context.WithValue(ctx, userIdKey, userId)
 
 		roleStr, ok := claims["role"].(string)
 		if !ok {
@@ -65,7 +65,7 @@ func ValidateJWT(next http.Handler) http.HandlerFunc {
 			return
 		}
 		userRole := account.Role(roleStr)
-		ctx = context.WithValue(ctx, RoleIdKey, userRole)
+		ctx = context.WithValue(ctx, roleIdKey, userRole)
 		r = r.WithContext(ctx)
 
 		next.ServeHTTP(w, r)
@@ -80,4 +80,22 @@ func extractToken(authorizationHeader string) string {
 	}
 
 	return ""
+}
+
+// GetUserIdFromContext retrieves the user ID from the request context.
+func GetUserIdFromContext(ctx context.Context) string {
+	userId, _ := ctx.Value(userIdKey).(string)
+	return userId
+}
+
+// GetUserStatusFromContext retrieves the user account status from the request context.
+func GetUserStatusFromContext(ctx context.Context) string {
+	status, _ := ctx.Value(statusKey).(string)
+	return status
+}
+
+// GetUserRoleFromContext retrieves the user role from the request context.
+func GetUserRoleFromContext(ctx context.Context) account.Role {
+	role, _ := ctx.Value(roleIdKey).(account.Role)
+	return role
 }

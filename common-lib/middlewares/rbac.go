@@ -12,7 +12,7 @@ import (
 func ValidatePermission(allowedRoles ...account.Role) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			userRole, ok := r.Context().Value(RoleIdKey).(account.Role)
+			userRole, ok := r.Context().Value(roleIdKey).(account.Role)
 
 			if !ok {
 				_ = respond.Unauthorized(w)
