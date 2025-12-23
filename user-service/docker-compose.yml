@@ -28,7 +28,7 @@ services:
       traefik.http.routers.user-service.middlewares: user-service-strip-prefix
       traefik.http.middlewares.user-service-strip-prefix.stripprefix.prefixes: /api/users
       traefik.http.middlewares.user-service-strip-prefix.stripprefix.forceslash: false
-      traefik.http.services.user-service.loadbalancer.server.port: 3000
+      traefik.http.services.user-service.loadbalancer.server.port: "3000"
     depends_on:
       user-mongodb:
         condition: service_healthy
