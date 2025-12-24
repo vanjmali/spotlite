@@ -140,6 +140,7 @@ func (r *UserRepository) FindUserByID(ctx context.Context, id primitive.ObjectID
 	if err := c.FindOne(ctx, bson.M{"_id": id}).Decode(&user); err != nil {
 		return nil, err
 	}
+
 	return &user, nil
 }
 

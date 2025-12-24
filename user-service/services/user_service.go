@@ -111,7 +111,6 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 	if err != nil {
 		return err
 	}
-
 	if user.AccountStatus == account.StatusInactive {
 		return ErrUserInactive
 	}

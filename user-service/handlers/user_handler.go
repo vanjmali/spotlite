@@ -12,6 +12,7 @@ import (
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/services"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var (
@@ -72,7 +73,7 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	err := h.s.Login(r.Context(), &req)
 
 	switch {
-	case errors.Is(err, services.ErrBadCredentials):
+	case errors.Is(err, services.ErrBadCredentials) || errors.Is(err, mongo.ErrNoDocuments):
 		_ = respond.Unauthorized(w, "Invalid credentials.")
 		return
 	case errors.Is(err, services.ErrExpiredPassword):
