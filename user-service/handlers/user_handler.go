@@ -206,7 +206,7 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 func (h *UserHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	err := h.s.Logout(r.Context())
 	if err != nil {
-		respond.InternalServerError(w)
+		_ = respond.InternalServerError(w)
 		return
 	}
 }
