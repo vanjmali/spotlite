@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/vanjmali/spotlite/common-lib/account"
+	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
@@ -39,6 +40,8 @@ var (
 	ErrInvalidCurrentPassword = errors.New("invalid current password")
 	// ErrTooFrequentPasswordChange indicates password change requests are too frequent.
 	ErrTooFrequentPasswordChange = errors.New("password changed too frequently")
+	// ErrObjectIdCastFailed indicates converting hex to objectId failed.
+	ErrObjectIdCastFailed = errors.New("failed to convert hex to objectId")
 )
 
 // UserService contains business logic for user onboarding, login and account maintenance.
@@ -192,8 +195,14 @@ func (s *UserService) FindByID(ctx context.Context, id primitive.ObjectID) (*ent
 }
 
 func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswordDto) error {
-	// TODO: remove email, use middleware when it's implemented
-	user, err := s.r.FindUserByEmail(ctx, dto.Email)
+	userIdHexString := middlewares.GetUserIdFromContext(ctx)
+
+	userObjectId, err := primitive.ObjectIDFromHex(userIdHexString)
+	if err != nil {
+		return ErrObjectIdCastFailed
+	}
+
+	user, err := s.r.FindUserByID(ctx, userObjectId)
 	if err != nil {
 		return err
 	}
