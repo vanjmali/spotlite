@@ -29,6 +29,8 @@ var (
 	ErrExpiredPassword = errors.New("your password is expired")
 	// ErrUserInnactive marks an inactive account status.
 	ErrUserInnactive = errors.New("user status is innactive")
+	// ErrUserNotFound indicates the user does not exist.
+	ErrUserNotFound = errors.New("user not found")
 	// ErrOtpRequired indicates login requires an OTP code.
 	ErrOtpRequired = errors.New("otp required")
 	// ErrOtpInvalid indicates a provided OTP is wrong.
@@ -128,22 +130,7 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 		return ErrBadCredentials
 	}
 
-	otp, err := auth.GenerateOTP()
-	if err != nil {
-		return err
-	}
-
-	otpHash, _ := bcrypt.GenerateFromPassword([]byte(otp), bcrypt.DefaultCost)
-
-	// TODO: make time NOT be hardcoded
-	if err := s.r.SetLoginOtp(ctx, user.ID, string(otpHash), time.Now().Add(5*time.Minute)); err != nil {
-		return err
-	}
-	if err := s.ms.SendLoginOtp(user.Email, otp); err != nil {
-		return err
-	}
-
-	return nil
+	return s.sendLoginOtpToUser(ctx, user)
 }
 
 // CreateNewToken issues a signed JWT for the authenticated user.
@@ -187,6 +174,40 @@ func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginO
 
 	_ = s.r.ClearLoginOtp(ctx, user.ID)
 	return user, nil
+}
+
+// ResendLoginOtp resends the OTP code to the user's email for login verification.
+func (s *UserService) ResendLoginOtp(ctx context.Context, email string) error {
+	user, err := s.r.FindUserByEmail(ctx, email)
+	if err != nil {
+		return ErrUserNotFound
+	}
+
+	if user.AccountStatus == entities.StatusInactive {
+		return ErrUserInnactive
+	}
+
+	return s.sendLoginOtpToUser(ctx, user)
+}
+
+// sendLoginOtpToUser is a private helper that generates and sends OTP to a user.
+func (s *UserService) sendLoginOtpToUser(ctx context.Context, user *entities.User) error {
+	otp, err := auth.GenerateOTP()
+	if err != nil {
+		return err
+	}
+
+	otpHash, _ := bcrypt.GenerateFromPassword([]byte(otp), bcrypt.DefaultCost)
+
+	// TODO: make time NOT be hardcoded
+	if err := s.r.SetLoginOtp(ctx, user.ID, string(otpHash), time.Now().Add(5*time.Minute)); err != nil {
+		return err
+	}
+	if err := s.ms.SendLoginOtp(user.Email, otp); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *UserService) FindByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {

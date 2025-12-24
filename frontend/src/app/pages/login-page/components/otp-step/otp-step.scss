@@ -10,26 +10,14 @@
   flex-direction: column;
   gap: 24px;
 
-  &__title {
-    font-size: 24px;
-    font-weight: 700;
-    color: $color-text-primary;
-    margin: 0;
-    text-align: center;
-    line-height: 1.3;
+  app-message {
+    width: 100%;
+    align-self: stretch;
   }
 
   &__input-container {
     display: flex;
     justify-content: center;
-  }
-
-  &__error {
-    font-size: 13px;
-    color: $color-form-error;
-    text-align: center;
-    margin-top: 8px;
-    margin-bottom: 4px;
   }
 
   &__actions {

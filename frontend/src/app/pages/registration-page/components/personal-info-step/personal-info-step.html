@@ -35,7 +35,7 @@
   </div>
 
   @if (error) {
-    <div class="personal-info-step__error">{{ error }}</div>
+    <app-message [message]="error" type="error" />
   }
 
   <div class="personal-info-step__actions">

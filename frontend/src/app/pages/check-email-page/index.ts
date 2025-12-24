@@ -1,1 +1,1 @@
-export { CheckEmailPage } from './check-email-page';
+export * from './check-email-page';

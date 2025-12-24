@@ -6,16 +6,16 @@ import {
   HttpInterceptor,
   HttpErrorResponse,
 } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { Observable, throwError, from } from 'rxjs';
+import { catchError, switchMap } from 'rxjs/operators';
 import { AuthService } from '../../services/auth.service';
 import { Router } from '@angular/router';
 
 /**
  * HTTP Interceptor that:
  * 1. Injects JWT access token into all API requests (except public endpoints)
- * 2. Handles 401 Unauthorized responses by clearing auth state
- * 3. Logs errors for debugging
+ * 2. Handles 401 Unauthorized responses by attempting to refresh token
+ * 3. Logs user out on refresh failure
  */
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
@@ -37,19 +37,37 @@ export class AuthInterceptor implements HttpInterceptor {
 
     return next.handle(request).pipe(
       catchError((error: HttpErrorResponse) => {
-        // Handle 401 Unauthorized - token expired or invalid
+        // Handle 401 Unauthorized - try to refresh token
         if (error.status === 401) {
-          // Clear auth state
-          this.authService.logout();
-
-          // Redirect to login if not already there
-          if (!this.router.url.includes('/login')) {
-            this.router.navigate(['/login']);
-          }
+          return from(this.authService.refreshAccessToken()).pipe(
+            switchMap((success) => {
+              if (success) {
+                // Retry request with new token
+                const newToken = this.authService.accessTokenSg();
+                const retryReq = request.clone({
+                  setHeaders: {
+                    Authorization: `Bearer ${newToken}`,
+                  },
+                });
+                return next.handle(retryReq);
+              } else {
+                // Refresh failed, logout user
+                this.authService.logout();
+                if (!this.router.url.includes('/login')) {
+                  this.router.navigate(['/login']);
+                }
+                return throwError(() => error);
+              }
+            }),
+            catchError(() => {
+              this.authService.logout();
+              if (!this.router.url.includes('/login')) {
+                this.router.navigate(['/login']);
+              }
+              return throwError(() => error);
+            })
+          );
         }
-
-        // Log error
-        console.error('HTTP Error:', error);
 
         return throwError(() => error);
       })

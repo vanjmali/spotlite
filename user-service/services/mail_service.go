@@ -2,14 +2,16 @@ package services
 
 import (
 	"log"
+	"net/url"
 
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/wneessen/go-mail"
 )
 
 var (
-	VerificationSuccessUrl = utils.MustGetEnv("APP_VERIFICATION_SUCCESS_URL")
-	VerificationFailureUrl = utils.MustGetEnv("APP_VERIFICATION_FAILURE_URL")
+	VerificationEndpoint   = utils.MustGetEnv("SRV_USER_VERIFICATION_ENDPOINT")
+	VerificationSuccessUrl = utils.MustGetEnv("SRV_USER_VERIFICATION_SUCCESS_URL")
+	VerificationFailureUrl = utils.MustGetEnv("SRV_USER_VERIFICATION_FAILURE_URL")
 	MailFromAddress        = utils.MustGetEnv("MAIL_FROM")
 )
 
@@ -39,7 +41,7 @@ func (ms *MailService) sendAccountVerificationEmail(mailto string, token string)
 	m.Subject("Verify your Spotlite account")
 
 	// Render email template with verification URL
-	verificationURL := VerificationSuccessUrl + "?token=" + token
+	verificationURL := VerificationEndpoint + "?token=" + url.QueryEscape(token)
 	emailBody, err := RenderVerificationEmail(verificationURL)
 	if err != nil {
 		log.Printf("failed to render verification email template: %v", err)

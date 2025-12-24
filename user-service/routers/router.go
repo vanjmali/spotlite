@@ -15,6 +15,7 @@ func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler) 
 
 	r.HandleFunc("/login", h.HandleLogin).Methods("POST")
 	r.HandleFunc("/login/verify-otp", h.HandleVerifyLoginOtp).Methods("POST")
+	r.HandleFunc("/login/resend-otp", h.HandleResendOtp).Methods("POST")
 
 	r.HandleFunc("/check-email/{email}", h.HandleCheckEmail).Methods("GET")
 

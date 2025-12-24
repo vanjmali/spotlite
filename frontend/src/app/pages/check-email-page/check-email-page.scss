@@ -61,26 +61,12 @@
     color: $color-primary;
   }
 
-  &__title {
-    font-size: 28px;
-    font-weight: 700;
-    color: $color-white;
-    margin: 0;
-    text-align: center;
-  }
-
   &__message {
-    font-size: 16px;
-    color: $color-text-secondary;
-    margin: 0;
     text-align: center;
-    line-height: 1.5;
   }
 
   &__hint {
-    font-size: 14px;
     color: $color-text-tertiary;
-    margin: 0;
     text-align: center;
   }
 

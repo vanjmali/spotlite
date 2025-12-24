@@ -21,6 +21,11 @@ type VerifyLoginOtpDto struct {
 	Code  string `json:"code" validate:"required,len=6"`
 }
 
+// ResendOtpDto carries the email for resending OTP during login.
+type ResendOtpDto struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
 // CheckEmailDto carries the email to check if it's already registered.
 type CheckEmailDto struct {
 	Email string `json:"email" validate:"required,email"`

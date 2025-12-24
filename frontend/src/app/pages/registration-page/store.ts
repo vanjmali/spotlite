@@ -1,7 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { VALIDATION_MESSAGES } from '@app/shared/validation';
+import { VALIDATION_MESSAGES } from '@app/shared';
 
 @Injectable()
 export class RegistrationStore {
