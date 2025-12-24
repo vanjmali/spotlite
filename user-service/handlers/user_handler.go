@@ -88,7 +88,7 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, services.ErrExpiredPassword):
 		_ = respond.Unauthorized(w, "Password expired.")
 		return
-	case errors.Is(err, services.ErrUserInnactive):
+	case errors.Is(err, services.ErrUserInactive):
 		_ = respond.Unauthorized(w, "User is inactive.")
 		return
 	case err != nil:

@@ -15,7 +15,8 @@ services:
       SMTP_PORT: ${SRV_USER_SMTP_PORT?}
       SMTP_USER: ${SRV_USER_SMTP_USERNAME?}
       SMTP_PASS: ${SRV_USER_SMTP_PASSWORD?}
-      APP_JWT_SECRET: ${SRV_USER_JWT_SECRET?}
+      # JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
+      # JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
       APP_VERIFICATION_SUCCESS_URL: ${SRV_USER_VERIFICATION_SUCCESS_URL?}
       APP_VERIFICATION_FAILURE_URL: ${SRV_USER_VERIFICATION_FAILURE_URL?}
       APP_LOGIN_OTP_TTL_MINUTES: ${SRV_USER_LOGIN_OTP_TTL_MINUTES?}
@@ -27,7 +28,7 @@ services:
       traefik.http.routers.user-service.middlewares: user-service-strip-prefix
       traefik.http.middlewares.user-service-strip-prefix.stripprefix.prefixes: /api/users
       traefik.http.middlewares.user-service-strip-prefix.stripprefix.forceslash: false
-      traefik.http.services.user-service.loadbalancer.server.port: 3000
+      traefik.http.services.user-service.loadbalancer.server.port: "3000"
     depends_on:
       user-mongodb:
         condition: service_healthy

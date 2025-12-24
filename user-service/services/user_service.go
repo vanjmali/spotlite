@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/vanjmali/spotlite/common-lib/account"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
@@ -17,22 +18,26 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var hmacSampleSecret = []byte(utils.MustGetEnv("APP_JWT_SECRET"))
-var loginOtpTTL = utils.MustGetDurationEnv("APP_LOGIN_OTP_TTL_MINUTES", time.Minute)
-
 var (
-	ErrUsernameTaken             = errors.New("username is already taken")
-	ErrEmailTaken                = errors.New("email is already taken")
-	ErrExpiredPassword           = errors.New("your password is expired")
-	ErrUserInnactive             = errors.New("user status is innactive")
-	ErrOtpRequired               = errors.New("otp required")
-	ErrOtpInvalid                = errors.New("invalid otp")
-	ErrOtpExpired                = errors.New("expired otp")
-	ErrBadCredentials            = errors.New("invalid credentials")
-	ErrInvalidCurrentPassword    = errors.New("current password is incorrect")
-	ErrTooFrequentPasswordChange = errors.New("password changed too frequent")
+	// ErrUsernameTaken indicates the supplied username already exists.
+	ErrUsernameTaken = errors.New("username is already taken")
+	// ErrEmailTaken indicates the supplied email already exists.
+	ErrEmailTaken = errors.New("email is already taken")
+	// ErrExpiredPassword signals that the user's password has expired.
+	ErrExpiredPassword = errors.New("your password is expired")
+	// ErrUserInactive marks an inactive account status.
+	ErrUserInactive = errors.New("user status is inactive")
+	// ErrOtpRequired indicates login requires an OTP code.
+	ErrOtpRequired = errors.New("otp required")
+	// ErrOtpInvalid indicates a provided OTP is wrong.
+	ErrOtpInvalid = errors.New("invalid otp")
+	// ErrOtpExpired indicates the OTP is no longer valid.
+	ErrOtpExpired = errors.New("expired otp")
+	// ErrBadCredentials indicates the credentials are invalid.
+	ErrBadCredentials = errors.New("invalid credentials")
 )
 
+// UserService contains business logic for user onboarding, login and account maintenance.
 type UserService struct {
 	r  *repositories.UserRepository
 	ms *MailService
@@ -97,8 +102,8 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 		return err
 	}
 
-	if user.AccountStatus == entities.StatusInactive {
-		return ErrUserInnactive
+	if user.AccountStatus == account.StatusInactive {
+		return ErrUserInactive
 	}
 
 	if time.Now().After(user.PasswordExpiresAt) {
@@ -129,16 +134,23 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 
 // CreateNewToken issues a signed JWT for the authenticated user.
 func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 		"sub":      user.ID,
 		"name":     strings.Join([]string{user.FirstName, user.LastName}, " "),
 		"username": user.Username,
 		"role":     user.Role,
+		"status":   user.AccountStatus,
 		"iat":      time.Now().Unix(),
 		"exp":      time.Now().Add(15 * time.Minute).Unix(),
 	})
 
-	tokenString, err := token.SignedString(hmacSampleSecret)
+	pk, err := utils.GetPrivateKey()
+	if err != nil {
+		return "", err
+	}
+
+	tokenString, err := token.SignedString(pk)
+
 	return tokenString, err
 }
 
@@ -149,8 +161,8 @@ func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginO
 		return nil, err
 	}
 
-	if user.AccountStatus == entities.StatusInactive {
-		return nil, ErrUserInnactive
+	if user.AccountStatus == account.StatusInactive {
+		return nil, ErrUserInactive
 	}
 
 	if user.OTPCode.Hash == "" {

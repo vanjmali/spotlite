@@ -1,8 +1,8 @@
 go 1.25.5
 
 use (
-	./common-lib
 	./analytics-service
+	./common-lib
 	./content-service
 	./notification-service
 	./rating-service
