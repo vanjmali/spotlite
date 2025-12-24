@@ -23,6 +23,6 @@ type VerifyLoginOtpDto struct {
 
 type ChangePasswordDto struct {
 	Email           string `json:"email" validate:"required,email"`
-	CurrentPassword string `json:"currentPassword" validate:"required"`
-	NewPassword     string `json:"newPassword" validate:"required,strongpassword,nefield=CurrentPassword"`
+	CurrentPassword string `json:"current_password" validate:"required"`
+	NewPassword     string `json:"new_password" validate:"required,strongpassword,nefield=CurrentPassword"`
 }

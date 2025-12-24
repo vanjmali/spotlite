@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -33,7 +32,6 @@ func NewUserHandler(s services.UserService, v validator.Validate, rts services.R
 }
 
 func (h *UserHandler) HandleChangePassword(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 
 	var req dtos.ChangePasswordDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
@@ -57,15 +55,8 @@ func (h *UserHandler) HandleChangePassword(w http.ResponseWriter, r *http.Reques
 		_ = respond.InternalServerError(w)
 		return
 	}
-	w.WriteHeader(http.StatusOK)
-
-	b := map[string]any{
-		"message": "Password changed successfully",
-	}
-
-	if err := json.NewEncoder(w).Encode(b); err != nil {
-		_ = respond.InternalServerError(w)
-		return
+	if err := respond.Ok(w, "Password changed successfully."); err != nil {
+		log.Printf("failed to write change password response: %v", err)
 	}
 }
 

@@ -35,6 +35,10 @@ var (
 	ErrOtpExpired = errors.New("expired otp")
 	// ErrBadCredentials indicates the credentials are invalid.
 	ErrBadCredentials = errors.New("invalid credentials")
+	// ErrInvalidCurrentPassword indicates the current password provided is incorrect.
+	ErrInvalidCurrentPassword = errors.New("invalid current password")
+	// ErrTooFrequentPasswordChange indicates password change requests are too frequent.
+	ErrTooFrequentPasswordChange = errors.New("password changed too frequently")
 )
 
 // UserService contains business logic for user onboarding, login and account maintenance.
@@ -122,7 +126,8 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 
 	otpHash, _ := bcrypt.GenerateFromPassword([]byte(otp), bcrypt.DefaultCost)
 
-	if err := s.r.SetLoginOtp(ctx, user.ID, string(otpHash), time.Now().Add(loginOtpTTL)); err != nil {
+	// TODO: Hardcoded just for testing, change it later
+	if err := s.r.SetLoginOtp(ctx, user.ID, string(otpHash), time.Now().Add(5*time.Minute)); err != nil {
 		return err
 	}
 	if err := s.ms.SendLoginOtp(user.Email, otp); err != nil {
