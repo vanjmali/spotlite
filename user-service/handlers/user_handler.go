@@ -32,7 +32,6 @@ func NewUserHandler(s services.UserService, v validator.Validate, rts services.R
 }
 
 func (h *UserHandler) HandleChangePassword(w http.ResponseWriter, r *http.Request) {
-
 	var req dtos.ChangePasswordDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
@@ -201,5 +200,13 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 
 	if err := respond.OkJson(w, b); err != nil {
 		log.Printf("failed to write verify login otp response: %v", err)
+	}
+}
+
+func (h *UserHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	err := h.s.Logout(r.Context())
+	if err != nil {
+		respond.InternalServerError(w)
+		return
 	}
 }

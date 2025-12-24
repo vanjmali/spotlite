@@ -54,15 +54,15 @@ func run() error {
 	defer mailClient.Close()
 
 	userRepo := repositories.NewRepository(mongo.DatabaseName(), "users", dbClient)
-	ms := services.InitMailingService(mailClient)
-	us := services.NewUserService(*userRepo, *ms)
-
 	rtRepo := repositories.NewRefreshTokenRepository(mongo.DatabaseName(), repositories.RefreshTokensColl, dbClient)
 	if err := rtRepo.EnsureRefreshIndexes(context.Background()); err != nil {
 		return fmt.Errorf("failed to ensure refresh token indexes: %w", err)
 	}
 
+	ms := services.InitMailingService(mailClient)
+	us := services.NewUserService(*userRepo, *ms, *rtRepo)
 	rts := services.NewRefreshTokenService(*rtRepo)
+
 	userH := handlers.NewUserHandler(*us, *val, *rts)
 	rtH := handlers.NewRefreshTokenHandler(*rts, *us, *val)
 

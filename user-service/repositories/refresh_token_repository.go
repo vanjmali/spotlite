@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
 	"github.com/vanjmali/spotlite/user-service/entities"
@@ -66,7 +67,7 @@ func (r *RefreshTokenRepository) FindActiveByHash(ctx context.Context, hash stri
 	return &rt, err
 }
 
-func (r *RefreshTokenRepository) RevokeByID(ctx context.Context, id primitive.ObjectID, when time.Time, replacedBy primitive.ObjectID) error {
+func (r *RefreshTokenRepository) RevokeAndReissueByID(ctx context.Context, id primitive.ObjectID, when time.Time, replacedBy primitive.ObjectID) error {
 	_, err := r.refreshColl().UpdateByID(ctx, id, bson.M{
 		"$set": bson.M{
 			"revoked_at":     when,
@@ -75,4 +76,19 @@ func (r *RefreshTokenRepository) RevokeByID(ctx context.Context, id primitive.Ob
 		},
 	})
 	return err
+}
+
+func (r *RefreshTokenRepository) RevokeAllByUserID(ctx context.Context, userId primitive.ObjectID) error {
+	c := r.Client.Database(r.DbName).Collection(r.CollName)
+
+	result, err := c.DeleteMany(ctx,
+		bson.M{"user_id": userId},
+	)
+	if err != nil {
+		return err
+	}
+	if result.DeletedCount == 0 {
+		log.Printf("No refresh tokens found for user %s", userId.Hex())
+	}
+	return nil
 }

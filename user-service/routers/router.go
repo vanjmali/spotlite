@@ -20,5 +20,9 @@ func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler) 
 	r.HandleFunc("/verify", h.HandleAccountVerification).Methods("GET", "POST")
 
 	r.Handle("/change-password", middlewares.RequireAuthenticated(h.HandleChangePassword)).Methods("POST")
+
+	r.Handle("/logout", middlewares.RequireAuthenticated(h.HandleLogout)).Methods("POST")
+
 	return r
+
 }

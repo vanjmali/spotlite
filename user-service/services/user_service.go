@@ -42,17 +42,20 @@ var (
 	ErrTooFrequentPasswordChange = errors.New("password changed too frequently")
 	// ErrObjectIdCastFailed indicates converting hex to objectId failed.
 	ErrObjectIdCastFailed = errors.New("failed to convert hex to objectId")
+	// ErrTokenRevokeFailed indicates failure to revoke tokens.
+	ErrTokenRevokeFailed = errors.New("failed to revoke tokens")
 )
 
 // UserService contains business logic for user onboarding, login and account maintenance.
 type UserService struct {
-	r  *repositories.UserRepository
-	ms *MailService
+	r   *repositories.UserRepository
+	ms  *MailService
+	rth *repositories.RefreshTokenRepository
 }
 
 // NewUserService builds a UserService with repository and mail dependencies.
-func NewUserService(r repositories.UserRepository, ms MailService) *UserService {
-	s := UserService{r: &r, ms: &ms}
+func NewUserService(r repositories.UserRepository, ms MailService, rth repositories.RefreshTokenRepository) *UserService {
+	s := UserService{r: &r, ms: &ms, rth: &rth}
 
 	return &s
 }
@@ -230,4 +233,19 @@ func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswo
 	}
 
 	return err
+}
+
+func (s *UserService) Logout(ctx context.Context) error {
+	userIdHexString := middlewares.GetUserIdFromContext(ctx)
+
+	userObjectId, err := primitive.ObjectIDFromHex(userIdHexString)
+	if err != nil {
+		return ErrObjectIdCastFailed
+	}
+
+	err = s.rth.RevokeAllByUserID(ctx, userObjectId)
+	if err != nil {
+		return ErrTokenRevokeFailed
+	}
+	return nil
 }
