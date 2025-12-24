@@ -61,20 +61,8 @@
     color: $color-danger;
   }
 
-  &__title {
-    font-size: 28px;
-    font-weight: 700;
-    color: $color-white;
-    margin: 0;
-    text-align: center;
-  }
-
   &__message {
-    font-size: 16px;
-    color: $color-text-secondary;
-    margin: 0;
     text-align: center;
-    line-height: 1.5;
   }
 
   &__button-wrapper {

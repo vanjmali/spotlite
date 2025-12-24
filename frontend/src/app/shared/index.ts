@@ -6,6 +6,8 @@ export {
   EmailInputComponent,
 } from './components/input';
 export { MessageComponent } from './components/message';
+export { HeaderComponent } from './components/header';
+export { PageComponent } from './components/page';
 export { MessageType } from './enums';
 
 export {

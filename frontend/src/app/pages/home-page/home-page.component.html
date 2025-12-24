@@ -1,9 +1,17 @@
-<div class="home-page">
-  <div class="home-page__container">
-    <div class="home-page__card">
-      <h1 class="home-page__title">Welcome to Spotlite</h1>
+<app-page>
+  <app-header header [presentLogoSg]="true">
+    <ng-container actions>
+      @if (authService.isAuthenticatedSg()) {
+        <button (click)="logout()" class="btn-light">Logout</button>
+      } @else {
+        <a routerLink="/register" class="link-primary">Register</a>
+        <a routerLink="/login" class="btn-light">Login</a>
+      }
+    </ng-container>
+  </app-header>
 
-      <button class="btn-primary" (click)="logout()">Logout</button>
-    </div>
-  </div>
-</div>
+  <!-- Footer Section -->
+  <footer footer class="home-page__footer">
+    <p class="home-page__footer-copyright">&copy; 2025 Spotlite. All rights reserved.</p>
+  </footer>
+</app-page>
