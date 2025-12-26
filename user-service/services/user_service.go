@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/vanjmali/spotlite/common-lib/account"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
@@ -18,8 +19,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var hmacSampleSecret = []byte(utils.MustGetEnv("APP_JWT_SECRET"))
-
 var (
 	// ErrUsernameTaken indicates the supplied username already exists.
 	ErrUsernameTaken = errors.New("username is already taken")
@@ -27,8 +26,8 @@ var (
 	ErrEmailTaken = errors.New("email is already taken")
 	// ErrExpiredPassword signals that the user's password has expired.
 	ErrExpiredPassword = errors.New("your password is expired")
-	// ErrUserInnactive marks an inactive account status.
-	ErrUserInnactive = errors.New("user status is innactive")
+	// ErrUserInactive marks an inactive account status.
+	ErrUserInactive = errors.New("user status is inactive")
 	// ErrUserNotFound indicates the user does not exist.
 	ErrUserNotFound = errors.New("user not found")
 	// ErrOtpRequired indicates login requires an OTP code.
@@ -117,8 +116,8 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 		return err
 	}
 
-	if user.AccountStatus == entities.StatusInactive {
-		return ErrUserInnactive
+	if user.AccountStatus == account.StatusInactive {
+		return ErrUserInactive
 	}
 
 	if time.Now().After(user.PasswordExpiresAt) {
@@ -135,16 +134,23 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 
 // CreateNewToken issues a signed JWT for the authenticated user.
 func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 		"sub":      user.ID,
 		"name":     strings.Join([]string{user.FirstName, user.LastName}, " "),
 		"username": user.Username,
 		"role":     user.Role,
+		"status":   user.AccountStatus,
 		"iat":      time.Now().Unix(),
 		"exp":      time.Now().Add(15 * time.Minute).Unix(),
 	})
 
-	tokenString, err := token.SignedString(hmacSampleSecret)
+	pk, err := utils.GetPrivateKey()
+	if err != nil {
+		return "", err
+	}
+
+	tokenString, err := token.SignedString(pk)
+
 	return tokenString, err
 }
 
@@ -155,8 +161,8 @@ func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginO
 		return nil, err
 	}
 
-	if user.AccountStatus == entities.StatusInactive {
-		return nil, ErrUserInnactive
+	if user.AccountStatus == account.StatusInactive {
+		return nil, ErrUserInactive
 	}
 
 	if user.OTPCode.Hash == "" {
@@ -183,8 +189,8 @@ func (s *UserService) ResendLoginOtp(ctx context.Context, email string) error {
 		return ErrUserNotFound
 	}
 
-	if user.AccountStatus == entities.StatusInactive {
-		return ErrUserInnactive
+	if user.AccountStatus == account.StatusInactive {
+		return ErrUserInactive
 	}
 
 	return s.sendLoginOtpToUser(ctx, user)

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/vanjmali/spotlite/common-lib/account"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
@@ -31,8 +32,8 @@ func ToUserEntity(u *dtos.UserRegistrationDto) (*entities.User, error) {
 		Email:               u.Email,
 		Username:            u.Username,
 		Password:            hashedPassword,
-		AccountStatus:       entities.StatusInactive,
-		Role:                entities.RoleMember,
+		AccountStatus:       account.StatusInactive,
+		Role:                account.RoleMember,
 		CreatedAt:           now,
 		UpdatedAt:           now,
 		PasswordLastChanged: now,

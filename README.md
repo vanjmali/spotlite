@@ -57,6 +57,7 @@ See [`frontend/README.md`](frontend/README.md).
 
 There are additional services available for local development:
 
+- `localhost:8025` - MailHog web interface for viewing sent emails
 - `localhost:8080` - Traefik dashboard
 - `localhost:3101` - User Service's MongoDB direct connection
 - `localhost:3000/dev/user-service` - [Mongo Express](https://github.com/mongo-express/mongo-express) to User Service
