@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"log"
 	"strings"
 	"time"
 
@@ -27,6 +28,8 @@ var (
 	ErrExpiredPassword = errors.New("your password is expired")
 	// ErrUserInactive marks an inactive account status.
 	ErrUserInactive = errors.New("user status is inactive")
+	// ErrUserNotFound indicates the user does not exist.
+	ErrUserNotFound = errors.New("user not found")
 	// ErrOtpRequired indicates login requires an OTP code.
 	ErrOtpRequired = errors.New("otp required")
 	// ErrOtpInvalid indicates a provided OTP is wrong.
@@ -56,18 +59,22 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	// checks if the username is already taken,
 	exists, err := s.r.ExistsByUsername(ctx, reqDto.Username)
 	if err != nil {
+		log.Printf("Error checking if username exists: %v", err)
 		return err
 	}
 	if exists {
+		log.Printf("Username already taken: %s", reqDto.Username)
 		return ErrUsernameTaken
 	}
 
 	// checks if the email is already taken,
 	exists, err = s.r.ExistsByEmail(ctx, reqDto.Email)
 	if err != nil {
+		log.Printf("Error checking if email exists: %v", err)
 		return err
 	}
 	if exists {
+		log.Printf("Email already taken: %s", reqDto.Email)
 		return ErrEmailTaken
 	}
 
@@ -76,17 +83,24 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	// hashes the password,
 	userEntity, err := mappers.ToUserEntity(reqDto)
 	if err != nil {
+		log.Printf("Error converting to user entity: %v", err)
+		return err
+	}
+
+	// sends account verification email BEFORE saving to database
+	// if email fails, we don't save the user
+	if err := s.ms.sendAccountVerificationEmail(reqDto.Email, userEntity.EmailVerification.Token); err != nil {
+		log.Printf("Failed to send verification email: %v", err)
 		return err
 	}
 
 	// insert the user in the database,
 	err = s.r.Create(ctx, *userEntity)
 	if err != nil {
+		log.Printf("Error creating user in database: %v", err)
 		return err
 	}
 
-	// sends account verification email,
-	s.ms.sendAccountVerificationEmail(reqDto.Email, userEntity.EmailVerification.Token)
 	return nil
 }
 
@@ -115,22 +129,7 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 		return ErrBadCredentials
 	}
 
-	otp, err := auth.GenerateOTP()
-	if err != nil {
-		return err
-	}
-
-	otpHash, _ := bcrypt.GenerateFromPassword([]byte(otp), bcrypt.DefaultCost)
-
-	// TODO: make time NOT be hardcoded
-	if err := s.r.SetLoginOtp(ctx, user.ID, string(otpHash), time.Now().Add(5*time.Minute)); err != nil {
-		return err
-	}
-	if err := s.ms.SendLoginOtp(user.Email, otp); err != nil {
-		return err
-	}
-
-	return nil
+	return s.sendLoginOtpToUser(ctx, user)
 }
 
 // CreateNewToken issues a signed JWT for the authenticated user.
@@ -183,6 +182,45 @@ func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginO
 	return user, nil
 }
 
+// ResendLoginOtp resends the OTP code to the user's email for login verification.
+func (s *UserService) ResendLoginOtp(ctx context.Context, email string) error {
+	user, err := s.r.FindUserByEmail(ctx, email)
+	if err != nil {
+		return ErrUserNotFound
+	}
+
+	if user.AccountStatus == account.StatusInactive {
+		return ErrUserInactive
+	}
+
+	return s.sendLoginOtpToUser(ctx, user)
+}
+
+// sendLoginOtpToUser is a private helper that generates and sends OTP to a user.
+func (s *UserService) sendLoginOtpToUser(ctx context.Context, user *entities.User) error {
+	otp, err := auth.GenerateOTP()
+	if err != nil {
+		return err
+	}
+
+	otpHash, _ := bcrypt.GenerateFromPassword([]byte(otp), bcrypt.DefaultCost)
+
+	// TODO: make time NOT be hardcoded
+	if err := s.r.SetLoginOtp(ctx, user.ID, string(otpHash), time.Now().Add(5*time.Minute)); err != nil {
+		return err
+	}
+	if err := s.ms.SendLoginOtp(user.Email, otp); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *UserService) FindByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
 	return s.r.FindUserByID(ctx, id)
+}
+
+// EmailExists checks if an email is already registered
+func (s *UserService) EmailExists(ctx context.Context, email string) (bool, error) {
+	return s.r.ExistsByEmail(ctx, email)
 }

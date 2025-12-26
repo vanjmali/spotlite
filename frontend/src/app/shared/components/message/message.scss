@@ -1,0 +1,58 @@
+@use 'variables/colors' as *;
+
+.message {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  box-sizing: border-box;
+
+  &__text {
+    flex: 1;
+  }
+
+  // Success variant - Green
+  &--success {
+    background-color: $color-success-300;
+    color: $color-success-900;
+
+    .message__text {
+      color: $color-success-900;
+    }
+  }
+
+  // Error variant - Red/Danger
+  &--error {
+    background-color: $color-danger-300;
+    color: $color-danger-900;
+
+    .message__text {
+      color: $color-danger-900;
+    }
+  }
+
+  // Warning variant - Orange/Yellow
+  &--warning {
+    background-color: $color-warning-300;
+    color: $color-warning-900;
+
+    .message__text {
+      color: $color-warning-900;
+    }
+  }
+
+  // Info variant - Blue
+  &--info {
+    background-color: $color-info-300;
+    color: $color-info-900;
+
+    .message__text {
+      color: $color-info-900;
+    }
+  }
+}

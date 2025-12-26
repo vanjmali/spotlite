@@ -1,9 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { VALIDATION_MESSAGES } from '@app/shared/validation';
-
-// TODO: Consider using Angular validators or a validation library for better scalability
+import { VALIDATION_MESSAGES } from '@app/shared';
 
 @Injectable()
 export class LoginStore {
@@ -23,16 +21,15 @@ export class LoginStore {
 
     // Validate credentials against backend
     this.loadingSg.set(true);
-    const isValid = await this._auth.login(email, password);
+    const result = await this._auth.login(email, password);
     this.loadingSg.set(false);
 
-    if (!isValid) {
-      this.errorSg.set(VALIDATION_MESSAGES.INVALID_CREDENTIALS);
+    if (!result.success) {
+      this.errorSg.set(result.error || VALIDATION_MESSAGES.INVALID_CREDENTIALS);
       return false;
     }
 
-    // Credentials valid, send OTP
-    await this._auth.sendOtp(email);
+    // Credentials valid, OTP sent to email
     this.emailSg.set(email);
     this.errorSg.set(null);
     this._router.navigate(['/login/otp']);
@@ -47,24 +44,41 @@ export class LoginStore {
       return false;
     }
     this.loadingSg.set(true);
-    const status = await this._auth.verifyOtp(email, code);
+    const result = await this._auth.verifyOtp(email, code);
     this.loadingSg.set(false);
 
-    switch (status) {
-      case 'success':
-        return true;
-      case 'expired':
-        this.errorSg.set(VALIDATION_MESSAGES.OTP_EXPIRED);
-        return false;
-      case 'invalid':
-        this.errorSg.set(VALIDATION_MESSAGES.OTP_INVALID_CODE);
-        return false;
+    if (!result.success) {
+      switch (result.status) {
+        case 'expired':
+          this.errorSg.set(VALIDATION_MESSAGES.OTP_EXPIRED);
+          break;
+        case 'invalid':
+          this.errorSg.set(VALIDATION_MESSAGES.OTP_INVALID_CODE);
+          break;
+        default:
+          this.errorSg.set(result.error || VALIDATION_MESSAGES.OTP_VERIFICATION_FAILED);
+      }
+      return false;
     }
+
+    // OTP verified successfully - redirect to home
+    this._router.navigate(['/home']);
+    return true;
   }
 
   public async resendOtp(): Promise<void> {
+    this.errorSg.set(null);
     const email = this.emailSg();
-    if (!email) return;
-    await this._auth.sendOtp(email);
+    if (!email) {
+      this.errorSg.set(VALIDATION_MESSAGES.MISSING_EMAIL);
+      return;
+    }
+    this.loadingSg.set(true);
+    const result = await this._auth.resendOtp(email);
+    this.loadingSg.set(false);
+
+    if (!result.success) {
+      this.errorSg.set(result.error || VALIDATION_MESSAGES.OTP_RESEND_FAILED);
+    }
   }
 }

@@ -15,8 +15,8 @@ import (
 )
 
 var (
-	VerificationSuccessUrl = utils.MustGetEnv("APP_VERIFICATION_SUCCESS_URL")
-	VerificationFailureUrl = utils.MustGetEnv("APP_VERIFICATION_FAILURE_URL")
+	VerificationSuccessUrl = utils.MustGetEnv("SRV_USER_VERIFICATION_SUCCESS_URL")
+	VerificationFailureUrl = utils.MustGetEnv("SRV_USER_VERIFICATION_FAILURE_URL")
 )
 
 // UserHandler wires HTTP handlers to the user service and validators.
@@ -84,6 +84,8 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 			msg = "Username is already taken."
 		case errors.Is(err, services.ErrEmailTaken):
 			msg = "Email is already taken."
+		default:
+			msg = "An unexpected error has occurred."
 		}
 
 		if msg != "" {
@@ -173,4 +175,53 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 	if err := respond.OkJson(w, b); err != nil {
 		log.Printf("failed to write verify login otp response: %v", err)
 	}
+}
+
+// HandleResendOtp resends the OTP code to the user's email if they have a valid login request
+func (h *UserHandler) HandleResendOtp(w http.ResponseWriter, r *http.Request) {
+	var req dtos.ResendOtpDto
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
+		if err != nil {
+			log.Printf("failed to process resend otp request: %v", err)
+		}
+		return
+	}
+
+	err := h.s.ResendLoginOtp(r.Context(), req.Email)
+
+	switch {
+	case errors.Is(err, services.ErrUserNotFound):
+		_ = respond.BadRequest(w, "Email not found.")
+		return
+	case errors.Is(err, services.ErrUserInactive):
+		_ = respond.Unauthorized(w, "User is inactive.")
+		return
+	case err != nil:
+		log.Printf("failed to resend otp: %v", err)
+		_ = respond.InternalServerError(w)
+		return
+	}
+
+	if err := respond.Ok(w, "OTP resent to email."); err != nil {
+		log.Printf("failed to write resend otp response: %v", err)
+	}
+}
+
+// HandleCheckEmail checks if an email is already registered
+func (h *UserHandler) HandleCheckEmail(w http.ResponseWriter, r *http.Request) {
+	var req dtos.CheckEmailDto
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
+		if err != nil {
+			log.Printf("failed to process resend otp request: %v", err)
+		}
+		return
+	}
+
+	exists, err := h.s.EmailExists(r.Context(), req.Email)
+	if err != nil {
+		_ = respond.InternalServerError(w)
+		return
+	}
+
+	_ = respond.OkJson(w, map[string]bool{"exists": exists})
 }
