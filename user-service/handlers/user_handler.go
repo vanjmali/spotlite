@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gorilla/mux"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/common-lib/utils"
@@ -210,17 +209,15 @@ func (h *UserHandler) HandleResendOtp(w http.ResponseWriter, r *http.Request) {
 
 // HandleCheckEmail checks if an email is already registered
 func (h *UserHandler) HandleCheckEmail(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	email := vars["email"]
-
-	// Create DTO and validate the email parameter
-	dto := dtos.CheckEmailDto{Email: email}
-	if err := h.v.Struct(dto); err != nil {
-		_ = respond.BadRequest(w, "Invalid email format.")
+	var req dtos.CheckEmailDto
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
+		if err != nil {
+			log.Printf("failed to process resend otp request: %v", err)
+		}
 		return
 	}
 
-	exists, err := h.s.EmailExists(r.Context(), dto.Email)
+	exists, err := h.s.EmailExists(r.Context(), req.Email)
 	if err != nil {
 		_ = respond.InternalServerError(w)
 		return
