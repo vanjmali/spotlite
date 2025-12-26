@@ -21,6 +21,7 @@ services:
       APP_VERIFICATION_FAILURE_URL: ${SRV_USER_VERIFICATION_FAILURE_URL?}
       APP_LOGIN_OTP_TTL_MINUTES: ${SRV_USER_LOGIN_OTP_TTL_MINUTES?}
       APP_PORT: 3000
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true
       traefik.docker.network: api-gateway

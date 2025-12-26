@@ -8,6 +8,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
+	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/repositories"
@@ -36,7 +37,7 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	var req dtos.UserLoginDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
-			log.Printf("failed to process login request: %v", err)
+			log.Printf("trace_id=%s failed to process login request: %v", telemetry.TraceID(r.Context()), err)
 		}
 		return
 	}
@@ -54,13 +55,13 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		_ = respond.Unauthorized(w, "User is inactive.")
 		return
 	case err != nil:
-		log.Printf("failed to login user: %v", err)
+		log.Printf("trace_id=%s failed to login user: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.InternalServerError(w)
 		return
 	}
 
 	if err := respond.Ok(w, "OTP sent to email."); err != nil {
-		log.Printf("failed to write login response: %v", err)
+		log.Printf("trace_id=%s failed to write login response: %v", telemetry.TraceID(r.Context()), err)
 	}
 }
 
@@ -70,7 +71,7 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 	var req dtos.UserRegistrationDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
-			log.Printf("failed to process registration request: %v", err)
+			log.Printf("trace_id=%s failed to process registration request: %v", telemetry.TraceID(r.Context()), err)
 		}
 		return
 	}
@@ -91,7 +92,7 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		log.Printf("failed to register user: %v", err)
+		log.Printf("trace_id=%s failed to register user: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -133,7 +134,7 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 	var req dtos.VerifyLoginOtpDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
-			log.Printf("failed to process verify login otp request: %v", err)
+			log.Printf("trace_id=%s failed to process verify login otp request: %v", telemetry.TraceID(r.Context()), err)
 		}
 		return
 	}
@@ -146,21 +147,21 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err != nil {
-		log.Printf("failed to verify login otp: %v", err)
+		log.Printf("trace_id=%s failed to verify login otp: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.InternalServerError(w)
 		return
 	}
 
 	token, err := h.s.CreateNewToken(r.Context(), user)
 	if err != nil {
-		log.Printf("failed to create access token: %v", err)
+		log.Printf("trace_id=%s failed to create access token: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.InternalServerError(w)
 		return
 	}
 
 	refresh, err := h.rts.IssueRefreshToken(r.Context(), user.ID)
 	if err != nil {
-		log.Printf("failed to issue refresh token: %v", err)
+		log.Printf("trace_id=%s failed to issue refresh token: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -171,6 +172,6 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 	}
 
 	if err := respond.OkJson(w, b); err != nil {
-		log.Printf("failed to write verify login otp response: %v", err)
+		log.Printf("trace_id=%s failed to write verify login otp response: %v", telemetry.TraceID(r.Context()), err)
 	}
 }

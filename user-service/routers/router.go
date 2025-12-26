@@ -2,12 +2,14 @@ package routers
 
 import (
 	"github.com/gorilla/mux"
+	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/user-service/handlers"
 )
 
 // HandleRequests wires HTTP routes to user handlers.
 func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler) *mux.Router {
 	r := mux.NewRouter()
+	telemetry.AttachMuxTracing(r, "user-service")
 
 	r.HandleFunc("/register", h.HandleRegistration).Methods("POST")
 
