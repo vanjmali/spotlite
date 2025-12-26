@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"log"
 	"strings"
 	"time"
 
@@ -17,8 +18,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
-
-var hmacSampleSecret = []byte(utils.MustGetEnv("APP_JWT_SECRET"))
 
 var (
 	// ErrUsernameTaken indicates the supplied username already exists.
@@ -97,7 +96,51 @@ func (s *UserService) VerifyAccount(ctx context.Context, token string) error {
 	return s.r.ActiveAndRevokeToken(ctx, token)
 }
 
-// Login validates credentials, checks account status, and issues a login OTP.
+// FindUsersForExpiryNotification func, finds users which password expires soon.
+func (s *UserService) FindUsersForExpiryNotification(
+	ctx context.Context,
+	daysUntilExpiry int,
+	batchSize int,
+	lastID string,
+) ([]*entities.User, string, error) {
+	log.Printf(
+		"DEBUG: FindUsersForExpiryNotification service function has been called with the following params, %d, %d, %s",
+		daysUntilExpiry,
+		batchSize,
+		lastID,
+	)
+	users, nextID, err := s.r.FindUsersForExpiryNotification(ctx, daysUntilExpiry, batchSize, lastID)
+	if err != nil {
+		log.Printf("ERROR: An error has occurred while fetching batch: %s", err)
+		return nil, "", err
+	}
+
+	return users, nextID, nil
+}
+
+func (s *UserService) MarkExpiryNotificationsSentBulk(ctx context.Context, ids []primitive.ObjectID) error {
+	log.Print("DEBUG: MarkExpiryNotificationSent service function has been called")
+	err := s.r.UpdateExpiryNotificationsSentDateBulk(ctx, ids)
+	if err != nil {
+		log.Printf("ERROR: An error has occurred while updating users notification sent date: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *UserService) MarkExpiryNotificationSent(ctx context.Context, userID primitive.ObjectID) error {
+	log.Print("DEBUG: MarkExpiryNotificationSent service function has been called")
+	err := s.r.UpdateExpiryNotificationSentDate(ctx, userID)
+	if err != nil {
+		log.Printf("ERROR: An error has occurred while updating users notification sent date: %s", err)
+		return err
+	}
+
+	return nil
+}
+
+// Login func, validates credentials, checks account status, and issues a login OTP.
 func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) error {
 	user, err := s.r.FindUserByEmail(ctx, loginDto.Email)
 	if err != nil {
@@ -135,7 +178,7 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 	return nil
 }
 
-// CreateNewToken issues a signed JWT for the authenticated user.
+// CreateNewToken func, issues a signed JWT for the authenticated user.
 func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 		"sub":      user.ID,
@@ -157,7 +200,7 @@ func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (
 	return tokenString, err
 }
 
-// VerifyLoginOtp compares the provided OTP with the stored hash and clears it on success.
+// VerifyLoginOtp func, compares the provided OTP with the stored hash and clears it on success.
 func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginOtpDto) (*entities.User, error) {
 	user, err := s.r.FindUserByEmail(ctx, dto.Email)
 	if err != nil {
@@ -185,6 +228,7 @@ func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginO
 	return user, nil
 }
 
+// FindByID func, finds users by ID.
 func (s *UserService) FindByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
 	return s.r.FindUserByID(ctx, id)
 }

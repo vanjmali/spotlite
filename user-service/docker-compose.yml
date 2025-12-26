@@ -6,6 +6,7 @@ services:
         common-lib: ../common-lib
       dockerfile: ../Dockerfile.microservice
     environment:
+      REDIS_ADDR: user-redis:6379
       DB_HOST: user-mongodb
       DB_PORT: 27017
       DB_USER: ${SRV_USER_MONGO_USERNAME?}
@@ -31,6 +32,8 @@ services:
       traefik.http.services.user-service.loadbalancer.server.port: "3000"
     depends_on:
       user-mongodb:
+        condition: service_healthy
+      user-redis:
         condition: service_healthy
     networks:
       - api-gateway
@@ -59,6 +62,22 @@ services:
     networks:
       - user-internal
 
+  user-redis:
+    image: redis:8-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - user-redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - user-internal
+
+
 networks:
   # Connects to Traefik
   api-gateway:
@@ -67,3 +86,4 @@ networks:
 
 volumes:
   user-mongo-data:
+  user-redis-data:

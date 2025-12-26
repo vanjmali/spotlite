@@ -19,20 +19,21 @@ const (
 
 // User models a platform user document stored in MongoDB.
 type User struct {
-	ID                  primitive.ObjectID    `bson:"_id,omitempty"`
-	Username            string                `bson:"username"`
-	FirstName           string                `bson:"first_name"`
-	LastName            string                `bson:"last_name"`
-	Email               string                `bson:"email"`
-	Password            string                `bson:"password"`
-	Role                account.Role          `bson:"role"`
-	PasswordLastChanged time.Time             `bson:"password_last_changed_at"`
-	PasswordExpiresAt   time.Time             `bson:"password_expires_at"`
-	AccountStatus       account.AccountStatus `bson:"account_status"`
-	CreatedAt           time.Time             `bson:"created_at"`
-	UpdatedAt           time.Time             `bson:"updated_at"`
-	EmailVerification   EmailVerification     `bson:"email_verification"`
-	OTPCode             OTPCode               `bson:"otp_code"`
+	ID                           primitive.ObjectID    `bson:"_id,omitempty"`
+	Username                     string                `bson:"username"`
+	FirstName                    string                `bson:"first_name"`
+	LastName                     string                `bson:"last_name"`
+	Email                        string                `bson:"email"`
+	Password                     string                `bson:"password"`
+	Role                         account.Role          `bson:"role"`
+	PasswordLastChanged          time.Time             `bson:"password_last_changed_at"`
+	PasswordExpiresAt            time.Time             `bson:"password_expires_at"`
+	AccountStatus                account.AccountStatus `bson:"account_status"`
+	CreatedAt                    time.Time             `bson:"created_at"`
+	UpdatedAt                    time.Time             `bson:"updated_at"`
+	EmailVerification            EmailVerification     `bson:"email_verification"`
+	OTPCode                      OTPCode               `bson:"otp_code"`
+	LastExpiryNotificationSentAt time.Time             `bson:"last_expiry_notification_sent_at,omitempty"`
 }
 
 // EmailVerification keeps the account verification token.
