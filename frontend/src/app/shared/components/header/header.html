@@ -1,0 +1,19 @@
+<header class="header">
+  <!-- Title section (left) -->
+  <div class="header__title">
+    @if (presentLogoSg()) {
+      <img src="/assets/images/spotlite-white.png" alt="Logo" class="header__logo" />
+    }
+    <ng-content select="[title]"></ng-content>
+  </div>
+
+  <!-- Center section -->
+  <div class="header__center">
+    <ng-content select="[center]"></ng-content>
+  </div>
+
+  <!-- Actions section (right) -->
+  <div class="header__actions">
+    <ng-content select="[actions]"></ng-content>
+  </div>
+</header>

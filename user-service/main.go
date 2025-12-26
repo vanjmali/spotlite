@@ -68,6 +68,10 @@ func run() error {
 		return fmt.Errorf("failed to register custom validations: %w", err)
 	}
 
+	if err := requests.RegisterValidation(val, validation.CheckValidName); err != nil {
+		return fmt.Errorf("failed to register custom validations: %w", err)
+	}
+
 	// Initialize repositories, services, handlers, and routers
 	userRepo := repositories.NewRepository(mongo.DatabaseName(), "users", dbClient)
 	ms := services.InitMailingService(mailClient)

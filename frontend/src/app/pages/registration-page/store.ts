@@ -1,7 +1,7 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { VALIDATION_MESSAGES } from '@app/shared/validation';
+import { VALIDATION_MESSAGES } from '@app/shared';
 
 @Injectable()
 export class RegistrationStore {
@@ -49,33 +49,25 @@ export class RegistrationStore {
     this.errorSg.set(null);
     this.loadingSg.set(true);
 
-    // Check if username already exists
-    const usernameExists = await this._auth.checkUsernameExists(username);
-    this.loadingSg.set(false);
-
-    if (usernameExists) {
-      this.errorSg.set(VALIDATION_MESSAGES.USERNAME_IN_USE);
-      return;
-    }
-
-    // All checks passed, register user
-    const registered = await this._auth.register(
+    // Register user - backend will check if username exists
+    const result = await this._auth.register(
       this.firstNameSg(),
       this.lastNameSg(),
       this.emailSg(),
       username,
       password
     );
+    this.loadingSg.set(false);
 
-    if (!registered) {
-      this.errorSg.set(VALIDATION_MESSAGES.REGISTRATION_FAILED);
+    if (!result.success) {
+      this.errorSg.set(result.error || VALIDATION_MESSAGES.REGISTRATION_FAILED);
       return;
     }
 
     this.usernameSg.set(username);
     this.passwordSg.set(password);
 
-    // Navigate to login page after successful registration
-    this._router.navigate(['/login']);
+    // Navigate to check-email page to complete registration via email confirmation
+    this._router.navigate(['/check-email']);
   }
 }

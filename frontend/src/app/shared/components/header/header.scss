@@ -1,0 +1,38 @@
+@use 'variables/colors' as *;
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: $color-bg-primary;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  gap: 24px;
+
+  &__title,
+  &__center,
+  &__actions {
+    display: flex;
+    align-items: center;
+  }
+
+  &__title {
+    flex-shrink: 0;
+  }
+
+  &__center {
+    flex: 1;
+    justify-content: center;
+  }
+
+  &__actions {
+    flex-shrink: 0;
+    gap: 16px;
+  }
+
+  &__logo {
+    height: 48px;
+    width: 48px;
+    object-fit: contain;
+    margin-right: 16px;
+  }
+}
