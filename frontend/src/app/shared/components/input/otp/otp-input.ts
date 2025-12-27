@@ -9,7 +9,7 @@ import {
   ViewChildren,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ValidationResult, OTP_PATTERN, VALIDATION_MESSAGES } from '../../validation';
+import { ValidationResult, OTP_PATTERN, VALIDATION_MESSAGES } from '@app/shared';
 import { ErrorComponent } from '../error';
 
 @Component({

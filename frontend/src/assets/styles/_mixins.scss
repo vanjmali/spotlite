@@ -2,11 +2,11 @@
 
 @mixin scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: $color-scrollbar-thumb transparent;
+  scrollbar-color: transparent transparent;
 
   &::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
   }
 
   &::-webkit-scrollbar-track {
@@ -14,12 +14,27 @@
   }
 
   &::-webkit-scrollbar-thumb {
-    background: $color-scrollbar-thumb;
-    border-radius: 4px;
+    background: transparent;
+    border-radius: 5px;
     transition: background 200ms ease;
+  }
 
-    &:hover {
-      background: $color-scrollbar-thumb-hover;
+  &:hover {
+    scrollbar-color: $color-scrollbar-thumb $color-scrollbar-track;
+
+    &::-webkit-scrollbar-track {
+      background: $color-scrollbar-track;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: $color-scrollbar-thumb;
+      border: 2px solid $color-scrollbar-track;
+      background-clip: padding-box;
+
+      &:hover {
+        background: $color-scrollbar-thumb-hover;
+        background-clip: padding-box;
+      }
     }
   }
 }

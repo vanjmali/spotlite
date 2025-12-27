@@ -1,12 +1,12 @@
 import { Component, inject, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TextInputComponent, EmailInputComponent } from '@app/shared/input';
+import { TextInputComponent, EmailInputComponent, MessageComponent } from '@app/shared';
 import { RegistrationStore } from '../../store';
 
 @Component({
   selector: 'app-registration-personal-info-step',
   standalone: true,
-  imports: [CommonModule, TextInputComponent, EmailInputComponent],
+  imports: [CommonModule, TextInputComponent, EmailInputComponent, MessageComponent],
   templateUrl: './personal-info-step.html',
   styleUrls: ['./personal-info-step.scss'],
 })

@@ -1,0 +1,11 @@
+@let type = typeSg();
+
+<div
+  class="message"
+  [class.message--success]="type === MessageType.Success"
+  [class.message--error]="type === MessageType.Error"
+  [class.message--warning]="type === MessageType.Warning"
+  [class.message--info]="type === MessageType.Info"
+>
+  <p class="message__text">{{ messageSg() }}</p>
+</div>

@@ -1,13 +1,17 @@
 import { Component, inject, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TextInputComponent, PasswordInputComponent } from '@app/shared/input';
+import {
+  TextInputComponent,
+  PasswordInputComponent,
+  MessageComponent,
+  VALIDATION_MESSAGES,
+} from '@app/shared';
 import { RegistrationStore } from '../../store';
-import { VALIDATION_MESSAGES } from '@app/shared/validation';
 
 @Component({
   selector: 'app-registration-credentials-step',
   standalone: true,
-  imports: [CommonModule, TextInputComponent, PasswordInputComponent],
+  imports: [CommonModule, TextInputComponent, PasswordInputComponent, MessageComponent],
   templateUrl: './credentials-step.html',
   styleUrls: ['./credentials-step.scss'],
 })
