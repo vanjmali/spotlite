@@ -180,7 +180,7 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 
 // CreateNewToken issues a signed JWT for the authenticated user.
 func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (string, error) {
-	ctx, span := s.tr.Start(ctx, "user.create_token")
+	_, span := s.tr.Start(ctx, "user.create_token")
 	defer span.End()
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
@@ -303,7 +303,7 @@ func (s *UserService) FindByID(ctx context.Context, id primitive.ObjectID) (*ent
 	return user, err
 }
 
-// EmailExists checks if an email is already registered
+// EmailExists checks if an email is already registered.
 func (s *UserService) EmailExists(ctx context.Context, email string) (bool, error) {
 	ctx, span := s.tr.Start(ctx, "user.email_exists")
 	defer span.End()

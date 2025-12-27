@@ -5,13 +5,13 @@ import (
 	"strings"
 )
 
-// EmailTemplateData contains the data needed for email templates
+// EmailTemplateData contains the data needed for email templates.
 type EmailTemplateData struct {
 	VerificationURL string
 	OTP             string
 }
 
-// VerificationEmailTemplate is the HTML template for account verification emails
+// VerificationEmailTemplate is the HTML template for account verification emails.
 const VerificationEmailTemplate = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -101,7 +101,7 @@ const VerificationEmailTemplate = `<!DOCTYPE html>
 </body>
 </html>`
 
-// LoginOtpEmailTemplate is the HTML template for login OTP emails
+// LoginOtpEmailTemplate is the HTML template for login OTP emails.
 const LoginOtpEmailTemplate = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -191,7 +191,7 @@ const LoginOtpEmailTemplate = `<!DOCTYPE html>
 </body>
 </html>`
 
-// RenderVerificationEmail renders the verification email template with the provided data
+// RenderVerificationEmail renders the verification email template with the provided data.
 func RenderVerificationEmail(verificationURL string) (string, error) {
 	tmpl, err := template.New("verification").Parse(VerificationEmailTemplate)
 	if err != nil {
@@ -210,7 +210,7 @@ func RenderVerificationEmail(verificationURL string) (string, error) {
 	return buf.String(), nil
 }
 
-// RenderLoginOtpEmail renders the login OTP email template with the provided data
+// RenderLoginOtpEmail renders the login OTP email template with the provided data.
 func RenderLoginOtpEmail(otp string) (string, error) {
 	tmpl, err := template.New("otp").Parse(LoginOtpEmailTemplate)
 	if err != nil {
