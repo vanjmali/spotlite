@@ -8,6 +8,27 @@ services:
     volumes:
       - ./api-gateway/traefik.dev.yml:/etc/traefik/traefik.yml:ro
 
+  # Override collector config for development
+  otel-collector:
+    volumes:
+      - ./api-gateway/otelcol.dev.yml:/etc/otelcol/config.yaml:ro
+
+  # Jaeger for tracing visualization
+  jaeger:
+    image: jaegertracing/all-in-one:1.75.0
+    labels:
+      traefik.enable: true
+      traefik.docker.network: api-gateway
+      traefik.http.routers.jaeger.rule: PathPrefix(`/dev/jaeger`)
+      traefik.http.middlewares.jaeger-strip-prefix.stripprefix.prefixes: /dev/jaeger
+      traefik.http.middlewares.jaeger-strip-prefix.stripprefix.forceslash: false
+      traefik.http.services.jaeger.loadbalancer.server.port: "16686"
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+      QUERY_BASE_PATH: /dev/jaeger
+    networks:
+      - api-gateway
+
   # Mailhog is a local SMTP server for testing email sending
   mailhog:
     image: mailhog/mailhog:v1.0.1

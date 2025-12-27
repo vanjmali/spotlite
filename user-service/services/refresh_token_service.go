@@ -9,23 +9,32 @@ import (
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var ErrRefreshInvalid = errors.New("invalid refresh token")
 
 type RefreshTokenService struct {
 	r *repositories.RefreshTokenRepository
+
+	tr trace.Tracer
 }
 
 func NewRefreshTokenService(r repositories.RefreshTokenRepository) *RefreshTokenService {
-	s := RefreshTokenService{r: &r}
+	tr := otel.Tracer("user-service/refresh-token-service")
+	s := RefreshTokenService{r: &r, tr: tr}
 
 	return &s
 }
 
 func (s *RefreshTokenService) IssueRefreshToken(ctx context.Context, userID primitive.ObjectID) (string, error) {
+	ctx, span := s.tr.Start(ctx, "refresh_token.issue")
+	defer span.End()
+
 	raw, err := auth.GenerateRefreshToken()
 	if err != nil {
+		span.RecordError(err)
 		return "", err
 	}
 	now := time.Now()
@@ -38,6 +47,7 @@ func (s *RefreshTokenService) IssueRefreshToken(ctx context.Context, userID prim
 
 	_, err = s.r.InsertToken(ctx, doc)
 	if err != nil {
+		span.RecordError(err)
 		return "", err
 	}
 
@@ -45,10 +55,16 @@ func (s *RefreshTokenService) IssueRefreshToken(ctx context.Context, userID prim
 }
 
 func (s *RefreshTokenService) GetRefreshTokenId(ctx context.Context, refreshToken string) (primitive.ObjectID, error) {
+	ctx, span := s.tr.Start(ctx, "refresh_token.verify")
+	defer span.End()
+
 	hash := auth.HashRefreshToken(refreshToken)
 
 	old, err := s.r.FindActiveByHash(ctx, hash)
 	if err != nil || old == nil {
+		if err != nil {
+			span.RecordError(err)
+		}
 		return primitive.NilObjectID, ErrRefreshInvalid
 	}
 

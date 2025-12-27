@@ -16,3 +16,8 @@ providers:
 api:
   dashboard: true
   insecure: true
+
+tracing:
+  otlp:
+    http:
+      endpoint: http://otel-collector:4318/v1/traces

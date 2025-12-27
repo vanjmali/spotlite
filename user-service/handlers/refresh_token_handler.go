@@ -7,6 +7,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
+	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/services"
 )
@@ -25,7 +26,7 @@ func (h *RefreshTokenHandler) HandleRefreshToken(w http.ResponseWriter, r *http.
 	var req dtos.RefreshRequest
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
-			log.Printf("failed to process refresh token request: %v", err)
+			log.Printf("trace_id=%s failed to process refresh token request: %v", telemetry.TraceID(r.Context()), err)
 		}
 		return
 	}
@@ -44,7 +45,7 @@ func (h *RefreshTokenHandler) HandleRefreshToken(w http.ResponseWriter, r *http.
 
 	access, err := h.us.CreateNewToken(r.Context(), user)
 	if err != nil {
-		log.Printf("failed to create new access token: %v", err)
+		log.Printf("trace_id=%s failed to create new access token: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -54,6 +55,6 @@ func (h *RefreshTokenHandler) HandleRefreshToken(w http.ResponseWriter, r *http.
 	}
 
 	if err := respond.OkJson(w, b); err != nil {
-		log.Printf("failed to write refresh token response: %v", err)
+		log.Printf("trace_id=%s failed to write refresh token response: %v", telemetry.TraceID(r.Context()), err)
 	}
 }

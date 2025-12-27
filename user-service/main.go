@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/vanjmali/spotlite/common-lib/requests"
+	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/handlers"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mailing"
@@ -28,6 +29,21 @@ func main() {
 }
 
 func run() error {
+	ctx := context.Background()
+
+	// Initialize telemetry
+	tr, err := telemetry.Init(ctx, "user-service")
+	if err != nil {
+		return fmt.Errorf("failed to initialize tracing: %w", err)
+	}
+
+	defer func() {
+		if err := tr.Shutdown(ctx); err != nil {
+			log.Printf("failed to shut down tracer provider: %v", err)
+		}
+	}()
+
+	// Initialize clients
 	dbClient, err := mongo.InitMongoClient()
 	if err != nil {
 		return fmt.Errorf("cannot start application without DB connection: %w", err)
@@ -39,6 +55,10 @@ func run() error {
 		return fmt.Errorf("cannot start application without mailing service: %w", err)
 	}
 
+	defer dbClient.Disconnect(context.Background())
+	defer mailClient.Close()
+
+	// Configure validators
 	val := validator.New()
 	if err := requests.RegisterValidation(val, validation.CheckStrongPassword); err != nil {
 		return fmt.Errorf("failed to register custom validations: %w", err)
@@ -52,9 +72,7 @@ func run() error {
 		return fmt.Errorf("failed to register custom validations: %w", err)
 	}
 
-	defer dbClient.Disconnect(context.Background())
-	defer mailClient.Close()
-
+	// Initialize repositories, services, handlers, and routers
 	userRepo := repositories.NewRepository(mongo.DatabaseName(), "users", dbClient)
 	ms := services.InitMailingService(mailClient)
 	us := services.NewUserService(*userRepo, *ms)
@@ -70,6 +88,7 @@ func run() error {
 
 	router := routers.HandleRequests(userH, rtH)
 
+	// Start HTTP server
 	addr := ":" + port
 	log.Printf("Listening on %s", addr)
 	server := &http.Server{

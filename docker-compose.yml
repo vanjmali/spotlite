@@ -11,6 +11,16 @@ services:
       - ./api-gateway/traefik.dev.yml:/etc/traefik/traefik.yml:ro
     networks:
       - api-gateway
+    environment:
+      OTEL_PROPAGATORS: tracecontext,baggage
+
+  otel-collector: # Observability
+    image: otel/opentelemetry-collector:latest
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./api-gateway/otelcol.yml:/etc/otelcol/config.yaml:ro
+    networks:
+      - api-gateway
 
 networks:
   api-gateway:
