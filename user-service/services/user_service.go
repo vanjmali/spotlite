@@ -131,17 +131,6 @@ func (s *UserService) FindUsersForExpiryNotification(
 	return users, nextID, nil
 }
 
-func (s *UserService) MarkExpiryNotificationsSentBulk(ctx context.Context, ids []primitive.ObjectID) error {
-	log.Print("DEBUG: MarkExpiryNotificationSent service function has been called")
-	err := s.r.UpdateExpiryNotificationsSentDateBulk(ctx, ids)
-	if err != nil {
-		log.Printf("ERROR: An error has occurred while updating users notification sent date: %s", err)
-		return err
-	}
-
-	return nil
-}
-
 func (s *UserService) MarkExpiryNotificationSent(ctx context.Context, userID primitive.ObjectID) error {
 	log.Print("DEBUG: MarkExpiryNotificationSent service function has been called")
 	err := s.r.UpdateExpiryNotificationSentDate(ctx, userID)
@@ -264,7 +253,7 @@ func (s *UserService) FindByID(ctx context.Context, id primitive.ObjectID) (*ent
 	return s.r.FindUserByID(ctx, id)
 }
 
-// EmailExists checks if an email is already registered
+// EmailExists checks if an email is already registered.
 func (s *UserService) EmailExists(ctx context.Context, email string) (bool, error) {
 	return s.r.ExistsByEmail(ctx, email)
 }

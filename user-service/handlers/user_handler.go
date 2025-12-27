@@ -177,7 +177,7 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-// HandleResendOtp resends the OTP code to the user's email if they have a valid login request
+// HandleResendOtp resends the OTP code to the user's email if they have a valid login request.
 func (h *UserHandler) HandleResendOtp(w http.ResponseWriter, r *http.Request) {
 	var req dtos.ResendOtpDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
@@ -207,7 +207,7 @@ func (h *UserHandler) HandleResendOtp(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// HandleCheckEmail checks if an email is already registered
+// HandleCheckEmail checks if an email is already registered.
 func (h *UserHandler) HandleCheckEmail(w http.ResponseWriter, r *http.Request) {
 	var req dtos.CheckEmailDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {

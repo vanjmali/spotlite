@@ -183,22 +183,6 @@ func (r *UserRepository) FindUsersForExpiryNotification(
 	return users, nextID, nil
 }
 
-// UpdateExpiryNotificationsSentDateBulk function is used to update the "last_expiry_notification_sent" field for
-// a batch of users.
-func (r *UserRepository) UpdateExpiryNotificationsSentDateBulk(ctx context.Context, ids []primitive.ObjectID) error {
-	c := r.Client.Database(r.DbName).Collection(r.CollName)
-
-	filter := bson.M{"_id": bson.M{"$in": ids}}
-	update := bson.M{
-		"$set": bson.M{
-			"last_expiry_notification_sent_at": time.Now(),
-		},
-	}
-
-	_, err := c.UpdateMany(ctx, filter, update)
-	return err
-}
-
 // UpdateExpiryNotificationSentDate function is used to update the "last_expiry_notification_sent" field for
 // a user that is processed.
 func (r *UserRepository) UpdateExpiryNotificationSentDate(ctx context.Context, userID primitive.ObjectID) error {
@@ -216,7 +200,7 @@ func (r *UserRepository) UpdateExpiryNotificationSentDate(ctx context.Context, u
 	return err
 }
 
-// FindUserByID finds users by ID,.
+// FindUserByID finds users by ID.
 func (r *UserRepository) FindUserByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
 	var user entities.User
 	c := r.Client.Database(r.DbName).Collection(r.CollName)

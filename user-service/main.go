@@ -23,7 +23,6 @@ import (
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/routers"
 	"github.com/vanjmali/spotlite/user-service/services"
-	"github.com/vanjmali/spotlite/user-service/utils/load"
 	"github.com/vanjmali/spotlite/user-service/validation"
 )
 
@@ -47,7 +46,8 @@ func run() error {
 		return fmt.Errorf("cannot start application without mailing service: %w", err)
 	}
 
-	load.TestLoadSeed(dbc)
+	// Utility function which seeds the database with users so we could test out the email scheduler
+	// load.TestLoadSeed(dbc)
 
 	v := validator.New()
 	if err := requests.RegisterValidation(v, validation.CheckStrongPassword); err != nil {
@@ -55,6 +55,10 @@ func run() error {
 	}
 
 	if err := requests.RegisterValidation(v, validation.CheckValidUsername); err != nil {
+		return fmt.Errorf("failed to register custom validations: %w", err)
+	}
+
+	if err := requests.RegisterValidation(v, validation.CheckValidName); err != nil {
 		return fmt.Errorf("failed to register custom validations: %w", err)
 	}
 
@@ -91,7 +95,7 @@ func run() error {
 
 	// Initialize a scheduler
 	//    minutes *    hours *    day of month *     month *    day of week *
-	as.RegisterSchedules("12 12 * * *")
+	as.RegisterSchedule("53 16 * * *")
 
 	// Starts task router and scheduler in separate go routines
 	as.Start(mux)
@@ -111,19 +115,26 @@ func run() error {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// stop is a channel which stores a maximum of one os signal
 	stop := make(chan os.Signal, 1)
+
+	// when an os.Interupt (ctrl + C) OR Sigterm call occurs, sends a signal to the stop channel
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
+	// starts  the http server in a new goroutine so graceful shutdown mechanism doesn't get blocked and can
+	// react of signals
 	go func() {
 		log.Printf("INFO: Listening on %s", srvAddr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("ERROR: failed to start server: %w", err)
+			log.Fatalf("ERROR: failed to start server: %s", err)
 		}
 	}()
 
+	// stops the line of execution here until the stop channels gets a signal
 	<-stop
 	log.Println("DEBUG: Shutting down gracefully...")
 
+	// graceful shutdown starts
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

@@ -24,9 +24,9 @@ func TestLoadSeed(mc *mongo.Client) {
 	now := time.Now().UTC()
 	expiryDate := now.AddDate(0, 0, 5)
 	lastSent := now.AddDate(0, 0, -2)
-	passwordHash := "$2a$12$cREglmMvY.5rWeAg1Fy.u.WANxzgD5B4kn6MOQmw07Ao9VAInA2Rm"
+	passwordHash := ""
 
-	fmt.Printf("Starting insertion of %d users...\n", totalUsers)
+	log.Printf("Starting insertion of %d users...\n", totalUsers)
 
 	for i := 0; i < totalUsers; i += insertBatch {
 		var batch []interface{}
@@ -58,7 +58,7 @@ func TestLoadSeed(mc *mongo.Client) {
 		// Execute InsertMany for the batch
 		_, err := c.InsertMany(ctx, batch)
 		if err != nil {
-			log.Fatalf("Failed to insert batch at index %d: %v", i, err)
+			log.Printf("ERROR: Failed to insert batch at index %d: %v", i, err)
 		}
 	}
 }

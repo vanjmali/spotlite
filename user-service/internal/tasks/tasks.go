@@ -13,10 +13,11 @@ const (
 )
 
 type SendEmailPayload struct {
-	UserID string
-	Email  string
+	UserID string `json:"user_id"`
+	Email  string `json:"email"`
 }
 
+// NewPasswordExpiryCheckTask task.
 func NewPasswordExpiryCheckTask() *asynq.Task {
 	return asynq.NewTask(
 		TypePasswordExpiryCheck,
@@ -25,6 +26,7 @@ func NewPasswordExpiryCheckTask() *asynq.Task {
 	)
 }
 
+// NewSendExpiryEmailTask task.
 func NewSendExpiryEmailTask(id string, email string) (*asynq.Task, error) {
 	payload, err := json.Marshal(SendEmailPayload{UserID: id, Email: email})
 	if err != nil {
