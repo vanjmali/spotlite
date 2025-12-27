@@ -149,15 +149,12 @@ func (s *UserService) FindUsersForExpiryNotification(
 	batchSize int,
 	lastID string,
 ) ([]*entities.User, string, error) {
-	log.Printf(
-		"DEBUG: FindUsersForExpiryNotification service function has been called with the following params, %d, %d, %s",
-		daysUntilExpiry,
-		batchSize,
-		lastID,
-	)
+	ctx, span := s.tr.Start(ctx, "user.findUsersForExpiryNotification")
+	defer span.End()
+
 	users, nextID, err := s.r.FindUsersForExpiryNotification(ctx, daysUntilExpiry, batchSize, lastID)
 	if err != nil {
-		log.Printf("ERROR: An error has occurred while fetching batch: %s", err)
+		span.RecordError(err)
 		return nil, "", err
 	}
 
@@ -165,10 +162,12 @@ func (s *UserService) FindUsersForExpiryNotification(
 }
 
 func (s *UserService) MarkExpiryNotificationSent(ctx context.Context, userID primitive.ObjectID) error {
-	log.Print("DEBUG: MarkExpiryNotificationSent service function has been called")
+	ctx, span := s.tr.Start(ctx, "user.markExpiryNotificationSent")
+	defer span.End()
+
 	err := s.r.UpdateExpiryNotificationSentDate(ctx, userID)
 	if err != nil {
-		log.Printf("ERROR: An error has occurred while updating users notification sent date: %s", err)
+		span.RecordError(err)
 		return err
 	}
 

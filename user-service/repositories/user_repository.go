@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -129,12 +130,6 @@ func (r *UserRepository) FindUsersForExpiryNotification(
 	batchSize int,
 	lastID string,
 ) ([]*entities.User, string, error) {
-	log.Printf(
-		"DEBUG: FindUsersForExpiryNotification repository function has been called with the following params, %d, %d, %s",
-		daysUntilExpiry,
-		batchSize,
-		lastID,
-	)
 	c := r.Client.Database(r.DbName).Collection(r.CollName)
 
 	now := time.Now()
@@ -164,15 +159,14 @@ func (r *UserRepository) FindUsersForExpiryNotification(
 
 	cursor, err := c.Find(ctx, filter, opts)
 	if err != nil {
-		log.Printf("ERROR: (Find) An error has occurred while finding users: %s", err)
-		return nil, "", err
+		return nil, "", fmt.Errorf("ERROR: (Find) An error has occurred while finding users: %w", err)
 	}
+
 	defer cursor.Close(ctx)
 
 	var users []*entities.User
 	if err := cursor.All(ctx, &users); err != nil {
-		log.Printf("ERROR:(Cursor.All) An error has occurred while finding users: %s", err)
-		return nil, "", err
+		return nil, "", fmt.Errorf("ERROR: (Cursor.All) An error has occurred while finding users: %w", err)
 	}
 
 	var nextID string

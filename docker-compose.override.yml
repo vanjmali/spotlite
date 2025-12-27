@@ -62,22 +62,22 @@ services:
   # --- Frontend ---
   # For hot reload
 
-  frontend:
-    command: npm run start -- --host 0.0.0.0 --port 3000
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.dev
-    labels:
-      traefik.http.services.frontend.loadbalancer.server.port: "3000"
-    volumes:
-      - ./frontend/:/app
-      # keep node_modules in a separate volume, out of the bind mount
-      # this ensures that node_modules folder does not break permissions by Docker
-      # and quicker polling for source files
-      - frontend-node-modules:/app/node_modules
-    environment:
-      - CHOKIDAR_USEPOLLING=true # reliable file watching on Docker for Win/Mac
-      - NG_CLI_ANALYTICS=false # disable telemetry
+#  frontend:
+#    command: npm run start -- --host 0.0.0.0 --port 3000
+#    build:
+#      context: ./frontend
+#      dockerfile: Dockerfile.dev
+#    labels:
+#      traefik.http.services.frontend.loadbalancer.server.port: "3000"
+#    volumes:
+#      - ./frontend/:/app
+#      # keep node_modules in a separate volume, out of the bind mount
+#      # this ensures that node_modules folder does not break permissions by Docker
+#      # and quicker polling for source files
+#      - frontend-node-modules:/app/node_modules
+#    environment:
+#      - CHOKIDAR_USEPOLLING=true # reliable file watching on Docker for Win/Mac
+#      - NG_CLI_ANALYTICS=false # disable telemetry
 
   # --- User Service ---
   # For local development

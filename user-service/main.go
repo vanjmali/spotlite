@@ -65,8 +65,6 @@ func run() error {
 	// Utility function which seeds the database with users so we could test out the email scheduler
 	// load.TestLoadSeed(dbc)
 
-
-
 	// Configure validators
 	v := validator.New()
 	if err := requests.RegisterValidation(v, validation.CheckStrongPassword); err != nil {
