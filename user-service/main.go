@@ -143,7 +143,10 @@ func run() error {
 	}
 
 	// Making sure we stop the scheduler, server, client
-	as.Stop()
+	err = as.Stop()
+	if err != nil {
+		return err
+	}
 
 	log.Println("DEBUG: Shutdown complete")
 
