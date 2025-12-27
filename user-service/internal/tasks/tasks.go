@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/hibiken/asynq"
 )
@@ -17,7 +18,11 @@ type SendEmailPayload struct {
 }
 
 func NewPasswordExpiryCheckTask() *asynq.Task {
-	return asynq.NewTask(TypePasswordExpiryCheck, nil)
+	return asynq.NewTask(
+		TypePasswordExpiryCheck,
+		nil,
+		asynq.Unique(23*time.Hour),
+	)
 }
 
 func NewSendExpiryEmailTask(id string, email string) (*asynq.Task, error) {

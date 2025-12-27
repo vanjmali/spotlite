@@ -10,7 +10,6 @@ import (
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/internal/tasks"
 	"github.com/vanjmali/spotlite/user-service/services"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
@@ -34,52 +33,7 @@ func NewUserWorker(client *asynq.Client, us *services.UserService, ms *services.
 	return &UserWorker{ac: client, us: us, ms: ms}
 }
 
-func (w *UserWorker) HandleExpiryCheck1(ctx context.Context, t *asynq.Task) error {
-	log.Printf("DEBUG: HandleExpiryCheck worker started")
-
-	var lastID string
-
-	for {
-		users, nextID, err := w.us.FindUsersForExpiryNotification(ctx, expiryThreshold, batchSize, lastID)
-		if err != nil {
-			return err
-		}
-
-		if len(users) == 0 {
-			break
-		}
-
-		userIDs := make([]primitive.ObjectID, 0, len(users))
-
-		for _, u := range users {
-			emailTask, _ := tasks.NewSendExpiryEmailTask(u.ID.Hex(), u.Email)
-
-			_, err := w.ac.EnqueueContext(ctx, emailTask)
-			if err != nil {
-				log.Printf("ERROR: Failed to enqueue user %s: %v", u.ID.Hex(), err)
-				continue
-			}
-			userIDs = append(userIDs, u.ID)
-		}
-
-		if len(userIDs) > 0 {
-			err = w.us.MarkExpiryNotificationsSentBulk(ctx, userIDs)
-			if err != nil {
-				log.Printf("ERROR: Failed to bulk update users in DB: %v", err)
-				return err
-			}
-		}
-
-		if nextID == "" {
-			break
-		}
-		lastID = nextID
-	}
-
-	return nil
-}
-
-func (w *UserWorker) HandleExpiryCheck2(ctx context.Context, t *asynq.Task) error {
+func (w *UserWorker) HandleExpiryCheck(ctx context.Context, t *asynq.Task) error {
 	log.Printf("DEBUG: HandleExpiryCheck worker started")
 	var lastID string
 

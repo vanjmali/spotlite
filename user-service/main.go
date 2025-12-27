@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -16,11 +18,12 @@ import (
 	"github.com/vanjmali/spotlite/user-service/handlers"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mailing"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mongo"
-	"github.com/vanjmali/spotlite/user-service/internal/tasks"
+	"github.com/vanjmali/spotlite/user-service/internal/asynqinfra"
 	"github.com/vanjmali/spotlite/user-service/internal/worker"
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/routers"
 	"github.com/vanjmali/spotlite/user-service/services"
+	"github.com/vanjmali/spotlite/user-service/utils/load"
 	"github.com/vanjmali/spotlite/user-service/validation"
 )
 
@@ -43,6 +46,8 @@ func run() error {
 		_ = dbc.Disconnect(context.Background())
 		return fmt.Errorf("cannot start application without mailing service: %w", err)
 	}
+
+	load.TestLoadSeed(dbc)
 
 	v := validator.New()
 	if err := requests.RegisterValidation(v, validation.CheckStrongPassword); err != nil {
@@ -68,41 +73,28 @@ func run() error {
 	us := services.NewUserService(*ur, *ms)
 	rts := services.NewRefreshTokenService(*rtr)
 
-	redAddr := os.Getenv("REDIS_ADDR")
-	if redAddr == "" {
-		redAddr = "127.0.0.1:6379"
-	}
+	redAddr := utils.MustGetEnv("REDIS_ADDR")
 	redConn := asynq.RedisClientOpt{Addr: redAddr}
 
-	// asynq server initialization, most 10 tasks will be handled in parallel
-	as := asynq.NewServer(redConn, asynq.Config{Concurrency: 10})
+	// Initialize asynq service, which will initialize an asynq server, client, scheduler
+	as := asynqinfra.New(redConn, 10)
 
-	// asynq client initialization
-	ac := asynq.NewClient(redConn)
-	defer ac.Close()
+	// Initialize user worker which is in charge of handling tasks
+	userWorker := worker.NewUserWorker(
+		as.Client(),
+		us,
+		ms,
+	)
 
-	// worker initialization
-	w := worker.NewUserWorker(ac, us, ms)
+	// Initialize Task router which will map tasks with adequate workers
+	mux := asynqinfra.NewTaskRouter(userWorker)
 
-	// worker router initialization
-	mux := asynq.NewServeMux()
-	mux.HandleFunc(tasks.TypePasswordExpiryCheck, w.HandleExpiryCheck2)
-	mux.HandleFunc(tasks.TypeSendExpiryEmail, w.HandleSendExpiryEmail)
+	// Initialize a scheduler
+	//    minutes *    hours *    day of month *     month *    day of week *
+	as.RegisterSchedules("12 12 * * *")
 
-	// Starting Asynq server in a new goroutine, which will act as a background worker and waits
-	// for new tasks to be added to Redis (Redis is being used as a message broker in this scenario).
-	// AKA Consumer,
-	go as.Run(mux)
-
-	sch := asynq.NewScheduler(redConn, nil)
-	if _, err := sch.Register("17 18 * * *", tasks.NewPasswordExpiryCheckTask()); err != nil {
-		log.Fatal(err)
-	}
-
-	// Starting the Scheduler in another goroutine, which will check for the schedule we defined
-	// and when the time comes push the task to message broker,
-	// AKA Producer,
-	go sch.Run()
+	// Starts task router and scheduler in separate go routines
+	as.Start(mux)
 
 	uh := handlers.NewUserHandler(*us, *v, *rts)
 	rth := handlers.NewRefreshTokenHandler(*rts, *us, *v)
@@ -111,7 +103,6 @@ func run() error {
 
 	srvAddr := ":" + port
 
-	log.Printf("Listening on %s", srvAddr)
 	srv := &http.Server{
 		Addr:         srvAddr,
 		Handler:      r,
@@ -120,9 +111,30 @@ func run() error {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return fmt.Errorf("failed to start server: %w", err)
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		log.Printf("INFO: Listening on %s", srvAddr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("ERROR: failed to start server: %w", err)
+		}
+	}()
+
+	<-stop
+	log.Println("DEBUG: Shutting down gracefully...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Printf("ERROR: HTTP server Shutdown error: %v", err)
 	}
+
+	// Making sure we stop the scheduler, server, client
+	as.Stop()
+
+	log.Println("DEBUG: Shutdown complete")
 
 	return nil
 }
