@@ -14,6 +14,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/hibiken/asynq"
 	"github.com/vanjmali/spotlite/common-lib/requests"
+	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/handlers"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mailing"
@@ -35,6 +36,21 @@ func main() {
 }
 
 func run() error {
+	ctx := context.Background()
+
+	// Initialize telemetry
+	tr, err := telemetry.Init(ctx, "user-service")
+	if err != nil {
+		return fmt.Errorf("failed to initialize tracing: %w", err)
+	}
+
+	defer func() {
+		if err := tr.Shutdown(ctx); err != nil {
+			log.Printf("failed to shut down tracer provider: %v", err)
+		}
+	}()
+
+	// Initialize clients
 	dbc, err := mongo.InitMongoClient()
 	if err != nil {
 		return fmt.Errorf("cannot start application without DB connection: %w", err)
@@ -49,6 +65,9 @@ func run() error {
 	// Utility function which seeds the database with users so we could test out the email scheduler
 	// load.TestLoadSeed(dbc)
 
+
+
+	// Configure validators
 	v := validator.New()
 	if err := requests.RegisterValidation(v, validation.CheckStrongPassword); err != nil {
 		return fmt.Errorf("failed to register custom validations: %w", err)
