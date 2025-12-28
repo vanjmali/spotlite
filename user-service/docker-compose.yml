@@ -32,6 +32,9 @@ services:
       traefik.http.middlewares.user-service-strip-prefix.stripprefix.prefixes: /api/users
       traefik.http.middlewares.user-service-strip-prefix.stripprefix.forceslash: false
       traefik.http.services.user-service.loadbalancer.server.port: "3000"
+      traefik.http.services.user-service.loadbalancer.healthcheck.path: /healthz
+      traefik.http.services.user-service.loadbalancer.healthcheck.interval: 5s
+      traefik.http.services.user-service.loadbalancer.healthcheck.timeout: 2s
     depends_on:
       user-mongodb:
         condition: service_healthy
