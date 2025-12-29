@@ -67,8 +67,6 @@ services:
 
   user-redis:
     image: redis:8-alpine
-    ports:
-      - "6379:6379"
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - user-redis-data:/data

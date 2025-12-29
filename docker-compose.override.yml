@@ -91,7 +91,6 @@ services:
     environment:
       JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
-      APP_JWT_SECRET: "some-secret-key"
     depends_on:
       key-gen:
         condition: service_completed_successfully

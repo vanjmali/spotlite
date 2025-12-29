@@ -149,7 +149,7 @@ func (s *UserService) FindUsersForExpiryNotification(
 	batchSize int,
 	lastID string,
 ) ([]*entities.User, string, error) {
-	ctx, span := s.tr.Start(ctx, "user.findUsersForExpiryNotification")
+	ctx, span := s.tr.Start(ctx, "user.find_users_for_expiry_notification")
 	defer span.End()
 
 	users, nextID, err := s.r.FindUsersForExpiryNotification(ctx, daysUntilExpiry, batchSize, lastID)
@@ -162,7 +162,7 @@ func (s *UserService) FindUsersForExpiryNotification(
 }
 
 func (s *UserService) MarkExpiryNotificationSent(ctx context.Context, userID primitive.ObjectID) error {
-	ctx, span := s.tr.Start(ctx, "user.markExpiryNotificationSent")
+	ctx, span := s.tr.Start(ctx, "user.mark_expiry_notification_sent")
 	defer span.End()
 
 	err := s.r.UpdateExpiryNotificationSentDate(ctx, userID)

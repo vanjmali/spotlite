@@ -29,7 +29,7 @@ func TestLoadSeed(mc *mongo.Client) {
 	log.Printf("Starting insertion of %d users...\n", totalUsers)
 
 	for i := 0; i < totalUsers; i += insertBatch {
-		var batch []interface{}
+		var batch []any
 
 		currentBatchSize := insertBatch
 		if i+insertBatch > totalUsers {
