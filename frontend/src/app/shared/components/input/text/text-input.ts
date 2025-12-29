@@ -1,7 +1,7 @@
 import { Component, input, model, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ValidationResult, VALIDATION_MESSAGES } from '../../validation';
+import { VALIDATION_MESSAGES, ValidationResult } from '@app/shared';
 import { ErrorComponent } from '../error';
 
 @Component({
@@ -15,6 +15,8 @@ export class TextInputComponent {
   public readonly labelSg = input<string>('Text', { alias: 'label' });
   public readonly requiredSg = input<boolean>(false, { alias: 'required' });
   public readonly placeholderSg = input<string>('', { alias: 'placeholder' });
+  public readonly minSg = input<number | null>(null, { alias: 'min' });
+  public readonly maxSg = input<number | null>(null, { alias: 'max' });
 
   // Two-way binding using model with aliases
   public readonly valueSg = model<string>('', {
@@ -32,9 +34,23 @@ export class TextInputComponent {
 
   public validate(): ValidationResult {
     const value = this.valueSg();
+    const min = this.minSg();
+    const max = this.maxSg();
 
     if (this.requiredSg() && !value) {
       const error = VALIDATION_MESSAGES.TEXT_REQUIRED(this.labelSg());
+      this.errorSg.set(error);
+      return { isValid: false, error };
+    }
+
+    if (min !== null && value.length < min) {
+      const error = `${this.labelSg()} must be at least ${min} characters`;
+      this.errorSg.set(error);
+      return { isValid: false, error };
+    }
+
+    if (max !== null && value.length > max) {
+      const error = `${this.labelSg()} must be at most ${max} characters`;
       this.errorSg.set(error);
       return { isValid: false, error };
     }

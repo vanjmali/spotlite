@@ -73,7 +73,10 @@ export const VALIDATION_MESSAGES = {
   USERNAME_IN_USE: 'Username is already in use.',
   REGISTRATION_FAILED: 'Registration failed. Please try again.',
   INVALID_CREDENTIALS: 'Invalid email or password.',
+  LOGIN_FAILED: 'Login failed. Check your credentials and try again.',
   OTP_EXPIRED: 'Verification code has expired',
   OTP_INVALID_CODE: 'Invalid code',
+  OTP_VERIFICATION_FAILED: 'OTP verification failed',
+  OTP_RESEND_FAILED: 'Failed to resend OTP. Please try again.',
   MISSING_EMAIL: 'Missing email',
 } as const;

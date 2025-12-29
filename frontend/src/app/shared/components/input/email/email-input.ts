@@ -1,7 +1,7 @@
 import { Component, input, model, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ValidationResult, EMAIL_PATTERN, VALIDATION_MESSAGES } from '../../validation';
+import { ValidationResult, EMAIL_PATTERN, VALIDATION_MESSAGES } from '@app/shared';
 import { ErrorComponent } from '../error';
 
 @Component({

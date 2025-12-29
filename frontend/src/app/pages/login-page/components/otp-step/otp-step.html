@@ -1,4 +1,5 @@
 @let error = store.errorSg();
+@let success = successSg();
 
 <div class="otp-step">
   <h2 class="otp-step__title">Enter the 6-digit code we sent to {{ store.emailSg() }}</h2>
@@ -8,7 +9,11 @@
   </div>
 
   @if (error) {
-    <div class="otp-step__error">{{ error }}</div>
+    <app-message [message]="error" type="error" />
+  }
+
+  @if (success) {
+    <app-message [message]="success" type="success" />
   }
 
   <div class="otp-step__actions">

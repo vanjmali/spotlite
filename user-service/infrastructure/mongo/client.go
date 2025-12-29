@@ -9,6 +9,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
 )
 
 const timeout = 10 * time.Second
@@ -20,6 +21,7 @@ func InitMongoClient() (*mongo.Client, error) {
 
 	uri := "mongodb://" + net.JoinHostPort(os.Getenv("DB_HOST"), os.Getenv("DB_PORT"))
 	clientOptions := options.Client().ApplyURI(uri)
+	clientOptions.SetMonitor(otelmongo.NewMonitor())
 	clientOptions.SetAuth(options.Credential{
 		Username:   os.Getenv("DB_USER"),
 		Password:   os.Getenv("DB_PASS"),
