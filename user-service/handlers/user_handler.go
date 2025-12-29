@@ -32,6 +32,35 @@ func NewUserHandler(s services.UserService, v validator.Validate, rts services.R
 	return &h
 }
 
+func (h *UserHandler) HandleChangePassword(w http.ResponseWriter, r *http.Request) {
+
+	var req dtos.ChangePasswordDto
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
+		if err != nil {
+			log.Printf("failed to process change password request: %v", err)
+		}
+		return
+	}
+
+	err := h.s.ChangePassword(r.Context(), &req)
+
+	switch {
+	case errors.Is(err, services.ErrInvalidCurrentPassword):
+		_ = respond.Unauthorized(w, "Invalid current password.")
+		return
+
+	case errors.Is(err, services.ErrTooFrequentPasswordChange):
+		_ = respond.BadRequest(w, "Password changed too frequently.")
+		return
+	case err != nil:
+		_ = respond.InternalServerError(w)
+		return
+	}
+	if err := respond.Ok(w, "Password changed successfully."); err != nil {
+		log.Printf("failed to write change password response: %v", err)
+	}
+}
+
 // HandleLogin authenticates user credentials and triggers OTP delivery.
 func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	var req dtos.UserLoginDto

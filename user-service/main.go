@@ -59,7 +59,9 @@ func run() error {
 	defer mailClient.Close()
 
 	// Configure validators
+	requests.RegisterCommonValidationMessages()
 	val := validator.New()
+
 	if err := requests.RegisterValidation(val, validation.CheckStrongPassword); err != nil {
 		return fmt.Errorf("failed to register custom validations: %w", err)
 	}
