@@ -323,39 +323,56 @@ func (s *UserService) EmailExists(ctx context.Context, email string) (bool, erro
 }
 
 func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswordDto) error {
-	userIdHexString := middlewares.GetUserIdFromContext(ctx)
+	ctx, span := s.tr.Start(ctx, "user.change_password")
+	defer span.End()
+
+	lookupCtx, lookupSpan := s.tr.Start(ctx, "user.change_password.lookup_user")
+	userIdHexString := middlewares.GetUserIdFromContext(lookupCtx)
 
 	userObjectId, err := primitive.ObjectIDFromHex(userIdHexString)
 	if err != nil {
+		lookupSpan.RecordError(err)
+		lookupSpan.End()
 		return ErrObjectIdCastFailed
 	}
 
 	user, err := s.r.FindUserByID(ctx, userObjectId)
 	if err != nil {
+		lookupSpan.RecordError(err)
+		lookupSpan.End()
 		return err
 	}
+	lookupSpan.End()
 
+	_, passwordSpan := s.tr.Start(ctx, "user.change_password.validate_and_set")
 	if user.PasswordLastChanged.Compare(time.Now().Add(-24*time.Hour)) >= 0 {
+		passwordSpan.End()
 		return ErrTooFrequentPasswordChange
 	}
 
 	err = auth.CompareHashAndPassword(user.Password, dto.CurrentPassword)
 	if err != nil {
+		passwordSpan.RecordError(err)
+		passwordSpan.End()
 		return ErrInvalidCurrentPassword
 	}
 
 	hashedPassword, err := auth.HashPassword(dto.NewPassword)
 	if err != nil {
+		passwordSpan.RecordError(err)
+		passwordSpan.End()
 		return err
 	}
 
 	newTime := time.Now()
-
 	expiresAt := newTime.Add(60 * 24 * time.Hour)
 
 	if err := s.r.SetHashPassowrd(ctx, user.ID, hashedPassword, newTime, expiresAt); err != nil {
+		passwordSpan.RecordError(err)
+		passwordSpan.End()
 		return err
 	}
 
-	return err
+	passwordSpan.End()
+	return nil
 }
