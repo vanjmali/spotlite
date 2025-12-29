@@ -5,6 +5,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
+	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/user-service/handlers"
 )
 
@@ -26,5 +27,6 @@ func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler) 
 	// the verify endpoint is defined as a get so it can redirect when link click happens,
 	r.HandleFunc("/verify", h.HandleAccountVerification).Methods("GET", "POST")
 
+	r.Handle("/change-password", middlewares.RequireAuthenticated(h.HandleChangePassword)).Methods("POST")
 	return r
 }

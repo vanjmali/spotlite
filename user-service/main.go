@@ -66,7 +66,9 @@ func run() error {
 	// load.TestLoadSeed(dbc)
 
 	// Configure validators
+	requests.RegisterCommonValidationMessages()
 	v := validator.New()
+
 	if err := requests.RegisterValidation(v, validation.CheckStrongPassword); err != nil {
 		return fmt.Errorf("failed to register custom validations: %w", err)
 	}

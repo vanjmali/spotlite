@@ -77,6 +77,21 @@ func (r *UserRepository) ActiveAndRevokeToken(ctx context.Context, token string)
 	return ErrTokenExpired
 }
 
+func (r *UserRepository) SetHashPassowrd(ctx context.Context, userId primitive.ObjectID, passwordHash string, newTime, expiresAt time.Time) error {
+	c := r.Client.Database(r.DbName).Collection(r.CollName)
+
+	_, err := c.UpdateByID(ctx,
+		userId,
+		bson.M{"$set": bson.M{
+			"password":                 passwordHash,
+			"password_last_changed_at": newTime,
+			"password_expires_at":      expiresAt,
+			"updated_at":               time.Now(),
+		}},
+	)
+	return err
+}
+
 // SetLoginOtp stores the hashed OTP and expiry for a user.
 func (r *UserRepository) SetLoginOtp(
 	ctx context.Context,

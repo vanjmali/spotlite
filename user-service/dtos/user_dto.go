@@ -30,3 +30,8 @@ type ResendOtpDto struct {
 type CheckEmailDto struct {
 	Email string `json:"email" validate:"required,email"`
 }
+
+type ChangePasswordDto struct {
+	CurrentPassword string `json:"current_password" validate:"required"`
+	NewPassword     string `json:"new_password" validate:"required,strongpassword,nefield=CurrentPassword"`
+}

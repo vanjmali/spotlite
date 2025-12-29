@@ -9,6 +9,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/vanjmali/spotlite/common-lib/account"
+	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
@@ -40,6 +41,12 @@ var (
 	ErrOtpExpired = errors.New("expired otp")
 	// ErrBadCredentials indicates the credentials are invalid.
 	ErrBadCredentials = errors.New("invalid credentials")
+	// ErrInvalidCurrentPassword indicates the current password provided is incorrect.
+	ErrInvalidCurrentPassword = errors.New("invalid current password")
+	// ErrTooFrequentPasswordChange indicates password change requests are too frequent.
+	ErrTooFrequentPasswordChange = errors.New("password changed too frequently")
+	// ErrObjectIdCastFailed indicates converting hex to objectId failed.
+	ErrObjectIdCastFailed = errors.New("failed to convert hex to objectId")
 )
 
 // UserService contains business logic for user onboarding, login and account maintenance.
@@ -345,4 +352,59 @@ func (s *UserService) EmailExists(ctx context.Context, email string) (bool, erro
 		span.RecordError(err)
 	}
 	return exists, err
+}
+
+func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswordDto) error {
+	ctx, span := s.tr.Start(ctx, "user.change_password")
+	defer span.End()
+
+	lookupCtx, lookupSpan := s.tr.Start(ctx, "user.change_password.lookup_user")
+	userIdHexString := middlewares.GetUserIdFromContext(lookupCtx)
+
+	userObjectId, err := primitive.ObjectIDFromHex(userIdHexString)
+	if err != nil {
+		lookupSpan.RecordError(err)
+		lookupSpan.End()
+		return ErrObjectIdCastFailed
+	}
+
+	user, err := s.r.FindUserByID(ctx, userObjectId)
+	if err != nil {
+		lookupSpan.RecordError(err)
+		lookupSpan.End()
+		return err
+	}
+	lookupSpan.End()
+
+	_, passwordSpan := s.tr.Start(ctx, "user.change_password.validate_and_set")
+	if user.PasswordLastChanged.Compare(time.Now().Add(-24*time.Hour)) >= 0 {
+		passwordSpan.End()
+		return ErrTooFrequentPasswordChange
+	}
+
+	err = auth.CompareHashAndPassword(user.Password, dto.CurrentPassword)
+	if err != nil {
+		passwordSpan.RecordError(err)
+		passwordSpan.End()
+		return ErrInvalidCurrentPassword
+	}
+
+	hashedPassword, err := auth.HashPassword(dto.NewPassword)
+	if err != nil {
+		passwordSpan.RecordError(err)
+		passwordSpan.End()
+		return err
+	}
+
+	newTime := time.Now()
+	expiresAt := newTime.Add(60 * 24 * time.Hour)
+
+	if err := s.r.SetHashPassowrd(ctx, user.ID, hashedPassword, newTime, expiresAt); err != nil {
+		passwordSpan.RecordError(err)
+		passwordSpan.End()
+		return err
+	}
+
+	passwordSpan.End()
+	return nil
 }
