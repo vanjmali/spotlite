@@ -6,6 +6,7 @@ A microservice for user authentication, registration, and management.
 
 - Go 1.25.5
 - MongoDB
+- Redis
 
 ## Development
 
@@ -38,15 +39,16 @@ Additional services are available for local development:
 {
 	"id": "UUID",
 	"username": "string (unique)",
-	"firstName": "string",
-	"lastName": "string",
+	"first_name": "string",
+	"last_name": "string",
 	"email": "string (unique)",
 	"password": "string",
 	"role": "MEMBER | ADMIN",
-	"passwordLastChanged": "timestamp",
-	"passwordExpiresAt": "timestamp",
-	"accountStatus": "ACTIVE | INACTIVE",
-	"createdAt": "timestamp",
-	"updatedAt": "timestamp"
+	"password_last_changed_at": "timestamp",
+	"password_expires_at": "timestamp",
+	"account_status": "ACTIVE | INACTIVE",
+	"created_at": "timestamp",
+	"updated_at": "timestamp",
+    "last_expiry_notification_sent_at": "timestamp"
 }
 ```

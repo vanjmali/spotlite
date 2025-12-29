@@ -149,7 +149,39 @@ func (s *UserService) VerifyAccount(ctx context.Context, token string) error {
 	return nil
 }
 
-// Login validates credentials, checks account status, and issues a login OTP.
+// FindUsersForExpiryNotification func, finds users which password expires soon.
+func (s *UserService) FindUsersForExpiryNotification(
+	ctx context.Context,
+	daysUntilExpiry int,
+	batchSize int,
+	lastID string,
+) ([]*entities.User, string, error) {
+	ctx, span := s.tr.Start(ctx, "user.find_users_for_expiry_notification")
+	defer span.End()
+
+	users, nextID, err := s.r.FindUsersForExpiryNotification(ctx, daysUntilExpiry, batchSize, lastID)
+	if err != nil {
+		span.RecordError(err)
+		return nil, "", err
+	}
+
+	return users, nextID, nil
+}
+
+func (s *UserService) MarkExpiryNotificationSent(ctx context.Context, userID primitive.ObjectID) error {
+	ctx, span := s.tr.Start(ctx, "user.mark_expiry_notification_sent")
+	defer span.End()
+
+	err := s.r.UpdateExpiryNotificationSentDate(ctx, userID)
+	if err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	return nil
+}
+
+// Login func, validates credentials, checks account status, and issues a login OTP.
 func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) error {
 	ctx, span := s.tr.Start(ctx, "user.login")
 	defer span.End()
@@ -185,7 +217,7 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 	return s.sendLoginOtpToUser(ctx, user)
 }
 
-// CreateNewToken issues a signed JWT for the authenticated user.
+// CreateNewToken func, issues a signed JWT for the authenticated user.
 func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (string, error) {
 	_, span := s.tr.Start(ctx, "user.create_token")
 	defer span.End()
@@ -211,7 +243,7 @@ func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (
 	return tokenString, err
 }
 
-// VerifyLoginOtp compares the provided OTP with the stored hash and clears it on success.
+// VerifyLoginOtp func, compares the provided OTP with the stored hash and clears it on success.
 func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginOtpDto) (*entities.User, error) {
 	ctx, span := s.tr.Start(ctx, "user.verify_login_otp")
 	defer span.End()

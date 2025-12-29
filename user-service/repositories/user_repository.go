@@ -3,6 +3,8 @@ package repositories
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/vanjmali/spotlite/common-lib/account"
@@ -10,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // ErrTokenExpired signals that the verification token was not found or already used.
@@ -134,6 +137,79 @@ func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (*en
 	return &user, nil
 }
 
+// FindUsersForExpiryNotification finds users which password expiry date is less than (today + daysBeforeExpiry), but
+// also greater than today. The user also has to have an active account.
+func (r *UserRepository) FindUsersForExpiryNotification(
+	ctx context.Context,
+	daysUntilExpiry int,
+	batchSize int,
+	lastID string,
+) ([]*entities.User, string, error) {
+	c := r.Client.Database(r.DbName).Collection(r.CollName)
+
+	now := time.Now()
+	expiryThreshold := time.Now().AddDate(0, 0, daysUntilExpiry)
+	notificationWindow := time.Now().Add(-23 * time.Hour)
+
+	filter := bson.M{
+		"$and": []bson.M{
+			{"password_expires_at": bson.M{"$lte": expiryThreshold}},
+			{"password_expires_at": bson.M{"$gt": now}},
+		},
+		"$or": []bson.M{
+			{"last_expiry_notification_sent_at": bson.M{"$exists": false}},
+			{"last_expiry_notification_sent_at": bson.M{"$lt": notificationWindow}},
+		},
+		"account_status": account.StatusActive,
+	}
+
+	if lastID != "" {
+		objID, _ := primitive.ObjectIDFromHex(lastID)
+		filter["_id"] = bson.M{"$gt": objID}
+	}
+
+	opts := options.Find().
+		SetSort(bson.D{{Key: "_id", Value: 1}}).
+		SetLimit(int64(batchSize))
+
+	cursor, err := c.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, "", fmt.Errorf("ERROR: (Find) An error has occurred while finding users: %w", err)
+	}
+
+	defer cursor.Close(ctx)
+
+	var users []*entities.User
+	if err := cursor.All(ctx, &users); err != nil {
+		return nil, "", fmt.Errorf("ERROR: (Cursor.All) An error has occurred while finding users: %w", err)
+	}
+
+	var nextID string
+	if len(users) > 0 {
+		nextID = users[len(users)-1].ID.Hex()
+	}
+
+	return users, nextID, nil
+}
+
+// UpdateExpiryNotificationSentDate function is used to update the "last_expiry_notification_sent" field for
+// a user that is processed.
+func (r *UserRepository) UpdateExpiryNotificationSentDate(ctx context.Context, userID primitive.ObjectID) error {
+	log.Printf("DEBUG: UpdateExpiryNotificationSentDate repository function has been called!")
+	c := r.Client.Database(r.DbName).Collection(r.CollName)
+
+	filter := bson.M{"_id": userID}
+	update := bson.M{
+		"$set": bson.M{
+			"last_expiry_notification_sent_at": time.Now(),
+		},
+	}
+
+	_, err := c.UpdateOne(ctx, filter, update)
+	return err
+}
+
+// FindUserByID finds users by ID.
 func (r *UserRepository) FindUserByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
 	var user entities.User
 	c := r.Client.Database(r.DbName).Collection(r.CollName)

@@ -87,3 +87,20 @@ func (ms *MailService) SendLoginOtp(mailto string, otp string) error {
 	}
 	return err
 }
+
+func (ms *MailService) SendExpiryMail(mailto string) error {
+	log.Printf("sending email")
+	m := mail.NewMsg()
+
+	if err := m.From("mail@spotlite.com"); err != nil {
+		return err
+	}
+	if err := m.To(mailto); err != nil {
+		return err
+	}
+
+	m.Subject("Expiry")
+	m.SetBodyString(mail.TypeTextHTML, "your password is expiring soon")
+
+	return ms.c.DialAndSend(m)
+}

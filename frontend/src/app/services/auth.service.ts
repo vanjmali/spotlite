@@ -28,8 +28,8 @@ export class AuthService {
 
   // Register new user with backend
   async register(
-    firstName: string,
-    lastName: string,
+    first_name: string,
+    last_name: string,
     email: string,
     username: string,
     password: string
@@ -37,8 +37,8 @@ export class AuthService {
     try {
       await firstValueFrom(
         this.http.post(`${this.API_BASE}/register`, {
-          firstName,
-          lastName,
+          first_name,
+          last_name,
           email,
           username,
           password,
