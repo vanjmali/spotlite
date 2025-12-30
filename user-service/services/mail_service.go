@@ -4,31 +4,41 @@ import (
 	"log"
 	"net/url"
 
-	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/wneessen/go-mail"
 )
 
-var (
-	VerificationEndpoint   = utils.MustGetEnv("SRV_USER_VERIFICATION_ENDPOINT")
-	VerificationSuccessUrl = utils.MustGetEnv("SRV_USER_VERIFICATION_SUCCESS_URL")
-	VerificationFailureUrl = utils.MustGetEnv("SRV_USER_VERIFICATION_FAILURE_URL")
-	MailFromAddress        = utils.MustGetEnv("MAIL_FROM")
-)
+// MailConfig holds configuration needed by the mail service.
+type MailConfig struct {
+	VerificationEndpoint string
+	MailFromAddress      string
+}
+
+// MailSender defines the email operations required by UserService.
+type MailSender interface {
+	SendAccountVerificationEmail(mailto string, token string) error
+	SendLoginOtp(mailto string, otp string) error
+}
+
+// MailClient defines the mail client operations used by MailService.
+type MailClient interface {
+	DialAndSend(messages ...*mail.Msg) error
+}
 
 // MailService sends transactional emails such as account verification and OTPs.
 type MailService struct {
-	c *mail.Client
+	c      MailClient
+	config MailConfig
 }
 
 // InitMailingService wraps the mail client with a service layer.
-func InitMailingService(client *mail.Client) *MailService {
-	ms := MailService{c: client}
+func InitMailingService(client MailClient, cfg MailConfig) *MailService {
+	ms := MailService{c: client, config: cfg}
 	return &ms
 }
 
-func (ms *MailService) sendAccountVerificationEmail(mailto string, token string) error {
+func (ms *MailService) SendAccountVerificationEmail(mailto string, token string) error {
 	m := mail.NewMsg()
-	if err := m.From(MailFromAddress); err != nil {
+	if err := m.From(ms.config.MailFromAddress); err != nil {
 		log.Printf("failed to set From address: %v", err)
 		return err
 	}
@@ -41,7 +51,7 @@ func (ms *MailService) sendAccountVerificationEmail(mailto string, token string)
 	m.Subject("Verify your Spotlite account")
 
 	// Render email template with verification URL
-	verificationURL := VerificationEndpoint + "?token=" + url.QueryEscape(token)
+	verificationURL := ms.config.VerificationEndpoint + "?token=" + url.QueryEscape(token)
 	emailBody, err := RenderVerificationEmail(verificationURL)
 	if err != nil {
 		log.Printf("failed to render verification email template: %v", err)
@@ -61,7 +71,7 @@ func (ms *MailService) sendAccountVerificationEmail(mailto string, token string)
 func (ms *MailService) SendLoginOtp(mailto string, otp string) error {
 	m := mail.NewMsg()
 
-	if err := m.From(MailFromAddress); err != nil {
+	if err := m.From(ms.config.MailFromAddress); err != nil {
 		log.Printf("failed to set From address: %v", err)
 		return err
 	}

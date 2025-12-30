@@ -38,5 +38,8 @@
 		"rating-service": "sandbox",
 		"recommendation-service": "context",
 		"subscription-service": "connection"
+	},
+	"explorer.fileNesting.patterns": {
+		"*.go": "${capture}_test.go"
 	}
 }
