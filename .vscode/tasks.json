@@ -51,5 +51,31 @@
 				"id": "sparkle-filled",
 			}
 		},
+		{
+			"label": "Tidy",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"${workspaceFolder}/.vscode/scripts/helper.js",
+				"tidy"
+			],
+			"presentation": {
+				"echo": true,
+				"panel": "shared",
+				"clear": true
+			},
+			"options": {
+				"statusbar": {
+					"label": "Tidy",
+					"detail": "Tidy go modules",
+					"color": "#ffa"
+				}
+			},
+			"icon": {
+				"color": "terminal.ansiYellow",
+				"id": "checklist",
+			}
+		},
+
 	]
 }
