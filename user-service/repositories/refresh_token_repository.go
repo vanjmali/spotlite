@@ -18,10 +18,8 @@ type RefreshTokenRepository struct {
 	Client   *mongo.Client
 }
 
-const RefreshTokensColl = "refresh_tokens"
-
-func (r *RefreshTokenRepository) refreshColl() *mongo.Collection {
-	return r.Client.Database(r.DbName).Collection(RefreshTokensColl)
+func (r *RefreshTokenRepository) getCollection() *mongo.Collection {
+	return r.Client.Database(r.DbName).Collection(r.CollName)
 }
 
 func NewRefreshTokenRepository(dbName string, collName string, c *mongo.Client) *RefreshTokenRepository {
@@ -30,7 +28,7 @@ func NewRefreshTokenRepository(dbName string, collName string, c *mongo.Client) 
 }
 
 func (r *RefreshTokenRepository) EnsureRefreshIndexes(ctx context.Context) error {
-	c := r.refreshColl()
+	c := r.getCollection()
 	_, err := c.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
 			Keys:    bson.D{{Key: "token_hash", Value: 1}},
@@ -45,7 +43,7 @@ func (r *RefreshTokenRepository) EnsureRefreshIndexes(ctx context.Context) error
 }
 
 func (r *RefreshTokenRepository) InsertToken(ctx context.Context, rt entities.RefreshToken) (primitive.ObjectID, error) {
-	res, err := r.refreshColl().InsertOne(ctx, rt)
+	res, err := r.getCollection().InsertOne(ctx, rt)
 	if err != nil {
 		return primitive.NilObjectID, err
 	}
@@ -54,7 +52,7 @@ func (r *RefreshTokenRepository) InsertToken(ctx context.Context, rt entities.Re
 
 func (r *RefreshTokenRepository) FindActiveByHash(ctx context.Context, hash string) (*entities.RefreshToken, error) {
 	var rt entities.RefreshToken
-	err := r.refreshColl().FindOne(ctx, bson.M{
+	err := r.getCollection().FindOne(ctx, bson.M{
 		"token_hash": hash,
 		"revoked_at": bson.M{"$exists": false},
 	}).Decode(&rt)
@@ -67,7 +65,7 @@ func (r *RefreshTokenRepository) FindActiveByHash(ctx context.Context, hash stri
 }
 
 func (r *RefreshTokenRepository) RevokeByID(ctx context.Context, id primitive.ObjectID, when time.Time, replacedBy primitive.ObjectID) error {
-	_, err := r.refreshColl().UpdateByID(ctx, id, bson.M{
+	_, err := r.getCollection().UpdateByID(ctx, id, bson.M{
 		"$set": bson.M{
 			"revoked_at":     when,
 			"replaced_by_id": replacedBy,
