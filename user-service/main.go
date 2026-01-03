@@ -118,7 +118,7 @@ func run() error {
 
 	// Initialize a scheduler
 	//    minutes *    hours *    day of month *     month *    day of week *
-	as.RegisterSchedule("53 16 * * *")
+	as.RegisterSchedule("37 22 * * *")
 
 	// Starts task router and scheduler in separate go routines
 	as.Start(mux)
