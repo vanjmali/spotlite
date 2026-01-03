@@ -26,8 +26,10 @@ export class AuthInterceptor implements HttpInterceptor {
     // Get current access token
     const token = this.authService.accessTokenSg();
 
-    // Add JWT token to request if available and not a login/register request
-    if (token && !request.url.includes('/register') && !request.url.includes('/login')) {
+    // Add JWT token to request if available and not a public/auth request
+    const excludedPaths = ['/register', '/login', '/refresh-token', '/logout'];
+    const isExcluded = excludedPaths.some((path) => request.url.includes(path));
+    if (token && !isExcluded) {
       request = request.clone({
         setHeaders: {
           Authorization: `Bearer ${token}`,

@@ -15,6 +15,20 @@ Additional services are available for local development:
 - `localhost:3000/dev/user-service` - serves [mongo-express](https://github.com/mongo-express/mongo-express)
 - `localhost:3101` - direct connection to MongoDB
 
+## Auth cookie configuration
+
+Refresh tokens are stored in an HTTP-only cookie. You can tune the cookie with
+the following environment variables:
+
+- `APP_REFRESH_COOKIE_NAME` (required)
+- `APP_REFRESH_COOKIE_DOMAIN` (optional)
+- `APP_REFRESH_COOKIE_SECURE` (required, boolean)
+- `APP_REFRESH_COOKIE_SAMESITE` (required, `lax` | `strict` | `none`)
+
+## Logout
+
+POST `/logout` revokes the refresh token (if present) and clears the refresh cookie.
+
 ## Structure
 
 - The purpose of this service is to handle role-based user authentication,

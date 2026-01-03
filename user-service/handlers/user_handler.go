@@ -190,16 +190,17 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	refresh, err := h.rts.IssueRefreshToken(r.Context(), user.ID)
+	refresh, expiresAt, err := h.rts.IssueRefreshToken(r.Context(), user.ID)
 	if err != nil {
 		log.Printf("trace_id=%s failed to issue refresh token: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.InternalServerError(w)
 		return
 	}
 
+	setRefreshCookie(w, refresh, expiresAt)
+
 	b := map[string]any{
-		"access_token":  token,
-		"refresh_token": refresh,
+		"access_token": token,
 	}
 
 	if err := respond.OkJson(w, b); err != nil {
@@ -254,4 +255,18 @@ func (h *UserHandler) HandleCheckEmail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = respond.OkJson(w, map[string]bool{"exists": exists})
+}
+
+// HandleLogout revokes the refresh token (if present) and clears the cookie.
+func (h *UserHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie(refreshCookieName())
+	if err == nil && cookie.Value != "" {
+		if err := h.rts.RevokeRefreshToken(r.Context(), cookie.Value); err != nil &&
+			!errors.Is(err, services.ErrRefreshInvalid) {
+			log.Printf("trace_id=%s failed to revoke refresh token: %v", telemetry.TraceID(r.Context()), err)
+		}
+	}
+
+	clearRefreshCookie(w)
+	respond.NoContent(w)
 }

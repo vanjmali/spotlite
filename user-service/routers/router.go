@@ -28,6 +28,7 @@ func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler) 
 	api.HandleFunc("/check-email/{email}", h.HandleCheckEmail).Methods("GET")
 
 	api.HandleFunc("/refresh-token", rth.HandleRefreshToken).Methods("POST")
+	api.HandleFunc("/logout", h.HandleLogout).Methods("POST")
 
 	// the verify endpoint is defined as a get so it can redirect when link click happens.
 	api.HandleFunc("/verify", h.HandleAccountVerification).Methods("GET", "POST")
