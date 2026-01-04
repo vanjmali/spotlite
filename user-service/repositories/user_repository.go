@@ -19,21 +19,25 @@ import (
 var ErrTokenExpired = errors.New("invalid token")
 
 // UserRepository provides data access helpers for user documents.
-type UserRepository struct {
+type UserRepositoryMongo struct {
 	DbName   string
 	CollName string
 	Client   *mongo.Client
 }
 
-// NewRepository constructs a UserRepository for the given database and collection.
-func NewRepository(dbName string, collName string, c *mongo.Client) *UserRepository {
-	r := UserRepository{Client: c, DbName: dbName, CollName: collName}
+func (r *UserRepositoryMongo) getCollection() *mongo.Collection {
+	return r.Client.Database(r.DbName).Collection(r.CollName)
+}
+
+// NewUserRepositoryMongo constructs a UserRepository for the given database and collection.
+func NewUserRepositoryMongo(dbName string, collName string, c *mongo.Client) *UserRepositoryMongo {
+	r := UserRepositoryMongo{Client: c, DbName: dbName, CollName: collName}
 	return &r
 }
 
 // Create func, inserts a new user into the database.
-func (r *UserRepository) Create(ctx context.Context, user entities.User) error {
-	c := r.Client.Database(r.DbName).Collection(r.CollName)
+func (r *UserRepositoryMongo) Create(ctx context.Context, user entities.User) error {
+	c := r.getCollection()
 
 	_, err := c.InsertOne(ctx, user)
 	if err != nil {
@@ -44,8 +48,8 @@ func (r *UserRepository) Create(ctx context.Context, user entities.User) error {
 }
 
 // ActiveAndRevokeToken func, that activates the account and revokes the token in one database trip.
-func (r *UserRepository) ActiveAndRevokeToken(ctx context.Context, token string) error {
-	c := r.Client.Database(r.DbName).Collection(r.CollName)
+func (r *UserRepositoryMongo) ActiveAndRevokeToken(ctx context.Context, token string) error {
+	c := r.getCollection()
 
 	// define filtering parameters,
 	filter := bson.M{
@@ -77,8 +81,8 @@ func (r *UserRepository) ActiveAndRevokeToken(ctx context.Context, token string)
 	return ErrTokenExpired
 }
 
-func (r *UserRepository) SetHashPassowrd(ctx context.Context, userId primitive.ObjectID, passwordHash string, newTime, expiresAt time.Time) error {
-	c := r.Client.Database(r.DbName).Collection(r.CollName)
+func (r *UserRepositoryMongo) SetHashPassowrd(ctx context.Context, userId primitive.ObjectID, passwordHash string, newTime, expiresAt time.Time) error {
+	c := r.getCollection()
 
 	_, err := c.UpdateByID(ctx,
 		userId,
@@ -93,13 +97,13 @@ func (r *UserRepository) SetHashPassowrd(ctx context.Context, userId primitive.O
 }
 
 // SetLoginOtp stores the hashed OTP and expiry for a user.
-func (r *UserRepository) SetLoginOtp(
+func (r *UserRepositoryMongo) SetLoginOtp(
 	ctx context.Context,
 	userId primitive.ObjectID,
 	hash string,
 	expiry time.Time,
 ) error {
-	c := r.Client.Database(r.DbName).Collection(r.CollName)
+	c := r.getCollection()
 
 	_, err := c.UpdateOne(ctx,
 		bson.M{"_id": userId},
@@ -113,8 +117,8 @@ func (r *UserRepository) SetLoginOtp(
 }
 
 // ClearLoginOtp removes the stored OTP data for a user.
-func (r *UserRepository) ClearLoginOtp(ctx context.Context, userId primitive.ObjectID) error {
-	c := r.Client.Database(r.DbName).Collection(r.CollName)
+func (r *UserRepositoryMongo) ClearLoginOtp(ctx context.Context, userId primitive.ObjectID) error {
+	c := r.getCollection()
 
 	_, err := c.UpdateOne(ctx,
 		bson.M{"_id": userId},
@@ -124,9 +128,9 @@ func (r *UserRepository) ClearLoginOtp(ctx context.Context, userId primitive.Obj
 }
 
 // FindUserByEmail fetches a user document by email.
-func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (*entities.User, error) {
+func (r *UserRepositoryMongo) FindUserByEmail(ctx context.Context, email string) (*entities.User, error) {
 	var user entities.User
-	c := r.Client.Database(r.DbName).Collection(r.CollName)
+	c := r.getCollection()
 
 	filter := bson.M{"email": email}
 
@@ -139,13 +143,13 @@ func (r *UserRepository) FindUserByEmail(ctx context.Context, email string) (*en
 
 // FindUsersForExpiryNotification finds users which password expiry date is less than (today + daysBeforeExpiry), but
 // also greater than today. The user also has to have an active account.
-func (r *UserRepository) FindUsersForExpiryNotification(
+func (r *UserRepositoryMongo) FindUsersForExpiryNotification(
 	ctx context.Context,
 	daysUntilExpiry int,
 	batchSize int,
 	lastID string,
 ) ([]*entities.User, string, error) {
-	c := r.Client.Database(r.DbName).Collection(r.CollName)
+	c := r.getCollection()
 
 	now := time.Now()
 	expiryThreshold := time.Now().AddDate(0, 0, daysUntilExpiry)
@@ -194,9 +198,9 @@ func (r *UserRepository) FindUsersForExpiryNotification(
 
 // UpdateExpiryNotificationSentDate function is used to update the "last_expiry_notification_sent" field for
 // a user that is processed.
-func (r *UserRepository) UpdateExpiryNotificationSentDate(ctx context.Context, userID primitive.ObjectID) error {
+func (r *UserRepositoryMongo) UpdateExpiryNotificationSentDate(ctx context.Context, userID primitive.ObjectID) error {
 	log.Printf("DEBUG: UpdateExpiryNotificationSentDate repository function has been called!")
-	c := r.Client.Database(r.DbName).Collection(r.CollName)
+	c := r.getCollection()
 
 	filter := bson.M{"_id": userID}
 	update := bson.M{
@@ -210,9 +214,9 @@ func (r *UserRepository) UpdateExpiryNotificationSentDate(ctx context.Context, u
 }
 
 // FindUserByID finds users by ID.
-func (r *UserRepository) FindUserByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
+func (r *UserRepositoryMongo) FindUserByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
 	var user entities.User
-	c := r.Client.Database(r.DbName).Collection(r.CollName)
+	c := r.getCollection()
 	if err := c.FindOne(ctx, bson.M{"_id": id}).Decode(&user); err != nil {
 		return nil, err
 	}
@@ -220,9 +224,9 @@ func (r *UserRepository) FindUserByID(ctx context.Context, id primitive.ObjectID
 }
 
 // ExistsByUsername reports whether a username already exists.
-func (r *UserRepository) ExistsByUsername(ctx context.Context, username string) (bool, error) {
+func (r *UserRepositoryMongo) ExistsByUsername(ctx context.Context, username string) (bool, error) {
 	var user entities.User
-	c := r.Client.Database(r.DbName).Collection(r.CollName)
+	c := r.getCollection()
 
 	filter := bson.M{"username": username}
 	err := c.FindOne(ctx, filter).Decode(&user)
@@ -239,9 +243,9 @@ func (r *UserRepository) ExistsByUsername(ctx context.Context, username string) 
 }
 
 // ExistsByEmail reports whether an email already exists.
-func (r *UserRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
+func (r *UserRepositoryMongo) ExistsByEmail(ctx context.Context, email string) (bool, error) {
 	var user entities.User
-	c := r.Client.Database(r.DbName).Collection(r.CollName)
+	c := r.getCollection()
 
 	filter := bson.M{"email": email}
 	err := c.FindOne(ctx, filter).Decode(&user)

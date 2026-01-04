@@ -85,16 +85,20 @@ func run() error {
 	defer mc.Close()
 
 	// repository initialization
-	ur := repositories.NewRepository(mongo.DatabaseName(), "users", dbc)
-	rtr := repositories.NewRefreshTokenRepository(mongo.DatabaseName(), repositories.RefreshTokensColl, dbc)
+	ur := repositories.NewUserRepositoryMongo(mongo.DatabaseName(), "users", dbc)
+	rtr := repositories.NewRefreshTokenRepository(mongo.DatabaseName(), "refresh_tokens", dbc)
 	if err := rtr.EnsureRefreshIndexes(context.Background()); err != nil {
 		return fmt.Errorf("failed to ensure refresh token indexes: %w", err)
 	}
 
 	// service initialization
-	ms := services.InitMailingService(mc)
-	us := services.NewUserService(*ur, *ms)
-	rts := services.NewRefreshTokenService(*rtr)
+	mailCfg := services.MailConfig{
+		VerificationEndpoint: utils.MustGetEnv("SRV_USER_VERIFICATION_ENDPOINT"),
+		MailFromAddress:      utils.MustGetEnv("MAIL_FROM"),
+	}
+	ms := services.InitMailingService(mc, mailCfg)
+	us := services.NewUserService(ur, ms)
+	rts := services.NewRefreshTokenService(rtr)
 
 	redAddr := utils.MustGetEnv("REDIS_ADDR")
 	redConn := asynq.RedisClientOpt{Addr: redAddr}
@@ -114,12 +118,16 @@ func run() error {
 
 	// Initialize a scheduler
 	//    minutes *    hours *    day of month *     month *    day of week *
-	as.RegisterSchedule("53 16 * * *")
+	as.RegisterSchedule("37 22 * * *")
 
 	// Starts task router and scheduler in separate go routines
 	as.Start(mux)
 
-	uh := handlers.NewUserHandler(*us, *v, *rts)
+	uh := handlers.NewUserHandler(*us, *v, *rts, handlers.UserHandlerConfig{
+		VerificationSuccessUrl: utils.MustGetEnv("SRV_USER_VERIFICATION_SUCCESS_URL"),
+		VerificationFailureUrl: utils.MustGetEnv("SRV_USER_VERIFICATION_FAILURE_URL"),
+	})
+
 	rth := handlers.NewRefreshTokenHandler(*rts, *us, *v)
 
 	r := routers.HandleRequests(uh, rth)

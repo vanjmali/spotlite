@@ -1,0 +1,134 @@
+package services
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+	"github.com/vanjmali/spotlite/user-service/entities"
+	"github.com/vanjmali/spotlite/user-service/utils/auth"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
+
+type fakeRefreshTokenRepo struct {
+	insertFn       func(context.Context, entities.RefreshToken) (primitive.ObjectID, error)
+	findActiveByFn func(context.Context, string) (*entities.RefreshToken, error)
+	insertCalled   bool
+	insertedToken  entities.RefreshToken
+	findActiveHash string
+}
+
+func (f *fakeRefreshTokenRepo) InsertToken(ctx context.Context, rt entities.RefreshToken) (primitive.ObjectID, error) {
+	f.insertCalled = true
+	f.insertedToken = rt
+	if f.insertFn != nil {
+		return f.insertFn(ctx, rt)
+	}
+	return primitive.NewObjectID(), nil
+}
+
+func (f *fakeRefreshTokenRepo) FindActiveByHash(ctx context.Context, hash string) (*entities.RefreshToken, error) {
+	f.findActiveHash = hash
+	if f.findActiveByFn != nil {
+		return f.findActiveByFn(ctx, hash)
+	}
+	return &entities.RefreshToken{}, nil
+}
+
+func TestRefreshTokenServiceIssueRefreshToken(t *testing.T) {
+	repo := &fakeRefreshTokenRepo{}
+	svc := NewRefreshTokenService(repo)
+	userID := primitive.NewObjectID()
+
+	start := time.Now()
+	raw, err := svc.IssueRefreshToken(context.Background(), userID)
+
+	require.NoError(t, err)
+	require.NotEmpty(t, raw)
+	require.True(t, repo.insertCalled)
+	require.Equal(t, userID, repo.insertedToken.UserID)
+	require.Nil(t, repo.insertedToken.RevokedAt)
+	require.Equal(t, auth.HashRefreshToken(raw), repo.insertedToken.TokenHash)
+	require.True(t, repo.insertedToken.ExpiresAt.After(start.Add(29*24*time.Hour)))
+	require.True(t, repo.insertedToken.ExpiresAt.Before(start.Add(31*24*time.Hour)))
+}
+
+func TestRefreshTokenServiceIssueRefreshTokenInsertFails(t *testing.T) {
+	repo := &fakeRefreshTokenRepo{
+		insertFn: func(context.Context, entities.RefreshToken) (primitive.ObjectID, error) {
+			return primitive.NilObjectID, errors.New("insert failed")
+		},
+	}
+	svc := NewRefreshTokenService(repo)
+
+	raw, err := svc.IssueRefreshToken(context.Background(), primitive.NewObjectID())
+
+	require.Error(t, err)
+	require.Empty(t, raw)
+}
+
+func TestRefreshTokenServiceGetRefreshTokenIdInvalid(t *testing.T) {
+	repo := &fakeRefreshTokenRepo{
+		findActiveByFn: func(context.Context, string) (*entities.RefreshToken, error) {
+			return &entities.RefreshToken{}, nil
+		},
+	}
+	svc := NewRefreshTokenService(repo)
+
+	userID, err := svc.GetRefreshTokenId(context.Background(), "token")
+
+	require.ErrorIs(t, err, ErrRefreshInvalid)
+	require.Equal(t, primitive.NilObjectID, userID)
+}
+
+func TestRefreshTokenServiceGetRefreshTokenIdExpired(t *testing.T) {
+	oldUserID := primitive.NewObjectID()
+	repo := &fakeRefreshTokenRepo{
+		findActiveByFn: func(context.Context, string) (*entities.RefreshToken, error) {
+			return &entities.RefreshToken{
+				UserID:    oldUserID,
+				ExpiresAt: time.Now().Add(-1 * time.Hour),
+			}, nil
+		},
+	}
+	svc := NewRefreshTokenService(repo)
+
+	userID, err := svc.GetRefreshTokenId(context.Background(), "token")
+
+	require.ErrorIs(t, err, ErrRefreshInvalid)
+	require.Equal(t, primitive.NilObjectID, userID)
+}
+
+func TestRefreshTokenServiceGetRefreshTokenIdSuccess(t *testing.T) {
+	oldUserID := primitive.NewObjectID()
+	repo := &fakeRefreshTokenRepo{
+		findActiveByFn: func(context.Context, string) (*entities.RefreshToken, error) {
+			return &entities.RefreshToken{
+				UserID:    oldUserID,
+				ExpiresAt: time.Now().Add(24 * time.Hour),
+			}, nil
+		},
+	}
+	svc := NewRefreshTokenService(repo)
+
+	userID, err := svc.GetRefreshTokenId(context.Background(), "token")
+
+	require.NoError(t, err)
+	require.Equal(t, oldUserID, userID)
+}
+
+func TestRefreshTokenServiceGetRefreshTokenIdRepoError(t *testing.T) {
+	repo := &fakeRefreshTokenRepo{
+		findActiveByFn: func(context.Context, string) (*entities.RefreshToken, error) {
+			return nil, errors.New("db down")
+		},
+	}
+	svc := NewRefreshTokenService(repo)
+
+	userID, err := svc.GetRefreshTokenId(context.Background(), "token")
+
+	require.ErrorIs(t, err, ErrRefreshInvalid)
+	require.Equal(t, primitive.NilObjectID, userID)
+}

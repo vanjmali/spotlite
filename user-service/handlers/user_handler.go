@@ -9,26 +9,26 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
-	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/services"
 )
 
-var (
-	VerificationSuccessUrl = utils.MustGetEnv("SRV_USER_VERIFICATION_SUCCESS_URL")
-	VerificationFailureUrl = utils.MustGetEnv("SRV_USER_VERIFICATION_FAILURE_URL")
-)
-
 // UserHandler wires HTTP handlers to the user service and validators.
 type UserHandler struct {
-	s   *services.UserService
-	v   *validator.Validate
-	rts *services.RefreshTokenService
+	s      *services.UserService
+	v      *validator.Validate
+	rts    *services.RefreshTokenService
+	config UserHandlerConfig
 }
 
-func NewUserHandler(s services.UserService, v validator.Validate, rts services.RefreshTokenService) *UserHandler {
-	h := UserHandler{s: &s, v: &v, rts: &rts}
+type UserHandlerConfig struct {
+	VerificationSuccessUrl string
+	VerificationFailureUrl string
+}
+
+func NewUserHandler(s services.UserService, v validator.Validate, rts services.RefreshTokenService, c UserHandlerConfig) *UserHandler {
+	h := UserHandler{s: &s, v: &v, rts: &rts, config: c}
 	return &h
 }
 
@@ -138,7 +138,7 @@ func (h *UserHandler) HandleAccountVerification(w http.ResponseWriter, r *http.R
 
 	// handle if there is no token sent as query param
 	if token == "" {
-		http.Redirect(w, r, VerificationFailureUrl, http.StatusSeeOther)
+		http.Redirect(w, r, h.config.VerificationFailureUrl, http.StatusSeeOther)
 		return
 	}
 
@@ -147,16 +147,16 @@ func (h *UserHandler) HandleAccountVerification(w http.ResponseWriter, r *http.R
 	if err != nil {
 		switch {
 		case errors.Is(err, repositories.ErrTokenExpired):
-			http.Redirect(w, r, VerificationFailureUrl, http.StatusSeeOther)
+			http.Redirect(w, r, h.config.VerificationFailureUrl, http.StatusSeeOther)
 			return
 		default:
-			http.Redirect(w, r, VerificationFailureUrl, http.StatusSeeOther)
+			http.Redirect(w, r, h.config.VerificationFailureUrl, http.StatusSeeOther)
 			return
 		}
 	}
 
 	// handle account verification success
-	http.Redirect(w, r, VerificationSuccessUrl, http.StatusSeeOther)
+	http.Redirect(w, r, h.config.VerificationSuccessUrl, http.StatusSeeOther)
 }
 
 // HandleVerifyLoginOtp validates the OTP and issues a JWT token on success.

@@ -9,12 +9,12 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/vanjmali/spotlite/common-lib/account"
+	"github.com/vanjmali/spotlite/common-lib/clock"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/mappers"
-	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel"
@@ -23,44 +23,48 @@ import (
 )
 
 var (
-	// ErrUsernameTaken indicates the supplied username already exists.
-	ErrUsernameTaken = errors.New("username is already taken")
-	// ErrEmailTaken indicates the supplied email already exists.
-	ErrEmailTaken = errors.New("email is already taken")
-	// ErrExpiredPassword signals that the user's password has expired.
-	ErrExpiredPassword = errors.New("your password is expired")
-	// ErrUserInactive marks an inactive account status.
-	ErrUserInactive = errors.New("user status is inactive")
-	// ErrUserNotFound indicates the user does not exist.
-	ErrUserNotFound = errors.New("user not found")
-	// ErrOtpRequired indicates login requires an OTP code.
-	ErrOtpRequired = errors.New("otp required")
-	// ErrOtpInvalid indicates a provided OTP is wrong.
-	ErrOtpInvalid = errors.New("invalid otp")
-	// ErrOtpExpired indicates the OTP is no longer valid.
-	ErrOtpExpired = errors.New("expired otp")
-	// ErrBadCredentials indicates the credentials are invalid.
-	ErrBadCredentials = errors.New("invalid credentials")
-	// ErrInvalidCurrentPassword indicates the current password provided is incorrect.
-	ErrInvalidCurrentPassword = errors.New("invalid current password")
-	// ErrTooFrequentPasswordChange indicates password change requests are too frequent.
+	ErrUsernameTaken             = errors.New("username is already taken")
+	ErrEmailTaken                = errors.New("email is already taken")
+	ErrExpiredPassword           = errors.New("your password is expired")
+	ErrUserInactive              = errors.New("user status is inactive")
+	ErrUserNotFound              = errors.New("user not found")
+	ErrOtpRequired               = errors.New("otp required")
+	ErrOtpInvalid                = errors.New("invalid otp")
+	ErrOtpExpired                = errors.New("expired otp")
+	ErrBadCredentials            = errors.New("invalid credentials")
+	ErrInvalidCurrentPassword    = errors.New("invalid current password")
 	ErrTooFrequentPasswordChange = errors.New("password changed too frequently")
-	// ErrObjectIdCastFailed indicates converting hex to objectId failed.
-	ErrObjectIdCastFailed = errors.New("failed to convert hex to objectId")
+	ErrObjectIdCastFailed        = errors.New("failed to convert hex to objectId")
 )
+
+// UserRepository defines the persistence methods required by UserService.
+type UserRepository interface {
+	Create(ctx context.Context, user entities.User) error
+	ActiveAndRevokeToken(ctx context.Context, token string) error
+	SetHashPassowrd(ctx context.Context, userId primitive.ObjectID, passwordHash string, newTime, expiresAt time.Time) error
+	SetLoginOtp(ctx context.Context, userId primitive.ObjectID, hash string, expiry time.Time) error
+	ClearLoginOtp(ctx context.Context, userId primitive.ObjectID) error
+	FindUserByEmail(ctx context.Context, email string) (*entities.User, error)
+	FindUsersForExpiryNotification(ctx context.Context, daysUntilExpiry int, batchSize int, lastID string) ([]*entities.User, string, error)
+	UpdateExpiryNotificationSentDate(ctx context.Context, userID primitive.ObjectID) error
+	FindUserByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error)
+	ExistsByUsername(ctx context.Context, username string) (bool, error)
+	ExistsByEmail(ctx context.Context, email string) (bool, error)
+}
 
 // UserService contains business logic for user onboarding, login and account maintenance.
 type UserService struct {
-	r  *repositories.UserRepository
-	ms *MailService
+	r  UserRepository
+	ms MailSender
+	c  clock.Clock
 
 	tr trace.Tracer
 }
 
 // NewUserService builds a UserService with repository and mail dependencies.
-func NewUserService(r repositories.UserRepository, ms MailService) *UserService {
+func NewUserService(r UserRepository, ms MailSender) *UserService {
 	tr := otel.Tracer("user-service/user-service")
-	s := UserService{r: &r, ms: &ms, tr: tr}
+	s := UserService{r: r, ms: ms, c: clock.RealClock{}, tr: tr}
 
 	return &s
 }
@@ -116,7 +120,7 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	_, mailSpan := s.tr.Start(ctx, "user.register.send_verification_email")
 	// sends account verification email BEFORE saving to database
 	// if email fails, we don't save the user
-	if err := s.ms.sendAccountVerificationEmail(reqDto.Email, userEntity.EmailVerification.Token); err != nil {
+	if err := s.ms.SendAccountVerificationEmail(reqDto.Email, userEntity.EmailVerification.Token); err != nil {
 		mailSpan.RecordError(err)
 		mailSpan.End()
 		log.Printf("Failed to send verification email: %v", err)
@@ -201,7 +205,7 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 		return ErrUserInactive
 	}
 
-	if time.Now().After(user.PasswordExpiresAt) {
+	if s.c.Now().After(user.PasswordExpiresAt) {
 		verifySpan.End()
 		return ErrExpiredPassword
 	}
@@ -222,14 +226,15 @@ func (s *UserService) CreateNewToken(ctx context.Context, user *entities.User) (
 	_, span := s.tr.Start(ctx, "user.create_token")
 	defer span.End()
 
+	now := s.c.Now()
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
 		"sub":      user.ID,
 		"name":     strings.Join([]string{user.FirstName, user.LastName}, " "),
 		"username": user.Username,
 		"role":     user.Role,
 		"status":   user.AccountStatus,
-		"iat":      time.Now().Unix(),
-		"exp":      time.Now().Add(15 * time.Minute).Unix(),
+		"iat":      now.Unix(),
+		"exp":      now.Add(15 * time.Minute).Unix(),
 	})
 
 	pk, err := utils.GetPrivateKey()
@@ -268,7 +273,7 @@ func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginO
 		return nil, ErrOtpInvalid
 	}
 
-	if time.Now().After(user.OTPCode.Expiry) {
+	if s.c.Now().After(user.OTPCode.Expiry) {
 		_ = s.r.ClearLoginOtp(validateCtx, user.ID)
 		validateSpan.End()
 		return nil, ErrOtpExpired
@@ -319,7 +324,7 @@ func (s *UserService) sendLoginOtpToUser(ctx context.Context, user *entities.Use
 	otpHash, _ := bcrypt.GenerateFromPassword([]byte(otp), bcrypt.DefaultCost)
 
 	// TODO: make time NOT be hardcoded
-	if err := s.r.SetLoginOtp(ctx, user.ID, string(otpHash), time.Now().Add(5*time.Minute)); err != nil {
+	if err := s.r.SetLoginOtp(ctx, user.ID, string(otpHash), s.c.Now().Add(5*time.Minute)); err != nil {
 		span.RecordError(err)
 		return err
 	}
@@ -377,7 +382,7 @@ func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswo
 	lookupSpan.End()
 
 	_, passwordSpan := s.tr.Start(ctx, "user.change_password.validate_and_set")
-	if user.PasswordLastChanged.Compare(time.Now().Add(-24*time.Hour)) >= 0 {
+	if user.PasswordLastChanged.Compare(s.c.Now().Add(-24*time.Hour)) >= 0 {
 		passwordSpan.End()
 		return ErrTooFrequentPasswordChange
 	}
@@ -396,7 +401,7 @@ func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswo
 		return err
 	}
 
-	newTime := time.Now()
+	newTime := s.c.Now()
 	expiresAt := newTime.Add(60 * 24 * time.Hour)
 
 	if err := s.r.SetHashPassowrd(ctx, user.ID, hashedPassword, newTime, expiresAt); err != nil {
