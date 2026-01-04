@@ -145,3 +145,68 @@ func TestRefreshTokenServiceGetRefreshTokenIdRepoError(t *testing.T) {
 	require.ErrorIs(t, err, ErrRefreshInvalid)
 	require.Equal(t, primitive.NilObjectID, userID)
 }
+
+func TestRefreshTokenServiceRevokeRefreshTokenSuccess(t *testing.T) {
+	tokenID := primitive.NewObjectID()
+	revokeCalled := false
+	var revokedID primitive.ObjectID
+	var revokedAt time.Time
+	var replacedBy primitive.ObjectID
+
+	repo := &fakeRefreshTokenRepo{
+		findActiveByFn: func(context.Context, string) (*entities.RefreshToken, error) {
+			return &entities.RefreshToken{
+				ID:        tokenID,
+				ExpiresAt: time.Now().Add(24 * time.Hour),
+			}, nil
+		},
+		revokeFn: func(_ context.Context, id primitive.ObjectID, when time.Time, replaced primitive.ObjectID) error {
+			revokeCalled = true
+			revokedID = id
+			revokedAt = when
+			replacedBy = replaced
+			return nil
+		},
+	}
+	svc := NewRefreshTokenService(repo)
+
+	err := svc.RevokeRefreshToken(context.Background(), "token")
+
+	require.NoError(t, err)
+	require.True(t, revokeCalled)
+	require.Equal(t, tokenID, revokedID)
+	require.False(t, revokedAt.IsZero())
+	require.Equal(t, primitive.NilObjectID, replacedBy)
+}
+
+func TestRefreshTokenServiceRevokeRefreshTokenInvalid(t *testing.T) {
+	repo := &fakeRefreshTokenRepo{
+		findActiveByFn: func(context.Context, string) (*entities.RefreshToken, error) {
+			return nil, errors.New("not found")
+		},
+	}
+	svc := NewRefreshTokenService(repo)
+
+	err := svc.RevokeRefreshToken(context.Background(), "token")
+
+	require.ErrorIs(t, err, ErrRefreshInvalid)
+}
+
+func TestRefreshTokenServiceRevokeRefreshTokenRepoError(t *testing.T) {
+	repo := &fakeRefreshTokenRepo{
+		findActiveByFn: func(context.Context, string) (*entities.RefreshToken, error) {
+			return &entities.RefreshToken{
+				ID:        primitive.NewObjectID(),
+				ExpiresAt: time.Now().Add(24 * time.Hour),
+			}, nil
+		},
+		revokeFn: func(context.Context, primitive.ObjectID, time.Time, primitive.ObjectID) error {
+			return errors.New("revoke failed")
+		},
+	}
+	svc := NewRefreshTokenService(repo)
+
+	err := svc.RevokeRefreshToken(context.Background(), "token")
+
+	require.Error(t, err)
+}
