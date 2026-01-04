@@ -18,6 +18,7 @@ var ErrRefreshInvalid = errors.New("invalid refresh token")
 type RefreshTokenRepository interface {
 	InsertToken(ctx context.Context, rt entities.RefreshToken) (primitive.ObjectID, error)
 	FindActiveByHash(ctx context.Context, hash string) (*entities.RefreshToken, error)
+	RevokeByID(ctx context.Context, id primitive.ObjectID, when time.Time, replacedBy primitive.ObjectID) error
 }
 
 type RefreshTokenService struct {
