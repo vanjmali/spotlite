@@ -39,10 +39,7 @@ func refreshCookieSameSite() http.SameSite {
 }
 
 func setRefreshCookie(w http.ResponseWriter, token string, expiresAt time.Time) {
-	maxAge := int(time.Until(expiresAt).Seconds())
-	if maxAge < 0 {
-		maxAge = 0
-	}
+	maxAge := max(int(time.Until(expiresAt).Seconds()), 0)
 
 	c := &http.Cookie{
 		Name:     refreshCookieName(),

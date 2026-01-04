@@ -33,7 +33,6 @@ func NewUserHandler(s services.UserService, v validator.Validate, rts services.R
 }
 
 func (h *UserHandler) HandleChangePassword(w http.ResponseWriter, r *http.Request) {
-
 	var req dtos.ChangePasswordDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
