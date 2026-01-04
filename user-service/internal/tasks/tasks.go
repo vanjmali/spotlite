@@ -5,17 +5,13 @@ import (
 	"time"
 
 	"github.com/hibiken/asynq"
+	"github.com/vanjmali/spotlite/user-service/internal/payload"
 )
 
 const (
-	TypePasswordExpiryCheck = "auth:password_expiry_check"
-	TypeSendExpiryEmail     = "auth:send_expiry_email"
+	TypePasswordExpiryCheck = "user:password_expiry_check"
+	TypeSendExpiryEmail     = "user:send_expiry_email"
 )
-
-type SendEmailPayload struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
-}
 
 // NewPasswordExpiryCheckTask task.
 func NewPasswordExpiryCheckTask() *asynq.Task {
@@ -28,7 +24,7 @@ func NewPasswordExpiryCheckTask() *asynq.Task {
 
 // NewSendExpiryEmailTask task.
 func NewSendExpiryEmailTask(id string, email string) (*asynq.Task, error) {
-	payload, err := json.Marshal(SendEmailPayload{UserID: id, Email: email})
+	payload, err := json.Marshal(payload.SendExpiryEmailPayload{UserID: id, Email: email})
 	if err != nil {
 		return nil, err
 	}

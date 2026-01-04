@@ -74,13 +74,12 @@ services:
     volumes:
       - user-redis-data:/data
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 5
     networks:
       - user-internal
-
 
 networks:
   # Connects to Traefik
