@@ -118,6 +118,29 @@ services:
       - api-gateway
       - user-internal
 
+  content-mongodb:
+    ports:
+      - 3102:27017 # expose MongoDB port
+
+  content-mongo-express: # MongoDB GUI
+    image: mongo-express:1
+    labels:
+      traefik.enable: true
+      traefik.docker.network: api-gateway
+      traefik.http.routers.content-mongo-express.rule: PathPrefix(`/dev/content-service`)
+      traefik.http.middlewares.content-mongo-express-strip-prefix.stripprefix.forceslash: false
+      traefik.http.services.content-mongo-express.loadbalancer.server.port: "8081"
+    environment:
+      ME_CONFIG_BASICAUTH: "false"
+      ME_CONFIG_SITE_BASEURL: /dev/content-service
+      ME_CONFIG_MONGODB_URL: mongodb://${SRV_CONTENT_MONGO_ROOT_USERNAME}:${SRV_CONTENT_MONGO_ROOT_PASSWORD}@content-mongodb:27017/?authSource=admin
+    depends_on:
+      content-mongodb:
+        condition: service_healthy
+    networks:
+      - api-gateway
+      - content-internal
+
 volumes:
   frontend-node-modules:
   keys:
