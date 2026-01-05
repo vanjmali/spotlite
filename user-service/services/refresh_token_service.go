@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/vanjmali/spotlite/user-service/entities"
-	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel"
@@ -15,15 +14,21 @@ import (
 
 var ErrRefreshInvalid = errors.New("invalid refresh token")
 
+// RefreshTokenRepository defines persistence methods required by RefreshTokenService.
+type RefreshTokenRepository interface {
+	InsertToken(ctx context.Context, rt entities.RefreshToken) (primitive.ObjectID, error)
+	FindActiveByHash(ctx context.Context, hash string) (*entities.RefreshToken, error)
+}
+
 type RefreshTokenService struct {
-	r *repositories.RefreshTokenRepository
+	r RefreshTokenRepository
 
 	tr trace.Tracer
 }
 
-func NewRefreshTokenService(r repositories.RefreshTokenRepository) *RefreshTokenService {
+func NewRefreshTokenService(r RefreshTokenRepository) *RefreshTokenService {
 	tr := otel.Tracer("user-service/refresh-token-service")
-	s := RefreshTokenService{r: &r, tr: tr}
+	s := RefreshTokenService{r: r, tr: tr}
 
 	return &s
 }

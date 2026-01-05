@@ -107,6 +107,9 @@ services:
       traefik.http.routers.user-mongo-express.rule: PathPrefix(`/dev/user-service`)
       traefik.http.middlewares.user-mongo-express-strip-prefix.stripprefix.forceslash: false
       traefik.http.services.user-mongo-express.loadbalancer.server.port: "8081"
+      traefik.http.services.user-mongo-express.loadbalancer.healthcheck.path: /dev/user-service
+      traefik.http.services.user-mongo-express.loadbalancer.healthcheck.interval: 5s
+      traefik.http.services.user-mongo-express.loadbalancer.healthcheck.timeout: 2s
     environment:
       ME_CONFIG_BASICAUTH: "false"
       ME_CONFIG_SITE_BASEURL: /dev/user-service

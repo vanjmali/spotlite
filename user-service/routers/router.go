@@ -4,28 +4,33 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
+	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/user-service/handlers"
 )
 
 // HandleRequests wires HTTP routes to user handlers.
 func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler) http.Handler {
 	r := mux.NewRouter()
-	telemetry.AttachMuxTracing(r, "user-service")
+	middlewares.HandleHealthz(r)
 
-	r.HandleFunc("/register", h.HandleRegistration).Methods("POST")
+	// Create a subrouter for API routes to attach telemetry
+	// and other middlewares if needed.
+	api := r.PathPrefix("/").Subrouter()
+	telemetry.AttachMuxTracing(api, "user-service")
 
-	r.HandleFunc("/login", h.HandleLogin).Methods("POST")
-	r.HandleFunc("/login/verify-otp", h.HandleVerifyLoginOtp).Methods("POST")
-	r.HandleFunc("/login/resend-otp", h.HandleResendOtp).Methods("POST")
+	api.HandleFunc("/register", h.HandleRegistration).Methods("POST")
 
-	r.HandleFunc("/check-email/{email}", h.HandleCheckEmail).Methods("GET")
+	api.HandleFunc("/login", h.HandleLogin).Methods("POST")
+	api.HandleFunc("/login/verify-otp", h.HandleVerifyLoginOtp).Methods("POST")
+	api.HandleFunc("/login/resend-otp", h.HandleResendOtp).Methods("POST")
 
-	r.HandleFunc("/refresh-token", rth.HandleRefreshToken).Methods("POST")
+	api.HandleFunc("/check-email/{email}", h.HandleCheckEmail).Methods("GET")
 
-	// the verify endpoint is defined as a get so it can redirect when link click happens,
-	r.HandleFunc("/verify", h.HandleAccountVerification).Methods("GET", "POST")
+	api.HandleFunc("/refresh-token", rth.HandleRefreshToken).Methods("POST")
+
+	// the verify endpoint is defined as a get so it can redirect when link click happens.
+	api.HandleFunc("/verify", h.HandleAccountVerification).Methods("GET", "POST")
 
 	r.Handle("/change-password", middlewares.RequireAuthenticated(h.HandleChangePassword)).Methods("POST")
 	return r

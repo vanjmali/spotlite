@@ -12,7 +12,7 @@ function cmd(name) {
 }
 
 function run(name, args, options = {}) {
-  console.log(`+ ${name} ${args.join(' ')}`);
+  console.log(`+ ${options.cwd || '.'} $ ${name} ${args.join(' ')}`);
   return new Promise((resolve, reject) => {
     const p = spawn(cmd(name), args, { stdio: 'inherit', ...options });
     p.on('close', (code) => (code === 0 ? resolve() : reject(code)));
@@ -34,20 +34,28 @@ function goServices() {
 }
 
 const action = process.argv[2];
-if (!['fmt', 'lint'].includes(action)) {
-  console.error('Usage: node .vscode/scripts/helper.js <fmt|lint>');
-  process.exit(1);
-}
 
 try {
   await ensureFrontendDeps();
 
-  if (action === 'fmt') {
-    await run('npm', ['run', 'format'], { cwd: 'frontend' });
-    await run('golangci-lint', ['fmt']);
-  } else {
-    await run('npm', ['run', 'lint:fix'], { cwd: 'frontend' });
-    await run('golangci-lint', ['run', ...goServices().map((s) => `./${s}/...`)]);
+  switch (action) {
+    case 'fmt':
+      await run('npm', ['run', 'format'], { cwd: 'frontend' });
+      await run('golangci-lint', ['fmt']);
+      break;
+    case 'lint':
+      await run('npm', ['run', 'lint:fix'], { cwd: 'frontend' });
+      await run('golangci-lint', ['run', ...goServices().map((s) => `./${s}/...`)]);
+      break;
+    case 'tidy':
+      for (const service of goServices()) {
+        await run('go', ['mod', 'tidy'], { cwd: service });
+      }
+      await run('go', ['work', 'sync']);
+      break;
+    default:
+      console.error(`Unknown action: ${action}`);
+      process.exit(1);
   }
 } catch (err) {
   console.error(err);

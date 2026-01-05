@@ -116,7 +116,7 @@ func ReadAndValidateJson(w http.ResponseWriter, v *validator.Validate, rBody io.
 }
 
 func RegisterCommonValidationMessages() {
-	RegisterValidationMessage("nefield" ,func(fe validator.FieldError) string {
+	RegisterValidationMessage("nefield", func(fe validator.FieldError) string {
 		return fmt.Sprintf("%s must not match with %s", fe.Field(), fe.Param())
 	})
 }

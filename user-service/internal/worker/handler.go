@@ -8,6 +8,7 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/vanjmali/spotlite/user-service/entities"
+	"github.com/vanjmali/spotlite/user-service/internal/payload"
 	"github.com/vanjmali/spotlite/user-service/internal/tasks"
 	"github.com/vanjmali/spotlite/user-service/services"
 )
@@ -109,13 +110,12 @@ func (w *UserWorker) HandleExpiryCheck(ctx context.Context, t *asynq.Task) error
 
 func (w *UserWorker) HandleSendExpiryEmail(ctx context.Context, t *asynq.Task) error {
 	log.Printf("DEBUG: HandleSendExpiryEmail worker started")
-	var p tasks.SendEmailPayload
+	var p payload.SendExpiryEmailPayload
 	if err := json.Unmarshal(t.Payload(), &p); err != nil {
 		return err
 	}
 
-	log.Printf("DEBUG: Sending email to %s for user %s\n", p.Email, p.UserID)
-
+	log.Printf("DEBUG: Sending expiry email to %s for user %s\n", p.Email, p.UserID)
 	err := w.ms.SendExpiryMail(p.Email)
 	if err != nil {
 		return err
