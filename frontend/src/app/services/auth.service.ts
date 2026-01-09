@@ -140,7 +140,6 @@ export class AuthService {
       this.accessTokenSg.set(response.access_token);
       return true;
     } catch {
-      this.logout();
       return false;
     }
   }

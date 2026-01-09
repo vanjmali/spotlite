@@ -33,6 +33,6 @@ func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler) 
 	// the verify endpoint is defined as a get so it can redirect when link click happens.
 	api.HandleFunc("/verify", h.HandleAccountVerification).Methods("GET", "POST")
 
-	r.Handle("/change-password", middlewares.RequireAuthenticated(h.HandleChangePassword)).Methods("POST")
+	r.Handle("/change-password", middlewares.RequireAuthenticated(h.HandleChangePassword)).Methods("PATCH")
 	return r
 }
