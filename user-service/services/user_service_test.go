@@ -526,5 +526,5 @@ func TestUserServiceCreateNewToken(t *testing.T) {
 	exp := time.Unix(int64(expRaw), 0).UTC()
 
 	require.Equal(t, fixed, iat)
-	require.Equal(t, fixed.Add(15*time.Minute), exp)
+	require.Equal(t, exp, fixed.Add(15*time.Minute))
 }

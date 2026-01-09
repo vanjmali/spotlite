@@ -21,7 +21,7 @@ func TestGenerateOTP(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, otp, 6)
 
-	for i := 0; i < len(otp); i++ {
+	for i := range len(otp) {
 		require.True(t, otp[i] >= '0' && otp[i] <= '9', "otp should be numeric")
 	}
 }

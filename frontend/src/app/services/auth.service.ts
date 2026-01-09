@@ -10,7 +10,6 @@ export interface LoginResponse {
 
 export interface VerifyOtpResponse {
   access_token: string;
-  refresh_token: string;
 }
 
 export type OtpVerificationStatus = 'success' | 'invalid' | 'expired';
@@ -20,7 +19,6 @@ export class AuthService {
   // Public signals for reactive state
   readonly currentEmailSg = signal<string | null>(null);
   readonly accessTokenSg = signal<string | null>(null);
-  readonly refreshTokenSg = signal<string | null>(null);
   readonly isAuthenticatedSg = computed(() => !!this.accessTokenSg());
 
   private readonly API_BASE = environment.apiBaseUrl;
@@ -92,18 +90,22 @@ export class AuthService {
     }
   }
 
-  // Verify OTP code sent to email - returns JWT and refresh token
+  // Verify OTP code sent to email - returns access token
   async verifyOtp(
     email: string,
     code: string
   ): Promise<{ success: boolean; error?: string; status?: OtpVerificationStatus }> {
     try {
       const response = await firstValueFrom(
-        this.http.post<VerifyOtpResponse>(`${this.API_BASE}/login/verify-otp`, { email, code })
+        this.http.post<VerifyOtpResponse>(
+          `${this.API_BASE}/login/verify-otp`,
+          { email, code },
+          { withCredentials: true }
+        )
       );
 
       if (response?.access_token) {
-        this.storeTokens(response.access_token, response.refresh_token, email);
+        this.storeAccessToken(response.access_token, email);
         return { success: true, status: 'success' };
       }
       return { success: false, status: 'invalid' };
@@ -114,68 +116,30 @@ export class AuthService {
     }
   }
 
-  // Store tokens securely - all tokens and email in localStorage
-  private storeTokens(access: string, refresh: string, email: string): void {
+  // Store access token in memory only
+  private storeAccessToken(access: string, email: string): void {
     this.accessTokenSg.set(access);
-    this.refreshTokenSg.set(refresh);
     this.currentEmailSg.set(email);
-    localStorage.setItem('access_token', access);
-    localStorage.setItem('refresh_token', refresh);
-    localStorage.setItem('user_email', email);
   }
 
-  // Check if access token is expired
-  private isTokenExpired(token: string | null = this.accessTokenSg()): boolean {
-    if (!token) return true;
-
-    try {
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      // exp is in seconds, Date.now() is in milliseconds
-      return payload.exp * 1000 < Date.now();
-    } catch {
-      return true;
-    }
-  }
-
-  // Initialize auth on app startup - restore session from localStorage
+  // Initialize auth on app startup - refresh access token using httpOnly cookie
   initializeAuth(): void {
-    const accessToken = localStorage.getItem('access_token');
-    const refreshToken = localStorage.getItem('refresh_token');
-    const userEmail = localStorage.getItem('user_email');
-
-    // Check if access token is expired
-    if (accessToken && this.isTokenExpired(accessToken)) {
-      this.logout();
-      return;
-    }
-
-    if (accessToken) {
-      this.accessTokenSg.set(accessToken);
-    }
-    if (refreshToken) {
-      this.refreshTokenSg.set(refreshToken);
-    }
-    if (userEmail) {
-      this.currentEmailSg.set(userEmail);
-    }
+    void this.refreshAccessToken();
   }
 
-  // Refresh access token using refresh token
+  // Refresh access token using httpOnly refresh cookie
   async refreshAccessToken(): Promise<boolean> {
-    const refreshToken = this.refreshTokenSg();
-    if (!refreshToken) return false;
-
     try {
       const response = await firstValueFrom(
-        this.http.post<VerifyOtpResponse>(`${this.API_BASE}/refresh-token`, {
-          refresh_token: refreshToken,
-        })
+        this.http.post<VerifyOtpResponse>(
+          `${this.API_BASE}/refresh-token`,
+          {},
+          { withCredentials: true }
+        )
       );
       this.accessTokenSg.set(response.access_token);
-      localStorage.setItem('access_token', response.access_token);
       return true;
     } catch {
-      this.logout();
       return false;
     }
   }
@@ -198,11 +162,17 @@ export class AuthService {
 
   // Logout - clear tokens and signals
   logout(): void {
+    void firstValueFrom(
+      this.http.post(
+        `${this.API_BASE}/logout`,
+        {},
+        {
+          withCredentials: true,
+        }
+      )
+    ).catch(() => undefined);
+
     this.accessTokenSg.set(null);
-    this.refreshTokenSg.set(null);
     this.currentEmailSg.set(null);
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('user_email');
   }
 }

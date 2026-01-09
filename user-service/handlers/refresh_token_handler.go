@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/user-service/dtos"
@@ -23,16 +22,16 @@ func NewRefreshTokenHandler(rts services.RefreshTokenService, us services.UserSe
 }
 
 func (h *RefreshTokenHandler) HandleRefreshToken(w http.ResponseWriter, r *http.Request) {
-	var req dtos.RefreshRequest
-	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
-		if err != nil {
-			log.Printf("trace_id=%s failed to process refresh token request: %v", telemetry.TraceID(r.Context()), err)
-		}
+	cookie, err := r.Cookie(refreshCookieName())
+	if err != nil || cookie.Value == "" {
+		clearRefreshCookie(w)
+		_ = respond.Unauthorized(w)
 		return
 	}
 
-	userID, err := h.s.GetRefreshTokenId(r.Context(), req.RefreshToken)
+	userID, err := h.s.GetRefreshTokenId(r.Context(), cookie.Value)
 	if err != nil {
+		clearRefreshCookie(w)
 		_ = respond.Unauthorized(w)
 		return
 	}

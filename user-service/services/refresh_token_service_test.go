@@ -15,6 +15,7 @@ import (
 type fakeRefreshTokenRepo struct {
 	insertFn       func(context.Context, entities.RefreshToken) (primitive.ObjectID, error)
 	findActiveByFn func(context.Context, string) (*entities.RefreshToken, error)
+	revokeFn       func(context.Context, primitive.ObjectID, time.Time, primitive.ObjectID) error
 	insertCalled   bool
 	insertedToken  entities.RefreshToken
 	findActiveHash string
@@ -37,13 +38,25 @@ func (f *fakeRefreshTokenRepo) FindActiveByHash(ctx context.Context, hash string
 	return &entities.RefreshToken{}, nil
 }
 
+func (f *fakeRefreshTokenRepo) RevokeByID(
+	ctx context.Context,
+	id primitive.ObjectID,
+	when time.Time,
+	replacedBy primitive.ObjectID,
+) error {
+	if f.revokeFn != nil {
+		return f.revokeFn(ctx, id, when, replacedBy)
+	}
+	return nil
+}
+
 func TestRefreshTokenServiceIssueRefreshToken(t *testing.T) {
 	repo := &fakeRefreshTokenRepo{}
 	svc := NewRefreshTokenService(repo)
 	userID := primitive.NewObjectID()
 
 	start := time.Now()
-	raw, err := svc.IssueRefreshToken(context.Background(), userID)
+	raw, _, err := svc.IssueRefreshToken(context.Background(), userID)
 
 	require.NoError(t, err)
 	require.NotEmpty(t, raw)
@@ -63,7 +76,7 @@ func TestRefreshTokenServiceIssueRefreshTokenInsertFails(t *testing.T) {
 	}
 	svc := NewRefreshTokenService(repo)
 
-	raw, err := svc.IssueRefreshToken(context.Background(), primitive.NewObjectID())
+	raw, _, err := svc.IssueRefreshToken(context.Background(), primitive.NewObjectID())
 
 	require.Error(t, err)
 	require.Empty(t, raw)
@@ -131,4 +144,69 @@ func TestRefreshTokenServiceGetRefreshTokenIdRepoError(t *testing.T) {
 
 	require.ErrorIs(t, err, ErrRefreshInvalid)
 	require.Equal(t, primitive.NilObjectID, userID)
+}
+
+func TestRefreshTokenServiceRevokeRefreshTokenSuccess(t *testing.T) {
+	tokenID := primitive.NewObjectID()
+	revokeCalled := false
+	var revokedID primitive.ObjectID
+	var revokedAt time.Time
+	var replacedBy primitive.ObjectID
+
+	repo := &fakeRefreshTokenRepo{
+		findActiveByFn: func(context.Context, string) (*entities.RefreshToken, error) {
+			return &entities.RefreshToken{
+				ID:        tokenID,
+				ExpiresAt: time.Now().Add(24 * time.Hour),
+			}, nil
+		},
+		revokeFn: func(_ context.Context, id primitive.ObjectID, when time.Time, replaced primitive.ObjectID) error {
+			revokeCalled = true
+			revokedID = id
+			revokedAt = when
+			replacedBy = replaced
+			return nil
+		},
+	}
+	svc := NewRefreshTokenService(repo)
+
+	err := svc.RevokeRefreshToken(context.Background(), "token")
+
+	require.NoError(t, err)
+	require.True(t, revokeCalled)
+	require.Equal(t, tokenID, revokedID)
+	require.False(t, revokedAt.IsZero())
+	require.Equal(t, primitive.NilObjectID, replacedBy)
+}
+
+func TestRefreshTokenServiceRevokeRefreshTokenInvalid(t *testing.T) {
+	repo := &fakeRefreshTokenRepo{
+		findActiveByFn: func(context.Context, string) (*entities.RefreshToken, error) {
+			return nil, errors.New("not found")
+		},
+	}
+	svc := NewRefreshTokenService(repo)
+
+	err := svc.RevokeRefreshToken(context.Background(), "token")
+
+	require.ErrorIs(t, err, ErrRefreshInvalid)
+}
+
+func TestRefreshTokenServiceRevokeRefreshTokenRepoError(t *testing.T) {
+	repo := &fakeRefreshTokenRepo{
+		findActiveByFn: func(context.Context, string) (*entities.RefreshToken, error) {
+			return &entities.RefreshToken{
+				ID:        primitive.NewObjectID(),
+				ExpiresAt: time.Now().Add(24 * time.Hour),
+			}, nil
+		},
+		revokeFn: func(context.Context, primitive.ObjectID, time.Time, primitive.ObjectID) error {
+			return errors.New("revoke failed")
+		},
+	}
+	svc := NewRefreshTokenService(repo)
+
+	err := svc.RevokeRefreshToken(context.Background(), "token")
+
+	require.Error(t, err)
 }

@@ -18,6 +18,7 @@ var ErrRefreshInvalid = errors.New("invalid refresh token")
 type RefreshTokenRepository interface {
 	InsertToken(ctx context.Context, rt entities.RefreshToken) (primitive.ObjectID, error)
 	FindActiveByHash(ctx context.Context, hash string) (*entities.RefreshToken, error)
+	RevokeByID(ctx context.Context, id primitive.ObjectID, when time.Time, replacedBy primitive.ObjectID) error
 }
 
 type RefreshTokenService struct {
@@ -33,14 +34,14 @@ func NewRefreshTokenService(r RefreshTokenRepository) *RefreshTokenService {
 	return &s
 }
 
-func (s *RefreshTokenService) IssueRefreshToken(ctx context.Context, userID primitive.ObjectID) (string, error) {
+func (s *RefreshTokenService) IssueRefreshToken(ctx context.Context, userID primitive.ObjectID) (string, time.Time, error) {
 	ctx, span := s.tr.Start(ctx, "refresh_token.issue")
 	defer span.End()
 
 	raw, err := auth.GenerateRefreshToken()
 	if err != nil {
 		span.RecordError(err)
-		return "", err
+		return "", time.Time{}, err
 	}
 	now := time.Now()
 	doc := entities.RefreshToken{
@@ -53,10 +54,10 @@ func (s *RefreshTokenService) IssueRefreshToken(ctx context.Context, userID prim
 	_, err = s.r.InsertToken(ctx, doc)
 	if err != nil {
 		span.RecordError(err)
-		return "", err
+		return "", time.Time{}, err
 	}
 
-	return raw, err
+	return raw, doc.ExpiresAt, err
 }
 
 func (s *RefreshTokenService) GetRefreshTokenId(ctx context.Context, refreshToken string) (primitive.ObjectID, error) {
@@ -78,4 +79,26 @@ func (s *RefreshTokenService) GetRefreshTokenId(ctx context.Context, refreshToke
 	}
 
 	return old.UserID, nil
+}
+
+func (s *RefreshTokenService) RevokeRefreshToken(ctx context.Context, refreshToken string) error {
+	ctx, span := s.tr.Start(ctx, "refresh_token.revoke")
+	defer span.End()
+
+	hash := auth.HashRefreshToken(refreshToken)
+	old, err := s.r.FindActiveByHash(ctx, hash)
+	if err != nil || old == nil {
+		if err != nil {
+			span.RecordError(err)
+		}
+		return ErrRefreshInvalid
+	}
+
+	now := time.Now()
+	if err := s.r.RevokeByID(ctx, old.ID, now, primitive.NilObjectID); err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	return nil
 }
