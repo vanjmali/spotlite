@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"errors"
 	"log"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/gorilla/mux"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
@@ -42,10 +44,36 @@ func (h *ArtistHandler) HandleCreateArtist(w http.ResponseWriter, r *http.Reques
 			return
 		}
 
-		log.Printf("trace_id=%s failed to create user: %v", telemetry.TraceID(r.Context()), err)
+		log.Printf("trace_id=%s failed to create artist: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.InternalServerError(w)
 		return
 	}
 
 	respond.NoContent(w)
+}
+
+func (h *ArtistHandler) HandleGetArtistById(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	artist, err := h.s.FindArtistByID(r.Context(), id)
+	if err != nil {
+		log.Printf("trace_id=%s failed to get artist: %v", telemetry.TraceID(r.Context()), err)
+
+		switch {
+		case errors.Is(err, services.ErrObjectIdCastFailed):
+			_ = respond.BadRequest(w, "Invalid artist ID format")
+			return
+		case errors.Is(err, services.ErrArtistNotFound):
+			_ = respond.NotFound(w)
+			return
+		default:
+			_ = respond.InternalServerError(w)
+			return
+		}
+	}
+
+	if err := respond.OkJson(w, artist); err != nil {
+		log.Printf("trace_id=%s failed to write get artist response: %v", telemetry.TraceID(r.Context()), err)
+	}
 }

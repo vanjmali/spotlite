@@ -12,6 +12,7 @@ func HandleRequests(h *handlers.ArtistHandler) http.Handler {
 	r := mux.NewRouter()
 	telemetry.AttachMuxTracing(r, "artist-service")
 
-	r.HandleFunc("/create-artist", h.HandleCreateArtist).Methods("POST")
+	r.HandleFunc("/artists", h.HandleCreateArtist).Methods("POST")
+	r.HandleFunc("/artists/{id}", h.HandleGetArtistById).Methods("GET")
 	return r
 }

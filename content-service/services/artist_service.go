@@ -2,13 +2,20 @@ package services
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/mappers"
 	"github.com/vanjmali/spotlite/content/repositories"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
+)
+
+var (
+	ErrObjectIdCastFailed = errors.New("failed to convert hex to objectId")
+	ErrArtistNotFound     = errors.New("artist not found")
 )
 
 type ArtistService struct {
@@ -51,4 +58,22 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 	createSpan.End()
 
 	return nil
+}
+
+func (s *ArtistService) FindArtistByID(ctx context.Context, idStr string) (*dtos.ArtistDto, error) {
+	ctx, span := s.tr.Start(ctx, "artist.find_by_id")
+	defer span.End()
+
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		span.RecordError(err)
+		return nil, ErrObjectIdCastFailed
+	}
+
+	artist, err := s.r.FindArtistByID(ctx, id)
+	if err != nil {
+		span.RecordError(err)
+		return nil, ErrArtistNotFound
+	}
+	return artist, nil
 }

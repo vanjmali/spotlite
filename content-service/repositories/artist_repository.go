@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 
+	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -34,8 +35,8 @@ func (r *ArtistRepository) Create(ctx context.Context, artist entities.Artist) e
 }
 
 // FindArtistByID finds artist by ID.
-func (r *ArtistRepository) FindArtistByID(ctx context.Context, id primitive.ObjectID) (*entities.Artist, error) {
-	var artist entities.Artist
+func (r *ArtistRepository) FindArtistByID(ctx context.Context, id primitive.ObjectID) (*dtos.ArtistDto, error) {
+	var artist dtos.ArtistDto
 	c := r.Client.Database(r.DbName).Collection(r.CollName)
 
 	if err := c.FindOne(ctx, bson.M{"_id": id}).Decode(&artist); err != nil {
