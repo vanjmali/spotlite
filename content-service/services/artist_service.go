@@ -9,6 +9,7 @@ import (
 	"github.com/vanjmali/spotlite/content/mappers"
 	"github.com/vanjmali/spotlite/content/repositories"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -70,10 +71,63 @@ func (s *ArtistService) FindArtistByID(ctx context.Context, idStr string) (*dtos
 		return nil, ErrObjectIdCastFailed
 	}
 
-	artist, err := s.r.FindArtistByID(ctx, id)
+	artist, err := s.r.FindByID(ctx, id)
 	if err != nil {
 		span.RecordError(err)
 		return nil, ErrArtistNotFound
 	}
 	return artist, nil
+}
+
+func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos.UpdateArtistDto) (*dtos.ArtistDto, error) {
+	ctx, span := s.tr.Start(ctx, "artist.update_artist")
+	defer span.End()
+
+	_, parseSpan := s.tr.Start(ctx, "artist.update_artist.parse_id")
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		parseSpan.RecordError(err)
+		parseSpan.End()
+		return nil, ErrObjectIdCastFailed
+	}
+	parseSpan.End()
+
+	_, buildSpan := s.tr.Start(ctx, "artist.update.build_update_doc")
+
+	update := make(map[string]interface{})
+
+	if dto.Name != nil {
+		update["name"] = *dto.Name
+	}
+	if dto.Genres != nil {
+		update["genres"] = *dto.Genres
+	}
+	if dto.Description != nil {
+		update["description"] = *dto.Description
+	}
+
+	if len(update) == 0 {
+		err := errors.New("no fields to update")
+		buildSpan.RecordError(err)
+		buildSpan.End()
+		return nil, err
+	}
+	buildSpan.End()
+
+	repoCtx, repoSpan := s.tr.Start(ctx, "artist.update.repository_update")
+
+	updatedArtist, err := s.r.UpdateByID(repoCtx, id, update)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			repoSpan.RecordError(err)
+			repoSpan.End()
+			return nil, ErrArtistNotFound
+		}
+		repoSpan.RecordError(err)
+		repoSpan.End()
+		return nil, err
+	}
+	repoSpan.End()
+
+	return updatedArtist, nil
 }

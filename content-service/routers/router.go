@@ -14,5 +14,6 @@ func HandleRequests(h *handlers.ArtistHandler) http.Handler {
 
 	r.HandleFunc("/artists", h.HandleCreateArtist).Methods("POST")
 	r.HandleFunc("/artists/{id}", h.HandleGetArtistById).Methods("GET")
+	r.HandleFunc("/artists/{id}", h.HandleUpdateArtist).Methods("PATCH")
 	return r
 }

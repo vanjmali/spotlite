@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -75,5 +76,37 @@ func (h *ArtistHandler) HandleGetArtistById(w http.ResponseWriter, r *http.Reque
 
 	if err := respond.OkJson(w, artist); err != nil {
 		log.Printf("trace_id=%s failed to write get artist response: %v", telemetry.TraceID(r.Context()), err)
+	}
+}
+
+func (h *ArtistHandler) HandleUpdateArtist(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var dto dtos.UpdateArtistDto
+	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
+		log.Printf("trace_id=%s failed to decode request body: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.BadRequest(w, "invalid request body")
+		return
+	}
+
+	updatedArtist, err := h.s.UpdateArtist(r.Context(), id, dto)
+	switch {
+	case errors.Is(err, services.ErrObjectIdCastFailed):
+		log.Printf("trace_id=%s invalid artist id: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.BadRequest(w, "invalid artist id")
+	case errors.Is(err, services.ErrArtistNotFound):
+		log.Printf("trace_id=%s artist not found: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.NotFound(w)
+	case err != nil:
+		log.Printf("trace_id=%s failed to update artist: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.InternalServerError(w)
+		return
+	}
+
+	if err := respond.OkJson(w, updatedArtist); err != nil {
+		log.Printf("trace_id=%s failed to write update artist response: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.InternalServerError(w)
+		return
 	}
 }

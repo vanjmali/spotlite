@@ -8,6 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // ArtistRepository provides data access helpers for artist documents.
@@ -15,6 +16,10 @@ type ArtistRepository struct {
 	DbName   string
 	CollName string
 	Client   *mongo.Client
+}
+
+func (r *ArtistRepository) getCollection() *mongo.Collection {
+	return r.Client.Database(r.DbName).Collection(r.CollName)
 }
 
 // NewRepository constructs a ArtistRepository for the given database and collection.
@@ -35,7 +40,7 @@ func (r *ArtistRepository) Create(ctx context.Context, artist entities.Artist) e
 }
 
 // FindArtistByID finds artist by ID.
-func (r *ArtistRepository) FindArtistByID(ctx context.Context, id primitive.ObjectID) (*dtos.ArtistDto, error) {
+func (r *ArtistRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*dtos.ArtistDto, error) {
 	var artist dtos.ArtistDto
 	c := r.Client.Database(r.DbName).Collection(r.CollName)
 
@@ -43,4 +48,24 @@ func (r *ArtistRepository) FindArtistByID(ctx context.Context, id primitive.Obje
 		return nil, err
 	}
 	return &artist, nil
+}
+
+// UpdateByID updates artist by ID.
+func (r *ArtistRepository) UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]interface{}) (*dtos.ArtistDto, error) {
+	c := r.getCollection()
+
+	filter := bson.M{"_id": id}
+	updateDoc := bson.M{"$set": update}
+
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	var updatedArtist dtos.ArtistDto
+	err := c.FindOneAndUpdate(ctx, filter, updateDoc, opts).Decode(&updatedArtist)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &updatedArtist, nil
+
 }
