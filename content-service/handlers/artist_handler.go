@@ -110,3 +110,25 @@ func (h *ArtistHandler) HandleUpdateArtist(w http.ResponseWriter, r *http.Reques
 		return
 	}
 }
+
+func (h *ArtistHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	err := h.s.DeleteArtist(r.Context(), id)
+
+	switch {
+	case errors.Is(err, services.ErrObjectIdCastFailed):
+		log.Printf("trace_id=%s invalid artist id: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.BadRequest(w, "invalid artist id")
+	case errors.Is(err, services.ErrArtistNotFound):
+		log.Printf("trace_id=%s artist not found: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.NotFound(w)
+	case err != nil:
+		log.Printf("trace_id=%s failed to delete artist: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.InternalServerError(w)
+		return
+	}
+
+	respond.NoContent(w)
+}

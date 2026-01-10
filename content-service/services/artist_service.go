@@ -131,3 +131,35 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 
 	return updatedArtist, nil
 }
+
+func (s *ArtistService) DeleteArtist(ctx context.Context, idStr string) error {
+	ctx, span := s.tr.Start(ctx, "artist.delete_artist")
+	defer span.End()
+
+	_, parseSpan := s.tr.Start(ctx, "artist.update_artist.parse_id")
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		parseSpan.RecordError(err)
+		parseSpan.End()
+		return ErrObjectIdCastFailed
+	}
+	parseSpan.End()
+
+	repoCtx, repoSpan := s.tr.Start(ctx, "artist.delete.repository_delete")
+	res, err := s.r.DeleteByID(repoCtx, id)
+	if err != nil {
+		repoSpan.RecordError(err)
+		repoSpan.End()
+		return err
+	}
+
+	if res.DeletedCount == 0 {
+		err = ErrArtistNotFound
+		repoSpan.RecordError(err)
+		repoSpan.End()
+		return err
+	}
+	repoSpan.End()
+	return nil
+
+}

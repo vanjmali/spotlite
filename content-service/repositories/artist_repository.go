@@ -30,7 +30,7 @@ func NewRepository(dbName string, collName string, c *mongo.Client) *ArtistRepos
 
 // Create functions creates artist.
 func (r *ArtistRepository) Create(ctx context.Context, artist entities.Artist) error {
-	c := r.Client.Database(r.DbName).Collection(r.CollName)
+	c := r.getCollection()
 
 	_, err := c.InsertOne(ctx, artist)
 	if err != nil {
@@ -42,7 +42,7 @@ func (r *ArtistRepository) Create(ctx context.Context, artist entities.Artist) e
 // FindArtistByID finds artist by ID.
 func (r *ArtistRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*dtos.ArtistDto, error) {
 	var artist dtos.ArtistDto
-	c := r.Client.Database(r.DbName).Collection(r.CollName)
+	c := r.getCollection()
 
 	if err := c.FindOne(ctx, bson.M{"_id": id}).Decode(&artist); err != nil {
 		return nil, err
@@ -67,5 +67,17 @@ func (r *ArtistRepository) UpdateByID(ctx context.Context, id primitive.ObjectID
 	}
 
 	return &updatedArtist, nil
+}
 
+func (r *ArtistRepository) DeleteByID(ctx context.Context, id primitive.ObjectID) (*mongo.DeleteResult, error) {
+	c := r.getCollection()
+
+	filter := bson.M{"_id": id}
+
+	res, err := c.DeleteOne(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, err
 }
