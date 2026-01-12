@@ -81,3 +81,27 @@ func (r *ArtistRepository) DeleteByID(ctx context.Context, id primitive.ObjectID
 
 	return res, err
 }
+
+func (r *ArtistRepository) FindAll(ctx context.Context, filter bson.M, skip int64, limit int64) ([]dtos.ArtistDto, int64, error) {
+	c := r.getCollection()
+
+	total, err := c.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	opts := options.Find().SetSkip(skip).SetLimit(limit)
+
+	cur, err := c.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cur.Close(ctx)
+
+	var artists []dtos.ArtistDto
+	if err := cur.All(ctx, &artists); err != nil {
+		return nil, 0, err
+	}
+
+	return artists, total, nil
+}

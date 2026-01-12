@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
@@ -131,4 +132,37 @@ func (h *ArtistHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respond.NoContent(w)
+}
+
+func (h *ArtistHandler) HandleListArtists(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+
+	page, _ := strconv.Atoi(q.Get("page"))
+	size, _ := strconv.Atoi(q.Get("size"))
+
+	dto := dtos.ArtistQueryDto{
+		Page:  page,
+		Size:  size,
+		Name:  q.Get("name"),
+		Genre: q.Get("genre"),
+	}
+
+	resp, err := h.s.GetArtists(r.Context(), dto)
+	if err != nil {
+		log.Printf(
+			"trace_id=%s failed to list artists: %v",
+			telemetry.TraceID(r.Context()),
+			err,
+		)
+		_ = respond.InternalServerError(w)
+		return
+	}
+
+	if err := respond.OkJson(w, resp); err != nil {
+		log.Printf(
+			"trace_id=%s failed to write list artists response: %v",
+			telemetry.TraceID(r.Context()),
+			err,
+		)
+	}
 }

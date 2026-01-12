@@ -8,6 +8,7 @@ import (
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/mappers"
 	"github.com/vanjmali/spotlite/content/repositories"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel"
@@ -161,5 +162,45 @@ func (s *ArtistService) DeleteArtist(ctx context.Context, idStr string) error {
 	}
 	repoSpan.End()
 	return nil
+}
 
+func (s *ArtistService) GetArtists(ctx context.Context, q dtos.ArtistQueryDto) (*dtos.ArtistListResponseDto, error) {
+	ctx, span := s.tr.Start(ctx, "artists.get_all")
+	defer span.End()
+
+	if q.Page <= 1 {
+		q.Page = 1
+	}
+	if q.Size <= 0 || q.Size > 50 {
+		q.Size = 10
+	}
+
+	skip := int64((q.Page - 1) * q.Size)
+	limit := int64(q.Size)
+
+	filter := bson.M{}
+
+	if q.Name != "" {
+		filter["name"] = bson.M{
+			"$regex":   q.Name,
+			"$options": "i",
+		}
+	}
+
+	if q.Genre != "" {
+		filter["genres"] = q.Genre
+	}
+
+	items, total, err := s.r.FindAll(ctx, filter, skip, limit)
+	if err != nil {
+		span.RecordError(err)
+		return nil, err
+	}
+
+	return &dtos.ArtistListResponseDto{
+		Items: items,
+		Page:  q.Page,
+		Size:  q.Size,
+		Total: total,
+	}, nil
 }
