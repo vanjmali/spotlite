@@ -31,6 +31,7 @@ func (h *ArtistHandler) HandleCreateArtist(w http.ResponseWriter, r *http.Reques
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
 			log.Printf("trace_id=%s failed to process create artist request: %v", telemetry.TraceID(r.Context()), err)
+			_ = respond.BadRequest(w, "invalid request body")
 		}
 		return
 	}

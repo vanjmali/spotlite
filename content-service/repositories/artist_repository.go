@@ -23,7 +23,7 @@ func (r *ArtistRepository) getCollection() *mongo.Collection {
 }
 
 // NewRepository constructs a ArtistRepository for the given database and collection.
-func NewRepository(dbName string, collName string, c *mongo.Client) *ArtistRepository {
+func NewArtistRepository(dbName string, collName string, c *mongo.Client) *ArtistRepository {
 	r := ArtistRepository{Client: c, DbName: dbName, CollName: collName}
 	return &r
 }

@@ -12,5 +12,5 @@ type Album struct {
 	ReleaseDate time.Time            `bson:"release_date"`
 	Genres      []string             `bson:"genres"`
 	SongIds     []primitive.ObjectID `bson:"song_ids"`
-	Artists     []Artist             `bson:"artists"`
+	ArtistIds   []primitive.ObjectID `bson:"artists"`
 }

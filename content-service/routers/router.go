@@ -10,7 +10,7 @@ import (
 )
 
 // HandleRequests wires HTTP routes to user handlers.
-func HandleRequests(h *handlers.ArtistHandler) http.Handler {
+func HandleRequests(ah *handlers.ArtistHandler, sh *handlers.SongHandler, alh *handlers.AlbumHandler) http.Handler {
 
 	r := mux.NewRouter()
 	middlewares.HandleHealthz(r)
@@ -18,11 +18,18 @@ func HandleRequests(h *handlers.ArtistHandler) http.Handler {
 	api := r.PathPrefix("/").Subrouter()
 	telemetry.AttachMuxTracing(api, "artist-service")
 
-	api.HandleFunc("/artists", h.HandleListArtists).Methods("GET")
-	api.HandleFunc("/artists/{id}", h.HandleGetArtistById).Methods("GET")
-	api.HandleFunc("/artists", h.HandleCreateArtist).Methods("POST")
-	api.HandleFunc("/artists/{id}", h.HandleUpdateArtist).Methods("PATCH")
-	api.HandleFunc("/artists/{id}", h.HandleDelete).Methods("DELETE")
+	// Artists endpoints
+	api.HandleFunc("/artists", ah.HandleListArtists).Methods("GET")
+	api.HandleFunc("/artists/{id}", ah.HandleGetArtistById).Methods("GET")
+	api.HandleFunc("/artists", ah.HandleCreateArtist).Methods("POST")
+	api.HandleFunc("/artists/{id}", ah.HandleUpdateArtist).Methods("PATCH")
+	api.HandleFunc("/artists/{id}", ah.HandleDelete).Methods("DELETE")
+
+	// Songs endpoints
+	api.HandleFunc("/songs", sh.HandleCreateSong).Methods("POST")
+
+	// Albums endpoints
+	api.HandleFunc("/albums", alh.HandleCreateAlbum).Methods("POST")
 
 	return r
 }

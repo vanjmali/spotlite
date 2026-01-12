@@ -62,15 +62,21 @@ func run() error {
 	defer dbc.Disconnect(context.Background())
 
 	// Repository initialization
-	ar := repositories.NewRepository(mongo.DatabaseName(), "artists", dbc)
+	ar := repositories.NewArtistRepository(mongo.DatabaseName(), "artists", dbc)
+	sr := repositories.NewSongRepository(mongo.DatabaseName(), "songs", dbc)
+	alr := repositories.NewAlbumRepository(mongo.DatabaseName(), "albums", dbc)
 
 	// Services initialization
 	as := services.NewArtistService(*ar)
+	ss := services.NewSongService(*sr)
+	als := services.NewAlbumService(*alr)
 
 	// Handlers initialization
 	ah := handlers.NewArtistHandler(*as, *v)
+	sh := handlers.NewSongHandler(*ss, *v)
+	alh := handlers.NewAlbumHandler(*als, *v)
 
-	r := routers.HandleRequests(ah)
+	r := routers.HandleRequests(ah, sh, alh)
 
 	srvAddr := ":" + port
 
