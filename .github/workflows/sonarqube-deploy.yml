@@ -17,13 +17,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Deploy stack
-        uses: kitconcept/docker-stack-deploy@v1.0.1
+        uses: cssnr/stack-deploy-action@v1
         with:
-          remote_host: ${{ secrets.SONARQUBE_REMOTE_HOST }}
-          remote_user: ${{ secrets.SONARQUBE_REMOTE_USER }}
-          remote_port: ${{ secrets.SONARQUBE_REMOTE_PORT }}
-          remote_private_key: ${{ secrets.SONARQUBE_REMOTE_PRIVATE_KEY }}
-          stack_file: "utilities/sonarqube/docker-stack.yml"
-          stack_name: "sonarqube"
+          name: "sonarqube"
+          file: "utilities/sonarqube/docker-stack.yml"
+          host: ${{ secrets.SONARQUBE_REMOTE_HOST }}
+          user: ${{ secrets.SONARQUBE_REMOTE_USER }}
+          port: ${{ secrets.SONARQUBE_REMOTE_PORT }}
+          ssh_key: ${{ secrets.SONARQUBE_REMOTE_PRIVATE_KEY }}
         env:
           SONARQUBE_HOST: ${{ secrets.SONARQUBE_HOST }}
