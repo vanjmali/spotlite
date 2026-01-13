@@ -13,7 +13,6 @@ services:
         protocol: tcp
         mode: host
     volumes:
-      - letsencrypt:/letsencrypt
       - /var/run/docker.sock:/var/run/docker.sock
     deploy:
       mode: replicated
