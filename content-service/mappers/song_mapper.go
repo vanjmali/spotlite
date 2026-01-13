@@ -6,7 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func ToSongEntity(a *dtos.SongDto, artists []entities.EmbeddedArtist) (*entities.Song, error) {
+func ToSongEntity(a *dtos.SongDto, artists []entities.Artist) (*entities.Song, error) {
 
 	return &entities.Song{
 		ID:            primitive.NewObjectID(),

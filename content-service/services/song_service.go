@@ -36,7 +36,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 	defer span.End()
 
 	resolveCtx, resolveSpan := s.tr.Start(ctx, "song.create.resolve_artists")
-	embeddedArtists := make([]entities.EmbeddedArtist, 0)
+	embeddedArtists := make([]entities.Artist, 0)
 
 	for _, artistIdStr := range songDto.ArtistIds {
 		artistId, err := primitive.ObjectIDFromHex(artistIdStr)
@@ -53,8 +53,8 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 			return err
 		}
 
-		embeddedArtists = append(embeddedArtists, entities.EmbeddedArtist{
-			ArtistID:    artist.ID,
+		embeddedArtists = append(embeddedArtists, entities.Artist{
+			ID:          artist.ID,
 			Name:        artist.Name,
 			Genres:      artist.Genres,
 			Description: artist.Description,

@@ -10,7 +10,7 @@ type Artist struct {
 }
 
 type EmbeddedArtist struct {
-	ArtistID    primitive.ObjectID `bson:"artist_id"`
+	ArtistID    primitive.ObjectID `bson:"_id"`
 	Name        string             `bson:"name"`
 	Genres      []string           `bson:"genres"`
 	Description string             `bson:"description"`

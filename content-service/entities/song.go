@@ -9,5 +9,5 @@ type Song struct {
 	Title         string             `bson:"title"`
 	Genre         string             `bson:"genre"`
 	LengthSeconds int                `bson:"length_seconds"`
-	Artists       []EmbeddedArtist   `bson:"artists"`
+	Artists       []Artist           `bson:"artists"`
 }
