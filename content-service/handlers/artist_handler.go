@@ -113,7 +113,7 @@ func (h *ArtistHandler) HandleUpdateArtist(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (h *ArtistHandler) HandleDelete(w http.ResponseWriter, r *http.Request) {
+func (h *ArtistHandler) HandleDeleteArtist(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 

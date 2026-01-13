@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/vanjmali/spotlite/content/entities"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -31,4 +33,27 @@ func (r *SongRepository) Create(ctx context.Context, song entities.Song) error {
 		return err
 	}
 	return nil
+}
+
+func (r *SongRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*entities.Song, error) {
+	c := r.getCollection()
+
+	var song entities.Song
+
+	if err := c.FindOne(ctx, bson.M{"_id": id}).Decode(&song); err != nil {
+		return nil, err
+	}
+	return &song, nil
+}
+
+func (r *SongRepository) DeleteById(ctx context.Context, id primitive.ObjectID) (*mongo.DeleteResult, error) {
+	c := r.getCollection()
+
+	filter := bson.M{"_id": id}
+	res, err := c.DeleteOne(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	return res, err
+
 }

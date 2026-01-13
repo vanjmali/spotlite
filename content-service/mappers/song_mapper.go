@@ -6,12 +6,13 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func ToSongEntity(a *dtos.CreateSongDto) (*entities.Song, error) {
+func ToSongEntity(a *dtos.SongDto, artists []entities.EmbeddedArtist) (*entities.Song, error) {
+
 	return &entities.Song{
 		ID:            primitive.NewObjectID(),
 		Title:         a.Title,
 		Genre:         a.Genre,
-		Artists:       a.Artists,
 		LengthSeconds: a.LengthSeconds,
+		Artists:       artists,
 	}, nil
 }

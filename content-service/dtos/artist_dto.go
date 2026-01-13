@@ -1,9 +1,12 @@
 package dtos
 
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
 type ArtistDto struct {
-	Name        string   `json:"name"`
-	Genres      []string `json:"genres"`
-	Description string   `json:"description"`
+	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	Name        string             `bson:"name" json:"name"`
+	Genres      []string           `bson:"genres" json:"genres"`
+	Description string             `bson:"description" json:"description"`
 }
 
 type UpdateArtistDto struct {

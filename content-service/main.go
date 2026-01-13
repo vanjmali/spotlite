@@ -68,7 +68,7 @@ func run() error {
 
 	// Services initialization
 	as := services.NewArtistService(*ar)
-	ss := services.NewSongService(*sr)
+	ss := services.NewSongService(*sr, *ar)
 	als := services.NewAlbumService(*alr)
 
 	// Handlers initialization

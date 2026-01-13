@@ -8,3 +8,10 @@ type Artist struct {
 	Genres      []string           `bson:"genres"`
 	Description string             `bson:"description"`
 }
+
+type EmbeddedArtist struct {
+	ArtistID    primitive.ObjectID `bson:"artist_id"`
+	Name        string             `bson:"name"`
+	Genres      []string           `bson:"genres"`
+	Description string             `bson:"description"`
+}
