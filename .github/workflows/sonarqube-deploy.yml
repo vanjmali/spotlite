@@ -4,7 +4,7 @@ on:
   push:
     paths:
       - 'utilities/sonarqube/**'
-      - '.github/workflows/sonarqube-stack.yml'
+      - '.github/workflows/sonarqube-deploy.yml'
   workflow_dispatch:
 
 permissions:
