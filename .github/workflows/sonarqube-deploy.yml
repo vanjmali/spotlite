@@ -1,0 +1,29 @@
+name: Deploy SonarQube
+
+on:
+  push:
+    paths:
+      - 'utilities/sonarqube/**'
+      - '.github/workflows/sonarqube-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy stack
+        uses: cssnr/stack-deploy-action@v1
+        with:
+          name: "sonarqube"
+          file: "utilities/sonarqube/docker-stack.yml"
+          host: ${{ secrets.SONARQUBE_REMOTE_HOST }}
+          user: ${{ secrets.SONARQUBE_REMOTE_USER }}
+          port: ${{ secrets.SONARQUBE_REMOTE_PORT }}
+          ssh_key: ${{ secrets.SONARQUBE_REMOTE_PRIVATE_KEY }}
+        env:
+          SONARQUBE_HOST: ${{ secrets.SONARQUBE_HOST }}
