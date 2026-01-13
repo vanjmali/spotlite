@@ -19,14 +19,14 @@ var (
 )
 
 type SongService struct {
-	songRepo   *repositories.SongRepository
-	artistRepo *repositories.ArtistRepository
-	tr         trace.Tracer
+	songRepo      *repositories.SongRepository
+	artistService *ArtistService
+	tr            trace.Tracer
 }
 
-func NewSongService(songRepo repositories.SongRepository, artistRepo repositories.ArtistRepository) *SongService {
+func NewSongService(songRepo repositories.SongRepository, artistService ArtistService) *SongService {
 	tr := otel.Tracer("song-service/song-service")
-	s := SongService{songRepo: &songRepo, artistRepo: &artistRepo, tr: tr}
+	s := SongService{songRepo: &songRepo, artistService: &artistService, tr: tr}
 
 	return &s
 }
@@ -39,18 +39,18 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 	embeddedArtists := make([]entities.Artist, 0)
 
 	for _, artistIdStr := range songDto.ArtistIds {
-		artistId, err := primitive.ObjectIDFromHex(artistIdStr)
-		if err != nil {
-			resolveSpan.RecordError(err)
-			resolveSpan.End()
-			return ErrObjectIdCastFailed
-		}
+		// artistId, err := primitive.ObjectIDFromHex(artistIdStr)
+		// if err != nil {
+		// 	resolveSpan.RecordError(err)
+		// 	resolveSpan.End()
+		// 	return ErrObjectIdCastFailed
+		// }
 
-		artist, err := s.artistRepo.FindByID(resolveCtx, artistId)
+		artist, err := s.artistService.FindArtistByID(resolveCtx, artistIdStr)
 		if err != nil {
 			resolveSpan.RecordError(err)
 			resolveSpan.End()
-			return err
+			return ErrArtistNotFound
 		}
 
 		embeddedArtists = append(embeddedArtists, entities.Artist{
@@ -101,10 +101,3 @@ func (s *SongService) FindSongById(ctx context.Context, idStr string) (*entities
 
 	return song, nil
 }
-
-// func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
-// 	ctx, span := s.tr.Start(ctx, "song-service.delete")
-// 	defer span.End()
-
-// 	_, parseSpan
-// }

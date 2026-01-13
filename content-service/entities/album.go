@@ -7,10 +7,10 @@ import (
 )
 
 type Album struct {
-	ID          primitive.ObjectID   `bson:"_id,omitempty"`
-	Name        string               `bson:"name"`
-	ReleaseDate time.Time            `bson:"release_date"`
-	Genres      []string             `bson:"genres"`
-	SongIds     []primitive.ObjectID `bson:"song_ids"`
-	ArtistIds   []primitive.ObjectID `bson:"artists"`
+	ID          primitive.ObjectID `bson:"_id,omitempty"`
+	Name        string             `bson:"name"`
+	ReleaseDate time.Time          `bson:"release_date"`
+	Genres      []string           `bson:"genres"`
+	Songs       []Song             `bson:"song_ids"`
+	Artists     []Artist           `bson:"artists"`
 }
