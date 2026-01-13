@@ -27,8 +27,7 @@ services:
     hostname: sonarqube
     container_name: sonarqube
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     environment:
       SONAR_JDBC_URL: jdbc:postgresql://db:5432/sonar
       SONAR_JDBC_USERNAME: sonar
