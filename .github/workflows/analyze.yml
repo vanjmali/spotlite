@@ -2,8 +2,7 @@ name: Analyze with SonarQube
 
 on:
   push:
-    branches: [stable, develop]
-  pull_request:
+    branches: [develop]
 
 jobs:
   build:
