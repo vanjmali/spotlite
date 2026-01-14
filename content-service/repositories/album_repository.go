@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/vanjmali/spotlite/content/entities"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -30,4 +32,15 @@ func (r *AlbumRepository) Create(ctx context.Context, album entities.Album) erro
 		return err
 	}
 	return nil
+}
+
+func (r *AlbumRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*entities.Album, error) {
+	c := r.getCollection()
+
+	var album entities.Album
+
+	if err := c.FindOne(ctx, bson.M{"_id": id}).Decode(&album); err != nil {
+		return nil, err
+	}
+	return &album, nil
 }

@@ -50,7 +50,15 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 		if err != nil {
 			resolveSpan.RecordError(err)
 			resolveSpan.End()
-			return ErrArtistNotFound
+
+			switch {
+			case errors.Is(err, ErrObjectIdCastFailed):
+				return ErrObjectIdCastFailed
+			case errors.Is(err, ErrArtistNotFound):
+				return ErrArtistNotFound
+			default:
+				return err
+			}
 		}
 
 		embeddedArtists = append(embeddedArtists, entities.Artist{

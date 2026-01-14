@@ -36,9 +36,19 @@ func (h *SongHandler) HandleCreateSong(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.s.Create(r.Context(), &req); err != nil {
-		log.Printf("trace_id=%s failed to create song: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.InternalServerError(w)
-		return
+		switch {
+		case errors.Is(err, services.ErrObjectIdCastFailed):
+			_ = respond.BadRequest(w, "Invalid ID format")
+			return
+		case errors.Is(err, services.ErrArtistNotFound):
+			_ = respond.NotFound(w)
+			return
+		default:
+			log.Printf("trace_id=%s failed to create song: %v", telemetry.TraceID(r.Context()), err)
+			_ = respond.InternalServerError(w)
+			return
+		}
+
 	}
 
 	respond.NoContent(w)
@@ -57,7 +67,7 @@ func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) 
 			_ = respond.NotFound(w)
 			return
 		case errors.Is(err, services.ErrObjectIdCastFailed):
-			_ = respond.BadRequest(w, "Invalid artist ID format")
+			_ = respond.BadRequest(w, "Invalid ID format")
 			return
 		default:
 			_ = respond.InternalServerError(w)

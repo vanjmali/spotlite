@@ -2,14 +2,20 @@ package services
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
 	"github.com/vanjmali/spotlite/content/repositories"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
+)
+
+var (
+	ErrAlbumNotFound = errors.New("album not found")
 )
 
 type AlbumService struct {
@@ -39,7 +45,15 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 		if err != nil {
 			resolveArtistSpan.RecordError(err)
 			resolveArtistSpan.End()
-			return ErrArtistNotFound
+
+			switch {
+			case errors.Is(err, ErrObjectIdCastFailed):
+				return ErrObjectIdCastFailed
+			case errors.Is(err, ErrArtistNotFound):
+				return ErrArtistNotFound
+			default:
+				return err
+			}
 		}
 
 		embeddedArtist = append(embeddedArtist, entities.Artist{
@@ -61,7 +75,15 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 		if err != nil {
 			resolveSongSpan.RecordError(err)
 			resolveSongSpan.End()
-			return ErrSongNotFound
+
+			switch {
+			case errors.Is(err, ErrObjectIdCastFailed):
+				return ErrObjectIdCastFailed
+			case errors.Is(err, ErrSongNotFound):
+				return ErrSongNotFound
+			default:
+				return err
+			}
 		}
 
 		embeddedSong = append(embeddedSong, entities.Song{
@@ -94,4 +116,25 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 
 	createSpan.End()
 	return nil
+}
+
+func (s *AlbumService) FindAlbumByID(ctx context.Context, idStr string) (*entities.Album, error) {
+	ctx, span := s.tr.Start(ctx, "album.find_by_id")
+	defer span.End()
+
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		span.RecordError(err)
+		span.End()
+		return nil, ErrObjectIdCastFailed
+	}
+
+	album, err := s.albumRepo.FindByID(ctx, id)
+	if err != nil {
+		span.RecordError(err)
+		span.End()
+		return nil, ErrAlbumNotFound
+	}
+
+	return album, nil
 }
