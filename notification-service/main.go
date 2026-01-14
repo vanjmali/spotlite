@@ -14,10 +14,15 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/notifications/handlers"
+	"github.com/vanjmali/spotlite/notifications/infrastructure"
 	"github.com/vanjmali/spotlite/notifications/routers"
 )
 
-var port = utils.GetEnv("APP_PORT", "3000")
+var (
+	port     = utils.GetEnv("APP_PORT", "3000")
+	cassHost = utils.GetEnv("CASSANDRA_HOST", "127.0.0.1")
+	ks       = "notification_service"
+)
 
 func main() {
 	if err := run(); err != nil {
@@ -40,6 +45,23 @@ func run() error {
 			log.Printf("failed to shut down notification service tracer provider: %v", err)
 		}
 	}()
+
+	if err := infrastructure.CreateKeyspace(cassHost, ks); err != nil {
+		log.Fatalf("Failed to create keyspace: %v", err)
+	}
+
+	cs, err := infrastructure.Initialize(cassHost, ks)
+	if err != nil {
+		return fmt.Errorf("failed to initialize database session: %v", err)
+	}
+	defer cs.Close()
+
+	var version string
+	if err := cs.Query("SELECT release_version FROM system.local").Scan(&version); err != nil {
+		log.Fatalf("❌ Query failed: %v", err)
+	}
+
+	fmt.Printf("✅ Connection Successful! Cassandra Version: %s\n", version)
 
 	h := handlers.NewNotificationHandler()
 	r := routers.HandleRequests(h)
