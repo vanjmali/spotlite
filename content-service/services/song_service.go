@@ -9,6 +9,7 @@ import (
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
 	"github.com/vanjmali/spotlite/content/repositories"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -108,4 +109,53 @@ func (s *SongService) FindSongById(ctx context.Context, idStr string) (*entities
 	}
 
 	return song, nil
+}
+
+func (s *SongService) GetSongs(ctx context.Context, q dtos.SongQueryDto) (*dtos.SongListResponseDto, error) {
+	ctx, span := s.tr.Start(ctx, "song.get_all")
+	defer span.End()
+
+	if q.Page <= 1 {
+		q.Page = 1
+	}
+	if q.Size <= 0 || q.Size > 50 {
+		q.Size = 10
+	}
+
+	skip := int64((q.Page - 1) * q.Size)
+	limit := int64(q.Size)
+
+	filter := bson.M{}
+
+	if q.Title != "" {
+		filter["title"] = bson.M{
+			"$regex":   q.Title,
+			"$options": "i",
+		}
+	}
+
+	if q.Genre != "" {
+		filter["genre"] = q.Genre
+	}
+
+	if q.ArtistID != "" {
+		artistId, err := primitive.ObjectIDFromHex(q.ArtistID)
+		if err != nil {
+			return nil, ErrObjectIdCastFailed
+		}
+		filter["artists._id"] = artistId
+	}
+
+	items, total, err := s.songRepo.FindAll(ctx, filter, skip, limit)
+	if err != nil {
+		span.RecordError(err)
+		return nil, err
+	}
+
+	return &dtos.SongListResponseDto{
+		Items: items,
+		Page:  q.Page,
+		Size:  q.Size,
+		Total: total,
+	}, nil
 }

@@ -1,6 +1,9 @@
 package dtos
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"github.com/vanjmali/spotlite/content/entities"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type ArtistDto struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
@@ -23,8 +26,8 @@ type ArtistQueryDto struct {
 }
 
 type ArtistListResponseDto struct {
-	Items []ArtistDto `json:"items"`
-	Page  int         `json:"page"`
-	Size  int         `json:"size"`
-	Total int64       `json:"total"`
+	Items []entities.Artist `json:"items"`
+	Page  int               `json:"page"`
+	Size  int               `json:"size"`
+	Total int64             `json:"total"`
 }

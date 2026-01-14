@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
@@ -77,5 +78,37 @@ func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) 
 
 	if err := respond.OkJson(w, song); err != nil {
 		log.Printf("trace_id=%s failed to write get song response: %v", telemetry.TraceID(r.Context()), err)
+	}
+}
+
+func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+
+	page, _ := strconv.Atoi(q.Get("page"))
+	size, _ := strconv.Atoi(q.Get("size"))
+
+	query := dtos.SongQueryDto{
+		Page:     page,
+		Size:     size,
+		Title:    q.Get("title"),
+		Genre:    q.Get("genre"),
+		ArtistID: q.Get("artistId"),
+	}
+
+	resp, err := h.s.GetSongs(r.Context(), query)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrObjectIdCastFailed):
+			_ = respond.BadRequest(w, "Invalid ID format")
+			return
+		default:
+			log.Printf("trace_id=%s failed to list songs: %v", telemetry.TraceID(r.Context()), err)
+			_ = respond.InternalServerError(w)
+			return
+		}
+	}
+
+	if err := respond.OkJson(w, resp); err != nil {
+		log.Printf("trace_id=%s failed to write list songs response: %v", telemetry.TraceID(r.Context()), err)
 	}
 }

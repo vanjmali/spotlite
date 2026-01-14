@@ -135,7 +135,7 @@ func (h *ArtistHandler) HandleDeleteArtist(w http.ResponseWriter, r *http.Reques
 	respond.NoContent(w)
 }
 
-func (h *ArtistHandler) HandleListArtists(w http.ResponseWriter, r *http.Request) {
+func (h *ArtistHandler) HandleGetArtists(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
 	page, _ := strconv.Atoi(q.Get("page"))
@@ -150,20 +150,12 @@ func (h *ArtistHandler) HandleListArtists(w http.ResponseWriter, r *http.Request
 
 	resp, err := h.s.GetArtists(r.Context(), dto)
 	if err != nil {
-		log.Printf(
-			"trace_id=%s failed to list artists: %v",
-			telemetry.TraceID(r.Context()),
-			err,
-		)
+		log.Printf("trace_id=%s failed to list artists: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.InternalServerError(w)
 		return
 	}
 
 	if err := respond.OkJson(w, resp); err != nil {
-		log.Printf(
-			"trace_id=%s failed to write list artists response: %v",
-			telemetry.TraceID(r.Context()),
-			err,
-		)
+		log.Printf("trace_id=%s failed to write list artists response: %v", telemetry.TraceID(r.Context()), err)
 	}
 }

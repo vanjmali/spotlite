@@ -19,13 +19,14 @@ func HandleRequests(ah *handlers.ArtistHandler, sh *handlers.SongHandler, alh *h
 	telemetry.AttachMuxTracing(api, "content-service")
 
 	// Artists endpoints
-	api.HandleFunc("/artists", ah.HandleListArtists).Methods("GET")
+	api.HandleFunc("/artists", ah.HandleGetArtists).Methods("GET")
 	api.HandleFunc("/artists/{id}", ah.HandleGetArtistById).Methods("GET")
 	api.HandleFunc("/artists", ah.HandleCreateArtist).Methods("POST")
 	api.HandleFunc("/artists/{id}", ah.HandleUpdateArtist).Methods("PATCH")
 	api.HandleFunc("/artists/{id}", ah.HandleDeleteArtist).Methods("DELETE")
 
 	// Songs endpoints
+	api.HandleFunc("/songs", sh.HandleGetSongs).Methods("GET")
 	api.HandleFunc("/songs/{id}", sh.HandleGetSongById).Methods("GET")
 	api.HandleFunc("/songs", sh.HandleCreateSong).Methods("POST")
 

@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type SongRepository struct {
@@ -56,4 +57,29 @@ func (r *SongRepository) DeleteById(ctx context.Context, id primitive.ObjectID) 
 	}
 	return res, err
 
+}
+
+func (r *SongRepository) FindAll(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Song, int64, error) {
+	c := r.getCollection()
+
+	total, err := c.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Ensure a stable sort for consistent pagination results
+	opts := options.Find().SetSkip(skip).SetLimit(limit).SetSort(bson.D{{Key: "_id", Value: 1}})
+
+	cur, err := c.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cur.Close(ctx)
+
+	var songs []entities.Song
+	if err = cur.All(ctx, &songs); err != nil {
+		return nil, 0, err
+	}
+
+	return songs, total, nil
 }
