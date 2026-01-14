@@ -7,6 +7,13 @@ A microservice which main goal is to persist notifications and notify users abou
 - Go 1.25.5
 - Cassandra 5.0.6
 
+## Development
+
+Additional services are available for local development:
+
+- Position yourself in the root directory run `docker compose up --build`, and then run `docker exec -it notification-cassandra cqlsh`.
+  Congrats you can now run cql commands.
+
 ## Structure
 
 - The purpose of this service is to:
@@ -28,6 +35,9 @@ A microservice which main goal is to persist notifications and notify users abou
 - The `created_at` timestamp is used as the clustering column, which keeps notifications sorted
   chronologically within each partition. This enables efficient range queries and fast retrieval
   of the most recent notifications, making it well suited for displaying the user's inbox.
+
+- `notification_id` will also be used as a clustering column to make a distinction between notifications
+  with the same timestamp.
 
 ### Notification entity structure
 

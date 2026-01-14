@@ -2,19 +2,13 @@ package infrastructure
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/gocql/gocql"
 )
 
-// initializes a session type which is used as an API to query the database
-func Initialize(host string, keyspace string) (*gocql.Session, error) {
+func createBaseCluster(host string) *gocql.ClusterConfig {
 	cluster := gocql.NewCluster(host)
-
-	// defining the default keyspace (db) so we avoid keyspace.table for every query
-	cluster.Keyspace = keyspace
-
 	// tells cassandra how many nodes must acknowledge a read or write for it to be considered successful,
 	// quorum means that the majority has to approve for an operation to be commited (e.g. 2 out of 3 nodes)
 	cluster.Consistency = gocql.Quorum
@@ -22,14 +16,24 @@ func Initialize(host string, keyspace string) (*gocql.Session, error) {
 	// defines the binary protocol used to talk to the server
 	cluster.ProtoVersion = 4
 
-	// open 5 TCP connections per host (default is 2) to increase throughput
-	cluster.NumConns = 5
-
 	// max wait time for a query to be executed
 	cluster.Timeout = 5 * time.Second
 
 	// max wait time for a service to establish a connection with a node
 	cluster.ConnectTimeout = 5 * time.Second
+
+	return cluster
+}
+
+// initializes a session type which is used as an API to query the database
+func Initialize(host string, keyspace string) (*gocql.Session, error) {
+	cluster := createBaseCluster(host)
+
+	// defining the default keyspace (db) so we avoid keyspace.table for every query
+	cluster.Keyspace = keyspace
+
+	// open 5 TCP connections per host (default is 2) to increase throughput
+	cluster.NumConns = 5
 
 	// configuring resilience, cassandra will retry a query 3 times before returning an error
 	cluster.RetryPolicy = &gocql.SimpleRetryPolicy{NumRetries: 3}
@@ -42,13 +46,9 @@ func Initialize(host string, keyspace string) (*gocql.Session, error) {
 	return session, nil
 }
 
-func CreateKeyspace(host string, keyspace string) error {
-	cluster := gocql.NewCluster(host)
+func InitializeSchema(host string, keyspace string) error {
+	cluster := createBaseCluster(host)
 	cluster.Keyspace = "system"
-	cluster.Consistency = gocql.Quorum
-	cluster.ProtoVersion = 4
-	cluster.Timeout = 5 * time.Second
-	cluster.ConnectTimeout = 5 * time.Second
 
 	session, err := cluster.CreateSession()
 	if err != nil {
@@ -56,13 +56,28 @@ func CreateKeyspace(host string, keyspace string) error {
 	}
 	defer session.Close()
 
-	query := fmt.Sprintf(`
+	ksQuery := fmt.Sprintf(`
 		CREATE KEYSPACE IF NOT EXISTS "%s" 
 		WITH replication = {
 			'class': 'SimpleStrategy', 
 			'replication_factor': 1
 		};`, keyspace)
 
-	log.Printf("Bootstrapping: Creating keyspace '%s' if not exists...", keyspace)
-	return session.Query(query).Exec()
+	if err := session.Query(ksQuery).Exec(); err != nil {
+		return err
+	}
+
+	tableQuery := fmt.Sprintf(`
+		CREATE TABLE IF NOT EXISTS "%s".notifications (
+			user_id TEXT,
+			created_at TIMESTAMP,
+			notification_id UUID,
+			type TEXT,
+			is_read BOOLEAN,
+			read_at TIMESTAMP,
+			message TEXT,
+			PRIMARY KEY ((user_id), created_at, notification_id)
+		) WITH CLUSTERING ORDER BY (created_at DESC, notification_id ASC);`, keyspace)
+
+	return session.Query(tableQuery).Exec()
 }

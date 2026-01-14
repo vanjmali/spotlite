@@ -18,7 +18,7 @@ func HandleRequests(h *handlers.NotificationHandler) http.Handler {
 	api := r.PathPrefix("/").Subrouter()
 	telemetry.AttachMuxTracing(api, "notification-service")
 
-	api.HandleFunc("/test", h.HandleTest).Methods("GET")
+	api.Handle("/create", middlewares.RequireAuthenticated(h.HandleCreateNotification)).Methods("POST")
 
 	return r
 }

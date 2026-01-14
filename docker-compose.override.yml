@@ -95,6 +95,16 @@ services:
       key-gen:
         condition: service_completed_successfully
 
+  notification-service:
+    volumes:
+      - keys:/run/keys:ro
+    environment:
+      JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
+      JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+    depends_on:
+      key-gen:
+        condition: service_completed_successfully
+
   user-mongodb:
     ports:
       - 3101:27017 # expose MongoDB port
@@ -120,6 +130,10 @@ services:
     networks:
       - api-gateway
       - user-internal
+
+  notification-cassandra:
+    ports:
+      - "${CASSANDRA_PORT}:9042"
 
 volumes:
   frontend-node-modules:

@@ -15,7 +15,9 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/notifications/handlers"
 	"github.com/vanjmali/spotlite/notifications/infrastructure"
+	"github.com/vanjmali/spotlite/notifications/repositories"
 	"github.com/vanjmali/spotlite/notifications/routers"
+	"github.com/vanjmali/spotlite/notifications/services"
 )
 
 var (
@@ -46,25 +48,22 @@ func run() error {
 		}
 	}()
 
-	if err := infrastructure.CreateKeyspace(cassHost, ks); err != nil {
-		log.Fatalf("Failed to create keyspace: %v", err)
+	// schema initialization
+	if err := infrastructure.InitializeSchema(cassHost, ks); err != nil {
+		log.Fatalf("failed to initialize schema: %v", err)
 	}
 
+	// initialize cassandra session which will be used to execute queries
 	cs, err := infrastructure.Initialize(cassHost, ks)
 	if err != nil {
 		return fmt.Errorf("failed to initialize database session: %v", err)
 	}
 	defer cs.Close()
 
-	var version string
-	if err := cs.Query("SELECT release_version FROM system.local").Scan(&version); err != nil {
-		log.Fatalf("❌ Query failed: %v", err)
-	}
-
-	fmt.Printf("✅ Connection Successful! Cassandra Version: %s\n", version)
-
-	h := handlers.NewNotificationHandler()
-	r := routers.HandleRequests(h)
+	nr := repositories.NewNotificationRepository(cs)
+	ns := services.NewNotificationService(nr)
+	nh := handlers.NewNotificationHandler(ns)
+	r := routers.HandleRequests(nh)
 
 	srvAddr := ":" + port
 
