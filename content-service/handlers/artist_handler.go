@@ -138,8 +138,15 @@ func (h *ArtistHandler) HandleDeleteArtist(w http.ResponseWriter, r *http.Reques
 func (h *ArtistHandler) HandleGetArtists(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
-	page, _ := strconv.Atoi(q.Get("page"))
-	size, _ := strconv.Atoi(q.Get("size"))
+	page, err := strconv.Atoi(q.Get("page"))
+	if err != nil {
+		page = 1
+	}
+
+	size, err := strconv.Atoi(q.Get("size"))
+	if err != nil {
+		size = 10
+	}
 
 	dto := dtos.ArtistQueryDto{
 		Page:  page,

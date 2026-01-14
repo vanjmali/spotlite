@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
@@ -81,5 +82,44 @@ func (h *AlbumHandler) HandleGetAlbumById(w http.ResponseWriter, r *http.Request
 	}
 	if err := respond.OkJson(w, album); err != nil {
 		log.Printf("trace_id=%s failed to write get album response: %v", telemetry.TraceID(r.Context()), err)
+	}
+}
+
+func (h *AlbumHandler) HandleGetAlbums(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+
+	page, err := strconv.Atoi(q.Get("page"))
+	if err != nil {
+		page = 1
+	}
+
+	size, err := strconv.Atoi(q.Get("size"))
+	if err != nil {
+		size = 10
+	}
+
+	query := dtos.AlbumQueryDto{
+		Page:     page,
+		Size:     size,
+		Title:    q.Get("name"),
+		Genre:    q.Get("genres"),
+		ArtistID: q.Get("artistId"),
+	}
+
+	resp, err := h.s.GetAll(r.Context(), query)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrObjectIdCastFailed):
+			_ = respond.BadRequest(w, "Invalid ID format")
+			return
+		default:
+			log.Printf("trace_id=%s failed to list albums: %v", telemetry.TraceID(r.Context()), err)
+			_ = respond.InternalServerError(w)
+			return
+		}
+	}
+
+	if err := respond.OkJson(w, resp); err != nil {
+		log.Printf("trace_id=%s failed to write list albums response: %v", telemetry.TraceID(r.Context()), err)
 	}
 }

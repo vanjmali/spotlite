@@ -84,8 +84,15 @@ func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) 
 func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
-	page, _ := strconv.Atoi(q.Get("page"))
-	size, _ := strconv.Atoi(q.Get("size"))
+	page, err := strconv.Atoi(q.Get("page"))
+	if err != nil {
+		page = 1
+	}
+
+	size, err := strconv.Atoi(q.Get("size"))
+	if err != nil {
+		size = 10
+	}
 
 	query := dtos.SongQueryDto{
 		Page:     page,

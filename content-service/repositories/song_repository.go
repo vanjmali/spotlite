@@ -67,8 +67,7 @@ func (r *SongRepository) FindAll(ctx context.Context, filter bson.M, skip int64,
 		return nil, 0, err
 	}
 
-	// Ensure a stable sort for consistent pagination results
-	opts := options.Find().SetSkip(skip).SetLimit(limit).SetSort(bson.D{{Key: "_id", Value: 1}})
+	opts := options.Find().SetSkip(skip).SetLimit(limit)
 
 	cur, err := c.Find(ctx, filter, opts)
 	if err != nil {

@@ -31,6 +31,7 @@ func HandleRequests(ah *handlers.ArtistHandler, sh *handlers.SongHandler, alh *h
 	api.HandleFunc("/songs", sh.HandleCreateSong).Methods("POST")
 
 	// Albums endpoints
+	api.HandleFunc("/albums", alh.HandleGetAlbums).Methods("GET")
 	api.HandleFunc("/albums/{id}", alh.HandleGetAlbumById).Methods("GET")
 	api.HandleFunc("/albums", alh.HandleCreateAlbum).Methods("POST")
 

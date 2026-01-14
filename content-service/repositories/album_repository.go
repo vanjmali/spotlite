@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type AlbumRepository struct {
@@ -43,4 +44,28 @@ func (r *AlbumRepository) FindByID(ctx context.Context, id primitive.ObjectID) (
 		return nil, err
 	}
 	return &album, nil
+}
+
+func (r *AlbumRepository) FindAll(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Album, int64, error) {
+	c := r.getCollection()
+
+	total, err := c.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	opts := options.Find().SetSkip(skip).SetLimit(limit)
+
+	cur, err := c.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cur.Close(ctx)
+
+	var albums []entities.Album
+	if err := cur.All(ctx, &albums); err != nil {
+		return nil, 0, err
+	}
+
+	return albums, total, nil
 }
