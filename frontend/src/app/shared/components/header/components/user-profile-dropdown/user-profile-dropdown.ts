@@ -18,7 +18,6 @@ export class UserProfileDropdownComponent {
 
   // Computed signal to get first letter of email
   readonly firstLetterSg = computed((email = this.authService.currentEmailSg()) => {
-    console.log({ email });
     return email ? email.charAt(0).toUpperCase() : '';
   });
 
