@@ -13,7 +13,7 @@ A microservice for managing music content including albums, artists, and songs.
 Additional services are available for local development:
 
 - `localhost:3000/dev/content-service` - serves [mongo-express](https://github.com/mongo-express/mongo-express)
-- `localhost:3101` - direct connection to MongoDB
+- `localhost:3102` - direct connection to MongoDB
 
 ## Structure
 
@@ -99,8 +99,8 @@ We chose MongoDB for its document-oriented nature, which is ideal for music cont
 - `POST /albums` - Create a new album
 - `GET /albums/:id` - Get album by ID
 - `GET /albums` - List albums with pagination and filtering
-<!-- - `PATCH /albums/:id` - Update album (partial) -->
-<!-- - `DELETE /albums/:id` - Delete album -->
+  <!-- - `PATCH /albums/:id` - Update album (partial) -->
+  <!-- - `DELETE /albums/:id` - Delete album -->
 
 ### Artists
 
