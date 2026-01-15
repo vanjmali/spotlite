@@ -99,10 +99,6 @@ func (f *fakeUserRepositoryForPasswordRecovery) ClearLoginOtp(ctx context.Contex
 	return nil
 }
 
-func (f *fakeUserRepositoryForPasswordRecovery) SetHashPassowrd(ctx context.Context, userId primitive.ObjectID, passwordHash string, newTime, expiresAt time.Time) error {
-	return nil
-}
-
 func (f *fakeUserRepositoryForPasswordRecovery) FindUsersForExpiryNotification(
 	ctx context.Context,
 	daysUntilExpiry int,
