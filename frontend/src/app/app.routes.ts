@@ -9,6 +9,7 @@ import {
 } from './pages';
 
 import { HomePage } from './pages/home-page';
+import { AdminPage } from './pages/admin-page';
 import { CredentialsStep, OtpStep } from './pages/login-page/components';
 import {
   PersonalInfoStep,
@@ -69,6 +70,33 @@ export const routes: Routes = [
   {
     path: 'home',
     component: HomePage,
+  },
+  {
+    path: 'admin',
+    component: AdminPage,
+    children: [
+      {
+        path: 'artists',
+        loadComponent: () =>
+          import('./pages/admin-page/components/artists-management/artists-management.component').then(
+            (m) => m.ArtistsManagementComponent
+          ),
+      },
+      {
+        path: 'albums',
+        loadComponent: () =>
+          import('./pages/admin-page/components/albums-management/albums-management.component').then(
+            (m) => m.AlbumsManagementComponent
+          ),
+      },
+      {
+        path: 'songs',
+        loadComponent: () =>
+          import('./pages/admin-page/components/songs-management/songs-management.component').then(
+            (m) => m.SongsManagementComponent
+          ),
+      },
+    ],
   },
   {
     path: 'profile',

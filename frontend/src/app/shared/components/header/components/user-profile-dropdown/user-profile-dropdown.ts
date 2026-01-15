@@ -1,12 +1,13 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '@app/services/auth.service';
 
 @Component({
   selector: 'app-user-profile-dropdown',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, MatIconModule],
   templateUrl: './user-profile-dropdown.html',
   styleUrls: ['./user-profile-dropdown.scss'],
 })
@@ -32,6 +33,11 @@ export class UserProfileDropdownComponent {
   navigateToProfile(): void {
     this.closeDropdown();
     this.router.navigate(['/profile']);
+  }
+
+  navigateToAdmin(): void {
+    this.closeDropdown();
+    this.router.navigate(['/admin']);
   }
 
   logout(): void {
