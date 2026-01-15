@@ -239,15 +239,13 @@ func (h *UserHandler) HandleResendOtp(w http.ResponseWriter, r *http.Request) {
 
 // HandleCheckEmail checks if an email is already registered.
 func (h *UserHandler) HandleCheckEmail(w http.ResponseWriter, r *http.Request) {
-	var req dtos.CheckEmailDto
-	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
-		if err != nil {
-			log.Printf("failed to process check email request: %v", err)
-		}
+	email := r.URL.Query().Get("email")
+	if email == "" {
+		_ = respond.BadRequest(w, "Email is required")
 		return
 	}
 
-	exists, err := h.s.EmailExists(r.Context(), req.Email)
+	exists, err := h.s.EmailExists(r.Context(), email)
 	if err != nil {
 		_ = respond.InternalServerError(w)
 		return

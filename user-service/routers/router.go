@@ -25,7 +25,7 @@ func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler, 
 	api.HandleFunc("/login/verify-otp", h.HandleVerifyLoginOtp).Methods("POST")
 	api.HandleFunc("/login/resend-otp", h.HandleResendOtp).Methods("POST")
 
-	api.HandleFunc("/check-email/{email}", h.HandleCheckEmail).Methods("GET")
+	api.HandleFunc("/check-email", h.HandleCheckEmail).Methods("GET")
 
 	api.HandleFunc("/password-recovery/request", prh.HandleRequestPasswordReset).Methods("POST")
 	api.HandleFunc("/password-recovery/validate", prh.HandleValidateRecoveryToken).Methods("POST")
