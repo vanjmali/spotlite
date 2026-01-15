@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/vanjmali/spotlite/common-lib/account"
 	"github.com/vanjmali/spotlite/common-lib/clock"
+	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
@@ -23,12 +24,10 @@ import (
 )
 
 // Helper function to add user ID to context for testing
-// Uses the same "userId" key as the middleware uses internally
+// Uses the exported ContextWithUserID from middlewares package
 func contextWithUserID(ctx context.Context, userID primitive.ObjectID) context.Context {
-	return context.WithValue(ctx, ctxKey("userId"), userID.Hex())
+	return middlewares.ContextWithUserID(ctx, userID.Hex())
 }
-
-type ctxKey string
 
 type fakeUserRepo struct {
 	existsByUsernameFn func(context.Context, string) (bool, error)
