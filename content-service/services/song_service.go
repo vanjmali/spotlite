@@ -69,6 +69,12 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 
 	_, mapSpan := s.tr.Start(ctx, "song.create.map_entity")
 	songEntity, err := mappers.ToSongEntity(songDto, embeddedArtists)
+	if err != nil {
+		mapSpan.RecordError(err)
+		mapSpan.End()
+		log.Printf("Error converting to song entity: %v", err)
+		return err
+	}
 	mapSpan.End()
 
 	createCtx, createSpan := s.tr.Start(ctx, "song.create.create_song")
