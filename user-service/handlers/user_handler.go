@@ -113,8 +113,6 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 			msg = "Username is already taken."
 		case errors.Is(err, services.ErrEmailTaken):
 			msg = "Email is already taken."
-		default:
-			msg = "An unexpected error has occurred."
 		}
 
 		if msg != "" {
