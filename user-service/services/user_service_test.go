@@ -23,6 +23,7 @@ import (
 )
 
 // Helper function to add user ID to context for testing
+// Uses the same "userId" key as the middleware uses internally
 func contextWithUserID(ctx context.Context, userID primitive.ObjectID) context.Context {
 	return context.WithValue(ctx, ctxKey("userId"), userID.Hex())
 }

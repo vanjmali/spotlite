@@ -363,9 +363,9 @@ func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswo
 	ctx, span := s.tr.Start(ctx, "user.change_password")
 	defer span.End()
 
-	lookupCtx, lookupSpan := s.tr.Start(ctx, "user.change_password.lookup_user")
-	userIdHexString := middlewares.GetUserIdFromContext(lookupCtx)
+	userIdHexString := middlewares.GetUserIdFromContext(ctx)
 
+	_, lookupSpan := s.tr.Start(ctx, "user.change_password.lookup_user")
 	userObjectId, err := primitive.ObjectIDFromHex(userIdHexString)
 	if err != nil {
 		lookupSpan.RecordError(err)
