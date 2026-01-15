@@ -231,6 +231,7 @@ func RenderLoginOtpEmail(otp string) (string, error) {
 }
 
 // PasswordResetEmailTemplate is the HTML template for password reset emails.
+// nolint:gosec // This is an email template, not hardcoded credentials
 const PasswordResetEmailTemplate = `<!DOCTYPE html>
 <html lang="en">
 <head>
