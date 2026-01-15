@@ -108,7 +108,7 @@ func (h *AlbumHandler) HandleGetAlbums(w http.ResponseWriter, r *http.Request) {
 		Size:     size,
 		Name:     q.Get("name"),
 		Genres:   q.Get("genres"),
-		ArtistID: q.Get("artistId"),
+		ArtistID: q.Get("artist_id"),
 	}
 
 	resp, err := h.s.GetAll(r.Context(), query)
