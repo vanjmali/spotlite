@@ -20,14 +20,6 @@ type UpdateArtistDto struct {
 	Description *string   `json:"description" validate:"required"`
 }
 
-// ArtistQueryDto represents the query parameters for filtering and paginating artist results.
-type ArtistQueryDto struct {
-	Page  int
-	Size  int
-	Name  string
-	Genre string
-}
-
 // ArtistListResponseDto represents the response payload when returning a paginated list of artists.
 type ArtistListResponseDto struct {
 	Items []entities.Artist `json:"items"`

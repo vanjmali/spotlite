@@ -168,8 +168,16 @@ func (s *ArtistService) DeleteArtist(ctx context.Context, idStr string) error {
 	return nil
 }
 
+// ArtistsQuery represents the query parameters for filtering and paginating artist results.
+type ArtistsQuery struct {
+	Page  int
+	Size  int
+	Name  string
+	Genre string
+}
+
 // GetArtists retrieves a paginated list of artists with optional filtering by name or genre.
-func (s *ArtistService) GetArtists(ctx context.Context, q dtos.ArtistQueryDto) (*dtos.ArtistListResponseDto, error) {
+func (s *ArtistService) GetArtists(ctx context.Context, q ArtistsQuery) (*dtos.ArtistListResponseDto, error) {
 	ctx, span := s.tr.Start(ctx, "artists.get_all")
 	defer span.End()
 

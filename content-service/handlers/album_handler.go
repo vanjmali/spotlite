@@ -103,7 +103,7 @@ func (h *AlbumHandler) HandleGetAlbums(w http.ResponseWriter, r *http.Request) {
 		size = 10
 	}
 
-	query := dtos.AlbumQueryDto{
+	query := services.AlbumsQuery{
 		Page:     page,
 		Size:     size,
 		Name:     q.Get("name"),

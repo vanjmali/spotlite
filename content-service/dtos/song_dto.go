@@ -10,15 +10,6 @@ type SongDto struct {
 	ArtistIds     []string `json:"artist_ids" validate:"required"`
 }
 
-// SongQueryDto represents the query parameters for filtering and paginating song results.
-type SongQueryDto struct {
-	Page     int
-	Size     int
-	Title    string
-	Genre    string
-	ArtistID string
-}
-
 // SongListResponseDto represents the response payload when returning a paginated list of songs.
 type SongListResponseDto struct {
 	Items []entities.Song `json:"items"`

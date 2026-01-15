@@ -99,7 +99,7 @@ func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 		size = 10
 	}
 
-	query := dtos.SongQueryDto{
+	query := services.SongsQuery{
 		Page:     page,
 		Size:     size,
 		Title:    q.Get("title"),

@@ -15,15 +15,6 @@ type CreateAlbumDto struct {
 	ArtistIds   []string  `json:"artist_ids" validate:"required"`
 }
 
-// AlbumQueryDto represents the query parameters for filtering and paginating album results.
-type AlbumQueryDto struct {
-	Page     int
-	Size     int
-	Name     string
-	Genres   string
-	ArtistID string
-}
-
 // AlbumListResponseDto represents the response payload when returning a paginated list of albums.
 type AlbumListResponseDto struct {
 	Items []entities.Album `json:"items"`

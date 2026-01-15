@@ -113,8 +113,17 @@ func (s *SongService) FindSongById(ctx context.Context, idStr string) (*entities
 	return song, nil
 }
 
+// SongsQuery represents the query parameters for filtering and paginating song results.
+type SongsQuery struct {
+	Page     int
+	Size     int
+	Title    string
+	Genre    string
+	ArtistID string
+}
+
 // GetSongs retrieves a paginated list of songs with optional filtering by title, genre, or artist ID.
-func (s *SongService) GetSongs(ctx context.Context, q dtos.SongQueryDto) (*dtos.SongListResponseDto, error) {
+func (s *SongService) GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongListResponseDto, error) {
 	ctx, span := s.tr.Start(ctx, "song.get_all")
 	defer span.End()
 

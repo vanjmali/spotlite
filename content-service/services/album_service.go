@@ -141,8 +141,17 @@ func (s *AlbumService) FindAlbumByID(ctx context.Context, idStr string) (*entiti
 	return album, nil
 }
 
+// AlbumsQuery represents the query parameters for filtering and paginating album results.
+type AlbumsQuery struct {
+	Page     int
+	Size     int
+	Name     string
+	Genres   string
+	ArtistID string
+}
+
 // GetAll retrieves a paginated list of albums with optional filtering by title, genre, or artist ID.
-func (s *AlbumService) GetAll(ctx context.Context, q dtos.AlbumQueryDto) (*dtos.AlbumListResponseDto, error) {
+func (s *AlbumService) GetAll(ctx context.Context, q AlbumsQuery) (*dtos.AlbumListResponseDto, error) {
 	ctx, span := s.tr.Start(ctx, "album.get_all")
 	defer span.End()
 

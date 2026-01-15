@@ -150,7 +150,7 @@ func (h *ArtistHandler) HandleGetArtists(w http.ResponseWriter, r *http.Request)
 		size = 10
 	}
 
-	dto := dtos.ArtistQueryDto{
+	dto := services.ArtistsQuery{
 		Page:  page,
 		Size:  size,
 		Name:  q.Get("name"),
