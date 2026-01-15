@@ -382,16 +382,16 @@ func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswo
 	lookupSpan.End()
 
 	_, passwordSpan := s.tr.Start(ctx, "user.change_password.validate_and_set")
-	if user.PasswordLastChanged.Compare(s.c.Now().Add(-24*time.Hour)) >= 0 {
-		passwordSpan.End()
-		return ErrTooFrequentPasswordChange
-	}
-
 	err = auth.CompareHashAndPassword(user.Password, dto.CurrentPassword)
 	if err != nil {
 		passwordSpan.RecordError(err)
 		passwordSpan.End()
 		return ErrInvalidCurrentPassword
+	}
+
+	if user.PasswordLastChanged.Compare(s.c.Now().Add(-24*time.Hour)) >= 0 {
+		passwordSpan.End()
+		return ErrTooFrequentPasswordChange
 	}
 
 	hashedPassword, err := auth.HashPassword(dto.NewPassword)
