@@ -40,21 +40,12 @@ func (h *ArtistHandler) HandleCreateArtist(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Initializes artist creation after decoding went well
-	// I left this like this because maybe in future we will add some validation logic that can be easily added via switch/case
 	err := h.s.Create(r.Context(), &req)
 	if err != nil {
-		var msg string = "An unexpected error has occurred"
-
-		if msg != "" {
-			_ = respond.Conflict(w, msg)
-			return
-		}
-
 		log.Printf("trace_id=%s failed to create artist: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.InternalServerError(w)
 		return
 	}
-
 	respond.NoContent(w)
 }
 
