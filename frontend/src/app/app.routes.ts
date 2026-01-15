@@ -8,6 +8,8 @@ import {
 } from './pages';
 
 import { HomePage } from './pages/home-page';
+import { ForgotPasswordPage } from './pages/forgot-password-page/forgot-password-page';
+import { ResetPasswordPage } from './pages/reset-password-page/reset-password-page';
 import { CredentialsStep, OtpStep } from './pages/login-page/components';
 import {
   PersonalInfoStep,
@@ -64,6 +66,14 @@ export const routes: Routes = [
   {
     path: 'check-email',
     component: CheckEmailPage,
+  },
+  {
+    path: 'forgot-password',
+    component: ForgotPasswordPage,
+  },
+  {
+    path: 'reset-password',
+    component: ResetPasswordPage,
   },
   {
     path: 'home',

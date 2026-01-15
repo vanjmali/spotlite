@@ -90,15 +90,18 @@ func run() error {
 	if err := rtr.EnsureRefreshIndexes(context.Background()); err != nil {
 		return fmt.Errorf("failed to ensure refresh token indexes: %w", err)
 	}
+	prr := repositories.NewPasswordRecoveryRepository(mongo.DatabaseName(), "password_recovery_tokens", dbc)
 
 	// service initialization
 	mailCfg := services.MailConfig{
 		VerificationEndpoint: utils.MustGetEnv("SRV_USER_VERIFICATION_ENDPOINT"),
+		PasswordResetURL:     utils.MustGetEnv("SRV_USER_PASSWORD_RESET_URL"),
 		MailFromAddress:      utils.MustGetEnv("MAIL_FROM"),
 	}
 	ms := services.InitMailingService(mc, mailCfg)
 	us := services.NewUserService(ur, ms)
 	rts := services.NewRefreshTokenService(rtr)
+	prs := services.NewPasswordRecoveryService(ur, prr, ms)
 
 	redAddr := utils.MustGetEnv("REDIS_ADDR")
 	redConn := asynq.RedisClientOpt{Addr: redAddr}
@@ -129,8 +132,9 @@ func run() error {
 	})
 
 	rth := handlers.NewRefreshTokenHandler(*rts, *us, *v)
+	prh := handlers.NewPasswordRecoveryHandler(*prs, *v)
 
-	r := routers.HandleRequests(uh, rth)
+	r := routers.HandleRequests(uh, rth, prh)
 
 	srvAddr := ":" + port
 

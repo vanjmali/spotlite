@@ -5,7 +5,7 @@
   justify-content: space-between;
   align-items: center;
   background-color: $color-bg-primary;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px $color-overlay-light;
   gap: 24px;
 
   &__title,

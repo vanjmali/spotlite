@@ -10,7 +10,7 @@ import (
 )
 
 // HandleRequests wires HTTP routes to user handlers.
-func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler) http.Handler {
+func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler, prh *handlers.PasswordRecoveryHandler) http.Handler {
 	r := mux.NewRouter()
 	middlewares.HandleHealthz(r)
 
@@ -26,6 +26,10 @@ func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler) 
 	api.HandleFunc("/login/resend-otp", h.HandleResendOtp).Methods("POST")
 
 	api.HandleFunc("/check-email/{email}", h.HandleCheckEmail).Methods("GET")
+
+	api.HandleFunc("/password-recovery/request", prh.HandleRequestPasswordReset).Methods("POST")
+	api.HandleFunc("/password-recovery/validate", prh.HandleValidateRecoveryToken).Methods("POST")
+	api.HandleFunc("/password-recovery/reset", prh.HandleResetPassword).Methods("POST")
 
 	api.HandleFunc("/refresh-token", rth.HandleRefreshToken).Methods("POST")
 	api.HandleFunc("/logout", h.HandleLogout).Methods("POST")

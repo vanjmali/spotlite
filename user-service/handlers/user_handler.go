@@ -242,7 +242,7 @@ func (h *UserHandler) HandleCheckEmail(w http.ResponseWriter, r *http.Request) {
 	var req dtos.CheckEmailDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
-			log.Printf("failed to process resend otp request: %v", err)
+			log.Printf("failed to process check email request: %v", err)
 		}
 		return
 	}
