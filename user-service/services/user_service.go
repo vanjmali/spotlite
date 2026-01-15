@@ -258,7 +258,7 @@ func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginO
 	if err != nil {
 		lookupSpan.RecordError(err)
 		lookupSpan.End()
-		return nil, err
+		return nil, ErrUserNotFound
 	}
 	lookupSpan.End()
 
