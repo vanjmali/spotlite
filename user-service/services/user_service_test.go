@@ -22,6 +22,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// Helper function to add user ID to context for testing
+func contextWithUserID(ctx context.Context, userID primitive.ObjectID) context.Context {
+	return context.WithValue(ctx, ctxKey("userId"), userID.Hex())
+}
+
+type ctxKey string
+
 type fakeUserRepo struct {
 	existsByUsernameFn func(context.Context, string) (bool, error)
 	existsByEmailFn    func(context.Context, string) (bool, error)
@@ -539,6 +546,7 @@ func TestUserServiceCreateNewToken(t *testing.T) {
 
 // Change Password Tests
 func TestChangePasswordInvalidCurrentPassword(t *testing.T) {
+	userID := primitive.NewObjectID()
 	hashedPassword, _ := auth.HashPassword("ValidPass123!")
 	repo := &fakeUserRepo{
 		findUserByIDFn: func(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
@@ -554,16 +562,18 @@ func TestChangePasswordInvalidCurrentPassword(t *testing.T) {
 	mail := &fakeMailService{}
 	svc := NewUserService(repo, mail)
 
+	ctx := contextWithUserID(context.Background(), userID)
 	dto := &dtos.ChangePasswordDto{
 		CurrentPassword: "WrongPassword123!",
 		NewPassword:     "NewValidPass123!",
 	}
 
-	err := svc.ChangePassword(context.Background(), dto)
+	err := svc.ChangePassword(ctx, dto)
 	require.ErrorIs(t, err, ErrInvalidCurrentPassword)
 }
 
 func TestChangePasswordTooFrequent(t *testing.T) {
+	userID := primitive.NewObjectID()
 	hashedPassword, _ := auth.HashPassword("ValidPass123!")
 	repo := &fakeUserRepo{
 		findUserByIDFn: func(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
@@ -579,16 +589,18 @@ func TestChangePasswordTooFrequent(t *testing.T) {
 	mail := &fakeMailService{}
 	svc := NewUserService(repo, mail)
 
+	ctx := contextWithUserID(context.Background(), userID)
 	dto := &dtos.ChangePasswordDto{
 		CurrentPassword: "ValidPass123!",
 		NewPassword:     "NewValidPass123!",
 	}
 
-	err := svc.ChangePassword(context.Background(), dto)
+	err := svc.ChangePassword(ctx, dto)
 	require.ErrorIs(t, err, ErrTooFrequentPasswordChange)
 }
 
 func TestChangePasswordSuccess(t *testing.T) {
+	userID := primitive.NewObjectID()
 	hashedPassword, _ := auth.HashPassword("ValidPass123!")
 	setHashPasswordCalled := false
 	var setHashPasswordNewHash string
@@ -612,12 +624,13 @@ func TestChangePasswordSuccess(t *testing.T) {
 	mail := &fakeMailService{}
 	svc := NewUserService(repo, mail)
 
+	ctx := contextWithUserID(context.Background(), userID)
 	dto := &dtos.ChangePasswordDto{
 		CurrentPassword: "ValidPass123!",
 		NewPassword:     "NewValidPass123!",
 	}
 
-	err := svc.ChangePassword(context.Background(), dto)
+	err := svc.ChangePassword(ctx, dto)
 	require.NoError(t, err)
 	require.True(t, setHashPasswordCalled, "expected SetHashPassowrd to be called")
 	require.NotEmpty(t, setHashPasswordNewHash, "expected new password hash to be set")
