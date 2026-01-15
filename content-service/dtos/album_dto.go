@@ -8,19 +8,19 @@ import (
 
 // CreateAlbumDto represents the payload required to create a new album.
 type CreateAlbumDto struct {
-	Name        string    `json:"name"`
-	ReleaseDate time.Time `json:"release_date"`
-	Genres      []string  `json:"genres"`
-	SongIds     []string  `json:"song_ids"`
-	ArtistIds   []string  `json:"artist_ids"`
+	Name        string    `json:"name" validate:"required"`
+	ReleaseDate time.Time `json:"release_date" validate:"required"`
+	Genres      []string  `json:"genres" validate:"required"`
+	SongIds     []string  `json:"song_ids" validate:"required"`
+	ArtistIds   []string  `json:"artist_ids" validate:"required"`
 }
 
 // AlbumQueryDto represents the query parameters for filtering and paginating album results.
 type AlbumQueryDto struct {
 	Page     int
 	Size     int
-	Name    string
-	Genres    string
+	Name     string
+	Genres   string
 	ArtistID string
 }
 

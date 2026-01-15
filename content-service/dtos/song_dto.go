@@ -4,10 +4,10 @@ import "github.com/vanjmali/spotlite/content/entities"
 
 // SongDto represents the data transfer object for a song entity.
 type SongDto struct {
-	Title         string   `json:"title"`
-	Genre         string   `json:"genre"`
-	LengthSeconds int      `json:"length_seconds"`
-	ArtistIds     []string `json:"artist_ids"`
+	Title         string   `json:"title" validate:"required"`
+	Genre         string   `json:"genre" validate:"required"`
+	LengthSeconds int      `json:"length_seconds" validate:"required,min=1"`
+	ArtistIds     []string `json:"artist_ids" validate:"required"`
 }
 
 // SongQueryDto represents the query parameters for filtering and paginating song results.
