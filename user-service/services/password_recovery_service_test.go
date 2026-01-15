@@ -56,44 +56,76 @@ func (f *fakePasswordRecoveryRepo) InvalidateAllTokensForUser(ctx context.Contex
 	return nil
 }
 
-type fakeUserRepository struct {
+type fakeUserRepositoryForPasswordRecovery struct {
 	findUserByEmailFn func(context.Context, string) (*entities.User, error)
 	setHashPasswordFn func(context.Context, primitive.ObjectID, string, time.Time, time.Time) error
 }
 
-func (f *fakeUserRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
+func (f *fakeUserRepositoryForPasswordRecovery) FindByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
 	return &entities.User{}, nil
 }
 
-func (f *fakeUserRepository) FindUserByEmail(ctx context.Context, email string) (*entities.User, error) {
+func (f *fakeUserRepositoryForPasswordRecovery) FindUserByEmail(ctx context.Context, email string) (*entities.User, error) {
 	if f.findUserByEmailFn != nil {
 		return f.findUserByEmailFn(ctx, email)
 	}
 	return &entities.User{ID: primitive.NewObjectID(), Email: email}, nil
 }
 
-func (f *fakeUserRepository) SetHashPassowrd(ctx context.Context, userID primitive.ObjectID, passwordHash string, changedAt time.Time, expiresAt time.Time) error {
+func (f *fakeUserRepositoryForPasswordRecovery) SetHashPassowrd(ctx context.Context, userID primitive.ObjectID, passwordHash string, changedAt time.Time, expiresAt time.Time) error {
 	if f.setHashPasswordFn != nil {
 		return f.setHashPasswordFn(ctx, userID, passwordHash, changedAt, expiresAt)
 	}
 	return nil
 }
 
-type fakeMailService struct {
-	sendPasswordResetEmailFn func(string, string) error
-	sendPasswordResetCalled  bool
+func (f *fakeUserRepositoryForPasswordRecovery) ExistsByUsername(ctx context.Context, username string) (bool, error) {
+	return false, nil
 }
 
-func (f *fakeMailService) SendPasswordResetEmail(email string, token string) error {
-	f.sendPasswordResetCalled = true
-	if f.sendPasswordResetEmailFn != nil {
-		return f.sendPasswordResetEmailFn(email, token)
-	}
+func (f *fakeUserRepositoryForPasswordRecovery) ExistsByEmail(ctx context.Context, email string) (bool, error) {
+	return false, nil
+}
+
+func (f *fakeUserRepositoryForPasswordRecovery) Create(ctx context.Context, user entities.User) error {
+	return nil
+}
+
+func (f *fakeUserRepositoryForPasswordRecovery) SetLoginOtp(ctx context.Context, userId primitive.ObjectID, hash string, expiry time.Time) error {
+	return nil
+}
+
+func (f *fakeUserRepositoryForPasswordRecovery) ClearLoginOtp(ctx context.Context, userId primitive.ObjectID) error {
+	return nil
+}
+
+func (f *fakeUserRepositoryForPasswordRecovery) SetHashPassowrd(ctx context.Context, userId primitive.ObjectID, passwordHash string, newTime, expiresAt time.Time) error {
+	return nil
+}
+
+func (f *fakeUserRepositoryForPasswordRecovery) FindUsersForExpiryNotification(
+	ctx context.Context,
+	daysUntilExpiry int,
+	batchSize int,
+	lastID string,
+) ([]*entities.User, string, error) {
+	return nil, "", nil
+}
+
+func (f *fakeUserRepositoryForPasswordRecovery) UpdateExpiryNotificationSentDate(ctx context.Context, userID primitive.ObjectID) error {
+	return nil
+}
+
+func (f *fakeUserRepositoryForPasswordRecovery) FindUserByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
+	return &entities.User{}, nil
+}
+
+func (f *fakeUserRepositoryForPasswordRecovery) ActiveAndRevokeToken(ctx context.Context, token string) error {
 	return nil
 }
 
 func TestPasswordRecoveryServiceRequestPasswordResetUserNotFound(t *testing.T) {
-	userRepo := &fakeUserRepository{
+	userRepo := &fakeUserRepositoryForPasswordRecovery{
 		findUserByEmailFn: func(context.Context, string) (*entities.User, error) {
 			return nil, errors.New("user not found")
 		},
@@ -111,7 +143,7 @@ func TestPasswordRecoveryServiceRequestPasswordResetUserNotFound(t *testing.T) {
 
 func TestPasswordRecoveryServiceRequestPasswordResetSuccess(t *testing.T) {
 	userID := primitive.NewObjectID()
-	userRepo := &fakeUserRepository{
+	userRepo := &fakeUserRepositoryForPasswordRecovery{
 		findUserByEmailFn: func(context.Context, string) (*entities.User, error) {
 			return &entities.User{ID: userID, Email: "user@example.com"}, nil
 		},
@@ -130,7 +162,7 @@ func TestPasswordRecoveryServiceRequestPasswordResetSuccess(t *testing.T) {
 
 func TestPasswordRecoveryServiceRequestPasswordResetSaveTokenFails(t *testing.T) {
 	userID := primitive.NewObjectID()
-	userRepo := &fakeUserRepository{
+	userRepo := &fakeUserRepositoryForPasswordRecovery{
 		findUserByEmailFn: func(context.Context, string) (*entities.User, error) {
 			return &entities.User{ID: userID, Email: "user@example.com"}, nil
 		},
@@ -155,7 +187,7 @@ func TestPasswordRecoveryServiceValidateRecoveryTokenInvalid(t *testing.T) {
 			return nil, errors.New("token not found")
 		},
 	}
-	userRepo := &fakeUserRepository{}
+	userRepo := &fakeUserRepositoryForPasswordRecovery{}
 	mailService := &fakeMailService{}
 	svc := NewPasswordRecoveryService(userRepo, recoveryRepo, mailService)
 
@@ -173,7 +205,7 @@ func TestPasswordRecoveryServiceValidateRecoveryTokenExpired(t *testing.T) {
 			}, nil
 		},
 	}
-	userRepo := &fakeUserRepository{}
+	userRepo := &fakeUserRepositoryForPasswordRecovery{}
 	mailService := &fakeMailService{}
 	svc := NewPasswordRecoveryService(userRepo, recoveryRepo, mailService)
 
@@ -193,7 +225,7 @@ func TestPasswordRecoveryServiceValidateRecoveryTokenAlreadyUsed(t *testing.T) {
 			}, nil
 		},
 	}
-	userRepo := &fakeUserRepository{}
+	userRepo := &fakeUserRepositoryForPasswordRecovery{}
 	mailService := &fakeMailService{}
 	svc := NewPasswordRecoveryService(userRepo, recoveryRepo, mailService)
 
@@ -220,7 +252,7 @@ func TestPasswordRecoveryServiceResetPasswordSuccess(t *testing.T) {
 			}, nil
 		},
 	}
-	userRepo := &fakeUserRepository{
+	userRepo := &fakeUserRepositoryForPasswordRecovery{
 		findUserByEmailFn: func(context.Context, string) (*entities.User, error) {
 			return &entities.User{ID: userID, Email: "user@example.com"}, nil
 		},
@@ -243,7 +275,7 @@ func TestPasswordRecoveryServiceResetPasswordInvalidToken(t *testing.T) {
 			return nil, errors.New("token not found")
 		},
 	}
-	userRepo := &fakeUserRepository{}
+	userRepo := &fakeUserRepositoryForPasswordRecovery{}
 	mailService := &fakeMailService{}
 	svc := NewPasswordRecoveryService(userRepo, recoveryRepo, mailService)
 
