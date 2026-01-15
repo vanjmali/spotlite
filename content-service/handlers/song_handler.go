@@ -15,16 +15,19 @@ import (
 	"github.com/vanjmali/spotlite/content/services"
 )
 
+// SongHandler wires HTTP handlers to the song service and validators.
 type SongHandler struct {
 	s *services.SongService
 	v *validator.Validate
 }
 
+// NewSongHandler creates and returns a new SongHandler with the provided service and validator.
 func NewSongHandler(s services.SongService, v validator.Validate) *SongHandler {
 	h := SongHandler{s: &s, v: &v}
 	return &h
 }
 
+// HandleCreateSong handles HTTP POST requests to create a new song.
 func (h *SongHandler) HandleCreateSong(w http.ResponseWriter, r *http.Request) {
 	var req dtos.SongDto
 
@@ -55,6 +58,7 @@ func (h *SongHandler) HandleCreateSong(w http.ResponseWriter, r *http.Request) {
 	respond.NoContent(w)
 }
 
+// HandleGetSongById handles HTTP GET requests to retrieve a single song by its ID.
 func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -81,6 +85,7 @@ func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// HandleGetSongs handles HTTP GET requests to retrieve a paginated list of songs with optional filtering.
 func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 

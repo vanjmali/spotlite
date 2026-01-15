@@ -15,16 +15,19 @@ import (
 	"github.com/vanjmali/spotlite/content/services"
 )
 
+// AlbumHandler wires HTTP handlers to the album service and validators.
 type AlbumHandler struct {
 	s *services.AlbumService
 	v *validator.Validate
 }
 
+// NewAlbumHandler creates and returns a new AlbumHandler with the provided service and validator.
 func NewAlbumHandler(s services.AlbumService, v validator.Validate) *AlbumHandler {
 	h := AlbumHandler{s: &s, v: &v}
 	return &h
 }
 
+// HandleCreateAlbum handles HTTP POST requests to create a new album.
 func (h *AlbumHandler) HandleCreateAlbum(w http.ResponseWriter, r *http.Request) {
 	var req dtos.CreateAlbumDto
 
@@ -59,6 +62,7 @@ func (h *AlbumHandler) HandleCreateAlbum(w http.ResponseWriter, r *http.Request)
 
 }
 
+// HandleGetAlbumById handles HTTP GET requests to retrieve a single album by its ID.
 func (h *AlbumHandler) HandleGetAlbumById(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -85,6 +89,7 @@ func (h *AlbumHandler) HandleGetAlbumById(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// HandleGetAlbums handles HTTP GET requests to retrieve a paginated list of albums with optional filtering.
 func (h *AlbumHandler) HandleGetAlbums(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 

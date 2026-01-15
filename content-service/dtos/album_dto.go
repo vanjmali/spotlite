@@ -6,6 +6,7 @@ import (
 	"github.com/vanjmali/spotlite/content/entities"
 )
 
+// CreateAlbumDto represents the payload required to create a new album.
 type CreateAlbumDto struct {
 	Name        string    `json:"name"`
 	ReleaseDate time.Time `json:"release_date"`
@@ -14,6 +15,7 @@ type CreateAlbumDto struct {
 	ArtistIds   []string  `json:"artist_ids"`
 }
 
+// AlbumQueryDto represents the query parameters for filtering and paginating album results.
 type AlbumQueryDto struct {
 	Page     int
 	Size     int
@@ -22,6 +24,7 @@ type AlbumQueryDto struct {
 	ArtistID string
 }
 
+// AlbumListResponseDto represents the response payload when returning a paginated list of albums.
 type AlbumListResponseDto struct {
 	Items []entities.Album `json:"items"`
 	Page  int              `json:"page"`

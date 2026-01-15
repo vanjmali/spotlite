@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// SongRepository provides data access helpers for song documents.
 type SongRepository struct {
 	DbName   string
 	CollName string
@@ -26,6 +27,7 @@ func NewSongRepository(dbName string, collName string, c *mongo.Client) *SongRep
 	return &r
 }
 
+// Create func, inserts a new song into the database.
 func (r *SongRepository) Create(ctx context.Context, song entities.Song) error {
 	c := r.getCollection()
 
@@ -36,6 +38,7 @@ func (r *SongRepository) Create(ctx context.Context, song entities.Song) error {
 	return nil
 }
 
+// FindByID finds song by ID.
 func (r *SongRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*entities.Song, error) {
 	c := r.getCollection()
 
@@ -47,6 +50,7 @@ func (r *SongRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*
 	return &song, nil
 }
 
+// DeleteById deletes song by ID.
 func (r *SongRepository) DeleteById(ctx context.Context, id primitive.ObjectID) (*mongo.DeleteResult, error) {
 	c := r.getCollection()
 
@@ -59,6 +63,7 @@ func (r *SongRepository) DeleteById(ctx context.Context, id primitive.ObjectID) 
 
 }
 
+// FindAll func, finds all songs matching the filter with pagination.
 func (r *SongRepository) FindAll(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Song, int64, error) {
 	c := r.getCollection()
 

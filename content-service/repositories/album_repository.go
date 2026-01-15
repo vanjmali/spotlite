@@ -10,6 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// AlbumRepository provides data access helpers for album documents.
 type AlbumRepository struct {
 	DbName   string
 	CollName string
@@ -20,11 +21,13 @@ func (r *AlbumRepository) getCollection() *mongo.Collection {
 	return r.Client.Database(r.DbName).Collection(r.CollName)
 }
 
+// NewAlbumRepository constructs a AlbumRepository for the given database and collection.
 func NewAlbumRepository(dbName string, collName string, c *mongo.Client) *AlbumRepository {
 	r := AlbumRepository{Client: c, DbName: dbName, CollName: collName}
 	return &r
 }
 
+// Create func, inserts a new album into the database.
 func (r *AlbumRepository) Create(ctx context.Context, album entities.Album) error {
 	c := r.getCollection()
 
@@ -35,6 +38,7 @@ func (r *AlbumRepository) Create(ctx context.Context, album entities.Album) erro
 	return nil
 }
 
+// FindByID finds album by ID.
 func (r *AlbumRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*entities.Album, error) {
 	c := r.getCollection()
 
@@ -46,6 +50,7 @@ func (r *AlbumRepository) FindByID(ctx context.Context, id primitive.ObjectID) (
 	return &album, nil
 }
 
+// FindAll func, finds all albums matching the filter with pagination.
 func (r *AlbumRepository) FindAll(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Album, int64, error) {
 	c := r.getCollection()
 

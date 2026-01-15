@@ -33,6 +33,7 @@ func NewArtistService(r repositories.ArtistRepository) *ArtistService {
 	return &s
 }
 
+// Create creates a new artist with the provided data.
 func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) error {
 	ctx, span := s.tr.Start(ctx, "artist.create")
 	defer span.End()
@@ -62,6 +63,7 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 	return nil
 }
 
+// FindArtistByID retrieves a single artist by its ID.
 func (s *ArtistService) FindArtistByID(ctx context.Context, idStr string) (*dtos.ArtistDto, error) {
 	ctx, span := s.tr.Start(ctx, "artist.find_by_id")
 	defer span.End()
@@ -80,6 +82,7 @@ func (s *ArtistService) FindArtistByID(ctx context.Context, idStr string) (*dtos
 	return artist, nil
 }
 
+// UpdateArtist updates an existing artist with the provided partial data.
 func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos.UpdateArtistDto) (*dtos.ArtistDto, error) {
 	ctx, span := s.tr.Start(ctx, "artist.update_artist")
 	defer span.End()
@@ -133,6 +136,7 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 	return updatedArtist, nil
 }
 
+// DeleteArtist deletes an artist by its ID.
 func (s *ArtistService) DeleteArtist(ctx context.Context, idStr string) error {
 	ctx, span := s.tr.Start(ctx, "artist.delete_artist")
 	defer span.End()
@@ -164,6 +168,7 @@ func (s *ArtistService) DeleteArtist(ctx context.Context, idStr string) error {
 	return nil
 }
 
+// GetArtists retrieves a paginated list of artists with optional filtering by name or genre.
 func (s *ArtistService) GetArtists(ctx context.Context, q dtos.ArtistQueryDto) (*dtos.ArtistListResponseDto, error) {
 	ctx, span := s.tr.Start(ctx, "artists.get_all")
 	defer span.End()

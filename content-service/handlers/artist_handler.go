@@ -16,16 +16,19 @@ import (
 	"github.com/vanjmali/spotlite/content/services"
 )
 
+// ArtistHandler wires HTTP handlers to the artist service and validators.
 type ArtistHandler struct {
 	s *services.ArtistService
 	v *validator.Validate
 }
 
+// NewArtistHandler creates and returns a new ArtistHandler with the provided service and validator.
 func NewArtistHandler(s services.ArtistService, v validator.Validate) *ArtistHandler {
 	h := ArtistHandler{s: &s, v: &v}
 	return &h
 }
 
+// HandleCreateArtist handles HTTP POST requests to create a new artist.
 func (h *ArtistHandler) HandleCreateArtist(w http.ResponseWriter, r *http.Request) {
 	var req dtos.ArtistDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
@@ -55,6 +58,7 @@ func (h *ArtistHandler) HandleCreateArtist(w http.ResponseWriter, r *http.Reques
 	respond.NoContent(w)
 }
 
+// HandleGetArtistById handles HTTP GET requests to retrieve a single artist by its ID.
 func (h *ArtistHandler) HandleGetArtistById(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -81,6 +85,7 @@ func (h *ArtistHandler) HandleGetArtistById(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// HandleUpdateArtist handles HTTP PATCH requests to update an existing artist.
 func (h *ArtistHandler) HandleUpdateArtist(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -113,6 +118,7 @@ func (h *ArtistHandler) HandleUpdateArtist(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// HandleDeleteArtist handles HTTP DELETE requests to delete an artist.
 func (h *ArtistHandler) HandleDeleteArtist(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -135,6 +141,7 @@ func (h *ArtistHandler) HandleDeleteArtist(w http.ResponseWriter, r *http.Reques
 	respond.NoContent(w)
 }
 
+// HandleGetArtists handles HTTP GET requests to retrieve a paginated list of artists with optional filtering.
 func (h *ArtistHandler) HandleGetArtists(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 

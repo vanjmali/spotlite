@@ -26,6 +26,7 @@ type AlbumService struct {
 	tr            trace.Tracer
 }
 
+// NewAlbumService creates and returns a new AlbumService with the provided repository and dependent services.
 func NewAlbumService(r repositories.AlbumRepository, artistService ArtistService, songService SongService) *AlbumService {
 	tr := otel.Tracer("album-service/album-service")
 	s := AlbumService{albumRepo: &r, artistService: &artistService, songService: &songService, tr: tr}
@@ -33,6 +34,7 @@ func NewAlbumService(r repositories.AlbumRepository, artistService ArtistService
 	return &s
 }
 
+// Create creates a new album with the provided data, resolving associated artists and songs.
 func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto) error {
 	ctx, span := s.tr.Start(ctx, "album.create")
 	defer span.End()
@@ -119,6 +121,7 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 	return nil
 }
 
+// FindAlbumByID retrieves a single album by its ID.
 func (s *AlbumService) FindAlbumByID(ctx context.Context, idStr string) (*entities.Album, error) {
 	ctx, span := s.tr.Start(ctx, "album.find_by_id")
 	defer span.End()
@@ -140,6 +143,7 @@ func (s *AlbumService) FindAlbumByID(ctx context.Context, idStr string) (*entiti
 	return album, nil
 }
 
+// GetAll retrieves a paginated list of albums with optional filtering by title, genre, or artist ID.
 func (s *AlbumService) GetAll(ctx context.Context, q dtos.AlbumQueryDto) (*dtos.AlbumListResponseDto, error) {
 	ctx, span := s.tr.Start(ctx, "album.get_all")
 	defer span.End()

@@ -39,7 +39,7 @@ func (r *ArtistRepository) Create(ctx context.Context, artist entities.Artist) e
 	return nil
 }
 
-// FindArtistByID finds artist by ID.
+// FindByID finds artist by ID.
 func (r *ArtistRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*dtos.ArtistDto, error) {
 	var artist dtos.ArtistDto
 	c := r.getCollection()
@@ -69,6 +69,7 @@ func (r *ArtistRepository) UpdateByID(ctx context.Context, id primitive.ObjectID
 	return &updatedArtist, nil
 }
 
+// DeleteByID deletes artist by ID.
 func (r *ArtistRepository) DeleteByID(ctx context.Context, id primitive.ObjectID) (*mongo.DeleteResult, error) {
 	c := r.getCollection()
 
@@ -82,6 +83,7 @@ func (r *ArtistRepository) DeleteByID(ctx context.Context, id primitive.ObjectID
 	return res, err
 }
 
+// FindAll func, finds all artists matching the filter with pagination.
 func (r *ArtistRepository) FindAll(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Artist, int64, error) {
 	c := r.getCollection()
 

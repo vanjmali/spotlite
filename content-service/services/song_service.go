@@ -25,6 +25,7 @@ type SongService struct {
 	tr            trace.Tracer
 }
 
+// NewSongService creates and returns a new SongService with the provided repository and artist service.
 func NewSongService(songRepo repositories.SongRepository, artistService ArtistService) *SongService {
 	tr := otel.Tracer("song-service/song-service")
 	s := SongService{songRepo: &songRepo, artistService: &artistService, tr: tr}
@@ -32,6 +33,7 @@ func NewSongService(songRepo repositories.SongRepository, artistService ArtistSe
 	return &s
 }
 
+// Create creates a new song with the provided data, resolving associated artists.
 func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 	ctx, span := s.tr.Start(ctx, "song.create")
 	defer span.End()
@@ -90,6 +92,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 
 }
 
+// FindSongById retrieves a single song by its ID.
 func (s *SongService) FindSongById(ctx context.Context, idStr string) (*entities.Song, error) {
 	ctx, span := s.tr.Start(ctx, "song.find_by_id")
 	defer span.End()
@@ -111,6 +114,7 @@ func (s *SongService) FindSongById(ctx context.Context, idStr string) (*entities
 	return song, nil
 }
 
+// GetSongs retrieves a paginated list of songs with optional filtering by title, genre, or artist ID.
 func (s *SongService) GetSongs(ctx context.Context, q dtos.SongQueryDto) (*dtos.SongListResponseDto, error) {
 	ctx, span := s.tr.Start(ctx, "song.get_all")
 	defer span.End()

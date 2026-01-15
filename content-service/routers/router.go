@@ -15,6 +15,8 @@ func HandleRequests(ah *handlers.ArtistHandler, sh *handlers.SongHandler, alh *h
 	r := mux.NewRouter()
 	middlewares.HandleHealthz(r)
 
+	// Create a subrouter for API routes to attach telemetry
+	// and other middlewares if needed.
 	api := r.PathPrefix("/").Subrouter()
 	telemetry.AttachMuxTracing(api, "content-service")
 
