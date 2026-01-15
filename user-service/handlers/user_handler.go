@@ -73,6 +73,9 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	err := h.s.Login(r.Context(), &req)
 
 	switch {
+	case errors.Is(err, services.ErrUserNotFound):
+		_ = respond.Unauthorized(w, "Invalid credentials.")
+		return
 	case errors.Is(err, services.ErrBadCredentials):
 		_ = respond.Unauthorized(w, "Invalid credentials.")
 		return

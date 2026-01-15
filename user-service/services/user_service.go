@@ -195,7 +195,7 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 	if err != nil {
 		lookupSpan.RecordError(err)
 		lookupSpan.End()
-		return err
+		return ErrUserNotFound
 	}
 	lookupSpan.End()
 
