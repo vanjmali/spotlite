@@ -42,13 +42,6 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 	embeddedArtists := make([]entities.Artist, 0)
 
 	for _, artistIdStr := range songDto.ArtistIds {
-		// artistId, err := primitive.ObjectIDFromHex(artistIdStr)
-		// if err != nil {
-		// 	resolveSpan.RecordError(err)
-		// 	resolveSpan.End()
-		// 	return ErrObjectIdCastFailed
-		// }
-
 		artist, err := s.artistService.FindArtistByID(resolveCtx, artistIdStr)
 		if err != nil {
 			resolveSpan.RecordError(err)

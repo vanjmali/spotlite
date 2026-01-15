@@ -106,8 +106,8 @@ func (h *AlbumHandler) HandleGetAlbums(w http.ResponseWriter, r *http.Request) {
 	query := dtos.AlbumQueryDto{
 		Page:     page,
 		Size:     size,
-		Title:    q.Get("name"),
-		Genre:    q.Get("genres"),
+		Name:     q.Get("name"),
+		Genres:   q.Get("genres"),
 		ArtistID: q.Get("artistId"),
 	}
 

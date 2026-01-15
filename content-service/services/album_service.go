@@ -158,15 +158,15 @@ func (s *AlbumService) GetAll(ctx context.Context, q dtos.AlbumQueryDto) (*dtos.
 
 	filter := bson.M{}
 
-	if q.Title != "" {
+	if q.Name != "" {
 		filter["name"] = bson.M{
-			"$regex":   q.Title,
+			"$regex":   q.Name,
 			"$options": "i",
 		}
 	}
 
-	if q.Genre != "" {
-		filter["genres"] = q.Genre
+	if q.Genres != "" {
+		filter["genres"] = q.Genres
 	}
 
 	if q.ArtistID != "" {

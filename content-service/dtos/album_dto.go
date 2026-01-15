@@ -19,8 +19,8 @@ type CreateAlbumDto struct {
 type AlbumQueryDto struct {
 	Page     int
 	Size     int
-	Title    string
-	Genre    string
+	Name    string
+	Genres    string
 	ArtistID string
 }
 
