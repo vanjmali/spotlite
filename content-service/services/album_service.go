@@ -129,14 +129,12 @@ func (s *AlbumService) FindAlbumByID(ctx context.Context, idStr string) (*entiti
 	id, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
 		span.RecordError(err)
-		span.End()
 		return nil, ErrObjectIdCastFailed
 	}
 
 	album, err := s.albumRepo.FindByID(ctx, id)
 	if err != nil {
 		span.RecordError(err)
-		span.End()
 		return nil, ErrAlbumNotFound
 	}
 
