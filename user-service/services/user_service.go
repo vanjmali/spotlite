@@ -360,19 +360,22 @@ func (s *UserService) EmailExists(ctx context.Context, email string) (bool, erro
 }
 
 func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswordDto) error {
-	ctx, span := s.tr.Start(ctx, "user.change_password")
-	defer span.End()
-
+	// Extract user ID before creating spans
 	userIdHexString := middlewares.GetUserIdFromContext(ctx)
-
-	_, lookupSpan := s.tr.Start(ctx, "user.change_password.lookup_user")
-	userObjectId, err := primitive.ObjectIDFromHex(userIdHexString)
-	if err != nil {
-		lookupSpan.RecordError(err)
-		lookupSpan.End()
+	if userIdHexString == "" {
 		return ErrObjectIdCastFailed
 	}
 
+	ctx, span := s.tr.Start(ctx, "user.change_password")
+	defer span.End()
+
+	userObjectId, err := primitive.ObjectIDFromHex(userIdHexString)
+	if err != nil {
+		span.RecordError(err)
+		return ErrObjectIdCastFailed
+	}
+
+	_, lookupSpan := s.tr.Start(ctx, "user.change_password.lookup_user")
 	user, err := s.r.FindUserByID(ctx, userObjectId)
 	if err != nil {
 		lookupSpan.RecordError(err)
