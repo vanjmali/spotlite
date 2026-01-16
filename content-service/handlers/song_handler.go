@@ -103,7 +103,7 @@ func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 		Size:     size,
 		Title:    q.Get("title"),
 		Genre:    q.Get("genre"),
-		ArtistID: q.Get("artistId"),
+		ArtistID: q.Get("artist_id"),
 	}
 
 	resp, err := h.s.GetSongs(r.Context(), query)
