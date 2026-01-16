@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/vanjmali/spotlite/common-lib/pagination"
+	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/mappers"
 	"github.com/vanjmali/spotlite/content/repositories"
@@ -46,7 +47,7 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 	if err != nil {
 		createSpan.RecordError(err)
 		createSpan.End()
-		log.Printf("Error converting to artist entity: %v", err)
+		log.Printf("trace_id=%s error converting to artist entity: %v", telemetry.TraceID(ctx), err)
 		return err
 	}
 
@@ -55,7 +56,7 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 	if err != nil {
 		createSpan.RecordError(err)
 		createSpan.End()
-		log.Printf("Error creating artist in database: %v", err)
+		log.Printf("trace_id=%s error creating artist in database: %v", telemetry.TraceID(ctx), err)
 		return err
 	}
 

@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/vanjmali/spotlite/common-lib/pagination"
+	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
@@ -73,7 +74,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 	if err != nil {
 		mapSpan.RecordError(err)
 		mapSpan.End()
-		log.Printf("Error converting to song entity: %v", err)
+		log.Printf("trace_id=%s error converting to song entity: %v", telemetry.TraceID(ctx), err)
 		return err
 	}
 	mapSpan.End()
@@ -83,7 +84,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 	if err != nil {
 		createSpan.RecordError(err)
 		createSpan.End()
-		log.Printf("Error creating song in database: %v", err)
+		log.Printf("trace_id=%s error creating song in database: %v", telemetry.TraceID(ctx), err)
 		return err
 	}
 
