@@ -11,7 +11,9 @@ func createBaseCluster(host string) *gocql.ClusterConfig {
 	cluster := gocql.NewCluster(host)
 	// tells cassandra how many nodes must acknowledge a read or write for it to be considered successful,
 	// quorum means that the majority has to approve for an operation to be commited (e.g. 2 out of 3 nodes)
-	cluster.Consistency = gocql.Quorum
+	// since we currently have only one node, localOne is a better option because when using quorum if a node
+	// isn't available for a moment an operation will be declined.
+	cluster.Consistency = gocql.LocalOne
 
 	// defines the binary protocol used to talk to the server
 	cluster.ProtoVersion = 4

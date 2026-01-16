@@ -13,6 +13,7 @@ import {
   PersonalInfoStep,
   RegistrationCredentialsStep,
 } from './pages/registration-page/components';
+import { InboxPage } from './pages/inbox-page';
 
 export const routes: Routes = [
   {
@@ -68,6 +69,17 @@ export const routes: Routes = [
   {
     path: 'home',
     component: HomePage,
+    children: [
+      {
+        path: 'inbox',
+        component: InboxPage,
+      },
+      {
+        path: '',
+        redirectTo: 'inbox',
+        pathMatch: 'full',
+      },
+    ],
   },
   {
     path: '',
