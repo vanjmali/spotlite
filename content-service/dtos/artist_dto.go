@@ -1,6 +1,7 @@
 package dtos
 
 import (
+	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -21,9 +22,4 @@ type UpdateArtistDto struct {
 }
 
 // ArtistListResponseDto represents the response payload when returning a paginated list of artists.
-type ArtistListResponseDto struct {
-	Items []entities.Artist `json:"items"`
-	Page  int               `json:"page"`
-	Size  int               `json:"size"`
-	Total int64             `json:"total"`
-}
+type ArtistListResponseDto = commondtos.ItemCollectionResponse[entities.Artist]

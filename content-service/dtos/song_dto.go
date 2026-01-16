@@ -1,6 +1,9 @@
 package dtos
 
-import "github.com/vanjmali/spotlite/content/entities"
+import (
+	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
+	"github.com/vanjmali/spotlite/content/entities"
+)
 
 // SongDto represents the data transfer object for a song entity.
 type SongDto struct {
@@ -11,9 +14,4 @@ type SongDto struct {
 }
 
 // SongListResponseDto represents the response payload when returning a paginated list of songs.
-type SongListResponseDto struct {
-	Items []entities.Song `json:"items"`
-	Page  int             `json:"page"`
-	Size  int             `json:"size"`
-	Total int64           `json:"total"`
-}
+type SongListResponseDto = commondtos.ItemCollectionResponse[entities.Song]

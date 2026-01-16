@@ -1,6 +1,7 @@
 package dtos
 
 import (
+	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/types"
 )
@@ -15,9 +16,4 @@ type CreateAlbumDto struct {
 }
 
 // AlbumListResponseDto represents the response payload when returning a paginated list of albums.
-type AlbumListResponseDto struct {
-	Items []entities.Album `json:"items"`
-	Page  int              `json:"page"`
-	Size  int              `json:"size"`
-	Total int64            `json:"total"`
-}
+type AlbumListResponseDto = commondtos.ItemCollectionResponse[entities.Album]
