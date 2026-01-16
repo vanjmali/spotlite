@@ -17,7 +17,7 @@ func TestDateUnmarshalJSON(t *testing.T) {
 
 	var empty types.Date
 	require.NoError(t, json.Unmarshal([]byte(`""`), &empty))
-	require.True(t, empty.IsZero())
+	require.True(t, (&empty).IsZero())
 
 	var badType types.Date
 	require.Error(t, json.Unmarshal([]byte(`123`), &badType))
@@ -28,12 +28,12 @@ func TestDateUnmarshalJSON(t *testing.T) {
 
 func TestDateMarshalJSON(t *testing.T) {
 	d := types.Date{Time: time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)}
-	out, err := json.Marshal(d)
+	out, err := json.Marshal(&d)
 	require.NoError(t, err)
 	require.Equal(t, `"2024-06-01"`, string(out))
 
 	zero := types.Date{}
-	out, err = json.Marshal(zero)
+	out, err = json.Marshal(&zero)
 	require.NoError(t, err)
 	require.Equal(t, "null", string(out))
 }
@@ -66,5 +66,5 @@ func TestDateUnmarshalBSONValue(t *testing.T) {
 
 	var zero types.Date
 	require.NoError(t, zero.UnmarshalBSONValue(bson.TypeNull, nil))
-	require.True(t, zero.IsZero())
+	require.True(t, (&zero).IsZero())
 }
