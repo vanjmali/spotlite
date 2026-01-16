@@ -28,7 +28,7 @@ networks:
 include:
   - frontend/docker-compose.yml
   - user-service/docker-compose.yml
-  # - content-service/docker-compose.yml
+  - content-service/docker-compose.yml
   # - ratings-service/docker-compose.yml
   # - subscriptions-service/docker-compose.yml
   # - notifications-service/docker-compose.yml

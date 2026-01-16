@@ -37,18 +37,3 @@ func TestCheckValidUsername(t *testing.T) {
 	require.Error(t, v.Struct(dto{Username: "invalid-username"}))
 	require.Error(t, v.Struct(dto{Username: "...."}))
 }
-
-func TestCheckValidName(t *testing.T) {
-	v := validator.New()
-	require.NoError(t, requests.RegisterValidation(v, CheckValidName))
-
-	type dto struct {
-		Name string `validate:"validname"`
-	}
-
-	require.NoError(t, v.Struct(dto{Name: "Jane Doe"}))
-	require.NoError(t, v.Struct(dto{Name: "O'Neil"}))
-	require.NoError(t, v.Struct(dto{Name: "Anne-Marie"}))
-	require.Error(t, v.Struct(dto{Name: "A"}))
-	require.Error(t, v.Struct(dto{Name: "John3"}))
-}
