@@ -72,9 +72,7 @@ func InitializeSchema(host string, keyspace string) error {
 			user_id TEXT,
 			created_at TIMESTAMP,
 			notification_id UUID,
-			type TEXT,
-			is_read BOOLEAN,
-			read_at TIMESTAMP,
+			notification_type TEXT,
 			message TEXT,
 			PRIMARY KEY ((user_id), created_at, notification_id)
 		) WITH CLUSTERING ORDER BY (created_at DESC, notification_id ASC);`, keyspace)

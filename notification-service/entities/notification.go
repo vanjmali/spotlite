@@ -23,11 +23,6 @@ type Notification struct {
 	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
 	NotificationID gocql.UUID `db:"notification_id" json:"notification_id"`
 
-	Type   NotificationType `db:"type" json:"type"`
-	IsRead bool             `db:"is_read" json:"is_read"`
-
-	// ReadAt is a pointer because the value can be nil if the notifications isn't
-	// marked as read
-	ReadAt  *time.Time `db:"read_at" json:"read_at"`
-	Message string     `db:"message" json:"message"`
+	Type    NotificationType `db:"notification_type" json:"notification_type"`
+	Message string           `db:"message" json:"message"`
 }

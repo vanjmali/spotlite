@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -10,6 +11,10 @@ import (
 	"github.com/vanjmali/spotlite/notifications/repositories"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
+)
+
+var (
+	ErrMissingUserID = errors.New("UserID is missing")
 )
 
 type NotificationService struct {
@@ -34,7 +39,6 @@ func (s *NotificationService) CreateNotification(ctx context.Context) error {
 	userID := middlewares.GetUserIdFromContext(ctx)
 	createdAt := time.Now()
 	notificationType := entities.NotificationNewAlbum
-	isRead := false
 	message := "Your favorite artist Milan has added a new album called Ulica"
 	notificationID := gocql.TimeUUID()
 
@@ -42,8 +46,6 @@ func (s *NotificationService) CreateNotification(ctx context.Context) error {
 		UserID:         userID,
 		CreatedAt:      createdAt,
 		Type:           notificationType,
-		IsRead:         isRead,
-		ReadAt:         nil,
 		Message:        message,
 		NotificationID: notificationID,
 	}
@@ -54,4 +56,23 @@ func (s *NotificationService) CreateNotification(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// FindNotifications
+func (s *NotificationService) FindInboxByUserID(ctx context.Context) ([]*entities.Notification, error) {
+	ctx, span := s.tr.Start(ctx, "notification.find_notifications_by_user_id")
+	defer span.End()
+
+	userID := middlewares.GetUserIdFromContext(ctx)
+
+	if userID == "" {
+		return []*entities.Notification{}, ErrMissingUserID
+	}
+
+	ns, err := s.r.FindNotificationsByUserID(userID, ctx)
+	if err != nil {
+		return []*entities.Notification{}, err
+	}
+
+	return ns, nil
 }

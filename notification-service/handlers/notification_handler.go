@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -21,10 +23,11 @@ func NewNotificationHandler(s *services.NotificationService, b *infrastructure.B
 	return &h
 }
 
-func (h *NotificationHandler) HandleCreateNotification(w http.ResponseWriter, r *http.Request) {
+func (h *NotificationHandler) CreateNotification(w http.ResponseWriter, r *http.Request) {
 	err := h.s.CreateNotification(r.Context())
 
 	if err != nil {
+		log.Print(err)
 		respond.InternalServerError(w)
 		return
 	}
@@ -39,7 +42,7 @@ func (h *NotificationHandler) HandleCreateNotification(w http.ResponseWriter, r 
 
 // HandleSubscribe function is used to handle client subscription requests and opens a one way connection
 // from server to client
-func (h *NotificationHandler) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
+func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 	userID := middlewares.GetUserIdFromContext(r.Context())
 
 	if userID == "" {
@@ -112,6 +115,22 @@ func (h *NotificationHandler) HandleSubscribe(w http.ResponseWriter, r *http.Req
 			flusher.Flush()
 		}
 	}
+}
+
+func (h *NotificationHandler) GetUserInbox(w http.ResponseWriter, r *http.Request) {
+	ns, err := h.s.FindInboxByUserID(r.Context())
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrMissingUserID):
+			respond.BadRequest(w)
+			return
+		default:
+			respond.InternalServerError(w)
+			return
+		}
+	}
+
+	respond.OkJson(w, ns)
 }
 
 func setSSEHeaders(w http.ResponseWriter) {
