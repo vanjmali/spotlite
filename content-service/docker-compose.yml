@@ -1,0 +1,59 @@
+services:
+  content-service:
+    build:
+      context: .
+      additional_contexts:
+        common-lib: ../common-lib
+      dockerfile: ../Dockerfile.microservice
+    environment:
+      DB_HOST: content-mongodb
+      DB_PORT: 27017
+      DB_USER: ${SRV_CONTENT_MONGO_USERNAME?}
+      DB_PASS: ${SRV_CONTENT_MONGO_PASSWORD?}
+      DB_NAME: ${SRV_CONTENT_MONGO_DATABASE?}
+      APP_PORT: 3000
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    labels:
+      traefik.enable: true
+      traefik.docker.network: api-gateway
+      traefik.http.routers.content-service.rule: PathPrefix(`/api/content`)
+      traefik.http.routers.content-service.middlewares: content-service-strip-prefix
+      traefik.http.middlewares.content-service-strip-prefix.stripprefix.prefixes: /api/content
+      traefik.http.middlewares.content-service-strip-prefix.stripprefix.forceslash: false
+      traefik.http.services.content-service.loadbalancer.server.port: "3000"
+    depends_on:
+      content-mongodb:
+        condition: service_healthy
+    networks:
+      - api-gateway
+      - content-internal
+
+  content-mongodb:
+    image: mongo:8.2
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${SRV_CONTENT_MONGO_ROOT_USERNAME?}
+      MONGO_INITDB_ROOT_PASSWORD: ${SRV_CONTENT_MONGO_ROOT_PASSWORD?}
+      MONGO_INITDB_DATABASE: ${SRV_CONTENT_MONGO_DATABASE?}
+      SRV_CONTENT_MONGO_USERNAME: ${SRV_CONTENT_MONGO_USERNAME?}
+      SRV_CONTENT_MONGO_PASSWORD: ${SRV_CONTENT_MONGO_PASSWORD?}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'mongosh --username $SRV_CONTENT_MONGO_ROOT_USERNAME --password $SRV_CONTENT_MONGO_ROOT_PASSWORD --authenticationDatabase admin --eval ''db.adminCommand("ping")''',
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - content-mongo-data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - content-internal
+
+networks:
+  api-gateway:
+  content-internal:
+
+volumes:
+  content-mongo-data:
