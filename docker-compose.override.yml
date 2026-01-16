@@ -130,10 +130,6 @@ services:
     networks:
       - api-gateway
       - user-internal
-
-  notification-cassandra:
-    ports:
-      - "${CASSANDRA_PORT}:9042"
   content-mongodb:
     ports:
       - 3102:27017 # expose MongoDB port
@@ -156,7 +152,11 @@ services:
     networks:
       - api-gateway
       - content-internal
-
+      
+  notification-cassandra:
+    ports:
+      - "${CASSANDRA_PORT}:9042"
+      
 volumes:
   frontend-node-modules:
   keys:
