@@ -60,7 +60,6 @@ func (r *SongRepository) DeleteById(ctx context.Context, id primitive.ObjectID) 
 		return nil, err
 	}
 	return res, err
-
 }
 
 // FindAll func, finds all songs matching the filter with pagination.

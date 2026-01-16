@@ -15,12 +15,12 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/common-lib/utils"
+	commonvalid "github.com/vanjmali/spotlite/common-lib/validations"
 	"github.com/vanjmali/spotlite/content/handlers"
 	"github.com/vanjmali/spotlite/content/infrastructure/mongo"
 	"github.com/vanjmali/spotlite/content/repositories"
 	"github.com/vanjmali/spotlite/content/routers"
 	"github.com/vanjmali/spotlite/content/services"
-	commonvalid "github.com/vanjmali/spotlite/common-lib/validations"
 	contentvalid "github.com/vanjmali/spotlite/content/validations"
 )
 

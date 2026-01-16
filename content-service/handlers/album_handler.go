@@ -40,7 +40,6 @@ func (h *AlbumHandler) HandleCreateAlbum(w http.ResponseWriter, r *http.Request)
 	}
 
 	if err := h.s.Create(r.Context(), &req); err != nil {
-
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):
 			_ = respond.BadRequest(w, "Invalid ID format")
@@ -56,10 +55,8 @@ func (h *AlbumHandler) HandleCreateAlbum(w http.ResponseWriter, r *http.Request)
 			_ = respond.InternalServerError(w)
 			return
 		}
-
 	}
 	respond.NoContent(w)
-
 }
 
 // HandleGetAlbumById handles HTTP GET requests to retrieve a single album by its ID.

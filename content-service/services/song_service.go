@@ -17,9 +17,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-var (
-	ErrSongNotFound = errors.New("song not found")
-)
+var ErrSongNotFound = errors.New("song not found")
 
 type SongService struct {
 	songRepo      *repositories.SongRepository
@@ -90,7 +88,6 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 
 	createSpan.End()
 	return nil
-
 }
 
 // FindSongById retrieves a single song by its ID.

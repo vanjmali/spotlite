@@ -52,7 +52,6 @@ func (h *SongHandler) HandleCreateSong(w http.ResponseWriter, r *http.Request) {
 			_ = respond.InternalServerError(w)
 			return
 		}
-
 	}
 
 	respond.NoContent(w)

@@ -8,7 +8,6 @@ import (
 
 // ToSongEntity converts a SongDto to a Song entity with associated artists.
 func ToSongEntity(a *dtos.SongDto, artists []entities.Artist) (*entities.Song, error) {
-
 	return &entities.Song{
 		ID:            primitive.NewObjectID(),
 		Title:         a.Title,

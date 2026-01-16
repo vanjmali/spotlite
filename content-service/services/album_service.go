@@ -17,9 +17,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-var (
-	ErrAlbumNotFound = errors.New("album not found")
-)
+var ErrAlbumNotFound = errors.New("album not found")
 
 type AlbumService struct {
 	albumRepo     *repositories.AlbumRepository

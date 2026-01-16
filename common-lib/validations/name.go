@@ -25,4 +25,3 @@ var CheckValidName = requests.CustomValidator{
 		return fe.Field() + " must be 2-20 characters long and can contain letters, spaces, hyphens, and apostrophes."
 	},
 }
-

@@ -61,7 +61,6 @@ func (r *ArtistRepository) UpdateByID(ctx context.Context, id primitive.ObjectID
 
 	var updatedArtist dtos.ArtistDto
 	err := c.FindOneAndUpdate(ctx, filter, updateDoc, opts).Decode(&updatedArtist)
-
 	if err != nil {
 		return nil, err
 	}
