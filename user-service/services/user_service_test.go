@@ -17,6 +17,7 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/clock"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
+	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
@@ -418,7 +419,7 @@ func TestUserServiceVerifyLoginOtpSuccess(t *testing.T) {
 func TestUserServiceResendLoginOtpNotFound(t *testing.T) {
 	repo := &fakeUserRepo{
 		findUserByEmailFn: func(ctx context.Context, email string) (*entities.User, error) {
-			return nil, errors.New("not found")
+			return nil, repositories.ErrUserNotFound
 		},
 	}
 	svc := NewUserService(repo, &fakeMailService{})

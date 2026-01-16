@@ -16,7 +16,10 @@ import (
 )
 
 // ErrTokenExpired signals that the verification token was not found or already used.
-var ErrTokenExpired = errors.New("invalid token")
+var (
+	ErrTokenExpired = errors.New("invalid token")
+	ErrUserNotFound = errors.New("user not found")
+)
 
 // UserRepository provides data access helpers for user documents.
 type UserRepositoryMongo struct {
@@ -129,15 +132,17 @@ func (r *UserRepositoryMongo) ClearLoginOtp(ctx context.Context, userId primitiv
 
 // FindUserByEmail fetches a user document by email.
 func (r *UserRepositoryMongo) FindUserByEmail(ctx context.Context, email string) (*entities.User, error) {
-	var user entities.User
 	c := r.getCollection()
 
+	var user entities.User
 	filter := bson.M{"email": email}
-
-	err := c.FindOne(ctx, filter).Decode(&user)
-	if err != nil {
+	if err := c.FindOne(ctx, filter).Decode(&user); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrUserNotFound
+		}
 		return nil, err
 	}
+
 	return &user, nil
 }
 
@@ -218,44 +223,46 @@ func (r *UserRepositoryMongo) FindUserByID(ctx context.Context, id primitive.Obj
 	var user entities.User
 	c := r.getCollection()
 	if err := c.FindOne(ctx, bson.M{"_id": id}).Decode(&user); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrUserNotFound
+		}
+
 		return nil, err
 	}
+
 	return &user, nil
 }
 
 // ExistsByUsername reports whether a username already exists.
 func (r *UserRepositoryMongo) ExistsByUsername(ctx context.Context, username string) (bool, error) {
-	var user entities.User
 	c := r.getCollection()
 
+	var user entities.User
 	filter := bson.M{"username": username}
-	err := c.FindOne(ctx, filter).Decode(&user)
+	if err := c.FindOne(ctx, filter).Decode(&user); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return false, nil
+		}
 
-	if err == nil {
-		return true, nil
+		return false, err
 	}
 
-	if errors.Is(err, mongo.ErrNoDocuments) {
-		return false, nil
-	}
-
-	return false, err
+	return true, nil
 }
 
 // ExistsByEmail reports whether an email already exists.
 func (r *UserRepositoryMongo) ExistsByEmail(ctx context.Context, email string) (bool, error) {
-	var user entities.User
 	c := r.getCollection()
 
+	var user entities.User
 	filter := bson.M{"email": email}
-	err := c.FindOne(ctx, filter).Decode(&user)
+	if err := c.FindOne(ctx, filter).Decode(&user); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return false, nil
+		}
 
-	if err == nil {
-		return true, nil
-	}
-	if errors.Is(err, mongo.ErrNoDocuments) {
-		return false, nil
+		return false, err
 	}
 
-	return false, err
+	return true, nil
 }

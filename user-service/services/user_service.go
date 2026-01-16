@@ -15,6 +15,7 @@ import (
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/mappers"
+	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel"
@@ -81,12 +82,11 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	if err != nil {
 		lookupSpan.RecordError(err)
 		lookupSpan.End()
-		log.Printf("Error checking if username exists: %v", err)
 		return err
 	}
+
 	if exists {
 		lookupSpan.End()
-		log.Printf("Username already taken: %s", reqDto.Username)
 		return ErrUsernameTaken
 	}
 
@@ -95,14 +95,14 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	if err != nil {
 		lookupSpan.RecordError(err)
 		lookupSpan.End()
-		log.Printf("Error checking if email exists: %v", err)
 		return err
 	}
+
 	if exists {
 		lookupSpan.End()
-		log.Printf("Email already taken: %s", reqDto.Email)
 		return ErrEmailTaken
 	}
+
 	lookupSpan.End()
 
 	createCtx, createSpan := s.tr.Start(ctx, "user.register.create_user")
@@ -193,6 +193,11 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 	lookupCtx, lookupSpan := s.tr.Start(ctx, "user.login.lookup_user")
 	user, err := s.r.FindUserByEmail(lookupCtx, loginDto.Email)
 	if err != nil {
+		if errors.Is(err, repositories.ErrUserNotFound) {
+			lookupSpan.End()
+			return ErrUserNotFound
+		}
+
 		lookupSpan.RecordError(err)
 		lookupSpan.End()
 		return err
@@ -256,6 +261,11 @@ func (s *UserService) VerifyLoginOtp(ctx context.Context, dto *dtos.VerifyLoginO
 	lookupCtx, lookupSpan := s.tr.Start(ctx, "user.verify_login_otp.lookup_user")
 	user, err := s.r.FindUserByEmail(lookupCtx, dto.Email)
 	if err != nil {
+		if errors.Is(err, repositories.ErrUserNotFound) {
+			lookupSpan.End()
+			return nil, ErrUserNotFound
+		}
+
 		lookupSpan.RecordError(err)
 		lookupSpan.End()
 		return nil, err
@@ -299,8 +309,12 @@ func (s *UserService) ResendLoginOtp(ctx context.Context, email string) error {
 
 	user, err := s.r.FindUserByEmail(ctx, email)
 	if err != nil {
+		if errors.Is(err, repositories.ErrUserNotFound) {
+			return ErrUserNotFound
+		}
+
 		span.RecordError(err)
-		return ErrUserNotFound
+		return err
 	}
 
 	if user.AccountStatus == account.StatusInactive {
@@ -341,9 +355,10 @@ func (s *UserService) FindByID(ctx context.Context, id primitive.ObjectID) (*ent
 	defer span.End()
 
 	user, err := s.r.FindUserByID(ctx, id)
-	if err != nil {
+	if err != nil && !errors.Is(err, repositories.ErrUserNotFound) {
 		span.RecordError(err)
 	}
+
 	return user, err
 }
 
@@ -375,6 +390,8 @@ func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswo
 
 	user, err := s.r.FindUserByID(ctx, userObjectId)
 	if err != nil {
+		// User not found error should not appear here as the user is authenticated
+		// and user id is extracted from the token. But just in case, we log and return.
 		lookupSpan.RecordError(err)
 		lookupSpan.End()
 		return err
