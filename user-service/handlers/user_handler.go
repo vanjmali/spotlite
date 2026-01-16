@@ -245,6 +245,12 @@ func (h *UserHandler) HandleCheckEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// validate email format
+	if err := h.v.Var(email, "required,email"); err != nil {
+		_ = respond.BadRequest(w, "Invalid email")
+		return
+	}
+
 	exists, err := h.s.EmailExists(r.Context(), email)
 	if err != nil {
 		_ = respond.InternalServerError(w)

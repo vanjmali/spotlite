@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { EmailInputComponent, MessageComponent, LoaderComponent } from '@app/shared';
 import { PasswordRecoveryService } from '../../services/password-recovery.service';
-import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-forgot-password-page',
@@ -14,7 +13,6 @@ import { AuthService } from '../../services/auth.service';
 })
 export class ForgotPasswordPage {
   private readonly _recoveryService = inject(PasswordRecoveryService);
-  private readonly _authService = inject(AuthService);
   private readonly _router = inject(Router);
 
   public emailInputSg = viewChild(EmailInputComponent);
@@ -38,29 +36,20 @@ export class ForgotPasswordPage {
     const email = this.emailSg();
     this.isLoadingSg.set(true);
 
-    // First check if email exists
-    this._authService.checkEmailExists(email).then((exists) => {
-      if (!exists) {
+    this._recoveryService.requestReset(email).subscribe({
+      next: () => {
+        this.isSuccessSg.set(true);
+        this.emailSg.set('');
+        // Auto-redirect to login page after 3 seconds
+        setTimeout(() => {
+          this._router.navigate(['/login']);
+        }, 3000);
+      },
+      error: (err: Error) => {
         this.isLoadingSg.set(false);
-        this.errorSg.set('No account found with this email address');
-        return;
-      }
-
-      // Email exists, proceed with recovery
-      this._recoveryService.requestReset(email).subscribe({
-        next: () => {
-          this.isSuccessSg.set(true);
-          this.emailSg.set('');
-          // Auto-redirect to login page after 3 seconds
-          setTimeout(() => {
-            this._router.navigate(['/login']);
-          }, 3000);
-        },
-        error: (err: Error) => {
-          this.isLoadingSg.set(false);
-          this.errorSg.set(err.message);
-        },
-      });
+        this.errorSg.set(err.message);
+      },
+      complete: () => this.isLoadingSg.set(false),
     });
   }
 }

@@ -49,7 +49,7 @@ export class PasswordRecoveryService {
       .pipe(
         map(() => undefined),
         catchError((error) => {
-          const errorMsg = error?.error?.error || VALIDATION_MESSAGES.PASSWORD_RESET_FAILED;
+          const errorMsg = error?.error?.message || VALIDATION_MESSAGES.PASSWORD_RESET_FAILED;
           return throwError(() => new Error(errorMsg));
         })
       );

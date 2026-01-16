@@ -17,8 +17,8 @@ export class ResetPasswordPage implements OnInit {
   private readonly _recoveryService = inject(PasswordRecoveryService);
   private readonly _router = inject(Router);
 
-  public passwordInputSg = viewChild(PasswordInputComponent);
-  public confirmPasswordInputSg = viewChild(PasswordInputComponent);
+  public passwordInputSg = viewChild<PasswordInputComponent>('passwordInput');
+  public confirmPasswordInputSg = viewChild<PasswordInputComponent>('confirmPasswordInput');
 
   public tokenSg = signal<string | null>(null);
   public passwordSg = signal<string>('');
@@ -100,6 +100,7 @@ export class ResetPasswordPage implements OnInit {
       },
       error: (err: Error) => {
         this.errorSg.set(err.message);
+        this.isLoadingSg.set(false);
       },
       complete: () => this.isLoadingSg.set(false),
     });
