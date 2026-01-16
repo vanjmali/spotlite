@@ -50,7 +50,7 @@ func run() error {
 
 	// schema initialization
 	if err := infrastructure.InitializeSchema(cassHost, ks); err != nil {
-		log.Fatalf("failed to initialize schema: %v", err)
+		return err
 	}
 
 	// initialize cassandra session which will be used to execute queries

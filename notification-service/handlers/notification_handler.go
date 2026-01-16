@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
@@ -27,8 +26,7 @@ func (h *NotificationHandler) CreateNotification(w http.ResponseWriter, r *http.
 	err := h.s.CreateNotification(r.Context())
 
 	if err != nil {
-		log.Print(err)
-		respond.InternalServerError(w)
+		_ = respond.InternalServerError(w)
 		return
 	}
 
@@ -130,7 +128,7 @@ func (h *NotificationHandler) GetUserInbox(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	respond.OkJson(w, ns)
+	_ = respond.OkJson(w, ns)
 }
 
 func setSSEHeaders(w http.ResponseWriter) {
