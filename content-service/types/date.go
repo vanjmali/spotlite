@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -19,7 +20,7 @@ var dateFormat = "2006-01-02"
 func (d *Date) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
-		return fmt.Errorf("release_date must be a string in YYYY-MM-DD format")
+		return errors.New("release_date must be a string in YYYY-MM-DD format")
 	}
 
 	if s == "" {
@@ -29,31 +30,31 @@ func (d *Date) UnmarshalJSON(data []byte) error {
 
 	t, err := time.Parse(dateFormat, s)
 	if err != nil {
-		return fmt.Errorf("release_date must be in YYYY-MM-DD format")
+		return errors.New("release_date must be in YYYY-MM-DD format")
 	}
 
 	d.Time = t.UTC()
 	return nil
 }
 
-func (d Date) MarshalJSON() ([]byte, error) {
+func (d *Date) MarshalJSON() ([]byte, error) {
 	if d.Time.IsZero() {
 		return []byte("null"), nil
 	}
 
-	return []byte(fmt.Sprintf("%q", d.Time.Format(dateFormat))), nil
+	return []byte(fmt.Sprintf("%q", d.Format(dateFormat))), nil
 }
 
-func (d Date) IsZero() bool {
+func (d *Date) IsZero() bool {
 	return d.Time.IsZero()
 }
 
 // MarshalBSONValue stores Date as a native BSON datetime as UTC.
-func (d Date) MarshalBSONValue() (bsontype.Type, []byte, error) {
+func (d *Date) MarshalBSONValue() (bsontype.Type, []byte, error) {
 	if d.Time.IsZero() {
 		return bson.TypeNull, nil, nil
 	}
-	return bson.MarshalValue(d.Time.UTC())
+	return bson.MarshalValue(d.UTC())
 }
 
 // UnmarshalBSONValue reads a BSON datetime and normalizes it to UTC.

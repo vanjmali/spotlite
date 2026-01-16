@@ -10,7 +10,7 @@ import (
 func ToAlbumEntity(a *dtos.CreateAlbumDto, artists []entities.Artist, songs []entities.Song) (*entities.Album, error) {
 	return &entities.Album{
 		ID:          primitive.NewObjectID(),
-		Name:        a.Name,
+		Title:       a.Title,
 		ReleaseDate: a.ReleaseDate,
 		Genres:      a.Genres,
 		Songs:       songs,

@@ -122,6 +122,8 @@ type SongsQuery struct {
 }
 
 // GetSongs retrieves a paginated list of songs with optional filtering by title, genre, or artist ID.
+//
+
 func (s *SongService) GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongListResponseDto, error) {
 	ctx, span := s.tr.Start(ctx, "song.get_all")
 	defer span.End()

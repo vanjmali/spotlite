@@ -1,13 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
+	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
@@ -85,41 +86,21 @@ func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) 
 }
 
 // HandleGetSongs handles HTTP GET requests to retrieve a paginated list of songs with optional filtering.
+//
+
 func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
-	page, err := strconv.Atoi(q.Get("page"))
-	if err != nil {
-		page = 1
-	}
-
-	size, err := strconv.Atoi(q.Get("size"))
-	if err != nil {
-		size = 10
-	}
-
+	p := pagination.ParsePagination(q)
 	query := services.SongsQuery{
-		Page:     page,
-		Size:     size,
+		Page:     p.Page,
+		Size:     p.Size,
 		Title:    q.Get("title"),
 		Genre:    q.Get("genre"),
 		ArtistID: q.Get("artist_id"),
 	}
 
-	resp, err := h.s.GetSongs(r.Context(), query)
-	if err != nil {
-		switch {
-		case errors.Is(err, services.ErrObjectIdCastFailed):
-			_ = respond.BadRequest(w, "Invalid ID format")
-			return
-		default:
-			log.Printf("trace_id=%s failed to list songs: %v", telemetry.TraceID(r.Context()), err)
-			_ = respond.InternalServerError(w)
-			return
-		}
-	}
-
-	if err := respond.OkJson(w, resp); err != nil {
-		log.Printf("trace_id=%s failed to write list songs response: %v", telemetry.TraceID(r.Context()), err)
-	}
+	handleListResponse(w, r, "songs", func(ctx context.Context) (any, error) {
+		return h.s.GetSongs(ctx, query)
+	})
 }

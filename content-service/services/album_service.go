@@ -145,20 +145,22 @@ func (s *AlbumService) FindAlbumByID(ctx context.Context, idStr string) (*entiti
 type AlbumsQuery struct {
 	Page     int
 	Size     int
-	Name     string
+	Title    string
 	Genres   string
 	ArtistID string
 }
 
-// GetAll retrieves a paginated list of albums with optional filtering by title, genre, or artist ID.
-func (s *AlbumService) GetAll(ctx context.Context, q AlbumsQuery) (*dtos.AlbumListResponseDto, error) {
+// GetAlbums retrieves a paginated list of albums with optional filtering by title, genre, or artist ID.
+//
+
+func (s *AlbumService) GetAlbums(ctx context.Context, q AlbumsQuery) (*dtos.AlbumListResponseDto, error) {
 	ctx, span := s.tr.Start(ctx, "album.get_all")
 	defer span.End()
 
 	filter := bson.M{}
-	if q.Name != "" {
+	if q.Title != "" {
 		filter["name"] = bson.M{
-			"$regex":   q.Name,
+			"$regex":   q.Title,
 			"$options": "i",
 		}
 	}
@@ -176,16 +178,11 @@ func (s *AlbumService) GetAll(ctx context.Context, q AlbumsQuery) (*dtos.AlbumLi
 	}
 
 	p := pagination.NewPagination(q.Page, q.Size)
-	items, total, err := s.albumRepo.FindAll(ctx, filter, p.Skip(), p.Limit())
+	resp, err := listWithPagination(ctx, p, filter, s.albumRepo.FindAll)
 	if err != nil {
 		span.RecordError(err)
 		return nil, err
 	}
 
-	return &dtos.AlbumListResponseDto{
-		Items: items,
-		Page:  p.Page,
-		Size:  p.Size,
-		Total: total,
-	}, nil
+	return resp, nil
 }

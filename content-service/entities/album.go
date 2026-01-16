@@ -8,7 +8,7 @@ import (
 // Album models an album document stored in MongoDB.
 type Album struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty"`
-	Name        string             `bson:"name"`
+	Title       string             `bson:"title"`
 	ReleaseDate types.Date         `bson:"release_date"`
 	Genres      []string           `bson:"genres"`
 	Songs       []Song             `bson:"songs"`
