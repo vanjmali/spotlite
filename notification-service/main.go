@@ -79,6 +79,8 @@ func run() error {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	srvErr := make(chan error, 1)
+
 	// stop is a channel which stores a maximum of one os signal
 	stop := make(chan os.Signal, 1)
 
@@ -89,20 +91,29 @@ func run() error {
 	// react of signals
 	go func() {
 		log.Printf("INFO: Listening on %s", srvAddr)
+		// If an error occurs, send it to the channel. Do NOT log.Fatal here.
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("ERROR: failed to start server: %s", err)
+			srvErr <- err
 		}
 	}()
 
 	// stops the line of execution here until the stop channels gets a signal
-	<-stop
-	log.Println("DEBUG: Shutting down gracefully...")
+	select {
+	case sig := <-stop:
+		log.Printf("DEBUG: Received signal %v. Shutting down gracefully...", sig)
+	case err := <-srvErr:
+		// if we get here, the server failed to start We log it, but we do NOT exit
+		// immediately. We let the function finish so that the 'defer' statements
+		// above trigger.
+		log.Printf("ERROR: HTTP server failed to start: %v", err)
+		return err // return the error to main
+	}
 
 	// graceful shutdown starts
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Printf("ERROR: HTTP server Shutdown error: %v", err)
 	}
 

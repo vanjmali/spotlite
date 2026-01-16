@@ -46,7 +46,7 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 	userID := middlewares.GetUserIdFromContext(r.Context())
 
 	if userID == "" {
-		respond.Unauthorized(w)
+		_ = respond.Unauthorized(w)
 		return
 	}
 
@@ -122,10 +122,10 @@ func (h *NotificationHandler) GetUserInbox(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrMissingUserID):
-			respond.BadRequest(w)
+			_ = respond.BadRequest(w)
 			return
 		default:
-			respond.InternalServerError(w)
+			_ = respond.InternalServerError(w)
 			return
 		}
 	}
