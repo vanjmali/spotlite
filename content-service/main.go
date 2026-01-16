@@ -15,12 +15,13 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/common-lib/utils"
-	"github.com/vanjmali/spotlite/common-lib/validations"
 	"github.com/vanjmali/spotlite/content/handlers"
 	"github.com/vanjmali/spotlite/content/infrastructure/mongo"
 	"github.com/vanjmali/spotlite/content/repositories"
 	"github.com/vanjmali/spotlite/content/routers"
 	"github.com/vanjmali/spotlite/content/services"
+	commonvalid "github.com/vanjmali/spotlite/common-lib/validations"
+	contentvalid "github.com/vanjmali/spotlite/content/validations"
 )
 
 var port = utils.GetEnv("APP_PORT", "3000")
@@ -55,7 +56,10 @@ func run() error {
 	// Configure validators
 	requests.RegisterCommonValidationMessages()
 	v := validator.New()
-	if err := requests.RegisterValidation(v, validations.CheckValidName); err != nil {
+	if err := requests.RegisterValidation(v, commonvalid.CheckValidName); err != nil {
+		return fmt.Errorf("failed to register custom validations: %w", err)
+	}
+	if err := requests.RegisterValidation(v, contentvalid.CheckValidDateOnly); err != nil {
 		return fmt.Errorf("failed to register custom validations: %w", err)
 	}
 
