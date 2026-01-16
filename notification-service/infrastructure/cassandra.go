@@ -17,10 +17,10 @@ func createBaseCluster(host string) *gocql.ClusterConfig {
 	cluster.ProtoVersion = 4
 
 	// max wait time for a query to be executed
-	cluster.Timeout = 5 * time.Second
+	cluster.Timeout = 10 * time.Second
 
 	// max wait time for a service to establish a connection with a node
-	cluster.ConnectTimeout = 5 * time.Second
+	cluster.ConnectTimeout = 10 * time.Second
 
 	return cluster
 }

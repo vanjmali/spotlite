@@ -23,7 +23,8 @@ services:
       traefik.http.services.notification-service.loadbalancer.healthcheck.path: /healthz
       traefik.http.services.notification-service.loadbalancer.healthcheck.interval: 5s
       traefik.http.services.notification-service.loadbalancer.healthcheck.timeout: 2s
-
+      traefik.http.middlewares.my-compressor.compress.excludedcontenttypes: text/event-stream
+      traefik.http.services.notification-service.loadbalancer.responseForwarding.flushInterval: "100ms"
     depends_on:
       notification-cassandra:
         condition: service_healthy

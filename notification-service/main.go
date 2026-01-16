@@ -60,9 +60,13 @@ func run() error {
 	}
 	defer cs.Close()
 
+	// initialize notification broker
+	b := infrastructure.NewBroker()
+	go b.Listen()
+
 	nr := repositories.NewNotificationRepository(cs)
 	ns := services.NewNotificationService(nr)
-	nh := handlers.NewNotificationHandler(ns)
+	nh := handlers.NewNotificationHandler(ns, b)
 	r := routers.HandleRequests(nh)
 
 	srvAddr := ":" + port
