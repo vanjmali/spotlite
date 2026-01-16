@@ -17,16 +17,9 @@ export class AdminPage {
   private readonly router = inject(Router);
 
   readonly isConfigAsideSg = signal(false);
-  readonly selectedConfigOption = signal<string | null>(null);
 
   logout(): void {
     this.authService.logout();
     this.router.navigate(['/login']);
-  }
-
-  onConfigOptionSelected(optionKey: string): void {
-    this.selectedConfigOption.set(optionKey);
-    // Navigate to the corresponding route
-    this.router.navigate(['admin', optionKey]);
   }
 }

@@ -76,22 +76,40 @@
       border: 1px solid transparent;
       border-radius: 6px;
       cursor: pointer;
-      transition: border-color 0.2s ease;
+      transition: all 0.2s ease;
+      color: $color-gray-400;
+      text-decoration: none;
 
       &-icon {
         font-size: 20px;
         width: 20px;
         height: 20px;
-        color: $color-gray-400;
-        transition: color 0.2s ease;
       }
 
       &-label {
         font-size: 14px;
         font-weight: 500;
-        color: $color-text-tertiary;
         white-space: nowrap;
         display: none;
+      }
+
+      &:hover {
+        color: $color-gray-300;
+      }
+
+      &--active {
+        background-color: $color-gray-700;
+        color: $color-primary;
+        border-color: $color-primary;
+
+        .config-aside__menu__option-icon {
+          color: $color-primary;
+        }
+
+        &:hover {
+          color: $color-primary;
+          background-color: $color-gray-700;
+        }
       }
     }
   }

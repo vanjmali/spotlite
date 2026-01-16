@@ -1,10 +1,6 @@
 <app-page>
   <!-- Configuration aside for admin management -->
-  <app-config-aside
-    aside
-    [isExpandedSg]="isConfigAsideSg()"
-    (configOptionClicked)="onConfigOptionSelected($event)"
-  />
+  <app-config-aside aside [isExpandedSg]="isConfigAsideSg()" />
 
   <div content class="admin-page__main">
     <router-outlet></router-outlet>

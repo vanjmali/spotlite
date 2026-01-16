@@ -8,11 +8,10 @@
     </div>
 
     @for (option of configOptions; track option.key) {
-      <button
+      <a
+        [routerLink]="['/admin', option.key]"
         class="config-aside__menu__option"
-        (click)="selectOption(option.key)"
-        [attr.aria-label]="option.label"
-        type="button"
+        routerLinkActive="config-aside__menu__option--active"
       >
         <mat-icon class="config-aside__menu__option-icon">
           {{ option.icon }}
@@ -20,7 +19,7 @@
         <span class="config-aside__menu__option-label">
           {{ option.label }}
         </span>
-      </button>
+      </a>
     }
   </div>
 

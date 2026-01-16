@@ -96,6 +96,11 @@ export const routes: Routes = [
             (m) => m.SongsManagementComponent
           ),
       },
+      {
+        path: '',
+        redirectTo: 'artists',
+        pathMatch: 'full',
+      },
     ],
   },
   {

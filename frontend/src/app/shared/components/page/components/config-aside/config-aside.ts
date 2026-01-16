@@ -1,17 +1,17 @@
-import { Component, input, output, signal } from '@angular/core';
+import { Component, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-config-aside',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, MatIconModule, RouterModule],
   templateUrl: './config-aside.html',
   styleUrls: ['./config-aside.scss'],
 })
 export class ConfigAsideComponent {
   readonly isExpandedSg = input<boolean>(false);
-  readonly configOptionClicked = output<string>();
 
   readonly expandedSg = signal(false);
 
@@ -23,9 +23,5 @@ export class ConfigAsideComponent {
 
   toggleExpand(): void {
     this.expandedSg.update((isExpanded) => !isExpanded);
-  }
-
-  selectOption(optionKey: string): void {
-    this.configOptionClicked.emit(optionKey);
   }
 }
