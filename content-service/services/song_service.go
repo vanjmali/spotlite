@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 
+	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
@@ -127,18 +128,7 @@ func (s *SongService) GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongLis
 	ctx, span := s.tr.Start(ctx, "song.get_all")
 	defer span.End()
 
-	if q.Page <= 1 {
-		q.Page = 1
-	}
-	if q.Size <= 0 || q.Size > 50 {
-		q.Size = 10
-	}
-
-	skip := int64((q.Page - 1) * q.Size)
-	limit := int64(q.Size)
-
 	filter := bson.M{}
-
 	if q.Title != "" {
 		filter["title"] = bson.M{
 			"$regex":   q.Title,
@@ -158,7 +148,8 @@ func (s *SongService) GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongLis
 		filter["artists._id"] = artistId
 	}
 
-	items, total, err := s.songRepo.FindAll(ctx, filter, skip, limit)
+	p := pagination.NewPagination(q.Page, q.Size)
+	items, total, err := s.songRepo.FindAll(ctx, filter, p.Skip(), p.Limit())
 	if err != nil {
 		span.RecordError(err)
 		return nil, err
@@ -166,8 +157,8 @@ func (s *SongService) GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongLis
 
 	return &dtos.SongListResponseDto{
 		Items: items,
-		Page:  q.Page,
-		Size:  q.Size,
+		Page:  p.Page,
+		Size:  p.Size,
 		Total: total,
 	}, nil
 }

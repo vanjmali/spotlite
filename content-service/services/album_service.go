@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 
+	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
@@ -155,18 +156,7 @@ func (s *AlbumService) GetAll(ctx context.Context, q AlbumsQuery) (*dtos.AlbumLi
 	ctx, span := s.tr.Start(ctx, "album.get_all")
 	defer span.End()
 
-	if q.Page <= 1 {
-		q.Page = 1
-	}
-	if q.Size <= 0 || q.Size > 50 {
-		q.Size = 10
-	}
-
-	skip := int64((q.Page - 1) * q.Size)
-	limit := int64(q.Size)
-
 	filter := bson.M{}
-
 	if q.Name != "" {
 		filter["name"] = bson.M{
 			"$regex":   q.Name,
@@ -186,7 +176,8 @@ func (s *AlbumService) GetAll(ctx context.Context, q AlbumsQuery) (*dtos.AlbumLi
 		filter["artists._id"] = artistId
 	}
 
-	items, total, err := s.albumRepo.FindAll(ctx, filter, skip, limit)
+	p := pagination.NewPagination(q.Page, q.Size)
+	items, total, err := s.albumRepo.FindAll(ctx, filter, p.Skip(), p.Limit())
 	if err != nil {
 		span.RecordError(err)
 		return nil, err
@@ -194,8 +185,8 @@ func (s *AlbumService) GetAll(ctx context.Context, q AlbumsQuery) (*dtos.AlbumLi
 
 	return &dtos.AlbumListResponseDto{
 		Items: items,
-		Page:  q.Page,
-		Size:  q.Size,
+		Page:  p.Page,
+		Size:  p.Size,
 		Total: total,
 	}, nil
 }

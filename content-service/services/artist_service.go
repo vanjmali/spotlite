@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 
+	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/mappers"
 	"github.com/vanjmali/spotlite/content/repositories"
@@ -181,18 +182,7 @@ func (s *ArtistService) GetArtists(ctx context.Context, q ArtistsQuery) (*dtos.A
 	ctx, span := s.tr.Start(ctx, "artists.get_all")
 	defer span.End()
 
-	if q.Page <= 1 {
-		q.Page = 1
-	}
-	if q.Size <= 0 || q.Size > 50 {
-		q.Size = 10
-	}
-
-	skip := int64((q.Page - 1) * q.Size)
-	limit := int64(q.Size)
-
 	filter := bson.M{}
-
 	if q.Name != "" {
 		filter["name"] = bson.M{
 			"$regex":   q.Name,
@@ -204,7 +194,8 @@ func (s *ArtistService) GetArtists(ctx context.Context, q ArtistsQuery) (*dtos.A
 		filter["genres"] = q.Genre
 	}
 
-	items, total, err := s.r.FindAll(ctx, filter, skip, limit)
+	p := pagination.NewPagination(q.Page, q.Size)
+	items, total, err := s.r.FindAll(ctx, filter, p.Skip(), p.Limit())
 	if err != nil {
 		span.RecordError(err)
 		return nil, err
@@ -212,8 +203,8 @@ func (s *ArtistService) GetArtists(ctx context.Context, q ArtistsQuery) (*dtos.A
 
 	return &dtos.ArtistListResponseDto{
 		Items: items,
-		Page:  q.Page,
-		Size:  q.Size,
+		Page:  p.Page,
+		Size:  p.Size,
 		Total: total,
 	}, nil
 }
