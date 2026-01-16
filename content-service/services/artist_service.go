@@ -100,7 +100,7 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 
 	_, buildSpan := s.tr.Start(ctx, "artist.update.build_update_doc")
 
-	update := make(map[string]interface{})
+	update := make(map[string]any)
 
 	if dto.Name != nil {
 		update["name"] = *dto.Name

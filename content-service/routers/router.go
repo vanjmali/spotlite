@@ -30,11 +30,18 @@ func HandleRequests(ah *handlers.ArtistHandler, sh *handlers.SongHandler, alh *h
 	api.HandleFunc("/songs", sh.HandleGetSongs).Methods("GET")
 	api.HandleFunc("/songs/{id}", sh.HandleGetSongById).Methods("GET")
 	api.HandleFunc("/songs", sh.HandleCreateSong).Methods("POST")
+	api.HandleFunc("/songs/{id}", sh.HandleUpdateSong).Methods("PATCH")
+	api.HandleFunc("/songs/{id}", sh.HandleDeleteSong).Methods("DELETE")
 
 	// Albums endpoints
 	api.HandleFunc("/albums", alh.HandleGetAlbums).Methods("GET")
 	api.HandleFunc("/albums/{id}", alh.HandleGetAlbumById).Methods("GET")
 	api.HandleFunc("/albums", alh.HandleCreateAlbum).Methods("POST")
+	api.HandleFunc("/albums/{id}", alh.HandleUpdateAlbum).Methods("PATCH")
+	api.HandleFunc("/albums/{id}", alh.HandleDeleteAlbum).Methods("DELETE")
+	api.HandleFunc("/albums/{id}/songs", alh.HandleAddAlbumSongs).Methods("POST")
+	api.HandleFunc("/albums/{id}/songs", alh.HandleGetAlbumSongs).Methods("GET")
+	api.HandleFunc("/albums/{id}/songs/{songId}", alh.HandleDeleteAlbumSong).Methods("DELETE")
 
 	return r
 }

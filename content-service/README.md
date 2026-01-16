@@ -39,7 +39,7 @@ We chose MongoDB for its document-oriented nature, which is ideal for music cont
 ```json
 {
   "_id": "ObjectID",
-  "name": "string",
+  "title": "string",
   "release_date": "timestamp",
   "genres": ["string"],
   "songs": [
@@ -99,8 +99,11 @@ We chose MongoDB for its document-oriented nature, which is ideal for music cont
 - `POST /albums` - Create a new album
 - `GET /albums/:id` - Get album by ID
 - `GET /albums` - List albums with pagination and filtering
-  <!-- - `PATCH /albums/:id` - Update album (partial) -->
-  <!-- - `DELETE /albums/:id` - Delete album -->
+- `PATCH /albums/:id` - Update album (partial)
+- `DELETE /albums/:id` - Delete album
+- `POST /albums/:id/songs` - Add songs to album
+- `GET /albums/:id/songs` - List songs in album
+- `DELETE /albums/:id/songs/:songId` - Remove a song from album
 
 ### Artists
 
@@ -115,3 +118,5 @@ We chose MongoDB for its document-oriented nature, which is ideal for music cont
 - `POST /songs` - Create a new song
 - `GET /songs/:id` - Get song by ID
 - `GET /songs` - List songs with pagination and filtering
+- `PATCH /songs/:id` - Update song (partial)
+- `DELETE /songs/:id` - Delete song

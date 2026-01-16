@@ -15,5 +15,18 @@ type CreateAlbumDto struct {
 	ArtistIds   []string   `json:"artist_ids" validate:"required,min=1,dive,required,len=24,hexadecimal"`
 }
 
+// UpdateAlbumDto represents the payload for updating an existing album. Pointers allow partial updates.
+type UpdateAlbumDto struct {
+	Title       *string     `json:"title" validate:"omitempty,min=2,max=100"`
+	ReleaseDate *types.Date `json:"release_date" validate:"omitempty,notzerodate"`
+	Genres      *[]string   `json:"genres" validate:"omitempty,min=1,dive,required,min=2,max=30"`
+	ArtistIds   *[]string   `json:"artist_ids" validate:"omitempty,min=1,dive,required,len=24,hexadecimal"`
+}
+
+// AddAlbumSongsDto represents the payload for adding songs to an album.
+type AddAlbumSongsDto struct {
+	Ids []string `json:"ids" validate:"required,min=1,dive,required,len=24,hexadecimal"`
+}
+
 // AlbumListResponseDto represents the response payload when returning a paginated list of albums.
 type AlbumListResponseDto = commondtos.ItemCollectionResponse[entities.Album]

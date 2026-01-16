@@ -51,7 +51,7 @@ func (r *ArtistRepository) FindByID(ctx context.Context, id primitive.ObjectID) 
 }
 
 // UpdateByID updates artist by ID.
-func (r *ArtistRepository) UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]interface{}) (*dtos.ArtistDto, error) {
+func (r *ArtistRepository) UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]any) (*dtos.ArtistDto, error) {
 	c := r.getCollection()
 
 	filter := bson.M{"_id": id}

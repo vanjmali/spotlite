@@ -13,6 +13,7 @@ import (
 	"github.com/vanjmali/spotlite/content/repositories"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -141,13 +142,258 @@ func (s *AlbumService) FindAlbumByID(ctx context.Context, idStr string) (*entiti
 	return album, nil
 }
 
+// UpdateAlbum updates an existing album with the provided partial data.
+func (s *AlbumService) UpdateAlbum(ctx context.Context, idStr string, dto dtos.UpdateAlbumDto) (*entities.Album, error) {
+	ctx, span := s.tr.Start(ctx, "album.update_album")
+	defer span.End()
+
+	_, parseSpan := s.tr.Start(ctx, "album.update_album.parse_id")
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		parseSpan.RecordError(err)
+		parseSpan.End()
+		return nil, ErrObjectIdCastFailed
+	}
+	parseSpan.End()
+
+	_, buildSpan := s.tr.Start(ctx, "album.update.build_update_doc")
+	update := make(map[string]any)
+
+	if dto.Title != nil {
+		update["title"] = *dto.Title
+	}
+	if dto.ReleaseDate != nil {
+		update["release_date"] = *dto.ReleaseDate
+	}
+	if dto.Genres != nil {
+		update["genres"] = *dto.Genres
+	}
+	if dto.ArtistIds != nil {
+		embeddedArtist := make([]entities.Artist, 0)
+		for _, artistsIdStr := range *dto.ArtistIds {
+			artist, err := s.artistService.FindArtistByID(ctx, artistsIdStr)
+			if err != nil {
+				buildSpan.RecordError(err)
+				buildSpan.End()
+
+				switch {
+				case errors.Is(err, ErrObjectIdCastFailed):
+					return nil, ErrObjectIdCastFailed
+				case errors.Is(err, ErrArtistNotFound):
+					return nil, ErrArtistNotFound
+				default:
+					return nil, err
+				}
+			}
+
+			embeddedArtist = append(embeddedArtist, entities.Artist{
+				ID:          artist.ID,
+				Name:        artist.Name,
+				Genres:      artist.Genres,
+				Description: artist.Description,
+			})
+		}
+		update["artists"] = embeddedArtist
+	}
+
+	if len(update) == 0 {
+		err := errors.New("no fields to update")
+		buildSpan.RecordError(err)
+		buildSpan.End()
+		return nil, err
+	}
+	buildSpan.End()
+
+	repoCtx, repoSpan := s.tr.Start(ctx, "album.update.repository_update")
+	updatedAlbum, err := s.albumRepo.UpdateByID(repoCtx, id, update)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			repoSpan.RecordError(err)
+			repoSpan.End()
+			return nil, ErrAlbumNotFound
+		}
+		repoSpan.RecordError(err)
+		repoSpan.End()
+		return nil, err
+	}
+	repoSpan.End()
+
+	return updatedAlbum, nil
+}
+
+// AddSongsToAlbum appends songs to an album by resolving song IDs.
+func (s *AlbumService) AddSongsToAlbum(ctx context.Context, idStr string, dto dtos.AddAlbumSongsDto) (*entities.Album, error) {
+	ctx, span := s.tr.Start(ctx, "album.add_songs")
+	defer span.End()
+
+	_, parseSpan := s.tr.Start(ctx, "album.add_songs.parse_id")
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		parseSpan.RecordError(err)
+		parseSpan.End()
+		return nil, ErrObjectIdCastFailed
+	}
+	parseSpan.End()
+
+	album, err := s.albumRepo.FindByID(ctx, id)
+	if err != nil {
+		span.RecordError(err)
+		return nil, ErrAlbumNotFound
+	}
+
+	existing := make(map[primitive.ObjectID]struct{}, len(album.Songs))
+	for _, song := range album.Songs {
+		existing[song.ID] = struct{}{}
+	}
+
+	embeddedSong := make([]entities.Song, 0, len(dto.Ids))
+	for _, songsIdStr := range dto.Ids {
+		song, err := s.songService.FindSongById(ctx, songsIdStr)
+		if err != nil {
+			span.RecordError(err)
+			switch {
+			case errors.Is(err, ErrObjectIdCastFailed):
+				return nil, ErrObjectIdCastFailed
+			case errors.Is(err, ErrSongNotFound):
+				return nil, ErrSongNotFound
+			default:
+				return nil, err
+			}
+		}
+
+		if _, ok := existing[song.ID]; ok {
+			continue
+		}
+		embeddedSong = append(embeddedSong, entities.Song{
+			ID:            song.ID,
+			Title:         song.Title,
+			Genre:         song.Genre,
+			LengthSeconds: song.LengthSeconds,
+			Artists:       song.Artists,
+		})
+		existing[song.ID] = struct{}{}
+	}
+
+	if len(embeddedSong) == 0 {
+		return album, nil
+	}
+
+	album.Songs = append(album.Songs, embeddedSong...)
+	updatedAlbum, err := s.albumRepo.UpdateByID(ctx, id, map[string]any{"songs": album.Songs})
+	if err != nil {
+		span.RecordError(err)
+		return nil, err
+	}
+
+	return updatedAlbum, nil
+}
+
+// GetAlbumSongs retrieves songs for an album by ID.
+func (s *AlbumService) GetAlbumSongs(ctx context.Context, idStr string) ([]entities.Song, error) {
+	ctx, span := s.tr.Start(ctx, "album.get_songs")
+	defer span.End()
+
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		span.RecordError(err)
+		return nil, ErrObjectIdCastFailed
+	}
+
+	album, err := s.albumRepo.FindByID(ctx, id)
+	if err != nil {
+		span.RecordError(err)
+		return nil, ErrAlbumNotFound
+	}
+
+	return album.Songs, nil
+}
+
+// RemoveSongFromAlbum removes a song from an album by ID.
+func (s *AlbumService) RemoveSongFromAlbum(ctx context.Context, albumIdStr string, songIdStr string) error {
+	ctx, span := s.tr.Start(ctx, "album.remove_song")
+	defer span.End()
+
+	albumId, err := primitive.ObjectIDFromHex(albumIdStr)
+	if err != nil {
+		span.RecordError(err)
+		return ErrObjectIdCastFailed
+	}
+
+	songId, err := primitive.ObjectIDFromHex(songIdStr)
+	if err != nil {
+		span.RecordError(err)
+		return ErrObjectIdCastFailed
+	}
+
+	album, err := s.albumRepo.FindByID(ctx, albumId)
+	if err != nil {
+		span.RecordError(err)
+		return ErrAlbumNotFound
+	}
+
+	filtered := make([]entities.Song, 0, len(album.Songs))
+	removed := false
+	for _, song := range album.Songs {
+		if song.ID == songId {
+			removed = true
+			continue
+		}
+		filtered = append(filtered, song)
+	}
+
+	if !removed {
+		return ErrSongNotFound
+	}
+
+	_, err = s.albumRepo.UpdateByID(ctx, albumId, map[string]any{"songs": filtered})
+	if err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	return nil
+}
+
+// DeleteAlbum deletes an album by its ID.
+func (s *AlbumService) DeleteAlbum(ctx context.Context, idStr string) error {
+	ctx, span := s.tr.Start(ctx, "album.delete_album")
+	defer span.End()
+
+	_, parseSpan := s.tr.Start(ctx, "album.delete_album.parse_id")
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		parseSpan.RecordError(err)
+		parseSpan.End()
+		return ErrObjectIdCastFailed
+	}
+	parseSpan.End()
+
+	repoCtx, repoSpan := s.tr.Start(ctx, "album.delete.repository_delete")
+	res, err := s.albumRepo.DeleteByID(repoCtx, id)
+	if err != nil {
+		repoSpan.RecordError(err)
+		repoSpan.End()
+		return err
+	}
+
+	if res.DeletedCount == 0 {
+		err = ErrAlbumNotFound
+		repoSpan.RecordError(err)
+		repoSpan.End()
+		return err
+	}
+	repoSpan.End()
+
+	return nil
+}
+
 // AlbumsQuery represents the query parameters for filtering and paginating album results.
 type AlbumsQuery struct {
 	Page     int
 	Size     int
 	Title    string
 	Genres   string
-	ArtistID string
+	ArtistId string
 }
 
 // GetAlbums retrieves a paginated list of albums with optional filtering by title, genre, or artist ID.
@@ -159,7 +405,7 @@ func (s *AlbumService) GetAlbums(ctx context.Context, q AlbumsQuery) (*dtos.Albu
 
 	filter := bson.M{}
 	if q.Title != "" {
-		filter["name"] = bson.M{
+		filter["title"] = bson.M{
 			"$regex":   q.Title,
 			"$options": "i",
 		}
@@ -169,8 +415,8 @@ func (s *AlbumService) GetAlbums(ctx context.Context, q AlbumsQuery) (*dtos.Albu
 		filter["genres"] = q.Genres
 	}
 
-	if q.ArtistID != "" {
-		artistId, err := primitive.ObjectIDFromHex(q.ArtistID)
+	if q.ArtistId != "" {
+		artistId, err := primitive.ObjectIDFromHex(q.ArtistId)
 		if err != nil {
 			return nil, ErrObjectIdCastFailed
 		}

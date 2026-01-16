@@ -42,7 +42,7 @@ func (d *Date) MarshalJSON() ([]byte, error) {
 		return []byte("null"), nil
 	}
 
-	return []byte(fmt.Sprintf("%q", d.Format(dateFormat))), nil
+	return fmt.Appendf(nil, "%q", d.Format(dateFormat)), nil
 }
 
 func (d *Date) IsZero() bool {

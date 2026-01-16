@@ -50,8 +50,26 @@ func (r *SongRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*
 	return &song, nil
 }
 
-// DeleteById deletes song by ID.
-func (r *SongRepository) DeleteById(ctx context.Context, id primitive.ObjectID) (*mongo.DeleteResult, error) {
+// UpdateByID updates song by ID.
+func (r *SongRepository) UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]any) (*entities.Song, error) {
+	c := r.getCollection()
+
+	filter := bson.M{"_id": id}
+	updateDoc := bson.M{"$set": update}
+
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	var updatedSong entities.Song
+	err := c.FindOneAndUpdate(ctx, filter, updateDoc, opts).Decode(&updatedSong)
+	if err != nil {
+		return nil, err
+	}
+
+	return &updatedSong, nil
+}
+
+// DeleteByID deletes song by ID.
+func (r *SongRepository) DeleteByID(ctx context.Context, id primitive.ObjectID) (*mongo.DeleteResult, error) {
 	c := r.getCollection()
 
 	filter := bson.M{"_id": id}

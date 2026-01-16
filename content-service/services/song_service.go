@@ -13,6 +13,7 @@ import (
 	"github.com/vanjmali/spotlite/content/repositories"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -112,13 +113,125 @@ func (s *SongService) FindSongById(ctx context.Context, idStr string) (*entities
 	return song, nil
 }
 
+// UpdateSong updates an existing song with the provided partial data.
+func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.UpdateSongDto) (*entities.Song, error) {
+	ctx, span := s.tr.Start(ctx, "song.update_song")
+	defer span.End()
+
+	_, parseSpan := s.tr.Start(ctx, "song.update_song.parse_id")
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		parseSpan.RecordError(err)
+		parseSpan.End()
+		return nil, ErrObjectIdCastFailed
+	}
+	parseSpan.End()
+
+	_, buildSpan := s.tr.Start(ctx, "song.update.build_update_doc")
+	update := make(map[string]any)
+
+	if dto.Title != nil {
+		update["title"] = *dto.Title
+	}
+	if dto.Genre != nil {
+		update["genre"] = *dto.Genre
+	}
+	if dto.LengthSeconds != nil {
+		update["length_seconds"] = *dto.LengthSeconds
+	}
+	if dto.ArtistIds != nil {
+		embeddedArtists := make([]entities.Artist, 0)
+		for _, artistIdStr := range *dto.ArtistIds {
+			artist, err := s.artistService.FindArtistByID(ctx, artistIdStr)
+			if err != nil {
+				buildSpan.RecordError(err)
+				buildSpan.End()
+
+				switch {
+				case errors.Is(err, ErrObjectIdCastFailed):
+					return nil, ErrObjectIdCastFailed
+				case errors.Is(err, ErrArtistNotFound):
+					return nil, ErrArtistNotFound
+				default:
+					return nil, err
+				}
+			}
+
+			embeddedArtists = append(embeddedArtists, entities.Artist{
+				ID:          artist.ID,
+				Name:        artist.Name,
+				Genres:      artist.Genres,
+				Description: artist.Description,
+			})
+		}
+		update["artists"] = embeddedArtists
+	}
+
+	if len(update) == 0 {
+		err := errors.New("no fields to update")
+		buildSpan.RecordError(err)
+		buildSpan.End()
+		return nil, err
+	}
+	buildSpan.End()
+
+	repoCtx, repoSpan := s.tr.Start(ctx, "song.update.repository_update")
+	updatedSong, err := s.songRepo.UpdateByID(repoCtx, id, update)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			repoSpan.RecordError(err)
+			repoSpan.End()
+			return nil, ErrSongNotFound
+		}
+		repoSpan.RecordError(err)
+		repoSpan.End()
+		return nil, err
+	}
+	repoSpan.End()
+
+	return updatedSong, nil
+}
+
+// DeleteSong deletes a song by its ID.
+func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
+	ctx, span := s.tr.Start(ctx, "song.delete_song")
+	defer span.End()
+
+	_, parseSpan := s.tr.Start(ctx, "song.delete_song.parse_id")
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		parseSpan.RecordError(err)
+		parseSpan.End()
+		return ErrObjectIdCastFailed
+	}
+	parseSpan.End()
+
+	repoCtx, repoSpan := s.tr.Start(ctx, "song.delete.repository_delete")
+	res, err := s.songRepo.DeleteByID(repoCtx, id)
+	if err != nil {
+		repoSpan.RecordError(err)
+		repoSpan.End()
+		return err
+	}
+
+	if res.DeletedCount == 0 {
+		err = ErrSongNotFound
+		repoSpan.RecordError(err)
+		repoSpan.End()
+		return err
+	}
+	repoSpan.End()
+
+	return nil
+}
+
 // SongsQuery represents the query parameters for filtering and paginating song results.
 type SongsQuery struct {
 	Page     int
 	Size     int
 	Title    string
 	Genre    string
-	ArtistID string
+	ArtistId string
 }
 
 // GetSongs retrieves a paginated list of songs with optional filtering by title, genre, or artist ID.
@@ -140,8 +253,8 @@ func (s *SongService) GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongLis
 		filter["genre"] = q.Genre
 	}
 
-	if q.ArtistID != "" {
-		artistId, err := primitive.ObjectIDFromHex(q.ArtistID)
+	if q.ArtistId != "" {
+		artistId, err := primitive.ObjectIDFromHex(q.ArtistId)
 		if err != nil {
 			return nil, ErrObjectIdCastFailed
 		}

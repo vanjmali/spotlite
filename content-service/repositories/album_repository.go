@@ -50,6 +50,37 @@ func (r *AlbumRepository) FindByID(ctx context.Context, id primitive.ObjectID) (
 	return &album, nil
 }
 
+// UpdateByID updates album by ID.
+func (r *AlbumRepository) UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]any) (*entities.Album, error) {
+	c := r.getCollection()
+
+	filter := bson.M{"_id": id}
+	updateDoc := bson.M{"$set": update}
+
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	var updatedAlbum entities.Album
+	err := c.FindOneAndUpdate(ctx, filter, updateDoc, opts).Decode(&updatedAlbum)
+	if err != nil {
+		return nil, err
+	}
+
+	return &updatedAlbum, nil
+}
+
+// DeleteByID deletes album by ID.
+func (r *AlbumRepository) DeleteByID(ctx context.Context, id primitive.ObjectID) (*mongo.DeleteResult, error) {
+	c := r.getCollection()
+
+	filter := bson.M{"_id": id}
+	res, err := c.DeleteOne(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, err
+}
+
 // FindAll func, finds all albums matching the filter with pagination.
 func (r *AlbumRepository) FindAll(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Album, int64, error) {
 	c := r.getCollection()
