@@ -16,6 +16,7 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/common-lib/utils"
+	"github.com/vanjmali/spotlite/common-lib/validations"
 	"github.com/vanjmali/spotlite/user-service/handlers"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mailing"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mongo"
@@ -77,7 +78,7 @@ func run() error {
 		return fmt.Errorf("failed to register custom validations: %w", err)
 	}
 
-	if err := requests.RegisterValidation(v, validation.CheckValidName); err != nil {
+	if err := requests.RegisterValidation(v, validations.CheckValidName); err != nil {
 		return fmt.Errorf("failed to register custom validations: %w", err)
 	}
 

@@ -45,11 +45,11 @@ func (h *UserHandler) HandleChangePassword(w http.ResponseWriter, r *http.Reques
 
 	switch {
 	case errors.Is(err, services.ErrInvalidCurrentPassword):
-		_ = respond.Unauthorized(w, "Invalid current password.")
+		_ = respond.BadRequest(w, "Invalid current password.")
 		return
 
 	case errors.Is(err, services.ErrTooFrequentPasswordChange):
-		_ = respond.BadRequest(w, "Password changed too frequently.")
+		_ = respond.BadRequest(w, "Password can only be changed once every 24 hours.")
 		return
 	case err != nil:
 		_ = respond.InternalServerError(w)
@@ -73,6 +73,9 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	err := h.s.Login(r.Context(), &req)
 
 	switch {
+	case errors.Is(err, services.ErrUserNotFound):
+		_ = respond.Unauthorized(w, "Invalid credentials.")
+		return
 	case errors.Is(err, services.ErrBadCredentials):
 		_ = respond.Unauthorized(w, "Invalid credentials.")
 		return
@@ -113,8 +116,6 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 			msg = "Username is already taken."
 		case errors.Is(err, services.ErrEmailTaken):
 			msg = "Email is already taken."
-		default:
-			msg = "An unexpected error has occurred."
 		}
 
 		if msg != "" {

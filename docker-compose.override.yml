@@ -105,6 +105,7 @@ services:
       traefik.enable: true
       traefik.docker.network: api-gateway
       traefik.http.routers.user-mongo-express.rule: PathPrefix(`/dev/user-service`)
+      traefik.http.routers.user-mongo-express.middlewares: user-mongo-express-strip-prefix
       traefik.http.middlewares.user-mongo-express-strip-prefix.stripprefix.forceslash: false
       traefik.http.services.user-mongo-express.loadbalancer.server.port: "8081"
       traefik.http.services.user-mongo-express.loadbalancer.healthcheck.path: /dev/user-service
@@ -120,6 +121,33 @@ services:
     networks:
       - api-gateway
       - user-internal
+
+  content-mongodb:
+    ports:
+      - 3102:27017 # expose MongoDB port
+
+  content-mongo-express: # MongoDB GUI
+    image: mongo-express:1
+    labels:
+      traefik.enable: true
+      traefik.docker.network: api-gateway
+      traefik.http.routers.content-mongo-express.rule: PathPrefix(`/dev/content-service`)
+      traefik.http.routers.content-mongo-express.middlewares: content-mongo-express-strip-prefix
+      traefik.http.middlewares.content-mongo-express-strip-prefix.stripprefix.forceslash: false
+      traefik.http.services.content-mongo-express.loadbalancer.server.port: "8081"
+      traefik.http.services.content-mongo-express.loadbalancer.healthcheck.path: /dev/content-service
+      traefik.http.services.content-mongo-express.loadbalancer.healthcheck.interval: 5s
+      traefik.http.services.content-mongo-express.loadbalancer.healthcheck.timeout: 2s
+    environment:
+      ME_CONFIG_BASICAUTH: "false"
+      ME_CONFIG_SITE_BASEURL: /dev/content-service
+      ME_CONFIG_MONGODB_URL: mongodb://${SRV_CONTENT_MONGO_ROOT_USERNAME}:${SRV_CONTENT_MONGO_ROOT_PASSWORD}@content-mongodb:27017/?authSource=admin
+    depends_on:
+      content-mongodb:
+        condition: service_healthy
+    networks:
+      - api-gateway
+      - content-internal
 
 volumes:
   frontend-node-modules:

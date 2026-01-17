@@ -21,7 +21,7 @@ jobs:
         service: &services
           - common-lib
           - user-service
-          # - content-service
+          - content-service
           # - rating-service
           # - subscription-service
           # - notification-service
