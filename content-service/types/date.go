@@ -49,12 +49,12 @@ func (d *Date) IsZero() bool {
 	return d.Value.IsZero()
 }
 
-// Format returns the date formatted as YYYY-MM-DD
+// Format returns the date formatted as YYYY-MM-DD.
 func (d *Date) Format(layout string) string {
 	return d.Value.Format(layout)
 }
 
-// Time returns the underlying time.Time value
+// Time returns the underlying time.Time value.
 func (d *Date) Time() time.Time {
 	return d.Value
 }

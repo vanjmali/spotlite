@@ -41,9 +41,7 @@ export class ArtistService {
    * Get all artists with pagination
    */
   getArtists(page: number = 1, size: number = 10): Observable<PaginatedResponse<Artist>> {
-    const params = new HttpParams()
-      .set('page', page.toString())
-      .set('size', size.toString());
+    const params = new HttpParams().set('page', page.toString()).set('size', size.toString());
     return this.http.get<PaginatedResponse<Artist>>(this.apiUrl, { params });
   }
 

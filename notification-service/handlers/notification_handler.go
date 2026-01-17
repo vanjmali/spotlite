@@ -24,7 +24,6 @@ func NewNotificationHandler(s *services.NotificationService, b *infrastructure.B
 
 func (h *NotificationHandler) CreateNotification(w http.ResponseWriter, r *http.Request) {
 	err := h.s.CreateNotification(r.Context())
-
 	if err != nil {
 		_ = respond.InternalServerError(w)
 		return
@@ -39,7 +38,7 @@ func (h *NotificationHandler) CreateNotification(w http.ResponseWriter, r *http.
 }
 
 // HandleSubscribe function is used to handle client subscription requests and opens a one way connection
-// from server to client
+// from server to client.
 func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 	userID := middlewares.GetUserIdFromContext(r.Context())
 

@@ -60,9 +60,7 @@ export class AlbumService {
       artist_id?: string;
     }
   ): Observable<PaginatedResponse<Album>> {
-    let params = new HttpParams()
-      .set('page', page.toString())
-      .set('size', size.toString());
+    let params = new HttpParams().set('page', page.toString()).set('size', size.toString());
 
     if (filters?.title) {
       params = params.set('title', filters.title);

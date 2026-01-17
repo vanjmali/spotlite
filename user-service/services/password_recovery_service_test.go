@@ -72,7 +72,13 @@ func (f *fakeUserRepositoryForPasswordRecovery) FindUserByEmail(ctx context.Cont
 	return &entities.User{ID: primitive.NewObjectID(), Email: email}, nil
 }
 
-func (f *fakeUserRepositoryForPasswordRecovery) SetHashPassowrd(ctx context.Context, userID primitive.ObjectID, passwordHash string, changedAt time.Time, expiresAt time.Time) error {
+func (f *fakeUserRepositoryForPasswordRecovery) SetHashPassowrd(
+	ctx context.Context,
+	userID primitive.ObjectID,
+	passwordHash string,
+	changedAt time.Time,
+	expiresAt time.Time,
+) error {
 	if f.setHashPasswordFn != nil {
 		return f.setHashPasswordFn(ctx, userID, passwordHash, changedAt, expiresAt)
 	}

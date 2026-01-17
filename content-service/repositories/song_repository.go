@@ -97,7 +97,7 @@ func (r *SongRepository) FindAll(ctx context.Context, filter bson.M, skip int64,
 	}
 	defer cur.Close(ctx)
 
-	var songs []entities.Song = make([]entities.Song, 0) // Initialize with empty slice instead of nil
+	songs := make([]entities.Song, 0)
 	if err = cur.All(ctx, &songs); err != nil {
 		return nil, 0, err
 	}

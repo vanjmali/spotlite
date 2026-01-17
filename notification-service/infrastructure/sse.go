@@ -65,7 +65,7 @@ func NewNotification(targetUserID string, content []byte) *Notification {
 	}
 }
 
-// Constantly listens for new connections, closing connections and for notifications that have to be sent
+// Constantly listens for new connections, closing connections and for notifications that have to be sent.
 func (b *Broker) Listen() {
 	for {
 		select {

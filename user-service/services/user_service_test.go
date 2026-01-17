@@ -25,7 +25,7 @@ import (
 )
 
 // Helper function to add user ID to context for testing
-// Uses the exported ContextWithUserID from middlewares package
+// Uses the exported ContextWithUserID from middlewares package.
 func contextWithUserID(ctx context.Context, userID primitive.ObjectID) context.Context {
 	return middlewares.ContextWithUserID(ctx, userID.Hex())
 }
@@ -556,7 +556,7 @@ func TestUserServiceCreateNewToken(t *testing.T) {
 	require.Equal(t, exp, fixed.Add(15*time.Minute))
 }
 
-// Change Password Tests
+// Change Password Tests.
 func TestChangePasswordInvalidCurrentPassword(t *testing.T) {
 	userID := primitive.NewObjectID()
 	hashedPassword, _ := auth.HashPassword("ValidPass123!")

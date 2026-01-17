@@ -98,7 +98,7 @@ func (r *AlbumRepository) FindAll(ctx context.Context, filter bson.M, skip int64
 	}
 	defer cur.Close(ctx)
 
-	var albums []entities.Album = make([]entities.Album, 0) // Initialize with empty slice instead of nil
+	albums := make([]entities.Album, 0)
 	if err := cur.All(ctx, &albums); err != nil {
 		return nil, 0, err
 	}

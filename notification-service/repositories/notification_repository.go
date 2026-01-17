@@ -12,9 +12,7 @@ const (
 	PAGE_SIZE = 10
 )
 
-var (
-	ErrClosingIterator = errors.New("couldn't close iterator")
-)
+var ErrClosingIterator = errors.New("couldn't close iterator")
 
 type NotificationRepository struct {
 	s *gocql.Session

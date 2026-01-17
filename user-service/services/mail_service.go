@@ -41,11 +41,11 @@ func InitMailingService(client MailClient, cfg MailConfig) *MailService {
 
 func setFromToAddress(m *mail.Msg, from, to string) error {
 	if err := m.From(from); err != nil {
-		return fmt.Errorf("failed to set From address: %v", err)
+		return fmt.Errorf("failed to set From address: %w", err)
 	}
 
 	if err := m.To(to); err != nil {
-		return fmt.Errorf("failed to set To address: %v", err)
+		return fmt.Errorf("failed to set To address: %w", err)
 	}
 
 	return nil
@@ -110,7 +110,7 @@ func (ms *MailService) SendPasswordResetEmail(mailto string, token string) error
 	resetLink := ms.config.PasswordResetURL + "?token=" + url.QueryEscape(token)
 	emailBody, err := RenderPasswordResetEmail(resetLink)
 	if err != nil {
-		return fmt.Errorf("failed to render password reset email template: %v", err)
+		return fmt.Errorf("failed to render password reset email template: %w", err)
 	}
 
 	m.Subject("Reset Your Spotlite Password")

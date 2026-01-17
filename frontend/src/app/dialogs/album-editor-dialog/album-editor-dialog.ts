@@ -54,7 +54,9 @@ export class AlbumEditorDialogComponent {
   readonly dialogTitle = computed(() => (this.isCreateMode() ? 'Create Album' : 'Edit Album'));
   readonly submitButtonText = computed(() => (this.isCreateMode() ? 'Create' : 'Save'));
   readonly isLoadingSg = signal(false);
-  readonly isSongsValid = computed(() => !this.isCreateMode() || this.selectedSongIdsSg().length > 0);
+  readonly isSongsValid = computed(
+    () => !this.isCreateMode() || this.selectedSongIdsSg().length > 0
+  );
   readonly isFormValid = computed(() => {
     const title = this.titleSg().trim();
     const releaseDate = this.releaseDateSg().trim();
