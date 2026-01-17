@@ -80,17 +80,10 @@ export const routes: Routes = [
   {
     path: 'home',
     component: HomePage,
-    children: [
-      {
-        path: 'inbox',
-        component: InboxPage,
-      },
-      {
-        path: '',
-        redirectTo: 'inbox',
-        pathMatch: 'full',
-      },
-    ],
+  },
+  {
+    path: 'inbox',
+    component: InboxPage,
   },
   {
     path: 'profile',
