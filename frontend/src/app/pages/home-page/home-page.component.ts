@@ -1,13 +1,13 @@
-import { Component, inject } from '@angular/core';
-import { Router, RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { Component, inject } from '@angular/core';
+import { Router, RouterLink, RouterModule, RouterOutlet } from '@angular/router';
+import { HeaderComponent, PageComponent } from '@app/shared';
 import { AuthService } from '../../services/auth.service';
-import { PageComponent } from '@app/shared';
 
 @Component({
   selector: 'app-home-page',
   standalone: true,
-  imports: [PageComponent, CommonModule, RouterModule],
+  imports: [HeaderComponent, PageComponent, RouterLink, RouterOutlet, CommonModule, RouterModule],
   templateUrl: './home-page.component.html',
   styleUrl: './home-page.component.scss',
 })

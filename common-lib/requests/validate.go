@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/vanjmali/spotlite/common-lib/respond"
@@ -29,6 +31,21 @@ var customValidationMessages map[string]ValidatorCustomMessage = make(map[string
 // RegisterValidationMessage registers a custom error message for a validation tag.
 func RegisterValidationMessage(tag string, msg ValidatorCustomMessage) {
 	customValidationMessages[tag] = msg
+}
+
+// RegisterJSONTagNameFunc configures the validator to use JSON tag names for field errors.
+// Fields tagged with json:"-" return an empty name and will be skipped by the validator.
+func RegisterJSONTagNameFunc(v *validator.Validate) {
+	v.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+		if name == "-" {
+			return ""
+		}
+		if name == "" {
+			return fld.Name
+		}
+		return name
+	})
 }
 
 // RegisterValidation registers a custom validator with the given validator instance.

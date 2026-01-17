@@ -32,22 +32,22 @@ var port = utils.GetEnv("APP_PORT", "3000")
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("FATAL: %v", err)
+		log.Fatalf("FATAL: Couldn't start user service: %v", err)
 	}
 }
 
 func run() error {
 	ctx := context.Background()
 
-	// Initialize telemetry
+	// Initialize user service telemetry
 	tr, err := telemetry.Init(ctx, "user-service")
 	if err != nil {
-		return fmt.Errorf("failed to initialize tracing: %w", err)
+		return fmt.Errorf("failed to initialize user service tracing: %w", err)
 	}
 
 	defer func() {
 		if err := tr.Shutdown(ctx); err != nil {
-			log.Printf("failed to shut down tracer provider: %v", err)
+			log.Printf("failed to shut down user service tracer provider: %v", err)
 		}
 	}()
 
@@ -69,17 +69,18 @@ func run() error {
 	// Configure validators
 	requests.RegisterCommonValidationMessages()
 	v := validator.New()
+	requests.RegisterJSONTagNameFunc(v)
 
 	if err := requests.RegisterValidation(v, validation.CheckStrongPassword); err != nil {
-		return fmt.Errorf("failed to register custom validations: %w", err)
+		return fmt.Errorf("failed to register strong password validation: %w", err)
 	}
 
 	if err := requests.RegisterValidation(v, validation.CheckValidUsername); err != nil {
-		return fmt.Errorf("failed to register custom validations: %w", err)
+		return fmt.Errorf("failed to register username validation: %w", err)
 	}
 
 	if err := requests.RegisterValidation(v, validations.CheckValidName); err != nil {
-		return fmt.Errorf("failed to register custom validations: %w", err)
+		return fmt.Errorf("failed to register name validation: %w", err)
 	}
 
 	defer dbc.Disconnect(context.Background())
@@ -91,15 +92,18 @@ func run() error {
 	if err := rtr.EnsureRefreshIndexes(context.Background()); err != nil {
 		return fmt.Errorf("failed to ensure refresh token indexes: %w", err)
 	}
+	prr := repositories.NewPasswordRecoveryRepository(mongo.DatabaseName(), "password_recovery_tokens", dbc)
 
 	// service initialization
 	mailCfg := services.MailConfig{
 		VerificationEndpoint: utils.MustGetEnv("SRV_USER_VERIFICATION_ENDPOINT"),
+		PasswordResetURL:     utils.MustGetEnv("SRV_USER_PASSWORD_RESET_URL"),
 		MailFromAddress:      utils.MustGetEnv("MAIL_FROM"),
 	}
 	ms := services.InitMailingService(mc, mailCfg)
 	us := services.NewUserService(ur, ms)
 	rts := services.NewRefreshTokenService(rtr)
+	prs := services.NewPasswordRecoveryService(ur, prr, ms)
 
 	redAddr := utils.MustGetEnv("REDIS_ADDR")
 	redConn := asynq.RedisClientOpt{Addr: redAddr}
@@ -130,8 +134,9 @@ func run() error {
 	})
 
 	rth := handlers.NewRefreshTokenHandler(*rts, *us, *v)
+	prh := handlers.NewPasswordRecoveryHandler(*prs, *v)
 
-	r := routers.HandleRequests(uh, rth)
+	r := routers.HandleRequests(uh, rth, prh)
 
 	srvAddr := ":" + port
 

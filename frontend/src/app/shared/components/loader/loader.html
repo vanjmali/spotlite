@@ -1,0 +1,11 @@
+<div class="loader-container">
+  <div class="loader-container__loader"></div>
+
+  @if (titleSg()) {
+    <h3 class="loader-container__title">{{ titleSg() }}</h3>
+  }
+
+  @if (messageSg()) {
+    <p class="loader-container__message">{{ messageSg() }}</p>
+  }
+</div>

@@ -24,13 +24,14 @@ services:
 
 networks:
   api-gateway:
+    name: spotlite-api-gateway
 
 include:
   - frontend/docker-compose.yml
   - user-service/docker-compose.yml
   - content-service/docker-compose.yml
-  # - ratings-service/docker-compose.yml
-  # - subscriptions-service/docker-compose.yml
-  # - notifications-service/docker-compose.yml
+  - notification-service/docker-compose.yml
+  # - rating-service/docker-compose.yml
+  # - subscription-service/docker-compose.yml
   # - recommendation-service/docker-compose.yml
-  # - analytics-service/docker-compose.yml
+  # - analytic-service/docker-compose.yml

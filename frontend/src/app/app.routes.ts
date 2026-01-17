@@ -9,12 +9,15 @@ import {
 } from './pages';
 
 import { HomePage } from './pages/home-page';
+import { ForgotPasswordPage } from './pages/forgot-password-page/forgot-password-page';
+import { ResetPasswordPage } from './pages/reset-password-page/reset-password-page';
 import { AdminPage } from './pages/admin-page';
 import { CredentialsStep, OtpStep } from './pages/login-page/components';
 import {
   PersonalInfoStep,
   RegistrationCredentialsStep,
 } from './pages/registration-page/components';
+import { InboxPage } from './pages/inbox-page';
 
 export const routes: Routes = [
   {
@@ -68,6 +71,14 @@ export const routes: Routes = [
     component: CheckEmailPage,
   },
   {
+    path: 'forgot-password',
+    component: ForgotPasswordPage,
+  },
+  {
+    path: 'reset-password',
+    component: ResetPasswordPage,
+  },
+  {
     path: 'home',
     component: HomePage,
     children: [
@@ -93,6 +104,10 @@ export const routes: Routes = [
           ),
       },
     ],
+  },
+  {
+    path: 'inbox',
+    component: InboxPage,
   },
   {
     path: 'profile',

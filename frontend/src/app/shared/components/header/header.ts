@@ -1,8 +1,8 @@
-import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
-import { UserProfileDropdownComponent } from './components/user-profile-dropdown/user-profile-dropdown';
 import { AuthService } from '@app/services/auth.service';
+import { UserProfileDropdownComponent } from './components';
+import { Component, inject, input } from '@angular/core';
 
 @Component({
   selector: 'app-header',
@@ -12,8 +12,9 @@ import { AuthService } from '@app/services/auth.service';
   styleUrls: ['./header.scss'],
 })
 export class HeaderComponent {
-  readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  readonly authService = inject(AuthService);
+  readonly presentLogoSg = input<boolean>(false);
 
   navigateToHome(): void {
     this.router.navigate(['/home']);
