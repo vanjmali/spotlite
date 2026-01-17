@@ -14,7 +14,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true
-      traefik.docker.network: api-gateway
+      traefik.docker.network: spotlite-api-gateway
       traefik.http.routers.notification-service.rule: PathPrefix(`/api/notifications`)
       traefik.http.routers.notification-service.middlewares: notification-service-strip-prefix,notification-service-compress
       traefik.http.middlewares.notification-service-strip-prefix.stripprefix.prefixes: /api/notifications
@@ -81,6 +81,7 @@ services:
 networks:
   # Connects to Traefik
   api-gateway:
+    name: spotlite-api-gateway
   # Creates a private network for this microservice
   notification-internal:
 
