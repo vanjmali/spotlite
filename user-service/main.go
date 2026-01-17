@@ -72,15 +72,15 @@ func run() error {
 	requests.RegisterJSONTagNameFunc(v)
 
 	if err := requests.RegisterValidation(v, validation.CheckStrongPassword); err != nil {
-		return fmt.Errorf("failed to register custom validations: %w", err)
+		return fmt.Errorf("failed to register strong password validation: %w", err)
 	}
 
 	if err := requests.RegisterValidation(v, validation.CheckValidUsername); err != nil {
-		return fmt.Errorf("failed to register custom validations: %w", err)
+		return fmt.Errorf("failed to register username validation: %w", err)
 	}
 
 	if err := requests.RegisterValidation(v, validations.CheckValidName); err != nil {
-		return fmt.Errorf("failed to register custom validations: %w", err)
+		return fmt.Errorf("failed to register name validation: %w", err)
 	}
 
 	defer dbc.Disconnect(context.Background())
