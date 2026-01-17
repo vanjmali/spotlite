@@ -1,0 +1,49 @@
+@if (isOpen()) {
+  <app-dialog [title]="dialogTitle()" (closed)="cancel()">
+    <div content class="song-editor-dialog">
+      <app-text-input
+        label="Title"
+        placeholder="Enter song title"
+        [required]="true"
+        [(value)]="titleSg"
+      />
+
+      <app-text-input
+        label="Genre"
+        placeholder="Enter genre"
+        [required]="true"
+        [(value)]="genreSg"
+      />
+
+      <app-text-input
+        label="Duration (seconds)"
+        placeholder="Enter duration in seconds"
+        [required]="true"
+        type="number"
+        [(value)]="durationSg"
+      />
+
+      <app-select-input
+        label="Artists"
+        placeholder="Select artists"
+        [required]="true"
+        [options]="artistOptionsSg()"
+        [(value)]="selectedArtistIdsSg"
+      />
+    </div>
+
+    <div footer class="song-editor-dialog__footer">
+      <button class="btn-secondary" type="button" (click)="cancel()" [disabled]="isLoadingSg()">
+        Cancel
+      </button>
+      <button
+        class="btn-primary"
+        type="button"
+        (click)="submit()"
+        [disabled]="!isFormValid() || isLoadingSg()"
+      >
+        {{ submitButtonText() }}
+      </button>
+    </div>
+  </app-dialog>
+}
