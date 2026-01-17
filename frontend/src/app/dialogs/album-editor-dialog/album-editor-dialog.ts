@@ -52,7 +52,9 @@ export class AlbumEditorDialogComponent {
   // Computed
   readonly dialogTitle = computed(() => 'Create Album');
   readonly submitButtonText = computed(() => 'Create');
+  readonly isCreateMode = computed(() => !this.album());
   readonly isLoadingSg = signal(false);
+  readonly isSongsValid = computed(() => !this.isCreateMode() || this.selectedSongIdsSg().length > 0);
   readonly isFormValid = computed(() => {
     const title = this.titleSg().trim();
     const releaseDate = this.releaseDateSg().trim();
@@ -64,7 +66,8 @@ export class AlbumEditorDialogComponent {
       releaseDate.length > 0 &&
       genres.length >= 1 &&
       genres.every((g) => g.length > 0) &&
-      artists.length > 0
+      artists.length > 0 &&
+      this.isSongsValid()
     );
   });
 
