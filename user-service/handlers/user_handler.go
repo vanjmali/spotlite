@@ -146,14 +146,14 @@ func (h *UserHandler) HandleAccountVerification(w http.ResponseWriter, r *http.R
 	// initialize account verification
 	err := h.s.VerifyAccount(r.Context(), token)
 	if err != nil {
-		switch {
-		case errors.Is(err, repositories.ErrTokenExpired):
-			http.Redirect(w, r, h.config.VerificationFailureUrl, http.StatusSeeOther)
-			return
-		default:
+		if errors.Is(err, repositories.ErrTokenExpired) {
 			http.Redirect(w, r, h.config.VerificationFailureUrl, http.StatusSeeOther)
 			return
 		}
+
+		log.Printf("trace_id=%s failed to verify account: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.InternalServerError(w)
+		return
 	}
 
 	// handle account verification success
