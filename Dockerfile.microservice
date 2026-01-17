@@ -29,10 +29,12 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 	-o /app/build.bin \
 	main.go
 
-FROM gcr.io/distroless/static:latest
+FROM gcr.io/distroless/static:nonroot
 
 WORKDIR /app
 
 COPY --from=build /app/build.bin /usr/bin/service
+
+USER nonroot
 
 ENTRYPOINT ["/usr/bin/service"]
