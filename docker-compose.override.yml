@@ -105,6 +105,7 @@ services:
       traefik.enable: true
       traefik.docker.network: api-gateway
       traefik.http.routers.user-mongo-express.rule: PathPrefix(`/dev/user-service`)
+      traefik.http.routers.user-mongo-express.middlewares: user-mongo-express-strip-prefix
       traefik.http.middlewares.user-mongo-express-strip-prefix.stripprefix.forceslash: false
       traefik.http.services.user-mongo-express.loadbalancer.server.port: "8081"
       traefik.http.services.user-mongo-express.loadbalancer.healthcheck.path: /dev/user-service
@@ -131,8 +132,12 @@ services:
       traefik.enable: true
       traefik.docker.network: api-gateway
       traefik.http.routers.content-mongo-express.rule: PathPrefix(`/dev/content-service`)
+      traefik.http.routers.content-mongo-express.middlewares: content-mongo-express-strip-prefix
       traefik.http.middlewares.content-mongo-express-strip-prefix.stripprefix.forceslash: false
       traefik.http.services.content-mongo-express.loadbalancer.server.port: "8081"
+      traefik.http.services.content-mongo-express.loadbalancer.healthcheck.path: /dev/content-service
+      traefik.http.services.content-mongo-express.loadbalancer.healthcheck.interval: 5s
+      traefik.http.services.content-mongo-express.loadbalancer.healthcheck.timeout: 2s
     environment:
       ME_CONFIG_BASICAUTH: "false"
       ME_CONFIG_SITE_BASEURL: /dev/content-service
