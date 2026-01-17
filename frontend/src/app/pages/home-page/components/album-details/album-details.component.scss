@@ -1,0 +1,186 @@
+@use 'variables/colors' as *;
+
+.album-details {
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+
+  &__back-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: $color-gray-700;
+    border: none;
+    border-radius: 6px;
+    color: $color-text-primary;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+    width: fit-content;
+
+    &:hover {
+      background-color: $color-gray-600;
+    }
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  &__loading,
+  &__empty,
+  &__no-songs {
+    text-align: center;
+    padding: 2rem;
+    color: $color-gray-400;
+    font-size: 0.875rem;
+  }
+
+  &__widget-content {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  &__header {
+    display: flex;
+    gap: 2rem;
+  }
+
+  &__info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  &__release-date {
+    font-size: 0.875rem;
+    color: $color-gray-400;
+    margin: 0;
+  }
+
+  &__genres {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  &__genre-tag {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background-color: rgba($color-primary, 0.15);
+    color: $color-primary;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  &__artists {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    strong {
+      font-size: 0.875rem;
+      color: $color-gray-200;
+    }
+  }
+
+  &__artist-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  &__artist-tag {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background-color: rgba($color-gray-700, 0.5);
+    color: $color-gray-200;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  &__songs {
+    padding: 0;
+  }
+
+  &__songs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  &__song-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 0.375rem;
+    background-color: rgba($color-gray-900, 0.5);
+    transition: background-color 0.2s ease;
+
+    &:hover {
+      background-color: rgba($color-primary, 0.1);
+    }
+  }
+
+  &__song-index {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2rem;
+    height: 2rem;
+    background-color: rgba($color-primary, 0.15);
+    color: $color-primary;
+    border-radius: 50%;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  &__song-info {
+    flex: 1;
+    margin: 0;
+
+    p {
+      margin: 0;
+      font-size: 0.875rem;
+    }
+  }
+
+  &__song-title {
+    color: $color-gray-200;
+    font-weight: 500;
+  }
+
+  &__song-meta {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+  }
+
+  &__song-artist {
+    color: $color-gray-400;
+  }
+
+  &__song-genre {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    background-color: rgba($color-primary, 0.15);
+    color: $color-primary;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+}

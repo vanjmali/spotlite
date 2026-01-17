@@ -1,0 +1,68 @@
+<div class="album-details">
+  <button class="album-details__back-button" (click)="goBack()">
+    <mat-icon>arrow_back</mat-icon>
+    <span>Back</span>
+  </button>
+
+  @if (isLoadingSg()) {
+    <p class="album-details__loading">Loading album...</p>
+  } @else if (!albumSg()) {
+    <p class="album-details__empty">Album not found</p>
+  } @else {
+    <!-- Album Info Widget -->
+    <app-widget [title]="albumSg()!.title">
+      <div content class="album-details__widget-content">
+        <div class="album-details__header">
+          <div class="album-details__info">
+            <p class="album-details__release-date">
+              Released: {{ formatDate(albumSg()!.releaseDate) }}
+            </p>
+            <div class="album-details__genres">
+              @for (genre of albumSg()!.genres; track genre) {
+                <span class="album-details__genre-tag">{{ genre }}</span>
+              }
+            </div>
+            <div class="album-details__artists">
+              <strong>Artists:</strong>
+              <div class="album-details__artist-list">
+                @for (artist of albumSg()!.artists; track artist.id) {
+                  <span class="album-details__artist-tag">{{ artist.name }}</span>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </app-widget>
+
+    <!-- Songs Widget -->
+    <app-widget title="Songs">
+      <div content class="album-details__songs">
+        @if (!albumSg()!.songs || albumSg()!.songs.length === 0) {
+          <p class="album-details__no-songs">No songs in this album</p>
+        } @else {
+          <div class="album-details__songs-list">
+            @for (song of albumSg()!.songs; track song.id) {
+              <div class="album-details__song-item">
+                <div class="album-details__song-index">{{ $index + 1 }}</div>
+                <div class="album-details__song-info">
+                  <p class="album-details__song-title">{{ song.title }}</p>
+                  <div class="album-details__song-meta">
+                    @if (song.artists && song.artists.length > 0) {
+                      <span class="album-details__song-artist">{{ song.artists[0].name }}</span>
+                    } @else {
+                      <span class="album-details__song-artist">Unknown Artist</span>
+                    }
+                    @if (song.genre) {
+                      <span class="album-details__song-genre">{{ song.genre }}</span>
+                    }
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </app-widget>
+  }
+</div>

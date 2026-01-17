@@ -1,6 +1,86 @@
 <app-widget title="Manage Albums">
-  <div content>
-    <p>Albums management content goes here</p>
-    <!-- TODO: Add albums management functionality -->
+  <button
+    actions
+    class="albums-management__btn-add-circle"
+    (click)="onAddNew()"
+    [disabled]="isLoadingSg()"
+    title="Add new album"
+    matTooltip="Add new album"
+  >
+    <mat-icon>add</mat-icon>
+  </button>
+
+  <div content class="albums-management">
+    <!-- Loading State -->
+    @if (isLoadingSg()) {
+      <div class="albums-management__loading">
+        <p>Loading albums...</p>
+      </div>
+    }
+
+    <!-- Empty State -->
+    @if (!isLoadingSg() && albumsSg().length === 0) {
+      <div class="albums-management__empty">
+        <p>No albums found. Create one to get started!</p>
+      </div>
+    }
+
+    <!-- Albums Table -->
+    @if (!isLoadingSg() && albumsSg().length > 0) {
+      <div class="albums-management__table-wrapper">
+        <table class="albums-management__table">
+          <thead class="albums-management__table-head">
+            <tr>
+              <th class="albums-management__col-title">Title</th>
+              <th class="albums-management__col-release-date">Release Date</th>
+              <th class="albums-management__col-genres">Genres</th>
+              <th class="albums-management__col-artists">Artists</th>
+              <th class="albums-management__col-songs">Songs</th>
+            </tr>
+          </thead>
+          <tbody class="albums-management__table-body">
+            @for (album of albumsSg(); track album.id) {
+              <tr class="albums-management__row">
+                <td class="albums-management__cell albums-management__cell--title">
+                  {{ album.title }}
+                </td>
+                <td class="albums-management__cell albums-management__cell--release-date">
+                  {{ formatDate(album.releaseDate) }}
+                </td>
+                <td class="albums-management__cell albums-management__cell--genres">
+                  <div class="albums-management__genre-list">
+                    @for (genre of album.genres; track genre) {
+                      <span class="albums-management__genre-tag">
+                        {{ genre }}
+                      </span>
+                    }
+                  </div>
+                </td>
+                <td class="albums-management__cell albums-management__cell--artists">
+                  <div class="albums-management__artist-list">
+                    @for (artist of album.artists; track artist.id) {
+                      <span class="albums-management__artist-tag">
+                        {{ artist.name }}
+                      </span>
+                    }
+                  </div>
+                </td>
+                <td class="albums-management__cell albums-management__cell--songs">
+                  <span class="albums-management__song-count">{{ album.songs.length }}</span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
   </div>
 </app-widget>
+
+<!-- Album Editor Dialog -->
+<app-album-editor-dialog
+  [album]="selectedAlbumSg()"
+  [isOpen]="isDialogOpenSg()"
+  (closed)="isDialogOpenSg.set(false)"
+  (saved)="onDialogSaved()"
+></app-album-editor-dialog>

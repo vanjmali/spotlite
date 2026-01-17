@@ -42,10 +42,29 @@ export class SongService {
   private apiUrl = '/api/content/songs';
 
   /**
-   * Get all songs with pagination
+   * Get all songs with pagination and filtering
    */
-  getSongs(page: number = 1, size: number = 10): Observable<PaginatedResponse<Song>> {
-    const params = new HttpParams().set('page', page.toString()).set('size', size.toString());
+  getSongs(
+    page: number = 1,
+    size: number = 10,
+    filters?: {
+      title?: string;
+      genre?: string;
+      artist_id?: string;
+    }
+  ): Observable<PaginatedResponse<Song>> {
+    let params = new HttpParams().set('page', page.toString()).set('size', size.toString());
+
+    if (filters?.title) {
+      params = params.set('title', filters.title);
+    }
+    if (filters?.genre) {
+      params = params.set('genre', filters.genre);
+    }
+    if (filters?.artist_id) {
+      params = params.set('artist_id', filters.artist_id);
+    }
+
     return this.http.get<PaginatedResponse<Song>>(this.apiUrl, { params });
   }
 

@@ -1,0 +1,109 @@
+@if (isOpen()) {
+  <app-dialog [title]="dialogTitle()" (closed)="cancel()">
+    <div content class="album-editor-dialog">
+      <app-text-input
+        label="Title"
+        placeholder="Enter album title"
+        [required]="true"
+        [(value)]="titleSg"
+      />
+
+      <app-date-input label="Release Date" [required]="true" [(value)]="releaseDateSg" />
+
+      <!-- Genres Section -->
+      <div class="album-editor-dialog__genres">
+        <label class="album-editor-dialog__label">Genres</label>
+        <div class="album-editor-dialog__genre-input">
+          <input
+            #genreInput
+            type="text"
+            class="album-editor-dialog__genre-field"
+            [value]="currentGenreSg()"
+            (input)="currentGenreSg.set(genreInput.value)"
+            placeholder="Enter a genre and click Add"
+            (keyup.enter)="addGenre()"
+          />
+          <button
+            class="album-editor-dialog__btn-add-genre"
+            type="button"
+            (click)="addGenre()"
+            [disabled]="!currentGenreSg().trim()"
+          >
+            Add
+          </button>
+        </div>
+        @if (genresSg().length > 0) {
+          <div class="album-editor-dialog__genre-tags">
+            @for (genre of genresSg(); track genre) {
+              <span class="album-editor-dialog__genre-tag">
+                {{ genre }}
+                <button
+                  type="button"
+                  class="album-editor-dialog__btn-remove-genre"
+                  (click)="removeGenre(genre)"
+                  title="Remove genre"
+                >
+                  ×
+                </button>
+              </span>
+            }
+          </div>
+        }
+      </div>
+
+      <app-select-input
+        label="Artists"
+        placeholder="Select artists"
+        [required]="true"
+        [options]="artistOptionsSg()"
+        [(value)]="selectedArtistIdsSg"
+      />
+
+      <!-- Songs Section -->
+      @if (selectedArtistIdsSg().length > 0) {
+        <div class="album-editor-dialog__songs">
+          <label class="album-editor-dialog__label">
+            Songs
+            @if (isLoadingSongsSg()) {
+              <span class="album-editor-dialog__loading">(Loading...)</span>
+            }
+          </label>
+          @if (availableSongsSg().length > 0) {
+            <div class="album-editor-dialog__songs-list">
+              @for (song of availableSongsSg(); track song.id) {
+                <div class="album-editor-dialog__song-item">
+                  <input
+                    type="checkbox"
+                    [id]="'song-' + song.id"
+                    [checked]="isSongSelected(song.id)"
+                    (change)="toggleSongSelection(song.id)"
+                    class="album-editor-dialog__song-checkbox"
+                  />
+                  <label [for]="'song-' + song.id" class="album-editor-dialog__song-label">
+                    {{ song.title }}
+                  </label>
+                </div>
+              }
+            </div>
+          } @else if (!isLoadingSongsSg()) {
+            <p class="album-editor-dialog__no-songs">No songs available for selected artists</p>
+          }
+        </div>
+      }
+    </div>
+
+    <div footer class="album-editor-dialog__footer">
+      <button class="btn-secondary" type="button" (click)="cancel()" [disabled]="isLoadingSg()">
+        Cancel
+      </button>
+      <button
+        class="btn-primary"
+        type="button"
+        (click)="submit()"
+        [disabled]="!isFormValid() || isLoadingSg()"
+      >
+        {{ submitButtonText() }}
+      </button>
+    </div>
+  </app-dialog>
+}

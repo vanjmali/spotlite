@@ -85,6 +85,13 @@ export const routes: Routes = [
             (m) => m.ArtistDetailsComponent
           ),
       },
+      {
+        path: 'album/:id',
+        loadComponent: () =>
+          import('./pages/home-page/components/album-details/album-details.component').then(
+            (m) => m.AlbumDetailsComponent
+          ),
+      },
     ],
   },
   {
