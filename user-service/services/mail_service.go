@@ -10,6 +10,7 @@ import (
 // MailConfig holds configuration needed by the mail service.
 type MailConfig struct {
 	VerificationEndpoint string
+	PasswordResetURL     string
 	MailFromAddress      string
 }
 
@@ -17,6 +18,7 @@ type MailConfig struct {
 type MailSender interface {
 	SendAccountVerificationEmail(mailto string, token string) error
 	SendLoginOtp(mailto string, otp string) error
+	SendPasswordResetEmail(mailto string, token string) error
 }
 
 // MailClient defines the mail client operations used by MailService.
@@ -94,6 +96,39 @@ func (ms *MailService) SendLoginOtp(mailto string, otp string) error {
 	err = ms.c.DialAndSend(m)
 	if err != nil {
 		log.Printf("failed to send OTP email: %v", err)
+	}
+	return err
+}
+
+// SendPasswordResetEmail sends a password reset magic link email to the given recipient.
+func (ms *MailService) SendPasswordResetEmail(mailto string, token string) error {
+	m := mail.NewMsg()
+
+	if err := m.From(ms.config.MailFromAddress); err != nil {
+		log.Printf("failed to set From address: %v", err)
+		return err
+	}
+
+	if err := m.To(mailto); err != nil {
+		log.Printf("failed to set To address: %v", err)
+		return err
+	}
+
+	m.Subject("Reset Your Spotlite Password")
+
+	// Render email template with reset link
+	resetLink := ms.config.PasswordResetURL + "?token=" + url.QueryEscape(token)
+	emailBody, err := RenderPasswordResetEmail(resetLink)
+	if err != nil {
+		log.Printf("failed to render password reset email template: %v", err)
+		return err
+	}
+
+	m.SetBodyString(mail.TypeTextHTML, emailBody)
+
+	err = ms.c.DialAndSend(m)
+	if err != nil {
+		log.Printf("failed to send password reset email: %v", err)
 	}
 	return err
 }

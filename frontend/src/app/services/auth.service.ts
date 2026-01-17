@@ -61,7 +61,7 @@ export class AuthService {
     try {
       const response = await firstValueFrom(
         this.http.get<{ exists: boolean }>(
-          `${this.API_BASE}/check-email/${encodeURIComponent(email)}`
+          `${this.API_BASE}/check-email?email=${encodeURIComponent(email)}`
         )
       );
       return response.exists;

@@ -79,4 +79,6 @@ export const VALIDATION_MESSAGES = {
   OTP_VERIFICATION_FAILED: 'OTP verification failed',
   OTP_RESEND_FAILED: 'Failed to resend OTP. Please try again.',
   MISSING_EMAIL: 'Missing email',
+  PASSWORD_RESET_FAILED: 'Failed to reset password. Please try again.',
+  INVALID_RECOVERY_LINK: 'Invalid or expired recovery link',
 } as const;

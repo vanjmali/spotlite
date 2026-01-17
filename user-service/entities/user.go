@@ -47,3 +47,15 @@ type OTPCode struct {
 	Hash   string    `bson:"hash"`
 	Expiry time.Time `bson:"expiry"`
 }
+
+// PasswordRecoveryToken represents a password reset token stored in MongoDB.
+type PasswordRecoveryToken struct {
+	ID              primitive.ObjectID `bson:"_id,omitempty"`
+	UserID          primitive.ObjectID `bson:"user_id"`
+	Email           string             `bson:"email"`
+	TokenHash       string             `bson:"token_hash"`       // bcrypt hash for security
+	TokenSearchable string             `bson:"token_searchable"` // SHA256 of plaintext for lookup
+	ExpiresAt       time.Time          `bson:"expires_at"`
+	UsedAt          *time.Time         `bson:"used_at,omitempty"` // null until used
+	CreatedAt       time.Time          `bson:"created_at"`
+}
