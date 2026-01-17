@@ -14,19 +14,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  build-test-lint:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service: &services
+        service:
           - common-lib
           - user-service
           - content-service
           - notification-service
-          # - rating-service
-          # - subscription-service
-          # - recommendation-service
-          # - analytics-service
+          - rating-service
+          - subscription-service
+          - recommendation-service
+          - analytics-service
     defaults:
       run:
         working-directory: ${{ matrix.service }}
@@ -46,22 +46,6 @@ jobs:
 
       - name: Test
         run: go test -v ./...
-
-  lint:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: *services
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: ${{ env.GO_VERSION }}
-          cache: true
-          cache-dependency-path: ${{ matrix.service }}/go.sum
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
