@@ -32,7 +32,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true
-      traefik.docker.network: api-gateway
+      traefik.docker.network: spotlite-api-gateway
       traefik.http.routers.user-service.rule: PathPrefix(`/api/users`)
       traefik.http.routers.user-service.middlewares: user-service-strip-prefix
       traefik.http.middlewares.user-service-strip-prefix.stripprefix.prefixes: /api/users
@@ -89,6 +89,7 @@ services:
 networks:
   # Connects to Traefik
   api-gateway:
+    name: spotlite-api-gateway
   # Creates a private network for this microservice
   user-internal:
 

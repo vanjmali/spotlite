@@ -11,7 +11,7 @@ entryPoints:
 providers:
   docker:
     exposedByDefault: false
-    network: api-gateway
+    network: spotlite-api-gateway
 
 api:
   dashboard: true
