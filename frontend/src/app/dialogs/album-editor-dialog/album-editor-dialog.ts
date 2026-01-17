@@ -9,7 +9,7 @@ import {
   DateInputComponent,
   type SelectOption,
 } from '@app/shared/components/input';
-import { AlbumService, Album, CreateAlbumDto } from '@app/services/album.service';
+import { AlbumService, Album, CreateAlbumDto, UpdateAlbumDto } from '@app/services/album.service';
 import { ArtistService } from '@app/services/artist.service';
 import { SongService, type Song } from '@app/services/song.service';
 
@@ -50,9 +50,9 @@ export class AlbumEditorDialogComponent {
   readonly isLoadingSongsSg = signal(false);
 
   // Computed
-  readonly dialogTitle = computed(() => 'Create Album');
-  readonly submitButtonText = computed(() => 'Create');
   readonly isCreateMode = computed(() => !this.album());
+  readonly dialogTitle = computed(() => (this.isCreateMode() ? 'Create Album' : 'Edit Album'));
+  readonly submitButtonText = computed(() => (this.isCreateMode() ? 'Create' : 'Save'));
   readonly isLoadingSg = signal(false);
   readonly isSongsValid = computed(() => !this.isCreateMode() || this.selectedSongIdsSg().length > 0);
   readonly isFormValid = computed(() => {
@@ -86,6 +86,7 @@ export class AlbumEditorDialogComponent {
             // Set artists array
             const artistIds = albumData.artists.map((a) => a.id);
             this.selectedArtistIdsSg.set(artistIds);
+            this.selectedSongIdsSg.set(albumData.songs.map((song) => song.id));
           }
         } else {
           // Create mode - clear form
@@ -186,15 +187,43 @@ export class AlbumEditorDialogComponent {
 
   onSave(): void {
     this.isLoadingSg.set(true);
-    const albumDto: CreateAlbumDto = {
+    if (this.isCreateMode()) {
+      const albumDto: CreateAlbumDto = {
+        title: this.titleSg(),
+        release_date: this.releaseDateSg(),
+        genres: this.genresSg(),
+        song_ids: this.selectedSongIdsSg(),
+        artist_ids: this.selectedArtistIdsSg(),
+      };
+
+      this.albumService.createAlbum(albumDto).subscribe({
+        next: () => {
+          this.isLoadingSg.set(false);
+          this.saved.emit();
+          this.cancel();
+        },
+        error: (error) => {
+          console.error('Failed to save album:', error);
+          this.isLoadingSg.set(false);
+        },
+      });
+      return;
+    }
+
+    const album = this.album();
+    if (!album) {
+      this.isLoadingSg.set(false);
+      return;
+    }
+
+    const updateDto: UpdateAlbumDto = {
       title: this.titleSg(),
       release_date: this.releaseDateSg(),
       genres: this.genresSg(),
-      song_ids: this.selectedSongIdsSg(),
       artist_ids: this.selectedArtistIdsSg(),
     };
 
-    this.albumService.createAlbum(albumDto).subscribe({
+    this.albumService.updateAlbum(album.id, updateDto).subscribe({
       next: () => {
         this.isLoadingSg.set(false);
         this.saved.emit();

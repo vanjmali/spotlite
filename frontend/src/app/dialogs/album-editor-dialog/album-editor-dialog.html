@@ -59,8 +59,8 @@
         [(value)]="selectedArtistIdsSg"
       />
 
-      <!-- Songs Section -->
-      @if (selectedArtistIdsSg().length > 0) {
+      <!-- Songs Section (create only) -->
+      @if (isCreateMode() && selectedArtistIdsSg().length > 0) {
         <div class="album-editor-dialog__songs">
           <label class="album-editor-dialog__label">
             Songs

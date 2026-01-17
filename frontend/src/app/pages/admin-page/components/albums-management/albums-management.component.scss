@@ -114,11 +114,15 @@
   }
 
   &__col-artists {
-    width: 28%;
+    width: 24%;
   }
 
   &__col-songs {
-    width: 24%;
+    width: 14%;
+  }
+
+  &__col-actions {
+    width: 14%;
   }
 
   &__row {
@@ -152,6 +156,10 @@
     }
 
     &--songs {
+      text-align: center;
+    }
+
+    &--actions {
       text-align: center;
     }
   }
@@ -200,5 +208,59 @@
     border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 600;
+  }
+
+  &__btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    margin: 0 0.25rem;
+    border: none;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: transparent;
+
+    mat-icon {
+      font-size: 1.25rem;
+      width: 1.25rem;
+      height: 1.25rem;
+      color: inherit;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  &__btn-edit {
+    color: $color-primary-light;
+    opacity: 0.7;
+
+    &:hover:not(:disabled) {
+      background-color: rgba($color-primary, 0.15);
+      color: $color-primary;
+    }
+
+    &:active:not(:disabled) {
+      background-color: rgba($color-primary, 0.25);
+    }
+  }
+
+  &__btn-songs {
+    color: $color-gray-300;
+
+    &:hover:not(:disabled) {
+      background-color: rgba($color-gray-300, 0.15);
+      color: $color-gray-100;
+    }
+
+    &:active:not(:disabled) {
+      background-color: rgba($color-gray-300, 0.25);
+    }
   }
 }

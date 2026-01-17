@@ -36,6 +36,7 @@
               <th class="albums-management__col-genres">Genres</th>
               <th class="albums-management__col-artists">Artists</th>
               <th class="albums-management__col-songs">Songs</th>
+              <th class="albums-management__col-actions">Actions</th>
             </tr>
           </thead>
           <tbody class="albums-management__table-body">
@@ -68,6 +69,24 @@
                 <td class="albums-management__cell albums-management__cell--songs">
                   <span class="albums-management__song-count">{{ album.songs.length }}</span>
                 </td>
+                <td class="albums-management__cell albums-management__cell--actions">
+                  <button
+                    class="albums-management__btn-action albums-management__btn-edit"
+                    (click)="onEdit(album)"
+                    title="Edit album"
+                    matTooltip="Edit album"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button
+                    class="albums-management__btn-action albums-management__btn-songs"
+                    (click)="onManageSongs(album)"
+                    title="Manage songs"
+                    matTooltip="Manage songs"
+                  >
+                    <mat-icon>playlist_add</mat-icon>
+                  </button>
+                </td>
               </tr>
             }
           </tbody>
@@ -84,3 +103,11 @@
   (closed)="isDialogOpenSg.set(false)"
   (saved)="onDialogSaved()"
 ></app-album-editor-dialog>
+
+<!-- Album Songs Dialog -->
+<app-album-songs-dialog
+  [album]="selectedSongsAlbumSg()"
+  [isOpen]="isSongsDialogOpenSg()"
+  (closed)="onSongsDialogClosed()"
+  (saved)="onSongsDialogSaved()"
+></app-album-songs-dialog>

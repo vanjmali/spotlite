@@ -95,7 +95,7 @@ export class AlbumService {
    * Update existing album
    */
   updateAlbum(id: string, dto: UpdateAlbumDto): Observable<void> {
-    return this.http.put<void>(`${this.apiUrl}/${id}`, dto);
+    return this.http.patch<void>(`${this.apiUrl}/${id}`, dto);
   }
 
   /**
@@ -108,11 +108,8 @@ export class AlbumService {
   /**
    * Get songs in album
    */
-  getAlbumSongs(id: string, page: number = 1, size: number = 10): Observable<PaginatedResponse<Song>> {
-    const params = new HttpParams()
-      .set('page', page.toString())
-      .set('size', size.toString());
-    return this.http.get<PaginatedResponse<Song>>(`${this.apiUrl}/${id}/songs`, { params });
+  getAlbumSongs(id: string): Observable<Song[]> {
+    return this.http.get<Song[]>(`${this.apiUrl}/${id}/songs`);
   }
 
   /**

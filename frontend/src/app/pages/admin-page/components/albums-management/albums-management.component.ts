@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { WidgetComponent } from '@app/shared/components/widget';
 import { AlbumEditorDialogComponent } from '@app/dialogs/album-editor-dialog';
+import { AlbumSongsDialogComponent } from '@app/dialogs/album-songs-dialog';
 import { AlbumService, Album } from '@app/services/album.service';
 
 @Component({
@@ -17,6 +18,7 @@ import { AlbumService, Album } from '@app/services/album.service';
     MatTooltipModule,
     WidgetComponent,
     AlbumEditorDialogComponent,
+    AlbumSongsDialogComponent,
   ],
   templateUrl: './albums-management.component.html',
   styleUrl: './albums-management.component.scss',
@@ -30,6 +32,8 @@ export class AlbumsManagementComponent {
   readonly pageSizeSg = signal(10);
   readonly isDialogOpenSg = signal(false);
   readonly selectedAlbumSg = signal<Album | null>(null);
+  readonly isSongsDialogOpenSg = signal(false);
+  readonly selectedSongsAlbumSg = signal<Album | null>(null);
 
   constructor() {
     effect(() => {
@@ -61,10 +65,24 @@ export class AlbumsManagementComponent {
     this.isDialogOpenSg.set(true);
   }
 
+  onManageSongs(album: Album): void {
+    this.selectedSongsAlbumSg.set(album);
+    this.isSongsDialogOpenSg.set(true);
+  }
+
   onDialogSaved(): void {
     this.isDialogOpenSg.set(false);
     this.selectedAlbumSg.set(null);
     this.loadAlbums();
+  }
+
+  onSongsDialogSaved(): void {
+    this.loadAlbums();
+  }
+
+  onSongsDialogClosed(): void {
+    this.isSongsDialogOpenSg.set(false);
+    this.selectedSongsAlbumSg.set(null);
   }
 
   formatDate(dateString: string): string {
