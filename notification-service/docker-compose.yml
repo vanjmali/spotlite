@@ -6,11 +6,11 @@ services:
         common-lib: ../common-lib
       dockerfile: ../Dockerfile.microservice
     environment:
-      CASSANDRA_HOST: ${CASSANDRA_HOST}
-      CASSANDRA_PORT: ${CASSANDRA_PORT}
-      CASSANDRA_DC: ${CASSANDRA_DC}
-      CASSANDRA_KEYSPACE: ${CASSANDRA_KEYSPACE}
-      APP_PORT: ${APP_HTTP_PORT}
+      CASSANDRA_HOST: ${CASSANDRA_HOST?}
+      CASSANDRA_PORT: ${CASSANDRA_PORT?}
+      CASSANDRA_DC: ${CASSANDRA_DC?}
+      CASSANDRA_KEYSPACE: ${CASSANDRA_KEYSPACE?}
+      APP_PORT: ${APP_HTTP_PORT?}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true
@@ -41,28 +41,28 @@ services:
     # the environments are optional and come in handy only when working with multiple nodes
     environment:
       # defining the logical cluster name so nodes know which cluster to join
-      CASSANDRA_CLUSTER_NAME: ${CASSANDRA_CLUSTER_NAME}
+      CASSANDRA_CLUSTER_NAME: ${CASSANDRA_CLUSTER_NAME?}
 
       # defining the data center this node belongs to.
       # very important in multi-node or multi-dc setups for replication and query routing
-      CASSANDRA_DC: ${CASSANDRA_DC}
+      CASSANDRA_DC: ${CASSANDRA_DC?}
 
       # the rack this node belongs to within the datacenter
       # helps cassandra distribute replicas across racks for fault tolerance
-      CASSANDRA_RACK: ${CASSANDRA_RACK}
+      CASSANDRA_RACK: ${CASSANDRA_RACK?}
 
       # defines a node which is just another node (storing data, handling queries)
       # but also acts as the entry point for new nodes joining the cluster.
-      CASSANDRA_SEEDS: ${CASSANDRA_HOST}
+      CASSANDRA_SEEDS: ${CASSANDRA_HOST?}
 
       # since cassandra is ran on JVM it can be extremely greedy by default when it comes to RAM usage
       # so explicitly define the threshold
-      MAX_HEAP_SIZE: ${CASSANDRA_MAX_HEAP}
+      MAX_HEAP_SIZE: ${CASSANDRA_MAX_HEAP?}
 
       # define size of young generation because cassandra by default calculates this value based on the
       # count of your physical CPU core count which may lead to a section of the heap to be defined as
       # larger than the whole heap itself :D
-      HEAP_NEWSIZE: ${CASSANDRA_NEW_HEAP}
+      HEAP_NEWSIZE: ${CASSANDRA_NEW_HEAP?}
 
       # the snitch tells cassandra how to discover and communicate topology.
       # GossipingPropertyFileSnitch reads the DC/rack info and shares it via gossip to other nodes.
