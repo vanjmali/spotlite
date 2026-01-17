@@ -3,6 +3,7 @@ export {
   OtpInputComponent,
   PasswordInputComponent,
   TextInputComponent,
+  TextareaInputComponent,
   EmailInputComponent,
 } from './components/input';
 export { MessageComponent } from './components/message';

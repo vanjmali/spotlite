@@ -1,0 +1,29 @@
+<div class="textarea-input">
+  <div class="textarea-input__form-group">
+    <label class="textarea-input__label" [for]="labelSg()">
+      {{ labelSg() }}
+      @if (requiredSg()) {
+        <span class="textarea-input__required">*</span>
+      }
+    </label>
+    <textarea
+      class="textarea-input__input"
+      [class.textarea-input__input--error]="errorSg()"
+      [id]="labelSg()"
+      [value]="valueSg()"
+      [placeholder]="placeholderSg()"
+      [rows]="rowsSg()"
+      (input)="onValueChange($any($event.target).value)"
+    ></textarea>
+  </div>
+
+  @if (errorSg()) {
+    <app-error [message]="errorSg()" />
+  }
+
+  @if (showCounterSg()) {
+    <div class="textarea-input__counter">
+      {{ valueSg().length }} / {{ maxSg() }}
+    </div>
+  }
+</div>

@@ -1,0 +1,89 @@
+@use 'variables/colors' as *;
+
+.artist-details {
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+
+  &__back-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: $color-gray-700;
+    border: none;
+    border-radius: 6px;
+    color: $color-text-primary;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+    width: fit-content;
+
+    &:hover {
+      background-color: $color-gray-600;
+    }
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  &__widget-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  &__header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    text-align: center;
+  }
+
+  &__image {
+    width: 240px;
+    height: 240px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, $color-primary, $color-purple-600);
+  }
+
+  &__initial {
+    font-size: 96px;
+    font-weight: 700;
+    color: $color-white;
+    line-height: 1;
+  }
+
+  &__albums {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__placeholder {
+    margin: 0;
+    color: $color-gray-400;
+    font-size: 14px;
+  }
+
+  &__loading,
+  &__empty {
+    text-align: center;
+    color: $color-gray-400;
+    font-size: 16px;
+    padding: 40px 20px;
+  }
+}

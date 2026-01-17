@@ -1,0 +1,22 @@
+<app-widget title="Artists">
+  <div content class="artists-list">
+    @if (isLoadingSg()) {
+      <p class="artists-list__loading">Loading artists...</p>
+    } @else if (artistsSg().length === 0) {
+      <p class="artists-list__empty">No artists available</p>
+    } @else {
+      <div class="artists-list__grid">
+        @for (artist of artistsSg(); track artist.id) {
+          <div class="artists-list__artist-card" (click)="selectArtist(artist)">
+            <div class="artists-list__artist-image">
+              <span class="artists-list__artist-initial">{{
+                artist.name.charAt(0).toUpperCase()
+              }}</span>
+            </div>
+            <h3 class="artists-list__artist-name">{{ artist.name }}</h3>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</app-widget>

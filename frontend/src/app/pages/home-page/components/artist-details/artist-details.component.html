@@ -1,0 +1,30 @@
+<div class="artist-details">
+  <button class="artist-details__back-button" (click)="goBack()">
+    <mat-icon>arrow_back</mat-icon>
+    <span>Back</span>
+  </button>
+
+  @if (isLoadingSg()) {
+    <p class="artist-details__loading">Loading artist...</p>
+  } @else if (!artistSg()) {
+    <p class="artist-details__empty">Artist not found</p>
+  } @else {
+    <!-- Artist Info Widget -->
+    <app-widget [title]="artistSg()!.name">
+      <div content class="artist-details__widget-content">
+        <div class="artist-details__header">
+          <div class="artist-details__image">
+            <span class="artist-details__initial">{{ artistSg()!.name.charAt(0).toUpperCase() }}</span>
+          </div>
+        </div>
+      </div>
+    </app-widget>
+
+    <!-- Albums Widget -->
+    <app-widget title="Albums">
+      <div content class="artist-details__albums">
+        <p class="artist-details__placeholder">Albums will be displayed here</p>
+      </div>
+    </app-widget>
+  }
+</div>

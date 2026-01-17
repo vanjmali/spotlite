@@ -70,6 +70,22 @@ export const routes: Routes = [
   {
     path: 'home',
     component: HomePage,
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./pages/home-page/components/artists-list/artists-list.component').then(
+            (m) => m.ArtistsListComponent
+          ),
+      },
+      {
+        path: 'artist/:id',
+        loadComponent: () =>
+          import('./pages/home-page/components/artist-details/artist-details.component').then(
+            (m) => m.ArtistDetailsComponent
+          ),
+      },
+    ],
   },
   {
     path: 'admin',
