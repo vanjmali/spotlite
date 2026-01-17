@@ -2,6 +2,9 @@
   <div class="text-input__form-group">
     <label class="text-input__label" for="text">
       {{ labelSg() }}
+      @if (requiredSg()) {
+        <span class="text-input__required">*</span>
+      }
     </label>
     <div class="text-input__input-wrapper">
       <input

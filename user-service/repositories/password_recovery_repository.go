@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/vanjmali/spotlite/user-service/entities"
@@ -53,7 +54,7 @@ func (r *PasswordRecoveryRepository) FindValidToken(ctx context.Context, tokenSe
 	var token entities.PasswordRecoveryToken
 	err := c.FindOne(ctx, filter).Decode(&token)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, ErrTokenExpired
 		}
 		return nil, err

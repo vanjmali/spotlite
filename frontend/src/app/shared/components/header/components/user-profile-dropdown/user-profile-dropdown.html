@@ -23,6 +23,15 @@
         <span class="user-profile__option-text">Inbox</span>
       </button>
 
+      <!-- Admin Portal Option -->
+      <button
+        class="user-profile__option user-profile__option--admin"
+        (click)="navigateToAdmin()"
+        type="button"
+      >
+        <span class="user-profile__option-text">Admin Portal</span>
+        <mat-icon class="user-profile__option-icon">admin_panel_settings</mat-icon>
+      </button>
       <!-- Logout Option -->
       <button
         class="user-profile__option user-profile__option--logout"

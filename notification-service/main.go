@@ -56,7 +56,7 @@ func run() error {
 	// initialize cassandra session which will be used to execute queries
 	cs, err := infrastructure.Initialize(cassHost, ks)
 	if err != nil {
-		return fmt.Errorf("failed to initialize database session: %v", err)
+		return fmt.Errorf("failed to initialize database session: %w", err)
 	}
 	defer cs.Close()
 

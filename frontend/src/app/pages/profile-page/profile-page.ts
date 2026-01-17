@@ -4,12 +4,19 @@ import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { signal } from '@angular/core';
 import { PageComponent } from '../../shared';
+import { WidgetComponent } from '@app/shared/components/widget';
 import { ChangePasswordDialogComponent } from '../../dialogs';
 
 @Component({
   selector: 'app-profile-page',
   standalone: true,
-  imports: [CommonModule, PageComponent, MatIconModule, ChangePasswordDialogComponent],
+  imports: [
+    CommonModule,
+    PageComponent,
+    MatIconModule,
+    WidgetComponent,
+    ChangePasswordDialogComponent,
+  ],
   templateUrl: './profile-page.html',
   styleUrls: ['./profile-page.scss'],
 })

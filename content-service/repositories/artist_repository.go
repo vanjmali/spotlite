@@ -99,7 +99,7 @@ func (r *ArtistRepository) FindAll(ctx context.Context, filter bson.M, skip int6
 	}
 	defer cur.Close(ctx)
 
-	var artists []entities.Artist
+	artists := make([]entities.Artist, 0)
 	if err := cur.All(ctx, &artists); err != nil {
 		return nil, 0, err
 	}

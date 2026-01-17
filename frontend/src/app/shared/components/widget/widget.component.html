@@ -1,0 +1,12 @@
+<div class="widget">
+  <div class="widget__header">
+    <h2 class="widget__title">{{ titleSg() }}</h2>
+    <div class="widget__actions">
+      <ng-content select="[actions]"></ng-content>
+    </div>
+  </div>
+
+  <div class="widget__content">
+    <ng-content select="[content]"></ng-content>
+  </div>
+</div>

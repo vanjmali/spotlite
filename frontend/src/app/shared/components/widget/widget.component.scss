@@ -1,0 +1,40 @@
+@use 'variables/colors' as *;
+@use 'mixins' as *;
+
+.widget {
+  padding: 12px;
+  background-color: $color-gray-800;
+  border-radius: 8px;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    gap: 1rem;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: $color-text-primary;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+
+  &__content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    @include scrollbar;
+  }
+}

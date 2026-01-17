@@ -1,0 +1,74 @@
+@use 'variables/colors' as *;
+
+:host {
+  width: 100%;
+}
+
+.textarea-input {
+  &__form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__label {
+    font-size: 15px;
+    font-weight: 500;
+    color: $color-form-label;
+  }
+
+  &__required {
+    color: $color-form-error;
+    margin-left: 2px;
+  }
+
+  &__input-wrapper {
+    display: flex;
+    align-items: flex-start;
+    position: relative;
+  }
+
+  &__input {
+    padding: 12px;
+    background-color: $color-form-input-bg;
+    border: 1px solid $color-form-input-border;
+    border-radius: 4px;
+    color: $color-form-input-text;
+    font-size: 16px;
+    transition: all 200ms ease;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 100px;
+
+    &::placeholder {
+      color: $color-form-input-placeholder;
+    }
+
+    &:hover {
+      border-color: $color-border-light;
+    }
+
+    &:focus {
+      outline: none;
+      border-color: $color-form-input-border-focus;
+    }
+
+    &--error {
+      border-color: $color-form-error;
+
+      &:hover,
+      &:focus {
+        border-color: $color-form-error;
+      }
+    }
+  }
+
+  &__counter {
+    font-size: 12px;
+    color: $color-form-input-placeholder;
+    text-align: right;
+    margin-top: 4px;
+  }
+}

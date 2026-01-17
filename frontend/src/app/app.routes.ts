@@ -11,6 +11,7 @@ import {
 import { HomePage } from './pages/home-page';
 import { ForgotPasswordPage } from './pages/forgot-password-page/forgot-password-page';
 import { ResetPasswordPage } from './pages/reset-password-page/reset-password-page';
+import { AdminPage } from './pages/admin-page';
 import { CredentialsStep, OtpStep } from './pages/login-page/components';
 import {
   PersonalInfoStep,
@@ -80,6 +81,29 @@ export const routes: Routes = [
   {
     path: 'home',
     component: HomePage,
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./pages/home-page/components/artists-list/artists-list.component').then(
+            (m) => m.ArtistsListComponent
+          ),
+      },
+      {
+        path: 'artist/:id',
+        loadComponent: () =>
+          import('./pages/home-page/components/artist-details/artist-details.component').then(
+            (m) => m.ArtistDetailsComponent
+          ),
+      },
+      {
+        path: 'album/:id',
+        loadComponent: () =>
+          import('./pages/home-page/components/album-details/album-details.component').then(
+            (m) => m.AlbumDetailsComponent
+          ),
+      },
+    ],
   },
   {
     path: 'inbox',
@@ -88,6 +112,38 @@ export const routes: Routes = [
   {
     path: 'profile',
     component: ProfilePage,
+  },
+  {
+    path: 'admin',
+    component: AdminPage,
+    children: [
+      {
+        path: 'artists',
+        loadComponent: () =>
+          import('./pages/admin-page/components/artists-management/artists-management.component').then(
+            (m) => m.ArtistsManagementComponent
+          ),
+      },
+      {
+        path: 'albums',
+        loadComponent: () =>
+          import('./pages/admin-page/components/albums-management/albums-management.component').then(
+            (m) => m.AlbumsManagementComponent
+          ),
+      },
+      {
+        path: 'songs',
+        loadComponent: () =>
+          import('./pages/admin-page/components/songs-management/songs-management.component').then(
+            (m) => m.SongsManagementComponent
+          ),
+      },
+      {
+        path: '',
+        redirectTo: 'artists',
+        pathMatch: 'full',
+      },
+    ],
   },
   {
     path: '',

@@ -1,0 +1,83 @@
+@if (isOpen()) {
+  <app-dialog [title]="dialogTitle()" (closed)="cancel()">
+    <div content class="album-songs-dialog">
+      @if (!album()) {
+        <p class="album-songs-dialog__empty">Select an album to manage songs.</p>
+      } @else {
+        <div class="album-songs-dialog__section">
+          <div class="album-songs-dialog__section-header">
+            <h3 class="album-songs-dialog__section-title">Current Songs</h3>
+            @if (isLoadingAlbumSongsSg()) {
+              <span class="album-songs-dialog__loading">Loading...</span>
+            }
+          </div>
+
+          @if (!isLoadingAlbumSongsSg() && albumSongsSg().length === 0) {
+            <p class="album-songs-dialog__empty">No songs in this album yet.</p>
+          } @else if (albumSongsSg().length > 0) {
+            <div class="album-songs-dialog__list">
+              @for (song of albumSongsSg(); track song.id) {
+                <div class="album-songs-dialog__list-item">
+                  <div class="album-songs-dialog__song-info">
+                    <span class="album-songs-dialog__song-title">{{ song.title }}</span>
+                    <span class="album-songs-dialog__song-meta">{{ song.genre }}</span>
+                  </div>
+                  <button
+                    class="album-songs-dialog__btn-remove"
+                    type="button"
+                    (click)="removeSong(song.id)"
+                    [disabled]="isRemovingSong(song.id)"
+                    title="Remove song"
+                  >
+                    <mat-icon>remove_circle</mat-icon>
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="album-songs-dialog__section">
+          <div class="album-songs-dialog__section-header">
+            <h3 class="album-songs-dialog__section-title">Add Songs</h3>
+            @if (isLoadingAvailableSongsSg()) {
+              <span class="album-songs-dialog__loading">Loading...</span>
+            }
+          </div>
+
+          @if (!isLoadingAvailableSongsSg() && availableSongsSg().length === 0) {
+            <p class="album-songs-dialog__empty">No additional songs available.</p>
+          } @else if (availableSongsSg().length > 0) {
+            <div class="album-songs-dialog__list album-songs-dialog__list--select">
+              @for (song of availableSongsSg(); track song.id) {
+                <label class="album-songs-dialog__list-item album-songs-dialog__list-item--select">
+                  <input
+                    type="checkbox"
+                    [checked]="isAddSongSelected(song.id)"
+                    (change)="toggleAddSongSelection(song.id)"
+                  />
+                  <div class="album-songs-dialog__song-info">
+                    <span class="album-songs-dialog__song-title">{{ song.title }}</span>
+                    <span class="album-songs-dialog__song-meta">{{ song.genre }}</span>
+                  </div>
+                </label>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div footer class="album-songs-dialog__footer">
+      <button class="btn-secondary" type="button" (click)="cancel()">Close</button>
+      <button
+        class="btn-primary"
+        type="button"
+        (click)="addSelectedSongs()"
+        [disabled]="!canAddSongs()"
+      >
+        Add Selected
+      </button>
+    </div>
+  </app-dialog>
+}
