@@ -110,13 +110,17 @@ p {
   transition: all 200ms ease;
   width: 100%;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: $color-primary-dark;
     transform: scale(1.04);
   }
 
-  &:active {
+  &:active:not(:disabled) {
     transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.5;
   }
 }
 
@@ -144,7 +148,6 @@ p {
 
   &:disabled {
     opacity: 0.5;
-    cursor: not-allowed;
   }
 }
 
@@ -161,13 +164,17 @@ p {
   transition: all 200ms ease;
   display: inline-block;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background-color: $color-gray-100;
     transform: scale(1.04);
   }
 
-  &:active {
+  &:active:not(:disabled) {
     transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.5;
   }
 }
 

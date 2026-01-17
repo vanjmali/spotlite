@@ -1,0 +1,23 @@
+<!-- Dialog Overlay -->
+<div class="dialog__overlay">
+  <!-- Dialog Container -->
+  <div class="dialog" [class]="'dialog--' + sizeSg()">
+    <!-- Header -->
+    <div class="dialog__header">
+      <h2 class="dialog__title">{{ titleSg() }}</h2>
+      <button class="dialog__close-btn" type="button" aria-label="Close dialog" (click)="close()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <!-- Content -->
+    <div class="dialog__content">
+      <ng-content select="[content]"></ng-content>
+    </div>
+
+    <!-- Footer -->
+    <div class="dialog__footer">
+      <ng-content select="[footer]"></ng-content>
+    </div>
+  </div>
+</div>
