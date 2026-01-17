@@ -56,6 +56,7 @@ func run() error {
 	// Configure validators
 	requests.RegisterCommonValidationMessages()
 	v := validator.New()
+	requests.RegisterJSONTagNameFunc(v)
 	if err := requests.RegisterValidation(v, commonvalid.CheckValidName); err != nil {
 		return fmt.Errorf("failed to register custom validations: %w", err)
 	}
