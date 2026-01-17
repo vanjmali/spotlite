@@ -68,7 +68,7 @@ export class ArtistDetailsComponent {
     this.router.navigate(['/home/album', album.id]);
   }
 
-  goBack(): void {
-    this.router.navigate(['/home']);
-  }
+  // goBack(): void {
+  //   this.router.navigate(['/home']);
+  // }
 }

@@ -47,7 +47,8 @@ export class AlbumDetailsComponent {
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
-  goBack(): void {
-    this.router.navigate(['/home']);
-  }
+  // TODO: implement to go page back instead of home
+  // goBack(): void {
+  //   this.router.navigate(['/home']);
+  // }
 }
