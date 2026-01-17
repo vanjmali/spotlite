@@ -34,6 +34,11 @@ export class UserProfileDropdownComponent {
     this.router.navigate(['/profile']);
   }
 
+  navigateToInbox(): void {
+    this.closeDropdown();
+    this.router.navigate(['/inbox']);
+  }
+
   logout(): void {
     this.closeDropdown();
     this.authService.logout();

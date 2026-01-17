@@ -1,8 +1,8 @@
-import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { UserProfileDropdownComponent } from './components/user-profile-dropdown/user-profile-dropdown';
 import { AuthService } from '@app/services/auth.service';
+import { UserProfileDropdownComponent } from './components';
 
 @Component({
   selector: 'app-header',
@@ -13,4 +13,5 @@ import { AuthService } from '@app/services/auth.service';
 })
 export class HeaderComponent {
   readonly authService = inject(AuthService);
+  readonly presentLogoSg = input<boolean>(false);
 }

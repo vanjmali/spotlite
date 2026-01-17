@@ -16,6 +16,7 @@ import {
   PersonalInfoStep,
   RegistrationCredentialsStep,
 } from './pages/registration-page/components';
+import { InboxPage } from './pages/inbox-page';
 
 export const routes: Routes = [
   {
@@ -79,6 +80,10 @@ export const routes: Routes = [
   {
     path: 'home',
     component: HomePage,
+  },
+  {
+    path: 'inbox',
+    component: InboxPage,
   },
   {
     path: 'profile',

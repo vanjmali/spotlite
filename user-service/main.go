@@ -32,22 +32,22 @@ var port = utils.GetEnv("APP_PORT", "3000")
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("FATAL: %v", err)
+		log.Fatalf("FATAL: Couldn't start user service: %v", err)
 	}
 }
 
 func run() error {
 	ctx := context.Background()
 
-	// Initialize telemetry
+	// Initialize user service telemetry
 	tr, err := telemetry.Init(ctx, "user-service")
 	if err != nil {
-		return fmt.Errorf("failed to initialize tracing: %w", err)
+		return fmt.Errorf("failed to initialize user service tracing: %w", err)
 	}
 
 	defer func() {
 		if err := tr.Shutdown(ctx); err != nil {
-			log.Printf("failed to shut down tracer provider: %v", err)
+			log.Printf("failed to shut down user service tracer provider: %v", err)
 		}
 	}()
 

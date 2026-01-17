@@ -22,9 +22,9 @@ jobs:
           - common-lib
           - user-service
           - content-service
+          - notification-service
           # - rating-service
           # - subscription-service
-          # - notification-service
           # - recommendation-service
           # - analytics-service
     defaults:

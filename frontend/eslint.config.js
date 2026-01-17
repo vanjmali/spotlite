@@ -16,7 +16,10 @@ const compat = new FlatCompat({ recommendedConfig: js.configs.recommended });
 
 // Use FlatCompat to create TS-only and template-only entries so that
 // TypeScript rules don't run against HTML files and vice-versa.
-const tsExtends = compat.extends('plugin:@typescript-eslint/recommended', 'plugin:@angular-eslint/recommended');
+const tsExtends = compat.extends(
+  'plugin:@typescript-eslint/recommended',
+  'plugin:@angular-eslint/recommended'
+);
 const tsConfigs = tsExtends.map((cfg) => ({ ...cfg, files: ['**/*.ts'] }));
 
 const templateExtends = compat.extends('plugin:@angular-eslint/template/recommended');
@@ -46,24 +49,24 @@ export default defineConfig([
       parserOptions: {
         project: ['./tsconfig.app.json', './tsconfig.json', './tsconfig.spec.json'],
         ecmaVersion: 2020,
-        sourceType: 'module'
-      }
-    }
+        sourceType: 'module',
+      },
+    },
   },
 
   // HTML templates: set the template parser (rules come from templateConfigs)
   {
     files: ['**/*.html'],
     languageOptions: {
-      parser: templateParser
-    }
+      parser: templateParser,
+    },
   },
 
   // Custom rules overrides
   {
     files: ['**/*.ts'],
     rules: {
-      '@angular-eslint/no-input-rename': 'off'
-    }
-  }
+      '@angular-eslint/no-input-rename': 'off',
+    },
+  },
 ]);
