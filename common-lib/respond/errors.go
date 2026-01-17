@@ -22,6 +22,7 @@ func Error(w http.ResponseWriter, e ErrorResponse) error {
 	r := ErrorResponse{
 		Code:    e.Code,
 		Message: e.Message,
+		Fields:  e.Fields,
 	}
 
 	if e.Message == "" {
