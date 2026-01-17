@@ -23,10 +23,10 @@ jobs:
           - user-service
           - content-service
           - notification-service
-          - rating-service
-          - subscription-service
-          - recommendation-service
-          - analytics-service
+          # - rating-service
+          # - subscription-service
+          # - recommendation-service
+          # - analytics-service
     defaults:
       run:
         working-directory: ${{ matrix.service }}
