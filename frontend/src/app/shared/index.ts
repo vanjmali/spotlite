@@ -8,6 +8,7 @@ export {
 export { MessageComponent } from './components/message';
 export { HeaderComponent } from './components/header';
 export { PageComponent } from './components/page';
+export { DialogComponent } from './components/dialog';
 export { MessageType } from './enums';
 
 export {

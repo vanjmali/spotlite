@@ -375,19 +375,22 @@ func (s *UserService) EmailExists(ctx context.Context, email string) (bool, erro
 }
 
 func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswordDto) error {
-	ctx, span := s.tr.Start(ctx, "user.change_password")
-	defer span.End()
-
-	lookupCtx, lookupSpan := s.tr.Start(ctx, "user.change_password.lookup_user")
-	userIdHexString := middlewares.GetUserIdFromContext(lookupCtx)
-
-	userObjectId, err := primitive.ObjectIDFromHex(userIdHexString)
-	if err != nil {
-		lookupSpan.RecordError(err)
-		lookupSpan.End()
+	// Extract user ID before creating spans
+	userIdHexString := middlewares.GetUserIdFromContext(ctx)
+	if userIdHexString == "" {
 		return ErrObjectIdCastFailed
 	}
 
+	ctx, span := s.tr.Start(ctx, "user.change_password")
+	defer span.End()
+
+	userObjectId, err := primitive.ObjectIDFromHex(userIdHexString)
+	if err != nil {
+		span.RecordError(err)
+		return ErrObjectIdCastFailed
+	}
+
+	_, lookupSpan := s.tr.Start(ctx, "user.change_password.lookup_user")
 	user, err := s.r.FindUserByID(ctx, userObjectId)
 	if err != nil {
 		// User not found error should not appear here as the user is authenticated
@@ -399,16 +402,16 @@ func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswo
 	lookupSpan.End()
 
 	_, passwordSpan := s.tr.Start(ctx, "user.change_password.validate_and_set")
-	if user.PasswordLastChanged.Compare(s.c.Now().Add(-24*time.Hour)) >= 0 {
-		passwordSpan.End()
-		return ErrTooFrequentPasswordChange
-	}
-
 	err = auth.CompareHashAndPassword(user.Password, dto.CurrentPassword)
 	if err != nil {
 		passwordSpan.RecordError(err)
 		passwordSpan.End()
 		return ErrInvalidCurrentPassword
+	}
+
+	if user.PasswordLastChanged.Compare(s.c.Now().Add(-24*time.Hour)) >= 0 {
+		passwordSpan.End()
+		return ErrTooFrequentPasswordChange
 	}
 
 	hashedPassword, err := auth.HashPassword(dto.NewPassword)

@@ -5,6 +5,7 @@ import {
   CheckEmailPage,
   LoginPage,
   RegistrationPage,
+  ProfilePage,
 } from './pages';
 
 import { HomePage } from './pages/home-page';
@@ -68,6 +69,10 @@ export const routes: Routes = [
   {
     path: 'home',
     component: HomePage,
+  },
+  {
+    path: 'profile',
+    component: ProfilePage,
   },
   {
     path: '',
