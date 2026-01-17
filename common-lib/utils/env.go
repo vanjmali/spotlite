@@ -29,11 +29,7 @@ func MustGetEnv(key string) string {
 
 // MustGetDurationEnv parses a positive integer env var and multiplies it by the provided duration.
 func MustGetDurationEnv(key string, multiplier time.Duration) time.Duration {
-	value := os.Getenv(key)
-	if value == "" {
-		log.Fatalf("FATAL: environment variable %s is required", key)
-	}
-
+	value := MustGetEnv(key)
 	parsed, err := strconv.ParseInt(value, 10, 64)
 	if err != nil || parsed <= 0 {
 		log.Fatalf("FATAL: %s must be a positive integer: %v", key, err)

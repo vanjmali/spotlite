@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"log"
 	"net/url"
 
@@ -38,19 +39,23 @@ func InitMailingService(client MailClient, cfg MailConfig) *MailService {
 	return &ms
 }
 
+func setFromToAddress(m *mail.Msg, from, to string) error {
+	if err := m.From(from); err != nil {
+		return fmt.Errorf("failed to set From address: %v", err)
+	}
+
+	if err := m.To(to); err != nil {
+		return fmt.Errorf("failed to set To address: %v", err)
+	}
+
+	return nil
+}
+
 func (ms *MailService) SendAccountVerificationEmail(mailto string, token string) error {
 	m := mail.NewMsg()
-	if err := m.From(ms.config.MailFromAddress); err != nil {
-		log.Printf("failed to set From address: %v", err)
+	if err := setFromToAddress(m, ms.config.MailFromAddress, mailto); err != nil {
 		return err
 	}
-
-	if err := m.To(mailto); err != nil {
-		log.Printf("failed to set To address: %v", err)
-		return err
-	}
-
-	m.Subject("Verify your Spotlite account")
 
 	// Render email template with verification URL
 	verificationURL := ms.config.VerificationEndpoint + "?token=" + url.QueryEscape(token)
@@ -60,6 +65,7 @@ func (ms *MailService) SendAccountVerificationEmail(mailto string, token string)
 		return err
 	}
 
+	m.Subject("Verify your Spotlite account")
 	m.SetBodyString(mail.TypeTextHTML, emailBody)
 
 	err = ms.c.DialAndSend(m)
@@ -72,17 +78,9 @@ func (ms *MailService) SendAccountVerificationEmail(mailto string, token string)
 // SendLoginOtp dispatches a one-time password email to the given recipient.
 func (ms *MailService) SendLoginOtp(mailto string, otp string) error {
 	m := mail.NewMsg()
-
-	if err := m.From(ms.config.MailFromAddress); err != nil {
-		log.Printf("failed to set From address: %v", err)
+	if err := setFromToAddress(m, ms.config.MailFromAddress, mailto); err != nil {
 		return err
 	}
-	if err := m.To(mailto); err != nil {
-		log.Printf("failed to set To address: %v", err)
-		return err
-	}
-
-	m.Subject("Your Spotlite Login Code")
 
 	// Render email template with OTP
 	emailBody, err := RenderLoginOtpEmail(otp)
@@ -91,6 +89,7 @@ func (ms *MailService) SendLoginOtp(mailto string, otp string) error {
 		return err
 	}
 
+	m.Subject("Your Spotlite Login Code")
 	m.SetBodyString(mail.TypeTextHTML, emailBody)
 
 	err = ms.c.DialAndSend(m)
@@ -103,33 +102,20 @@ func (ms *MailService) SendLoginOtp(mailto string, otp string) error {
 // SendPasswordResetEmail sends a password reset magic link email to the given recipient.
 func (ms *MailService) SendPasswordResetEmail(mailto string, token string) error {
 	m := mail.NewMsg()
-
-	if err := m.From(ms.config.MailFromAddress); err != nil {
-		log.Printf("failed to set From address: %v", err)
+	if err := setFromToAddress(m, ms.config.MailFromAddress, mailto); err != nil {
 		return err
 	}
-
-	if err := m.To(mailto); err != nil {
-		log.Printf("failed to set To address: %v", err)
-		return err
-	}
-
-	m.Subject("Reset Your Spotlite Password")
 
 	// Render email template with reset link
 	resetLink := ms.config.PasswordResetURL + "?token=" + url.QueryEscape(token)
 	emailBody, err := RenderPasswordResetEmail(resetLink)
 	if err != nil {
-		log.Printf("failed to render password reset email template: %v", err)
-		return err
+		return fmt.Errorf("failed to render password reset email template: %v", err)
 	}
 
+	m.Subject("Reset Your Spotlite Password")
 	m.SetBodyString(mail.TypeTextHTML, emailBody)
-
 	err = ms.c.DialAndSend(m)
-	if err != nil {
-		log.Printf("failed to send password reset email: %v", err)
-	}
 	return err
 }
 
