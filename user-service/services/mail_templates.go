@@ -9,6 +9,7 @@ import (
 type EmailTemplateData struct {
 	VerificationURL string
 	OTP             string
+	ResetLink       string
 }
 
 // VerificationEmailTemplate is the HTML template for account verification emails.
@@ -219,6 +220,115 @@ func RenderLoginOtpEmail(otp string) (string, error) {
 
 	data := EmailTemplateData{
 		OTP: otp,
+	}
+
+	var buf strings.Builder
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+}
+
+// PasswordResetEmailTemplate is the HTML template for password reset emails.
+// nolint:gosec // This is an email template, not hardcoded credentials
+const PasswordResetEmailTemplate = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #121212;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #121212;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+        .content {
+            padding: 40px 30px;
+            color: #d1d1d1;
+            background-color: #121212;
+        }
+        .content__heading {
+            font-size: 22px;
+            font-weight: 600;
+            color: #f5f5f5;
+            margin: 0 0 15px 0;
+        }
+        .content__text {
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 15px 0;
+            color: #d1d1d1;
+        }
+        .reset-button {
+            display: inline-block;
+            background-color: #a855f7;
+            color: white;
+            padding: 12px 32px;
+            border-radius: 500px;
+            border: none;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            margin: 30px 0;
+            transition: all 200ms ease;
+            cursor: pointer;
+        }
+        .reset-button:hover {
+            background-color: #7c3aed;
+        }
+        .footer {
+            background-color: #0a0a0a;
+            padding: 20px 30px;
+            border-top: 1px solid #333333;
+            font-size: 13px;
+            color: #a8a8a8;
+            text-align: center;
+        }
+        .footer__text {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="content">
+            <h2 class="content__heading">Reset Your Password</h2>
+            <p class="content__text">We received a request to reset your password. Click the button below to create a new password:</p>
+            <center>
+                <a href="{{.ResetLink}}" class="reset-button">Reset Password</a>
+            </center>
+            <p class="content__text" style="font-size: 14px; color: #a8a8a8;">Or copy and paste this link in your browser:</p>
+            <p class="content__text" style="font-size: 13px; color: #a8a8a8; word-break: break-all;">{{.ResetLink}}</p>
+            <p class="content__text">This password reset link will expire in 15 minutes.</p>
+            <p class="content__text">If you did not request this password reset, you can safely ignore this email.</p>
+        </div>
+        <div class="footer">
+            <p class="footer__text">&copy; 2025 Spotlite. All rights reserved.</p>
+            <p class="footer__text">Spotlite | Music Streaming Service</p>
+        </div>
+    </div>
+</body>
+</html>`
+
+// RenderPasswordResetEmail renders the password reset email template with the provided data.
+func RenderPasswordResetEmail(resetLink string) (string, error) {
+	tmpl, err := template.New("passwordReset").Parse(PasswordResetEmailTemplate)
+	if err != nil {
+		return "", err
+	}
+
+	data := EmailTemplateData{
+		ResetLink: resetLink,
 	}
 
 	var buf strings.Builder

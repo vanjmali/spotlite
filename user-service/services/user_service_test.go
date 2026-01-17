@@ -134,8 +134,9 @@ func (f *fakeUserRepo) ExistsByEmail(ctx context.Context, email string) (bool, e
 }
 
 type fakeMailService struct {
-	sendVerificationFn func(string, string) error
-	sendLoginOtpFn     func(string, string) error
+	sendVerificationFn       func(string, string) error
+	sendLoginOtpFn           func(string, string) error
+	sendPasswordResetEmailFn func(string, string) error
 
 	verificationCalled bool
 	verificationMailTo string
@@ -144,6 +145,8 @@ type fakeMailService struct {
 	loginOtpCalled bool
 	loginOtpMailTo string
 	loginOtpCode   string
+
+	sendPasswordResetCalled bool
 }
 
 func (f *fakeMailService) SendAccountVerificationEmail(mailto string, token string) error {
@@ -162,6 +165,14 @@ func (f *fakeMailService) SendLoginOtp(mailto string, otp string) error {
 	f.loginOtpCode = otp
 	if f.sendLoginOtpFn != nil {
 		return f.sendLoginOtpFn(mailto, otp)
+	}
+	return nil
+}
+
+func (f *fakeMailService) SendPasswordResetEmail(mailto string, token string) error {
+	f.sendPasswordResetCalled = true
+	if f.sendPasswordResetEmailFn != nil {
+		return f.sendPasswordResetEmailFn(mailto, token)
 	}
 	return nil
 }
