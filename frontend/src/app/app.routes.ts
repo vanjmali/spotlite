@@ -88,6 +88,10 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'profile',
+    component: ProfilePage,
+  },
+  {
     path: 'admin',
     component: AdminPage,
     children: [
@@ -118,10 +122,6 @@ export const routes: Routes = [
         pathMatch: 'full',
       },
     ],
-  },
-  {
-    path: 'profile',
-    component: ProfilePage,
   },
   {
     path: '',

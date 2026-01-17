@@ -1,7 +1,12 @@
 <!-- User profile circle with dropdown -->
 <div class="user-profile">
   <!-- Profile Circle -->
-  <button class="user-profile__avatar" (click)="toggleDropdown()" type="button">
+  <button
+    class="user-profile__avatar"
+    (click)="toggleDropdown()"
+    [attr.aria-label]="'Profile menu for ' + (authService.currentEmailSg() || 'user')"
+    type="button"
+  >
     <span>{{ firstLetterSg() }}</span>
   </button>
 
@@ -22,7 +27,6 @@
         <span class="user-profile__option-text">Admin Portal</span>
         <mat-icon class="user-profile__option-icon">admin_panel_settings</mat-icon>
       </button>
-
       <!-- Logout Option -->
       <button
         class="user-profile__option user-profile__option--logout"
