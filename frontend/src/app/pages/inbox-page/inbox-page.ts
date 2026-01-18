@@ -4,10 +4,11 @@ import { Observable } from 'rxjs';
 import { NotificationCard } from './components/notification-card/notification-card';
 import { AsyncPipe } from '@angular/common';
 import { AuthService } from '@app/services/auth.service';
+import { PageComponent } from '@app/shared';
 
 @Component({
   selector: 'app-inbox-page',
-  imports: [NotificationCard, AsyncPipe],
+  imports: [NotificationCard, AsyncPipe, PageComponent],
   templateUrl: './inbox-page.html',
   styleUrl: './inbox-page.scss',
 })

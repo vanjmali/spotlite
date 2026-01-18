@@ -1,25 +1,26 @@
-<div class="spotify-inbox-container">
-  <header class="inbox-header">
-    <h1>What's New</h1>
-    <div class="filters">
-      <button class="filter-pill active">All</button>
-      <button class="filter-pill">Songs</button>
-      <button class="filter-pill">Albums</button>
-      <button class="filter-pill">Artists</button>
-      <!-- test button to send POST req -->
-      <button class="filter-pill" (click)="sendTestNotification()">send notification</button>
-    </div>
-  </header>
+<app-page>
+  <div class="spotify-inbox-container" content>
+    <header class="inbox-header">
+      <h1>What's New</h1>
+      <div class="filters">
+        <button class="filter-pill active">All</button>
+        <button class="filter-pill">Albums</button>
+        <button class="filter-pill">Artists</button>
+        <!-- test button to send POST req -->
+        <button class="filter-pill" (click)="sendTestNotification()">send notification</button>
+      </div>
+    </header>
 
-  <div class="inbox-list">
-    @if (notifications$ | async; as notifications) {
-      @for (note of notifications; track note.notification_id) {
-        <app-notification-card [notification]="note" />
-      } @empty {
-        <div class="empty-state">
-          <p>No new notifications.</p>
-        </div>
+    <div class="inbox-list">
+      @if (notifications$ | async; as notifications) {
+        @for (note of notifications; track note.notification_id) {
+          <app-notification-card [notification]="note" />
+        } @empty {
+          <div class="empty-state">
+            <p>No new notifications.</p>
+          </div>
+        }
       }
-    }
+    </div>
   </div>
-</div>
+</app-page>
