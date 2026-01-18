@@ -17,6 +17,9 @@
     flex: 1;
     overflow: hidden;
     min-height: 0;
+    gap: 12px;
+    padding: 12px;
+    padding-bottom: 0;
   }
 
   &__aside,
@@ -30,13 +33,11 @@
 
   &__aside {
     flex-shrink: 0;
-    padding: 24px 16px;
     overflow-x: hidden;
   }
 
   &__content {
     flex: 1;
-    padding: 24px 16px;
   }
 
   &__footer {

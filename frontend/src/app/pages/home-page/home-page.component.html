@@ -1,18 +1,8 @@
 <app-page>
-  <app-header header [presentLogoSg]="true">
-    <ng-container actions>
-      @if (authService.isAuthenticatedSg()) {
-        <a routerLink="/inbox" class="link-primary">What's new?</a>
-        <button (click)="logout()" class="btn-light">Logout</button>
-      } @else {
-        <a routerLink="/register" class="link-primary">Register</a>
-        <a routerLink="/login" class="btn-light">Login</a>
-      }
-    </ng-container>
-  </app-header>
-  <ng-container content>
+  <div content class="home-page">
     <router-outlet></router-outlet>
-  </ng-container>
+  </div>
+
   <!-- Footer Section -->
   <footer footer class="home-page__footer">
     <p class="home-page__footer-copyright">&copy; 2025 Spotlite. All rights reserved.</p>

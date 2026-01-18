@@ -1,12 +1,19 @@
 import { Component, inject, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { EmailInputComponent, PasswordInputComponent, MessageComponent } from '@app/shared';
 import { LoginStore } from '../../store';
 
 @Component({
   selector: 'app-login-credentials-step',
   standalone: true,
-  imports: [CommonModule, EmailInputComponent, PasswordInputComponent, MessageComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    EmailInputComponent,
+    PasswordInputComponent,
+    MessageComponent,
+  ],
   templateUrl: './credentials-step.html',
   styleUrls: ['./credentials-step.scss'],
 })

@@ -27,7 +27,7 @@ func createBaseCluster(host string) *gocql.ClusterConfig {
 	return cluster
 }
 
-// initializes a session type which is used as an API to query the database
+// initializes a session type which is used as an API to query the database.
 func Initialize(host string, keyspace string) (*gocql.Session, error) {
 	cluster := createBaseCluster(host)
 

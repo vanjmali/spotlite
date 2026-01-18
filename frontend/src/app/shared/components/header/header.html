@@ -1,9 +1,9 @@
 <header class="header">
   <!-- Title section (left) -->
   <div class="header__title">
-    @if (presentLogoSg()) {
+    <button class="header__logo-button" (click)="navigateToHome()" type="button">
       <img src="/assets/images/spotlite-white.png" alt="Logo" class="header__logo" />
-    }
+    </button>
     <ng-content select="[title]"></ng-content>
   </div>
 
@@ -14,6 +14,11 @@
 
   <!-- Actions section (right) -->
   <div class="header__actions">
-    <ng-content select="[actions]"></ng-content>
+    @if (authService.isAuthenticatedSg()) {
+      <app-user-profile-dropdown />
+    } @else {
+      <a routerLink="/register" class="link-primary">Register</a>
+      <a routerLink="/login" class="btn-light">Login</a>
+    }
   </div>
 </header>

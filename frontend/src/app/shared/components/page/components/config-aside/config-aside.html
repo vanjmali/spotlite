@@ -1,0 +1,32 @@
+<div class="config-aside" [class.config-aside--expanded]="expandedSg()">
+  <!-- Menu -->
+  <div class="config-aside__menu">
+    <!-- Header item with settings icon -->
+    <div class="config-aside__menu__header">
+      <mat-icon class="config-aside__menu__header-icon">settings</mat-icon>
+      <span class="config-aside__menu__header-label">Configuration</span>
+    </div>
+
+    @for (option of configOptions; track option.key) {
+      <a
+        [routerLink]="['/admin', option.key]"
+        class="config-aside__menu__option"
+        routerLinkActive="config-aside__menu__option--active"
+      >
+        <mat-icon class="config-aside__menu__option-icon">
+          {{ option.icon }}
+        </mat-icon>
+        <span class="config-aside__menu__option-label">
+          {{ option.label }}
+        </span>
+      </a>
+    }
+  </div>
+
+  <!-- Toggle -->
+  <div class="config-aside__toggle-wrapper" (click)="toggleExpand()">
+    <mat-icon>
+      {{ expandedSg() ? 'chevron_left' : 'chevron_right' }}
+    </mat-icon>
+  </div>
+</div>

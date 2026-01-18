@@ -13,9 +13,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-var (
-	ErrMissingUserID = errors.New("UserID is missing")
-)
+var ErrMissingUserID = errors.New("UserID is missing")
 
 type NotificationService struct {
 	r  *repositories.NotificationRepository
@@ -31,7 +29,7 @@ func NewNotificationService(r *repositories.NotificationRepository) *Notificatio
 	return &s
 }
 
-// CreateNotification function is implemented only for demonstration purposes
+// CreateNotification function is implemented only for demonstration purposes.
 func (s *NotificationService) CreateNotification(ctx context.Context) error {
 	ctx, span := s.tr.Start(ctx, "notification.create_notification")
 	defer span.End()
@@ -58,7 +56,7 @@ func (s *NotificationService) CreateNotification(ctx context.Context) error {
 	return nil
 }
 
-// FindNotifications
+// FindNotifications.
 func (s *NotificationService) FindInboxByUserID(ctx context.Context) ([]*entities.Notification, error) {
 	ctx, span := s.tr.Start(ctx, "notification.find_notifications_by_user_id")
 	defer span.End()

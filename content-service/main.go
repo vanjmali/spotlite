@@ -56,11 +56,12 @@ func run() error {
 	// Configure validators
 	requests.RegisterCommonValidationMessages()
 	v := validator.New()
+	requests.RegisterJSONTagNameFunc(v)
 	if err := requests.RegisterValidation(v, commonvalid.CheckValidName); err != nil {
-		return fmt.Errorf("failed to register custom validations: %w", err)
+		return fmt.Errorf("failed to register name validation: %w", err)
 	}
 	if err := requests.RegisterValidation(v, contentvalid.CheckValidDateOnly); err != nil {
-		return fmt.Errorf("failed to register custom validations: %w", err)
+		return fmt.Errorf("failed to register date-only validation: %w", err)
 	}
 
 	defer dbc.Disconnect(context.Background())

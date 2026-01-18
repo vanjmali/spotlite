@@ -99,3 +99,9 @@ func GetUserRoleFromContext(ctx context.Context) account.Role {
 	role, _ := ctx.Value(roleIdKey).(account.Role)
 	return role
 }
+
+// ContextWithUserID is a helper function for testing that adds a user ID to a context.
+// It should only be used in test code.
+func ContextWithUserID(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, userIdKey, userID)
+}

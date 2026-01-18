@@ -1,0 +1,124 @@
+@use 'variables/colors' as *;
+@use 'mixins' as m;
+
+.dialog__overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 2000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  background-color: $color-gray-800;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  animation: slideUp 0.3s ease-out;
+
+  // Size variants
+  &--small {
+    max-width: 350px;
+  }
+
+  &--normal {
+    max-width: 500px;
+  }
+
+  &--large {
+    max-width: 700px;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid $color-gray-700;
+    flex-shrink: 0;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    color: $color-white;
+  }
+
+  &__close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: $color-white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 4px;
+
+    &:hover {
+      background-color: $color-gray-700;
+    }
+
+    &:active {
+      background-color: $color-gray-600;
+    }
+
+    mat-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  &__content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    @include m.scrollbar;
+  }
+
+  &__footer {
+    padding: 20px;
+    border-top: 1px solid $color-gray-700;
+    flex-shrink: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

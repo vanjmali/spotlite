@@ -20,6 +20,7 @@ services:
       # JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       # JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
       SRV_USER_VERIFICATION_ENDPOINT: ${SRV_USER_VERIFICATION_ENDPOINT?}
+      SRV_USER_PASSWORD_RESET_URL: ${SRV_USER_PASSWORD_RESET_URL?}
       SRV_USER_VERIFICATION_SUCCESS_URL: ${SRV_USER_VERIFICATION_SUCCESS_URL?}
       SRV_USER_VERIFICATION_FAILURE_URL: ${SRV_USER_VERIFICATION_FAILURE_URL?}
       APP_LOGIN_OTP_TTL_MINUTES: ${SRV_USER_LOGIN_OTP_TTL_MINUTES?}
@@ -31,7 +32,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true
-      traefik.docker.network: api-gateway
+      traefik.docker.network: spotlite-api-gateway
       traefik.http.routers.user-service.rule: PathPrefix(`/api/users`)
       traefik.http.routers.user-service.middlewares: user-service-strip-prefix
       traefik.http.middlewares.user-service-strip-prefix.stripprefix.prefixes: /api/users
@@ -88,6 +89,7 @@ services:
 networks:
   # Connects to Traefik
   api-gateway:
+    name: spotlite-api-gateway
   # Creates a private network for this microservice
   user-internal:
 

@@ -1,0 +1,70 @@
+<div class="artist-details">
+  <!-- <button class="artist-details__back-button" (click)="goBack()">
+    <mat-icon>arrow_back</mat-icon>
+    <span>Back</span>
+  </button> -->
+
+  @if (isLoadingSg()) {
+    <p class="artist-details__loading">Loading artist...</p>
+  } @else if (!artistSg()) {
+    <p class="artist-details__empty">Artist not found</p>
+  } @else {
+    <!-- Artist Info Widget -->
+    <app-widget [title]="artistSg()!.name">
+      <div content class="artist-details__widget-content">
+        <div class="artist-details__header">
+          <div class="artist-details__image">
+            <span class="artist-details__initial">{{
+              artistSg()!.name.charAt(0).toUpperCase()
+            }}</span>
+          </div>
+          <div class="artist-details__info">
+            @if (artistSg()!.genres && artistSg()!.genres.length > 0) {
+              <div class="artist-details__genres">
+                @for (genre of artistSg()!.genres; track genre) {
+                  <span class="artist-details__genre-tag">{{ genre }}</span>
+                }
+              </div>
+            }
+            @if (artistSg()!.description) {
+              <p class="artist-details__description">{{ artistSg()!.description }}</p>
+            }
+          </div>
+        </div>
+      </div>
+    </app-widget>
+
+    <!-- Albums Widget -->
+    <app-widget title="Albums">
+      <div content class="artist-details__albums">
+        @if (albumsSg().length === 0) {
+          <p class="artist-details__placeholder">No albums found for this artist</p>
+        } @else {
+          <div class="artist-details__albums-grid">
+            @for (album of albumsSg(); track album.id) {
+              <div class="artist-details__album-card" (click)="onAlbumClick(album)">
+                <div class="artist-details__album-header">
+                  <h3 class="artist-details__album-title">{{ album.title }}</h3>
+                </div>
+                <div class="artist-details__album-content">
+                  <p class="artist-details__album-date">
+                    {{ formatDate(album.releaseDate) }}
+                  </p>
+                  <div class="artist-details__album-genres">
+                    @for (genre of album.genres; track genre) {
+                      <span class="artist-details__album-genre">{{ genre }}</span>
+                    }
+                  </div>
+                  <p class="artist-details__album-songs">
+                    <mat-icon>music_note</mat-icon>
+                    {{ album.songs.length }} songs
+                  </p>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </app-widget>
+  }
+</div>

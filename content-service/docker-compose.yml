@@ -15,7 +15,7 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true
-      traefik.docker.network: api-gateway
+      traefik.docker.network: spotlite-api-gateway
       traefik.http.routers.content-service.rule: PathPrefix(`/api/content`)
       traefik.http.routers.content-service.middlewares: content-service-strip-prefix
       traefik.http.middlewares.content-service-strip-prefix.stripprefix.prefixes: /api/content
@@ -53,6 +53,7 @@ services:
 
 networks:
   api-gateway:
+    name: spotlite-api-gateway
   content-internal:
 
 volumes:

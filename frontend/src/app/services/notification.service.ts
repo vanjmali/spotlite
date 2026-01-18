@@ -11,7 +11,7 @@ export interface Notification {
 
 @Injectable({ providedIn: 'root' })
 export class NotificationService {
-  private apiUrl = 'http://localhost:3000/api/notifications';
+  private readonly apiUrl = 'http://localhost:3000/api/notifications';
 
   // State management
   private notificationsSubject = new BehaviorSubject<Notification[]>([]);
@@ -25,5 +25,9 @@ export class NotificationService {
       },
       error: (err) => console.error('Error fetching notifications:', err),
     });
+  }
+
+  sendTestNotification() {
+    return this.http.post(`${this.apiUrl}`, {});
   }
 }

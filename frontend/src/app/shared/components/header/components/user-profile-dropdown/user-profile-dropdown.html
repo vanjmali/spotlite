@@ -1,0 +1,50 @@
+<!-- User profile circle with dropdown -->
+<div class="user-profile">
+  <!-- Profile Circle -->
+  <button
+    class="user-profile__avatar"
+    (click)="toggleDropdown()"
+    [attr.aria-label]="'Profile menu for ' + (authService.currentEmailSg() || 'user')"
+    type="button"
+  >
+    <span>{{ firstLetterSg() }}</span>
+  </button>
+
+  <!-- Dropdown Menu -->
+  @if (isDropdownOpenSg()) {
+    <div class="user-profile__dropdown">
+      <!-- Profile Option -->
+      <button class="user-profile__option" (click)="navigateToProfile()" type="button">
+        <span class="user-profile__option-text">Profile</span>
+      </button>
+
+      <!-- Inbox Option -->
+      <button class="user-profile__option" (click)="navigateToInbox()" type="button">
+        <span class="user-profile__option-text">Inbox</span>
+      </button>
+
+      <!-- Admin Portal Option -->
+      <button
+        class="user-profile__option user-profile__option--admin"
+        (click)="navigateToAdmin()"
+        type="button"
+      >
+        <span class="user-profile__option-text">Admin Portal</span>
+        <mat-icon class="user-profile__option-icon">admin_panel_settings</mat-icon>
+      </button>
+      <!-- Logout Option -->
+      <button
+        class="user-profile__option user-profile__option--logout"
+        (click)="logout()"
+        type="button"
+      >
+        <span class="user-profile__option-text">Logout</span>
+      </button>
+    </div>
+  }
+</div>
+
+<!-- Close dropdown when clicking outside -->
+@if (isDropdownOpenSg()) {
+  <div class="user-profile__overlay" (click)="closeDropdown()"></div>
+}

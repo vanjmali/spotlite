@@ -1,0 +1,30 @@
+<app-page>
+  <div content class="profile-page">
+    <!-- Profile Section -->
+    <app-widget title="Profile">
+      <div content>
+        <button class="profile-page__section-item" (click)="navigateToEditProfile()">
+          <mat-icon class="profile-page__section-icon">edit</mat-icon>
+          <span class="profile-page__section-label">Edit personal info</span>
+          <mat-icon class="profile-page__section-arrow">chevron_right</mat-icon>
+        </button>
+      </div>
+    </app-widget>
+
+    <!-- Security and Privacy Section -->
+    <app-widget title="Security and privacy">
+      <div content>
+        <button class="profile-page__section-item" (click)="navigateToChangePassword()">
+          <mat-icon class="profile-page__section-icon">lock</mat-icon>
+          <span class="profile-page__section-label">Change password</span>
+          <mat-icon class="profile-page__section-arrow">chevron_right</mat-icon>
+        </button>
+      </div>
+    </app-widget>
+  </div>
+</app-page>
+
+<!-- Change Password Dialog -->
+@if (isChangePasswordDialogOpenSg()) {
+  <app-change-password-dialog (closed)="closeChangePasswordDialog()" />
+}

@@ -1,6 +1,6 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, map, catchError, of } from 'rxjs';
 import { VALIDATION_MESSAGES } from '@app/shared';
 import { environment } from '../../environments/environment';
 
@@ -61,7 +61,7 @@ export class AuthService {
     try {
       const response = await firstValueFrom(
         this.http.get<{ exists: boolean }>(
-          `${this.API_BASE}/check-email/${encodeURIComponent(email)}`
+          `${this.API_BASE}/check-email?email=${encodeURIComponent(email)}`
         )
       );
       return response.exists;
@@ -174,5 +174,28 @@ export class AuthService {
 
     this.accessTokenSg.set(null);
     this.currentEmailSg.set(null);
+  }
+
+  // Change password
+  changePassword(currentPassword: string, newPassword: string) {
+    return this.http
+      .patch(
+        `${this.API_BASE}/change-password`,
+        {
+          current_password: currentPassword,
+          new_password: newPassword,
+        },
+        {
+          withCredentials: true,
+        }
+      )
+      .pipe(
+        map(() => ({ success: true as const, error: undefined })),
+        catchError((error: unknown) => {
+          const httpError = error as { error?: { message?: string } };
+          const errorMsg = httpError?.error?.message || 'Failed to change password';
+          return of({ success: false as const, error: errorMsg });
+        })
+      );
   }
 }

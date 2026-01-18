@@ -23,4 +23,15 @@ export class InboxPage implements OnInit {
   ngOnInit() {
     this.notificationService.getAllNotifications();
   }
+
+  sendTestNotification(): void {
+    this.notificationService.sendTestNotification().subscribe({
+      next: () => {
+        console.log('Test notification sent successfully');
+      },
+      error: (err) => {
+        console.error('Error sending test notification:', err);
+      },
+    });
+  }
 }

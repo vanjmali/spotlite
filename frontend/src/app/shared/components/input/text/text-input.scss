@@ -17,6 +17,11 @@
     color: $color-form-label;
   }
 
+  &__required {
+    color: $color-form-error;
+    margin-left: 2px;
+  }
+
   &__input-wrapper {
     display: flex;
     align-items: center;
@@ -49,6 +54,7 @@
     &--error {
       border-color: $color-form-error;
 
+      &:hover,
       &:focus {
         border-color: $color-form-error;
       }

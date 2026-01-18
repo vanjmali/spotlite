@@ -1,0 +1,76 @@
+<app-widget title="Manage Songs">
+  <button
+    actions
+    class="songs-management__btn-add-circle"
+    (click)="onAddNew()"
+    [disabled]="isLoadingSg()"
+    title="Add new song"
+    matTooltip="Add new song"
+  >
+    <mat-icon>add</mat-icon>
+  </button>
+
+  <div content class="songs-management">
+    <!-- Loading State -->
+    @if (isLoadingSg()) {
+      <div class="songs-management__loading">
+        <p>Loading songs...</p>
+      </div>
+    }
+
+    <!-- Empty State -->
+    @if (!isLoadingSg() && songsSg().length === 0) {
+      <div class="songs-management__empty">
+        <p>No songs found. Create one to get started!</p>
+      </div>
+    }
+
+    <!-- Songs Table -->
+    @if (!isLoadingSg() && songsSg().length > 0) {
+      <div class="songs-management__table-wrapper">
+        <table class="songs-management__table">
+          <thead class="songs-management__table-head">
+            <tr>
+              <th class="songs-management__col-title">Title</th>
+              <th class="songs-management__col-genre">Genre</th>
+              <th class="songs-management__col-duration">Duration</th>
+              <th class="songs-management__col-artists">Artists</th>
+            </tr>
+          </thead>
+          <tbody class="songs-management__table-body">
+            @for (song of songsSg(); track song.id) {
+              <tr class="songs-management__row">
+                <td class="songs-management__cell songs-management__cell--title">
+                  {{ song.title }}
+                </td>
+                <td class="songs-management__cell songs-management__cell--genre">
+                  <span class="songs-management__genre-tag">{{ song.genre }}</span>
+                </td>
+                <td class="songs-management__cell songs-management__cell--duration">
+                  {{ formatDuration(song.lengthSeconds) }}
+                </td>
+                <td class="songs-management__cell songs-management__cell--artists">
+                  <div class="songs-management__artist-list">
+                    @for (artist of song.artists; track artist.id) {
+                      <span class="songs-management__artist-tag">
+                        {{ artist.name }}
+                      </span>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</app-widget>
+
+<!-- Song Editor Dialog -->
+<app-song-editor-dialog
+  [song]="selectedSongSg()"
+  [isOpen]="isDialogOpenSg()"
+  (closed)="isDialogOpenSg.set(false)"
+  (saved)="onDialogSaved()"
+></app-song-editor-dialog>

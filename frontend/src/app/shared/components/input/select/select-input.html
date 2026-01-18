@@ -1,0 +1,97 @@
+<div class="select-input">
+  <div class="select-input__form-group">
+    <label class="select-input__label">
+      {{ labelSg() }}
+      @if (requiredSg()) {
+        <span class="select-input__required">*</span>
+      }
+    </label>
+
+    <div class="select-input__container" (click)="openDropdown()">
+      <!-- Selected items or placeholder -->
+      <div class="select-input__selected">
+        @if (valueSg().length > 0) {
+          <div class="select-input__tags">
+            @for (selectedValue of valueSg(); track selectedValue) {
+              <span class="select-input__tag">
+                {{ getLabel(selectedValue) }}
+                <button
+                  type="button"
+                  class="select-input__tag-remove"
+                  (click)="removeSelection(selectedValue, $event)"
+                  aria-label="Remove selection"
+                >
+                  ×
+                </button>
+              </span>
+            }
+          </div>
+        } @else {
+          <span class="select-input__placeholder">
+            {{ placeholderSg() }}
+          </span>
+        }
+      </div>
+
+      <!-- Dropdown toggle icon -->
+      <div class="select-input__icon">
+        <svg
+          class="select-input__icon-svg"
+          [class.select-input__icon-svg--open]="isOpenSg()"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Dropdown menu -->
+    @if (isOpenSg()) {
+      <div class="select-input__dropdown">
+        <div class="select-input__search-wrapper">
+          <mat-icon class="select-input__search-icon">search</mat-icon>
+          <input
+            type="text"
+            class="select-input__search"
+            placeholder="Search"
+            [(ngModel)]="searchQuerySg"
+            (click)="$event.stopPropagation()"
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="select-input__options">
+          @if (filteredOptionsSg().length === 0) {
+            <div class="select-input__no-options">No options available</div>
+          } @else {
+            @for (option of filteredOptionsSg(); track option.value) {
+              <label class="select-input__option">
+                <input
+                  type="checkbox"
+                  class="select-input__option-checkbox"
+                  [checked]="isSelected(option.value)"
+                  (change)="onOptionToggle(option.value)"
+                />
+                <span class="select-input__option-label">{{ option.label }}</span>
+              </label>
+            }
+          }
+        </div>
+      </div>
+    }
+  </div>
+
+  @if (errorSg()) {
+    <app-error [message]="errorSg()" />
+  }
+</div>
+
+<!-- Close dropdown when clicking outside -->
+<div
+  class="select-input__backdrop"
+  [class.select-input__backdrop--visible]="isOpenSg()"
+  (click)="closeDropdown()"
+></div>

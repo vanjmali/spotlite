@@ -5,8 +5,9 @@
   justify-content: space-between;
   align-items: center;
   background-color: $color-bg-primary;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px $color-overlay-light;
   gap: 24px;
+  padding: 5px 10px;
 
   &__title,
   &__center,
@@ -34,5 +35,24 @@
     width: 48px;
     object-fit: contain;
     margin-right: 16px;
+  }
+
+  &__logo-button {
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      opacity: 0.8;
+    }
+
+    &:active {
+      opacity: 0.6;
+    }
   }
 }

@@ -39,7 +39,7 @@ func (h *NotificationHandler) CreateNotification(w http.ResponseWriter, r *http.
 }
 
 // HandleSubscribe function is used to handle client subscription requests and opens a one way connection
-// from server to client
+// from server to client.
 func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 	userID := middlewares.GetUserIdFromContext(r.Context())
 

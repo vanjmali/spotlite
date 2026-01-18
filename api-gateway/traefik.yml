@@ -21,7 +21,7 @@ providers:
     # Only expose services that set `traefik.enable=true`.
     exposedByDefault: false
     # Watch containers on this network.
-    network: api-gateway
+    network: spotlite-api-gateway
 
 api:
   # Traefik dashboard/API; stay off in prod (overridden on in dev).

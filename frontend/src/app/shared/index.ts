@@ -3,11 +3,14 @@ export {
   OtpInputComponent,
   PasswordInputComponent,
   TextInputComponent,
+  TextareaInputComponent,
   EmailInputComponent,
 } from './components/input';
 export { MessageComponent } from './components/message';
+export { LoaderComponent } from './components/loader';
 export { HeaderComponent } from './components/header';
 export { PageComponent } from './components/page';
+export { DialogComponent } from './components/dialog';
 export { MessageType } from './enums';
 
 export {

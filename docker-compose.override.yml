@@ -18,7 +18,7 @@ services:
     image: jaegertracing/all-in-one:1.75.0
     labels:
       traefik.enable: true
-      traefik.docker.network: api-gateway
+      traefik.docker.network: spotlite-api-gateway
       traefik.http.routers.jaeger.rule: PathPrefix(`/dev/jaeger`)
       traefik.http.middlewares.jaeger-strip-prefix.stripprefix.prefixes: /dev/jaeger
       traefik.http.middlewares.jaeger-strip-prefix.stripprefix.forceslash: false
@@ -113,8 +113,9 @@ services:
     image: mongo-express:1
     labels:
       traefik.enable: true
-      traefik.docker.network: api-gateway
+      traefik.docker.network: spotlite-api-gateway
       traefik.http.routers.user-mongo-express.rule: PathPrefix(`/dev/user-service`)
+      traefik.http.routers.user-mongo-express.middlewares: user-mongo-express-strip-prefix
       traefik.http.middlewares.user-mongo-express-strip-prefix.stripprefix.forceslash: false
       traefik.http.services.user-mongo-express.loadbalancer.server.port: "8081"
       traefik.http.services.user-mongo-express.loadbalancer.healthcheck.path: /dev/user-service
@@ -138,10 +139,14 @@ services:
     image: mongo-express:1
     labels:
       traefik.enable: true
-      traefik.docker.network: api-gateway
+      traefik.docker.network: spotlite-api-gateway
       traefik.http.routers.content-mongo-express.rule: PathPrefix(`/dev/content-service`)
+      traefik.http.routers.content-mongo-express.middlewares: content-mongo-express-strip-prefix
       traefik.http.middlewares.content-mongo-express-strip-prefix.stripprefix.forceslash: false
       traefik.http.services.content-mongo-express.loadbalancer.server.port: "8081"
+      traefik.http.services.content-mongo-express.loadbalancer.healthcheck.path: /dev/content-service
+      traefik.http.services.content-mongo-express.loadbalancer.healthcheck.interval: 5s
+      traefik.http.services.content-mongo-express.loadbalancer.healthcheck.timeout: 2s
     environment:
       ME_CONFIG_BASICAUTH: "false"
       ME_CONFIG_SITE_BASEURL: /dev/content-service
@@ -163,4 +168,5 @@ volumes:
 
 networks:
   api-gateway:
+    name: spotlite-api-gateway
   user-internal:

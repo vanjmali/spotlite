@@ -15,21 +15,31 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/vanjmali/spotlite/common-lib/account"
 	"github.com/vanjmali/spotlite/common-lib/clock"
+	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
+	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 )
+
+// Helper function to add user ID to context for testing
+// Uses the exported ContextWithUserID from middlewares package.
+func contextWithUserID(ctx context.Context, userID primitive.ObjectID) context.Context {
+	return middlewares.ContextWithUserID(ctx, userID.Hex())
+}
 
 type fakeUserRepo struct {
 	existsByUsernameFn func(context.Context, string) (bool, error)
 	existsByEmailFn    func(context.Context, string) (bool, error)
 	createFn           func(context.Context, entities.User) error
 	findUserByEmailFn  func(context.Context, string) (*entities.User, error)
+	findUserByIDFn     func(context.Context, primitive.ObjectID) (*entities.User, error)
 	setLoginOtpFn      func(context.Context, primitive.ObjectID, string, time.Time) error
 	clearLoginOtpFn    func(context.Context, primitive.ObjectID) error
 	activeAndRevokeFn  func(context.Context, string) error
+	setHashPasswordFn  func(context.Context, primitive.ObjectID, string, time.Time, time.Time) error
 
 	createCalled     bool
 	createdUser      entities.User
@@ -57,6 +67,9 @@ func (f *fakeUserRepo) ActiveAndRevokeToken(ctx context.Context, token string) e
 }
 
 func (f *fakeUserRepo) SetHashPassowrd(ctx context.Context, userId primitive.ObjectID, passwordHash string, newTime, expiresAt time.Time) error {
+	if f.setHashPasswordFn != nil {
+		return f.setHashPasswordFn(ctx, userId, passwordHash, newTime, expiresAt)
+	}
 	return nil
 }
 
@@ -100,6 +113,9 @@ func (f *fakeUserRepo) UpdateExpiryNotificationSentDate(ctx context.Context, use
 }
 
 func (f *fakeUserRepo) FindUserByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
+	if f.findUserByIDFn != nil {
+		return f.findUserByIDFn(ctx, id)
+	}
 	return &entities.User{}, nil
 }
 
@@ -118,8 +134,9 @@ func (f *fakeUserRepo) ExistsByEmail(ctx context.Context, email string) (bool, e
 }
 
 type fakeMailService struct {
-	sendVerificationFn func(string, string) error
-	sendLoginOtpFn     func(string, string) error
+	sendVerificationFn       func(string, string) error
+	sendLoginOtpFn           func(string, string) error
+	sendPasswordResetEmailFn func(string, string) error
 
 	verificationCalled bool
 	verificationMailTo string
@@ -128,6 +145,8 @@ type fakeMailService struct {
 	loginOtpCalled bool
 	loginOtpMailTo string
 	loginOtpCode   string
+
+	sendPasswordResetCalled bool
 }
 
 func (f *fakeMailService) SendAccountVerificationEmail(mailto string, token string) error {
@@ -146,6 +165,14 @@ func (f *fakeMailService) SendLoginOtp(mailto string, otp string) error {
 	f.loginOtpCode = otp
 	if f.sendLoginOtpFn != nil {
 		return f.sendLoginOtpFn(mailto, otp)
+	}
+	return nil
+}
+
+func (f *fakeMailService) SendPasswordResetEmail(mailto string, token string) error {
+	f.sendPasswordResetCalled = true
+	if f.sendPasswordResetEmailFn != nil {
+		return f.sendPasswordResetEmailFn(mailto, token)
 	}
 	return nil
 }
@@ -418,7 +445,7 @@ func TestUserServiceVerifyLoginOtpSuccess(t *testing.T) {
 func TestUserServiceResendLoginOtpNotFound(t *testing.T) {
 	repo := &fakeUserRepo{
 		findUserByEmailFn: func(ctx context.Context, email string) (*entities.User, error) {
-			return nil, errors.New("not found")
+			return nil, repositories.ErrUserNotFound
 		},
 	}
 	svc := NewUserService(repo, &fakeMailService{})
@@ -527,4 +554,101 @@ func TestUserServiceCreateNewToken(t *testing.T) {
 
 	require.Equal(t, fixed, iat)
 	require.Equal(t, exp, fixed.Add(15*time.Minute))
+}
+
+// Change Password Tests.
+func TestChangePasswordInvalidCurrentPassword(t *testing.T) {
+	userID := primitive.NewObjectID()
+	hashedPassword, _ := auth.HashPassword("ValidPass123!")
+	repo := &fakeUserRepo{
+		findUserByIDFn: func(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
+			return &entities.User{
+				ID:                  id,
+				Email:               "user@example.com",
+				Password:            hashedPassword,
+				AccountStatus:       account.StatusActive,
+				PasswordLastChanged: time.Now().Add(-48 * time.Hour), // Changed more than 24 hours ago
+			}, nil
+		},
+	}
+	mail := &fakeMailService{}
+	svc := NewUserService(repo, mail)
+
+	ctx := contextWithUserID(context.Background(), userID)
+	dto := &dtos.ChangePasswordDto{
+		CurrentPassword: "WrongPassword123!",
+		NewPassword:     "NewValidPass123!",
+	}
+
+	err := svc.ChangePassword(ctx, dto)
+	require.ErrorIs(t, err, ErrInvalidCurrentPassword)
+}
+
+func TestChangePasswordTooFrequent(t *testing.T) {
+	userID := primitive.NewObjectID()
+	hashedPassword, _ := auth.HashPassword("ValidPass123!")
+	repo := &fakeUserRepo{
+		findUserByIDFn: func(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
+			return &entities.User{
+				ID:                  id,
+				Email:               "user@example.com",
+				Password:            hashedPassword,
+				AccountStatus:       account.StatusActive,
+				PasswordLastChanged: time.Now().Add(-12 * time.Hour), // Changed less than 24 hours ago
+			}, nil
+		},
+	}
+	mail := &fakeMailService{}
+	svc := NewUserService(repo, mail)
+
+	ctx := contextWithUserID(context.Background(), userID)
+	dto := &dtos.ChangePasswordDto{
+		CurrentPassword: "ValidPass123!",
+		NewPassword:     "NewValidPass123!",
+	}
+
+	err := svc.ChangePassword(ctx, dto)
+	require.ErrorIs(t, err, ErrTooFrequentPasswordChange)
+}
+
+func TestChangePasswordSuccess(t *testing.T) {
+	userID := primitive.NewObjectID()
+	hashedPassword, _ := auth.HashPassword("ValidPass123!")
+	setHashPasswordCalled := false
+	var setHashPasswordNewHash string
+
+	repo := &fakeUserRepo{
+		findUserByIDFn: func(ctx context.Context, id primitive.ObjectID) (*entities.User, error) {
+			return &entities.User{
+				ID:                  id,
+				Email:               "user@example.com",
+				Password:            hashedPassword,
+				AccountStatus:       account.StatusActive,
+				PasswordLastChanged: time.Now().Add(-48 * time.Hour), // Changed more than 24 hours ago
+			}, nil
+		},
+		setHashPasswordFn: func(ctx context.Context, userId primitive.ObjectID, passwordHash string, newTime, expiresAt time.Time) error {
+			setHashPasswordCalled = true
+			setHashPasswordNewHash = passwordHash
+			return nil
+		},
+	}
+	mail := &fakeMailService{}
+	svc := NewUserService(repo, mail)
+
+	ctx := contextWithUserID(context.Background(), userID)
+	dto := &dtos.ChangePasswordDto{
+		CurrentPassword: "ValidPass123!",
+		NewPassword:     "NewValidPass123!",
+	}
+
+	err := svc.ChangePassword(ctx, dto)
+	require.NoError(t, err)
+	require.True(t, setHashPasswordCalled, "expected SetHashPassowrd to be called")
+	require.NotEmpty(t, setHashPasswordNewHash, "expected new password hash to be set")
+	require.NotEqual(t, hashedPassword, setHashPasswordNewHash, "new password hash should be different from old hash")
+
+	// Verify the new hash is valid
+	err = auth.CompareHashAndPassword(setHashPasswordNewHash, "NewValidPass123!")
+	require.NoError(t, err, "new password should match the hash")
 }
