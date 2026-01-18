@@ -2,15 +2,23 @@ package infrastructure
 
 import "log"
 
+type ClientAction int
+
+const (
+	ClientConnect ClientAction = iota
+	ClientDisconnect
+)
+
+type ClientEvent struct {
+	Action ClientAction
+	Conn   *ClientConnection
+}
+
 type Broker struct {
 	// Broadcast is a channel storing notifications that are queued to be sent out
 	Broadcast chan *Notification
 
-	// NewClients is storing recently opened client connections
-	NewClients chan *ClientConnection
-
-	// ClosingClients is storing connections that were recently closed
-	ClosingClients chan *ClientConnection
+	ConnectionEvents chan ClientEvent
 
 	// clients represents a map which has a UserID string as its key and a set
 	// storing all connections for a particular user, by doing this we make sure
@@ -32,10 +40,10 @@ func NewBroker() *Broker {
 		// The capacity is currently 1 just for testing purposes
 		Broadcast: make(chan *Notification, 1),
 
-		// unbuffered channels, will make components that try to communicate with
-		// them wait for the current connection to be processed
-		NewClients:     make(chan *ClientConnection),
-		ClosingClients: make(chan *ClientConnection),
+		// buffered channel which allows us to handle bursts of client connection operations
+		// instead of processing one by one (by using unbuffered channels) which
+		// would cause pile ups
+		ConnectionEvents: make(chan ClientEvent, 100),
 
 		clients: make(map[string]map[*ClientConnection]struct{}),
 	}
@@ -69,25 +77,23 @@ func NewNotification(targetUserID string, content []byte) *Notification {
 func (b *Broker) Listen() {
 	for {
 		select {
-		// handling new client connections,
-		case s := <-b.NewClients:
-			if _, exists := b.clients[s.UserID]; !exists {
-				b.clients[s.UserID] = make(map[*ClientConnection]struct{})
-			}
+		case event := <-b.ConnectionEvents:
+			switch event.Action {
+			case ClientConnect:
+				if _, exists := b.clients[event.Conn.UserID]; !exists {
+					b.clients[event.Conn.UserID] = make(map[*ClientConnection]struct{})
+				}
+				b.clients[event.Conn.UserID][event.Conn] = struct{}{}
 
-			b.clients[s.UserID][s] = struct{}{}
-
-		// handling client closign connections,
-		case s := <-b.ClosingClients:
-			if userConns, exists := b.clients[s.UserID]; exists {
-				delete(userConns, s)
-
-				if len(userConns) == 0 {
-					delete(b.clients, s.UserID)
+			case ClientDisconnect:
+				if userConns, exists := b.clients[event.Conn.UserID]; exists {
+					delete(userConns, event.Conn)
+					if len(userConns) == 0 {
+						delete(b.clients, event.Conn.UserID)
+					}
 				}
 			}
 
-		// handling new client connections,
 		case notification := <-b.Broadcast:
 			if userConns, found := b.clients[notification.TargetUserID]; found {
 				for clientConn := range userConns {
