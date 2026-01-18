@@ -26,3 +26,10 @@ type Notification struct {
 	Type    NotificationType `db:"notification_type" json:"notification_type"`
 	Message string           `db:"message" json:"message"`
 }
+
+type NotificationEvent struct {
+	UserID         string     `json:"user_id"`
+	CreatedAt      time.Time  `json:"created_at"`
+	NotificationID gocql.UUID `json:"notification_id"`
+	Message        string     `json:"message"`
+}

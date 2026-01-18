@@ -30,7 +30,7 @@ func NewNotificationService(r *repositories.NotificationRepository) *Notificatio
 }
 
 // CreateNotification function is implemented only for demonstration purposes.
-func (s *NotificationService) CreateNotification(ctx context.Context) error {
+func (s *NotificationService) CreateNotification(ctx context.Context) (*entities.Notification, error) {
 	ctx, span := s.tr.Start(ctx, "notification.create_notification")
 	defer span.End()
 
@@ -50,10 +50,10 @@ func (s *NotificationService) CreateNotification(ctx context.Context) error {
 
 	if err := s.r.InsertNotification(&n, ctx); err != nil {
 		span.RecordError(err)
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &n, nil
 }
 
 // FindNotifications.

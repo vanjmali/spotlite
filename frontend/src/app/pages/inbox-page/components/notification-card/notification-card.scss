@@ -1,39 +1,57 @@
-// Global variables (Mocked for context)
+// Global variables
 $hover-color: #282828;
-$bg-color: #121212; // Assuming dark mode background
+$bg-color: #121212;
 $text-primary: #ffffff;
 $text-secondary: #b3b3b3;
-$accent-color: #a855f7; // Used for a subtle border
+$accent-color: #a855f7;
+$info-color: #3b82f6;
 
 :host {
   display: block;
-  margin-bottom: 2px; // Tighter spacing for lists
+  margin-bottom: 2px;
 }
 
 .inbox-item {
   position: relative;
-  padding: 16px 20px; // More breathing room since there is no image
+  padding: 16px 20px;
   cursor: pointer;
-  background-color: transparent; // Clean default
-  border-left: 3px solid transparent; // Invisible border by default
-  transition: all 0.2s ease;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05); // Subtle separator
+  background-color: transparent;
 
+  // Default invisible border
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+
+  &.is-new {
+    border-left-color: $info-color;
+
+    background-color: rgba($info-color, 0.08);
+
+    .item-content .item-title {
+      font-weight: 700;
+      color: white;
+    }
+
+    .item-content .item-message {
+      color: lighten($text-secondary, 15%);
+      opacity: 1;
+    }
+  }
+
+  // Hover State
   &:hover {
     background-color: $hover-color;
-    border-left-color: $accent-color; // Highlights on hover
+    border-left-color: $accent-color;
   }
 
   // --- Grid Layout for Content ---
   .item-content {
     display: grid;
-    // Column 1 takes available space, Column 2 fits the content (timestamp)
     grid-template-columns: 1fr auto;
     grid-gap: 6px;
-    align-items: baseline; // Aligns text baselines nicely
+    align-items: baseline;
     width: 100%;
 
-    // 1. Title (Top Left)
     .item-title {
       grid-column: 1;
       grid-row: 1;
@@ -41,39 +59,33 @@ $accent-color: #a855f7; // Used for a subtle border
       font-weight: 600;
       color: $text-primary;
       letter-spacing: 0.3px;
-
-      // Truncate title if it hits the timestamp
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
       margin-right: 12px;
     }
 
-    // 2. Timestamp (Top Right)
     .item-meta {
       grid-column: 2;
       grid-row: 1;
       font-size: 12px;
       color: $text-secondary;
       white-space: nowrap;
-      font-feature-settings: 'tnum'; // Tabular numbers for alignment
+      font-feature-settings: 'tnum';
     }
 
     .item-message {
       grid-column: 1 / -1;
       grid-row: 2;
-
       font-size: 14px;
       line-height: 1.5;
       color: $text-secondary;
       margin-top: 2px;
-
       display: -webkit-box;
       -webkit-line-clamp: 2;
       line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
-
       opacity: 0.8;
     }
   }

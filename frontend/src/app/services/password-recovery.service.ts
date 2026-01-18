@@ -15,7 +15,7 @@ export class PasswordRecoveryService {
    */
   requestReset(email: string): Observable<void> {
     return this.http
-      .post<{ message: string }>(`${this.API_BASE}/password-recovery/request`, { email })
+      .post<{ message: string }>(`${this.API_BASE}/users/password-recovery/request`, { email })
       .pipe(
         map(() => undefined),
         catchError((error) => {

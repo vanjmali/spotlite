@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -23,7 +24,7 @@ func NewNotificationHandler(s *services.NotificationService, b *infrastructure.B
 }
 
 func (h *NotificationHandler) CreateNotification(w http.ResponseWriter, r *http.Request) {
-	err := h.s.CreateNotification(r.Context())
+	n, err := h.s.CreateNotification(r.Context())
 
 	if err != nil {
 		_ = respond.InternalServerError(w)
@@ -31,9 +32,13 @@ func (h *NotificationHandler) CreateNotification(w http.ResponseWriter, r *http.
 	}
 
 	userID := middlewares.GetUserIdFromContext(r.Context())
-	notifPayload := []byte("You have a new notification")
+	np, err := json.Marshal(n)
+	if err != nil {
+		_ = respond.InternalServerError(w)
+		return
+	}
 
-	h.b.Broadcast <- infrastructure.NewNotification(userID, notifPayload)
+	h.b.Broadcast <- infrastructure.NewNotification(userID, np)
 
 	respond.NoContent(w)
 }
@@ -41,6 +46,8 @@ func (h *NotificationHandler) CreateNotification(w http.ResponseWriter, r *http.
 // HandleSubscribe function is used to handle client subscription requests and opens a one way connection
 // from server to client.
 func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
+	rc := http.NewResponseController(w)
+	rc.SetWriteDeadline(time.Time{})
 	userID := middlewares.GetUserIdFromContext(r.Context())
 
 	if userID == "" {
@@ -98,7 +105,7 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 		case <-notify:
 			return
 		case <-ticker.C:
-			if _, err := fmt.Fprintf(w, ":ping\n\n"); err != nil {
+			if _, err := fmt.Fprintf(w, "event: ping\ndata: \n\n"); err != nil {
 				// if the ping wasn't successful return which will call all defer calls
 				return
 			}
@@ -131,9 +138,12 @@ func (h *NotificationHandler) GetUserInbox(w http.ResponseWriter, r *http.Reques
 	_ = respond.OkJson(w, ns)
 }
 
+// helpers
 func setSSEHeaders(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 }
