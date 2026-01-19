@@ -103,9 +103,9 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 	fmt.Fprintf(w, ":connected\n\n")
 	flusher.Flush()
 
-	// ticker will send signals every 5 minutes and will help us ping the client to keep
+	// ticker will send signals every 25 seconds and will help us ping the client to keep
 	// the connection open
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(25 * time.Second)
 
 	// schedule ticker stopping for the end of the function lifetime
 	defer ticker.Stop()
@@ -118,7 +118,7 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 		case <-notify:
 			return
 		case <-ticker.C:
-			if _, err := fmt.Fprintf(w, "event: ping\ndata: \n\n"); err != nil {
+			if _, err := fmt.Fprintf(w, ":ping\n\n"); err != nil {
 				// if the ping wasn't successful return which will call all defer calls
 				return
 			}
