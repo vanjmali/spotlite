@@ -1,4 +1,3 @@
-// 1. Import the color module
 @use 'sass:color';
 
 $bg-color: #121212;
@@ -54,7 +53,6 @@ $text-secondary: #b3b3b3;
       transition: all 0.2s;
 
       &:hover {
-        // 2. Use color.adjust instead of lighten
         background-color: color.adjust($pill-bg, $lightness: 5%);
       }
 

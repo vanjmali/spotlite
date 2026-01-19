@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/gocql/gocql"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/notifications/infrastructure"
@@ -23,16 +25,21 @@ func NewNotificationHandler(s *services.NotificationService, b *infrastructure.B
 }
 
 func (h *NotificationHandler) CreateNotification(w http.ResponseWriter, r *http.Request) {
-	err := h.s.CreateNotification(r.Context())
+	n, err := h.s.CreateNotification(r.Context())
+
 	if err != nil {
 		_ = respond.InternalServerError(w)
 		return
 	}
 
 	userID := middlewares.GetUserIdFromContext(r.Context())
-	notifPayload := []byte("You have a new notification")
+	np, err := json.Marshal(n)
+	if err != nil {
+		_ = respond.InternalServerError(w)
+		return
+	}
 
-	h.b.Broadcast <- infrastructure.NewNotification(userID, notifPayload)
+	h.b.Broadcast <- infrastructure.NewNotification(userID, np)
 
 	respond.NoContent(w)
 }
@@ -40,6 +47,15 @@ func (h *NotificationHandler) CreateNotification(w http.ResponseWriter, r *http.
 // HandleSubscribe function is used to handle client subscription requests and opens a one way connection
 // from server to client.
 func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
+
+	// removing the write timeout for this request only so the SSE connection
+	// can
+	rc := http.NewResponseController(w)
+	err := rc.SetWriteDeadline(time.Time{})
+	if err != nil {
+		_ = respond.InternalServerError(w)
+	}
+
 	userID := middlewares.GetUserIdFromContext(r.Context())
 
 	if userID == "" {
@@ -53,14 +69,19 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 	notifChan := make(chan []byte, 10)
 	cc := infrastructure.NewClientConnection(userID, notifChan)
 
-	// the client connection will then be added to the NewClients channel,
-	// since it is a unbuffered channel the execution will be stopped until
-	// the new connections has been handled and persisted
-	h.b.NewClients <- cc
+	// Adds the client connection event into the ConnectionEvents channel which
+	// is used as a queue,
+	h.b.ConnectionEvents <- infrastructure.ClientEvent{
+		Action: infrastructure.ClientConnect,
+		Conn:   cc,
+	}
 
 	// schedule the connection closing for the end of the function lifetime
 	defer func() {
-		h.b.ClosingClients <- cc
+		h.b.ConnectionEvents <- infrastructure.ClientEvent{
+			Action: infrastructure.ClientDisconnect,
+			Conn:   cc,
+		}
 	}()
 
 	// we need to check if the response writer implements the http Flusher interface,
@@ -82,9 +103,9 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 	fmt.Fprintf(w, ":connected\n\n")
 	flusher.Flush()
 
-	// ticker will send signals every 5 minutes and will help us ping the client to keep
+	// ticker will send signals every 25 seconds and will help us ping the client to keep
 	// the connection open
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(25 * time.Second)
 
 	// schedule ticker stopping for the end of the function lifetime
 	defer ticker.Stop()
@@ -130,9 +151,17 @@ func (h *NotificationHandler) GetUserInbox(w http.ResponseWriter, r *http.Reques
 	_ = respond.OkJson(w, ns)
 }
 
+// helpers
 func setSSEHeaders(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no")
+}
+
+type NotificationEvent struct {
+	UserID         string     `json:"user_id"`
+	CreatedAt      time.Time  `json:"created_at"`
+	NotificationID gocql.UUID `json:"notification_id"`
+	Message        string     `json:"message"`
 }

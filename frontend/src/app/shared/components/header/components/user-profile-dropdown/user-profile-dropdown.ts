@@ -1,8 +1,9 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '@app/services/auth.service';
+import { NotificationService } from '@app/services/notification.service';
 
 @Component({
   selector: 'app-user-profile-dropdown',
@@ -13,6 +14,8 @@ import { AuthService } from '@app/services/auth.service';
 })
 export class UserProfileDropdownComponent {
   readonly authService = inject(AuthService);
+  readonly notificationService = inject(NotificationService);
+
   private readonly router = inject(Router);
 
   readonly isDropdownOpenSg = signal(false);
@@ -21,6 +24,25 @@ export class UserProfileDropdownComponent {
   readonly firstLetterSg = computed((email = this.authService.currentEmailSg()) => {
     return email ? email.charAt(0).toUpperCase() : '';
   });
+
+  constructor() {
+    effect(() => {
+      const isAuthenticated = this.authService.isAuthenticatedSg();
+      const token = this.authService.accessTokenSg();
+
+      if (isAuthenticated && token) {
+        console.log('User logged in - Opening SSE');
+        this.notificationService.openSSEConnection(token);
+      } else {
+        console.log('User logged out - Closing SSE');
+        this.notificationService.closeConnection();
+      }
+    });
+  }
+
+  navigateToHome(): void {
+    this.router.navigate(['/home']);
+  }
 
   toggleDropdown(): void {
     this.isDropdownOpenSg.update((isOpen) => !isOpen);

@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, map, catchError, of } from 'rxjs';
 import { VALIDATION_MESSAGES } from '@app/shared';
 import { environment } from '../../environments/environment';
+import { NotificationService } from './notification.service';
 
 export interface LoginResponse {
   message: string;
@@ -21,6 +22,8 @@ export class AuthService {
   readonly accessTokenSg = signal<string | null>(null);
   readonly isAuthenticatedSg = computed(() => !!this.accessTokenSg());
 
+  readonly notificationService = inject(NotificationService);
+
   private readonly API_BASE = environment.apiBaseUrl;
   private readonly http = inject(HttpClient);
 
@@ -34,7 +37,7 @@ export class AuthService {
   ): Promise<{ success: boolean; error?: string }> {
     try {
       await firstValueFrom(
-        this.http.post(`${this.API_BASE}/register`, {
+        this.http.post(`${this.API_BASE}/users/register`, {
           first_name,
           last_name,
           email,
@@ -61,7 +64,7 @@ export class AuthService {
     try {
       const response = await firstValueFrom(
         this.http.get<{ exists: boolean }>(
-          `${this.API_BASE}/check-email?email=${encodeURIComponent(email)}`
+          `${this.API_BASE}/users/check-email?email=${encodeURIComponent(email)}`
         )
       );
       return response.exists;
@@ -77,7 +80,7 @@ export class AuthService {
       this.logout();
 
       await firstValueFrom(
-        this.http.post<LoginResponse>(`${this.API_BASE}/login`, { email, password })
+        this.http.post<LoginResponse>(`${this.API_BASE}/users/login`, { email, password })
       );
 
       // If we reach here, response was successful (2xx status)
@@ -98,7 +101,7 @@ export class AuthService {
     try {
       const response = await firstValueFrom(
         this.http.post<VerifyOtpResponse>(
-          `${this.API_BASE}/login/verify-otp`,
+          `${this.API_BASE}/users/login/verify-otp`,
           { email, code },
           { withCredentials: true }
         )
@@ -132,7 +135,7 @@ export class AuthService {
     try {
       const response = await firstValueFrom(
         this.http.post<VerifyOtpResponse>(
-          `${this.API_BASE}/refresh-token`,
+          `${this.API_BASE}/users/refresh-token`,
           {},
           { withCredentials: true }
         )
@@ -148,7 +151,7 @@ export class AuthService {
   async resendOtp(email: string): Promise<{ success: boolean; error?: string }> {
     try {
       await firstValueFrom(
-        this.http.post<LoginResponse>(`${this.API_BASE}/login/resend-otp`, { email })
+        this.http.post<LoginResponse>(`${this.API_BASE}/users/login/resend-otp`, { email })
       );
 
       // If we reach here, response was successful (2xx status)
@@ -164,7 +167,7 @@ export class AuthService {
   logout(): void {
     void firstValueFrom(
       this.http.post(
-        `${this.API_BASE}/logout`,
+        `${this.API_BASE}/users/logout`,
         {},
         {
           withCredentials: true,
@@ -174,13 +177,14 @@ export class AuthService {
 
     this.accessTokenSg.set(null);
     this.currentEmailSg.set(null);
+    this.notificationService.closeConnection();
   }
 
   // Change password
   changePassword(currentPassword: string, newPassword: string) {
     return this.http
       .patch(
-        `${this.API_BASE}/change-password`,
+        `${this.API_BASE}/users/change-password`,
         {
           current_password: currentPassword,
           new_password: newPassword,
