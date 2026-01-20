@@ -105,7 +105,7 @@ func (rl *RateLimiter) Limit(next http.Handler) http.Handler {
 
 		// if there aren't any tokens left in the bucket return error 429
 		if !limiter.Allow() {
-			respond.TooManyRequests(w)
+			_ = respond.TooManyRequests(w)
 			return
 		}
 
