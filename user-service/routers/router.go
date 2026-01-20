@@ -10,14 +10,15 @@ import (
 )
 
 // HandleRequests wires HTTP routes to user handlers.
-func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler, prh *handlers.PasswordRecoveryHandler) http.Handler {
+func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler, prh *handlers.PasswordRecoveryHandler, rl *middlewares.RateLimiter) http.Handler {
 	r := mux.NewRouter()
 	middlewares.HandleHealthz(r)
 
-	// Create a subrouter for API routes to attach telemetry
-	// and other middlewares if needed.
+	// create a subrouter for API routes to attach telemetry and rate limiting
 	api := r.PathPrefix("/").Subrouter()
+
 	telemetry.AttachMuxTracing(api, "user-service")
+	middlewares.AttachRateLimitMiddleware(api, rl)
 
 	api.HandleFunc("/register", h.HandleRegistration).Methods("POST")
 
@@ -37,6 +38,7 @@ func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler, 
 	// the verify endpoint is defined as a get so it can redirect when link click happens.
 	api.HandleFunc("/verify", h.HandleAccountVerification).Methods("GET", "POST")
 
-	r.Handle("/change-password", middlewares.RequireAuthenticated(h.HandleChangePassword)).Methods("PATCH")
+	api.Handle("/change-password", middlewares.RequireAuthenticated(h.HandleChangePassword)).Methods("PATCH")
+
 	return r
 }

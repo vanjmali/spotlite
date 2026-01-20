@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/hibiken/asynq"
+	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/common-lib/utils"
@@ -123,7 +124,7 @@ func run() error {
 
 	// Initialize a scheduler
 	//    minutes *    hours *    day of month *     month *    day of week *
-	as.RegisterSchedule("37 22 * * *")
+	as.RegisterSchedule("04 12 * * *")
 
 	// Starts task router and scheduler in separate go routines
 	as.Start(mux)
@@ -136,7 +137,11 @@ func run() error {
 	rth := handlers.NewRefreshTokenHandler(*rts, *us, *v)
 	prh := handlers.NewPasswordRecoveryHandler(*prs, *v)
 
-	r := routers.HandleRequests(uh, rth, prh)
+	// initialize rate limiter with the maximum bucket capacity of 10,
+	// where a new token is being added every 2 seconds
+	rl := middlewares.NewRateLimiter(0.5, 10)
+
+	r := routers.HandleRequests(uh, rth, prh, rl)
 
 	srvAddr := ":" + port
 
