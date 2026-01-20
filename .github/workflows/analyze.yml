@@ -8,6 +8,7 @@ jobs:
   build:
     name: Build and analyze
     runs-on: ubuntu-latest
+    if: false # SonarQube host died again, will just keep it disabled until required
 
     steps:
       - uses: actions/checkout@v4
