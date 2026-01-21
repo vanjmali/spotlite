@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/hibiken/asynq"
-	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/common-lib/utils"
@@ -137,11 +136,7 @@ func run() error {
 	rth := handlers.NewRefreshTokenHandler(*rts, *us, *v)
 	prh := handlers.NewPasswordRecoveryHandler(*prs, *v)
 
-	// initialize rate limiter with the maximum bucket capacity of 10,
-	// where a new token is being added every 2 seconds
-	rl := middlewares.NewRateLimiter(0.5, 10)
-
-	r := routers.HandleRequests(uh, rth, prh, rl)
+	r := routers.HandleRequests(uh, rth, prh)
 
 	srvAddr := ":" + port
 

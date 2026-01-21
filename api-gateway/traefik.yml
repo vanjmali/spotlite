@@ -17,6 +17,11 @@ entryPoints:
         certResolver: default
 
 providers:
+  file:
+    directory: /etc/traefik/dynamic
+    # makes sure to watch for changes in the directory and do hot reloads
+    # on configuration change
+    watch: true
   docker:
     # Only expose services that set `traefik.enable=true`.
     exposedByDefault: false

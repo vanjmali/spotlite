@@ -1,0 +1,23 @@
+http:
+  middlewares:
+    rate-limit-global:
+      rateLimit:
+        # determines the amount of tokens added every time the refresh interval is triggered
+        average: 2
+
+        # burst defines the size of the bucket (how many tokens can be stored at once)
+        burst: 10
+
+        # period defines the time interval on which the tokens will be added, in this case
+        # "average" tokens will be added every 10s
+        period: 10s
+
+        # define the criteria on which the rate limiting will be applied
+        sourceCriterion:
+          # this tells traefik to limit by ip address
+          ipStrategy:
+            # when the communication is done over the api gateway, the default ip address we
+            # would get is the address of the gateway. By using the depth property we are
+            # basically accessing ip addresses from the "X-Forwaded-For" header where the clients
+            # ip address is located
+            depth: 1

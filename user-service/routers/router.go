@@ -10,7 +10,7 @@ import (
 )
 
 // HandleRequests wires HTTP routes to user handlers.
-func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler, prh *handlers.PasswordRecoveryHandler, rl *middlewares.RateLimiter) http.Handler {
+func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler, prh *handlers.PasswordRecoveryHandler) http.Handler {
 	r := mux.NewRouter()
 	middlewares.HandleHealthz(r)
 
@@ -18,7 +18,6 @@ func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler, 
 	api := r.PathPrefix("/").Subrouter()
 
 	telemetry.AttachMuxTracing(api, "user-service")
-	middlewares.AttachRateLimitMiddleware(api, rl)
 
 	api.HandleFunc("/register", h.HandleRegistration).Methods("POST")
 
