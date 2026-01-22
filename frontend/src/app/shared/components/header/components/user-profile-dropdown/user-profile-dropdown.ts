@@ -31,10 +31,8 @@ export class UserProfileDropdownComponent {
       const token = this.authService.accessTokenSg();
 
       if (isAuthenticated && token) {
-        console.log('User logged in - Opening SSE');
         this.notificationService.openSSEConnection(token);
       } else {
-        console.log('User logged out - Closing SSE');
         this.notificationService.closeConnection();
       }
     });
