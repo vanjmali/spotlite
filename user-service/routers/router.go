@@ -14,7 +14,7 @@ func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler, 
 	r := mux.NewRouter()
 	middlewares.HandleHealthz(r)
 
-	// create a subrouter for API routes to attach telemetry and rate limiting
+	// create a subrouter for API routes to attach telemetry
 	api := r.PathPrefix("/").Subrouter()
 
 	telemetry.AttachMuxTracing(api, "user-service")
