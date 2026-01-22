@@ -8,7 +8,7 @@ import (
 type Song struct {
 	ID            primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Title         string             `bson:"title" json:"title"`
-	Genre         string             `bson:"genre" json:"genre"`
+	Genres        []Genre            `bson:"genres" json:"genres"`
 	LengthSeconds int                `bson:"length_seconds" json:"lengthSeconds"`
 	Artists       []Artist           `bson:"artists" json:"artists"`
 }

@@ -24,13 +24,14 @@ type AlbumService struct {
 	albumRepo     *repositories.AlbumRepository
 	artistService *ArtistService
 	songService   *SongService
+	genreService  *GenreService
 	tr            trace.Tracer
 }
 
 // NewAlbumService creates and returns a new AlbumService with the provided repository and dependent services.
-func NewAlbumService(r repositories.AlbumRepository, artistService ArtistService, songService SongService) *AlbumService {
+func NewAlbumService(r repositories.AlbumRepository, artistService ArtistService, songService SongService, genreService GenreService) *AlbumService {
 	tr := otel.Tracer("album-service/album-service")
-	s := AlbumService{albumRepo: &r, artistService: &artistService, songService: &songService, tr: tr}
+	s := AlbumService{albumRepo: &r, artistService: &artistService, songService: &songService, genreService: &genreService, tr: tr}
 
 	return &s
 }
@@ -70,6 +71,34 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 
 	resolveArtistSpan.End()
 
+	resolveGenreCtx, resolveGenreSpan := s.tr.Start(ctx, "album.create.resolve_genre")
+
+	embeddedGenre := make([]entities.Genre, 0)
+
+	for _, genreIdStr := range albumDto.GenreIds {
+		genre, err := s.genreService.FindGenreByID(resolveGenreCtx, genreIdStr)
+		if err != nil {
+			resolveGenreSpan.RecordError(err)
+			resolveGenreSpan.End()
+
+			switch {
+			case errors.Is(err, ErrObjectIdCastFailed):
+				return ErrObjectIdCastFailed
+			case errors.Is(err, ErrGenreNotFound):
+				return ErrGenreNotFound
+			default:
+				return err
+			}
+		}
+
+		embeddedGenre = append(embeddedGenre, entities.Genre{
+			ID:   genre.ID,
+			Name: genre.Name,
+		})
+	}
+
+	resolveGenreSpan.End()
+
 	resolveSongCtx, resolveSongSpan := s.tr.Start(ctx, "album.create.resolve_song")
 
 	embeddedSong := make([]entities.Song, 0)
@@ -93,7 +122,7 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 		embeddedSong = append(embeddedSong, entities.Song{
 			ID:            song.ID,
 			Title:         song.Title,
-			Genre:         song.Genre,
+			Genres:        song.Genres,
 			LengthSeconds: song.LengthSeconds,
 			Artists:       song.Artists,
 		})
@@ -102,7 +131,7 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 	resolveSongSpan.End()
 
 	createCtx, createSpan := s.tr.Start(ctx, "album.create.create_album")
-	albumEntity, err := mappers.ToAlbumEntity(albumDto, embeddedArtist, embeddedSong)
+	albumEntity, err := mappers.ToAlbumEntity(albumDto, embeddedArtist, embeddedGenre, embeddedSong)
 	if err != nil {
 		createSpan.RecordError(err)
 		createSpan.End()
@@ -165,8 +194,30 @@ func (s *AlbumService) UpdateAlbum(ctx context.Context, idStr string, dto dtos.U
 	if dto.ReleaseDate != nil {
 		update["release_date"] = *dto.ReleaseDate
 	}
-	if dto.Genres != nil {
-		update["genres"] = *dto.Genres
+	if dto.GenreIds != nil {
+		embeddedGenre := make([]entities.Genre, 0)
+		for _, genreIdStr := range *dto.GenreIds {
+			genre, err := s.genreService.FindGenreByID(ctx, genreIdStr)
+			if err != nil {
+				buildSpan.RecordError(err)
+				buildSpan.End()
+
+				switch {
+				case errors.Is(err, ErrObjectIdCastFailed):
+					return nil, ErrObjectIdCastFailed
+				case errors.Is(err, ErrGenreNotFound):
+					return nil, ErrGenreNotFound
+				default:
+					return nil, err
+				}
+			}
+
+			embeddedGenre = append(embeddedGenre, entities.Genre{
+				ID:   genre.ID,
+				Name: genre.Name,
+			})
+		}
+		update["genres"] = embeddedGenre
 	}
 	if dto.ArtistIds != nil {
 		embeddedArtist := make([]entities.Artist, 0)
@@ -267,7 +318,7 @@ func (s *AlbumService) AddSongsToAlbum(ctx context.Context, idStr string, dto dt
 		embeddedSong = append(embeddedSong, entities.Song{
 			ID:            song.ID,
 			Title:         song.Title,
-			Genre:         song.Genre,
+			Genres:        song.Genres,
 			LengthSeconds: song.LengthSeconds,
 			Artists:       song.Artists,
 		})

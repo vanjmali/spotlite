@@ -7,11 +7,12 @@ import (
 )
 
 // ToArtistEntity converts an ArtistDto to an Artist entity.
-func ToArtistEntity(a *dtos.ArtistDto) (*entities.Artist, error) {
+func ToArtistEntity(a *dtos.ArtistDto, genres []entities.Genre) (*entities.Artist, error) {
+
 	return &entities.Artist{
 		ID:          primitive.NewObjectID(),
 		Name:        a.Name,
-		Genres:      a.Genres,
+		Genres:      genres,
 		Description: a.Description,
 	}, nil
 }

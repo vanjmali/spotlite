@@ -6,12 +6,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// ToSongEntity converts a SongDto to a Song entity with associated artists.
-func ToSongEntity(a *dtos.SongDto, artists []entities.Artist) (*entities.Song, error) {
+// ToSongEntity converts a SongDto to a Song entity with associated genres and artists.
+func ToSongEntity(a *dtos.SongDto, genres []entities.Genre, artists []entities.Artist) (*entities.Song, error) {
 	return &entities.Song{
 		ID:            primitive.NewObjectID(),
 		Title:         a.Title,
-		Genre:         a.Genre,
+		Genres:        genres,
 		LengthSeconds: a.LengthSeconds,
 		Artists:       artists,
 	}, nil

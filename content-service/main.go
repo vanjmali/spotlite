@@ -73,10 +73,10 @@ func run() error {
 	gr := repositories.NewGenreRepository(mongo.DatabaseName(), "genres", dbc)
 
 	// Services initialization
-	as := services.NewArtistService(*ar)
-	ss := services.NewSongService(*sr, *as)
-	als := services.NewAlbumService(*alr, *as, *ss)
 	gs := services.NewGenreService(*gr)
+	as := services.NewArtistService(*ar, *gs)
+	ss := services.NewSongService(*sr, *as, *gs)
+	als := services.NewAlbumService(*alr, *as, *ss, *gs)
 
 	// Handlers initialization
 	ah := handlers.NewArtistHandler(*as, *v)

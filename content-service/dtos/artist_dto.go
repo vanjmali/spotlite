@@ -10,14 +10,14 @@ import (
 type ArtistDto struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Name        string             `bson:"name" json:"name" validate:"required,min=2"`
-	Genres      []string           `bson:"genres" json:"genres" validate:"required,min=1,dive,required,min=2,max=30"`
+	GenreIds    []string           `bson:"genre_ids" json:"genre_ids" validate:"required,min=1,dive,required,len=24,hexadecimal"`
 	Description string             `bson:"description" json:"description" validate:"required,min=2"`
 }
 
 // UpdateArtistDto represents the payload for updating an existing artist. Pointers allow partial updates.
 type UpdateArtistDto struct {
 	Name        *string   `json:"name" validate:"omitempty,min=2"`
-	Genres      *[]string `json:"genres" validate:"omitempty,min=1,dive,required,min=2,max=30"`
+	GenreIds    *[]string `json:"genres" validate:"omitempty,min=1,dive,required,len=24,hexadecimal"`
 	Description *string   `json:"description" validate:"omitempty,min=2"`
 }
 

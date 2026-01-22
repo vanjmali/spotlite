@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 
-	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -40,8 +39,8 @@ func (r *ArtistRepository) Create(ctx context.Context, artist entities.Artist) e
 }
 
 // FindByID finds artist by ID.
-func (r *ArtistRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*dtos.ArtistDto, error) {
-	var artist dtos.ArtistDto
+func (r *ArtistRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*entities.Artist, error) {
+	var artist entities.Artist
 	c := r.getCollection()
 
 	if err := c.FindOne(ctx, bson.M{"_id": id}).Decode(&artist); err != nil {
@@ -51,7 +50,7 @@ func (r *ArtistRepository) FindByID(ctx context.Context, id primitive.ObjectID) 
 }
 
 // UpdateByID updates artist by ID.
-func (r *ArtistRepository) UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]any) (*dtos.ArtistDto, error) {
+func (r *ArtistRepository) UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]any) (*entities.Artist, error) {
 	c := r.getCollection()
 
 	filter := bson.M{"_id": id}
@@ -59,7 +58,7 @@ func (r *ArtistRepository) UpdateByID(ctx context.Context, id primitive.ObjectID
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
 
-	var updatedArtist dtos.ArtistDto
+	var updatedArtist entities.Artist
 	err := c.FindOneAndUpdate(ctx, filter, updateDoc, opts).Decode(&updatedArtist)
 	if err != nil {
 		return nil, err
