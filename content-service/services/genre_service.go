@@ -25,7 +25,7 @@ type GenreService struct {
 
 // NewArtistService builds a ArtistService with repository.
 func NewGenreService(r repositories.GenreRepository) *GenreService {
-	tr := otel.Tracer("artist-service/artist-service")
+	tr := otel.Tracer("content-service/genre-service")
 	s := GenreService{r: &r, tr: tr}
 
 	return &s

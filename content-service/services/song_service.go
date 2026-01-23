@@ -29,7 +29,7 @@ type SongService struct {
 
 // NewSongService creates and returns a new SongService with the provided repository and artist service.
 func NewSongService(songRepo repositories.SongRepository, artistService ArtistService, genreService GenreService) *SongService {
-	tr := otel.Tracer("song-service/song-service")
+	tr := otel.Tracer("content-service/song-service")
 	s := SongService{songRepo: &songRepo, artistService: &artistService, genreService: &genreService, tr: tr}
 
 	return &s
@@ -282,12 +282,11 @@ type SongsQuery struct {
 	Size     int
 	Title    string
 	Genre    string
+	GenreID  string
 	ArtistId string
 }
 
 // GetSongs retrieves a paginated list of songs with optional filtering by title, genre, or artist ID.
-//
-
 func (s *SongService) GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongListResponseDto, error) {
 	ctx, span := s.tr.Start(ctx, "song.get_all")
 	defer span.End()
@@ -301,7 +300,18 @@ func (s *SongService) GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongLis
 	}
 
 	if q.Genre != "" {
-		genreId, err := primitive.ObjectIDFromHex(q.Genre)
+		filter["genres"] = bson.M{
+			"$elemMatch": bson.M{
+				"name": bson.M{
+					"$regex":   q.Genre,
+					"$options": "i",
+				},
+			},
+		}
+	}
+
+	if q.GenreID != "" {
+		genreId, err := primitive.ObjectIDFromHex(q.GenreID)
 		if err != nil {
 			return nil, ErrObjectIdCastFailed
 		}

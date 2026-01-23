@@ -145,8 +145,6 @@ func (h *SongHandler) HandleDeleteSong(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleGetSongs handles HTTP GET requests to retrieve a paginated list of songs with optional filtering.
-//
-
 func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
@@ -156,6 +154,7 @@ func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 		Size:     p.Size,
 		Title:    q.Get("title"),
 		Genre:    q.Get("genre"),
+		GenreID:  q.Get("genre_id"),
 		ArtistId: q.Get("artist_id"),
 	}
 

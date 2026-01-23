@@ -30,7 +30,7 @@ type AlbumService struct {
 
 // NewAlbumService creates and returns a new AlbumService with the provided repository and dependent services.
 func NewAlbumService(r repositories.AlbumRepository, artistService ArtistService, songService SongService, genreService GenreService) *AlbumService {
-	tr := otel.Tracer("album-service/album-service")
+	tr := otel.Tracer("content-service/album-service")
 	s := AlbumService{albumRepo: &r, artistService: &artistService, songService: &songService, genreService: &genreService, tr: tr}
 
 	return &s
@@ -444,12 +444,11 @@ type AlbumsQuery struct {
 	Size     int
 	Title    string
 	Genres   string
+	GenreID  string
 	ArtistId string
 }
 
 // GetAlbums retrieves a paginated list of albums with optional filtering by title, genre, or artist ID.
-//
-
 func (s *AlbumService) GetAlbums(ctx context.Context, q AlbumsQuery) (*dtos.AlbumListResponseDto, error) {
 	ctx, span := s.tr.Start(ctx, "album.get_all")
 	defer span.End()
@@ -463,7 +462,22 @@ func (s *AlbumService) GetAlbums(ctx context.Context, q AlbumsQuery) (*dtos.Albu
 	}
 
 	if q.Genres != "" {
-		filter["genres"] = q.Genres
+		filter["genres"] = bson.M{
+			"$elemMatch": bson.M{
+				"name": bson.M{
+					"$regex":   q.Genres,
+					"$options": "i",
+				},
+			},
+		}
+	}
+
+	if q.GenreID != "" {
+		genreId, err := primitive.ObjectIDFromHex(q.GenreID)
+		if err != nil {
+			return nil, ErrObjectIdCastFailed
+		}
+		filter["genres._id"] = genreId
 	}
 
 	if q.ArtistId != "" {

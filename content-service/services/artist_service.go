@@ -31,7 +31,7 @@ type ArtistService struct {
 
 // NewArtistService builds a ArtistService with repository.
 func NewArtistService(r repositories.ArtistRepository, genreService GenreService) *ArtistService {
-	tr := otel.Tracer("artist-service/artist-service")
+	tr := otel.Tracer("content-service/artist-service")
 	s := ArtistService{r: &r, genreService: &genreService, tr: tr}
 	return &s
 }
@@ -243,7 +243,10 @@ func (s *ArtistService) GetArtists(ctx context.Context, q ArtistsQuery) (*dtos.A
 	}
 
 	if q.Genre != "" {
-		filter["genres"] = q.Genre
+		filter["genres.name"] = bson.M{
+			"$regex":   q.Genre,
+			"$options": "i",
+		}
 	}
 
 	p := pagination.NewPagination(q.Page, q.Size)
