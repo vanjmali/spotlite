@@ -9,6 +9,9 @@ entryPoints:
       tls: true
 
 providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
   docker:
     exposedByDefault: false
     network: spotlite-api-gateway

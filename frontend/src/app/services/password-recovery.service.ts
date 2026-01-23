@@ -30,7 +30,7 @@ export class PasswordRecoveryService {
    */
   validateToken(token: string): Observable<boolean> {
     return this.http
-      .post<{ message: string }>(`${this.API_BASE}/password-recovery/validate`, { token })
+      .post<{ message: string }>(`${this.API_BASE}/users/password-recovery/validate`, { token })
       .pipe(
         map(() => true),
         catchError(() => throwError(() => new Error(VALIDATION_MESSAGES.INVALID_RECOVERY_LINK)))
@@ -42,7 +42,7 @@ export class PasswordRecoveryService {
    */
   resetPassword(token: string, newPassword: string): Observable<void> {
     return this.http
-      .post<{ message: string }>(`${this.API_BASE}/password-recovery/reset`, {
+      .post<{ message: string }>(`${this.API_BASE}/users/password-recovery/reset`, {
         token,
         new_password: newPassword,
       })

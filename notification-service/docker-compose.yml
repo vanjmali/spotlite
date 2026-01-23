@@ -16,7 +16,7 @@ services:
       traefik.enable: true
       traefik.docker.network: spotlite-api-gateway
       traefik.http.routers.notification-service.rule: PathPrefix(`/api/notifications`)
-      traefik.http.routers.notification-service.middlewares: notification-service-strip-prefix,notification-service-compress
+      traefik.http.routers.notification-service.middlewares: notification-service-strip-prefix,notification-service-compress,rate-limit-global@file
       traefik.http.middlewares.notification-service-strip-prefix.stripprefix.prefixes: /api/notifications
       traefik.http.middlewares.notification-service-strip-prefix.stripprefix.forceslash: false
       traefik.http.services.notification-service.loadbalancer.server.port: "3000"
