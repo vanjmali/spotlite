@@ -17,7 +17,7 @@ type ArtistDto struct {
 // UpdateArtistDto represents the payload for updating an existing artist. Pointers allow partial updates.
 type UpdateArtistDto struct {
 	Name        *string   `json:"name" validate:"omitempty,min=2"`
-	GenreIds    *[]string `json:"genres" validate:"omitempty,min=1,dive,required,len=24,hexadecimal"`
+	GenreIds    *[]string `json:"genre_ids" validate:"omitempty,min=1,dive,required,len=24,hexadecimal"`
 	Description *string   `json:"description" validate:"omitempty,min=2"`
 }
 
