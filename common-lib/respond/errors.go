@@ -32,6 +32,16 @@ func Error(w http.ResponseWriter, e ErrorResponse) error {
 	return writeJson(w, e.HttpCode, r)
 }
 
+func TooManyRequests(w http.ResponseWriter) error {
+	r := ErrorResponse{
+		HttpCode: http.StatusTooManyRequests,
+		Code:     "rate_limit_exceeded",
+		Message:  "Too many requests. Please wait and retry.",
+	}
+
+	return Error(w, r)
+}
+
 // ValidationError issues a validation error response with field-level details.
 // It uses HTTP status code 400 (Bad Request) with code "validation_error" and a generic message.
 func ValidationError(w http.ResponseWriter, fields map[string]string) error {
