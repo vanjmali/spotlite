@@ -58,7 +58,9 @@ func (h *AlbumHandler) HandleCreateAlbum(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
-	respond.Created(w, "Album created successfully")
+	if err := respond.Created(w, "Album created successfully"); err != nil {
+		log.Printf("trace_id=%s failed to write response: %v", telemetry.TraceID(r.Context()), err)
+	}
 }
 
 // HandleGetAlbumById handles HTTP GET requests to retrieve a single album by its ID.
