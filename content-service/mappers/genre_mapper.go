@@ -8,7 +8,7 @@ import (
 
 func ToGenreEntity(a *dtos.GenreDto) (*entities.Genre, error) {
 	return &entities.Genre{
-		ID:          primitive.NewObjectID(),
-		Name:        a.Name,
+		ID:   primitive.NewObjectID(),
+		Name: a.Name,
 	}, nil
 }

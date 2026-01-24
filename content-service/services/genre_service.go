@@ -14,9 +14,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-var (
-	ErrGenreNotFound = errors.New("genre not found")
-)
+var ErrGenreNotFound = errors.New("genre not found")
 
 type GenreService struct {
 	r  *repositories.GenreRepository

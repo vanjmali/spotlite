@@ -26,7 +26,6 @@ func NewNotificationHandler(s *services.NotificationService, b *infrastructure.B
 
 func (h *NotificationHandler) CreateNotification(w http.ResponseWriter, r *http.Request) {
 	n, err := h.s.CreateNotification(r.Context())
-
 	if err != nil {
 		_ = respond.InternalServerError(w)
 		return
@@ -47,7 +46,6 @@ func (h *NotificationHandler) CreateNotification(w http.ResponseWriter, r *http.
 // HandleSubscribe function is used to handle client subscription requests and opens a one way connection
 // from server to client.
 func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
-
 	// removing the write timeout for this request only so the SSE connection
 	// can
 	rc := http.NewResponseController(w)
@@ -151,7 +149,7 @@ func (h *NotificationHandler) GetUserInbox(w http.ResponseWriter, r *http.Reques
 	_ = respond.OkJson(w, ns)
 }
 
-// helpers
+// helpers.
 func setSSEHeaders(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
