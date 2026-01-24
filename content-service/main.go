@@ -70,18 +70,21 @@ func run() error {
 	ar := repositories.NewArtistRepository(mongo.DatabaseName(), "artists", dbc)
 	sr := repositories.NewSongRepository(mongo.DatabaseName(), "songs", dbc)
 	alr := repositories.NewAlbumRepository(mongo.DatabaseName(), "albums", dbc)
+	gr := repositories.NewGenreRepository(mongo.DatabaseName(), "genres", dbc)
 
 	// Services initialization
-	as := services.NewArtistService(*ar)
-	ss := services.NewSongService(*sr, *as)
-	als := services.NewAlbumService(*alr, *as, *ss)
+	gs := services.NewGenreService(*gr)
+	as := services.NewArtistService(*ar, *gs)
+	ss := services.NewSongService(*sr, *as, *gs)
+	als := services.NewAlbumService(*alr, *as, *ss, *gs)
 
 	// Handlers initialization
 	ah := handlers.NewArtistHandler(*as, *v)
 	sh := handlers.NewSongHandler(*ss, *v)
 	alh := handlers.NewAlbumHandler(*als, *v)
+	gh := handlers.NewGenreHandler(*gs, *v)
 
-	r := routers.HandleRequests(ah, sh, alh)
+	r := routers.HandleRequests(ah, sh, alh, gh)
 
 	srvAddr := ":" + port
 

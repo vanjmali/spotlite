@@ -1,24 +1,25 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { Genre } from './genre.service';
 
 // Artist interfaces
 export interface Artist {
   id: string;
   name: string;
-  genres: string[];
+  genres: Genre[];
   description: string;
 }
 
 export interface CreateArtistDto {
   name: string;
-  genres: string[];
+  genre_ids: string[];
   description: string;
 }
 
 export interface UpdateArtistDto {
   name?: string;
-  genres?: string[];
+  genre_ids?: string[];
   description?: string;
 }
 

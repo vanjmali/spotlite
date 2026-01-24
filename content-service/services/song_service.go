@@ -23,21 +23,50 @@ var ErrSongNotFound = errors.New("song not found")
 type SongService struct {
 	songRepo      *repositories.SongRepository
 	artistService *ArtistService
+	genreService  *GenreService
 	tr            trace.Tracer
 }
 
 // NewSongService creates and returns a new SongService with the provided repository and artist service.
-func NewSongService(songRepo repositories.SongRepository, artistService ArtistService) *SongService {
-	tr := otel.Tracer("song-service/song-service")
-	s := SongService{songRepo: &songRepo, artistService: &artistService, tr: tr}
+func NewSongService(songRepo repositories.SongRepository, artistService ArtistService, genreService GenreService) *SongService {
+	tr := otel.Tracer("content-service/song-service")
+	s := SongService{songRepo: &songRepo, artistService: &artistService, genreService: &genreService, tr: tr}
 
 	return &s
 }
 
-// Create creates a new song with the provided data, resolving associated artists.
+// Create creates a new song with the provided data, resolving associated artists and genre.
 func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 	ctx, span := s.tr.Start(ctx, "song.create")
 	defer span.End()
+
+	resolveGenreCtx, resolveGenreSpan := s.tr.Start(ctx, "song.create.resolve_genre")
+
+	embeddedGenre := make([]entities.Genre, 0)
+
+	for _, genreIdStr := range songDto.GenreIds {
+		genre, err := s.genreService.FindGenreByID(resolveGenreCtx, genreIdStr)
+		if err != nil {
+			resolveGenreSpan.RecordError(err)
+			resolveGenreSpan.End()
+
+			switch {
+			case errors.Is(err, ErrObjectIdCastFailed):
+				return ErrObjectIdCastFailed
+			case errors.Is(err, ErrGenreNotFound):
+				return ErrGenreNotFound
+			default:
+				return err
+			}
+		}
+
+		embeddedGenre = append(embeddedGenre, entities.Genre{
+			ID:   genre.ID,
+			Name: genre.Name,
+		})
+	}
+
+	resolveGenreSpan.End()
 
 	resolveCtx, resolveSpan := s.tr.Start(ctx, "song.create.resolve_artists")
 	embeddedArtists := make([]entities.Artist, 0)
@@ -69,7 +98,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 	resolveSpan.End()
 
 	_, mapSpan := s.tr.Start(ctx, "song.create.map_entity")
-	songEntity, err := mappers.ToSongEntity(songDto, embeddedArtists)
+	songEntity, err := mappers.ToSongEntity(songDto, embeddedGenre, embeddedArtists)
 	if err != nil {
 		mapSpan.RecordError(err)
 		mapSpan.End()
@@ -133,8 +162,30 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 	if dto.Title != nil {
 		update["title"] = *dto.Title
 	}
-	if dto.Genre != nil {
-		update["genre"] = *dto.Genre
+	if dto.GenreIds != nil {
+		embeddedGenres := make([]entities.Genre, 0)
+		for _, genreIdStr := range *dto.GenreIds {
+			genre, err := s.genreService.FindGenreByID(ctx, genreIdStr)
+			if err != nil {
+				buildSpan.RecordError(err)
+				buildSpan.End()
+
+				switch {
+				case errors.Is(err, ErrObjectIdCastFailed):
+					return nil, ErrObjectIdCastFailed
+				case errors.Is(err, ErrGenreNotFound):
+					return nil, ErrGenreNotFound
+				default:
+					return nil, err
+				}
+			}
+
+			embeddedGenres = append(embeddedGenres, entities.Genre{
+				ID:   genre.ID,
+				Name: genre.Name,
+			})
+		}
+		update["genres"] = embeddedGenres
 	}
 	if dto.LengthSeconds != nil {
 		update["length_seconds"] = *dto.LengthSeconds
@@ -231,12 +282,11 @@ type SongsQuery struct {
 	Size     int
 	Title    string
 	Genre    string
+	GenreID  string
 	ArtistId string
 }
 
 // GetSongs retrieves a paginated list of songs with optional filtering by title, genre, or artist ID.
-//
-
 func (s *SongService) GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongListResponseDto, error) {
 	ctx, span := s.tr.Start(ctx, "song.get_all")
 	defer span.End()
@@ -250,7 +300,22 @@ func (s *SongService) GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongLis
 	}
 
 	if q.Genre != "" {
-		filter["genre"] = q.Genre
+		filter["genres"] = bson.M{
+			"$elemMatch": bson.M{
+				"name": bson.M{
+					"$regex":   q.Genre,
+					"$options": "i",
+				},
+			},
+		}
+	}
+
+	if q.GenreID != "" {
+		genreId, err := primitive.ObjectIDFromHex(q.GenreID)
+		if err != nil {
+			return nil, ErrObjectIdCastFailed
+		}
+		filter["genres._id"] = genreId
 	}
 
 	if q.ArtistId != "" {

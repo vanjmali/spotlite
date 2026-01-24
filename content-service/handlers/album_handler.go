@@ -58,6 +58,7 @@ func (h *AlbumHandler) HandleCreateAlbum(w http.ResponseWriter, r *http.Request)
 			return
 		}
 	}
+
 	respond.NoContent(w)
 }
 
@@ -248,6 +249,7 @@ func (h *AlbumHandler) HandleGetAlbums(w http.ResponseWriter, r *http.Request) {
 		Size:     p.Size,
 		Title:    q.Get("title"),
 		Genres:   q.Get("genres"),
+		GenreID:  q.Get("genre_id"),
 		ArtistId: q.Get("artist_id"),
 	}
 

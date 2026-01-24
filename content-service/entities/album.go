@@ -9,7 +9,7 @@ type Album struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Title       string             `bson:"title" json:"title"`
 	ReleaseDate string             `bson:"release_date" json:"releaseDate"` // Date string in YYYY-MM-DD format
-	Genres      []string           `bson:"genres" json:"genres"`
+	Genres      []Genre            `bson:"genres" json:"genres"`
 	Songs       []Song             `bson:"songs" json:"songs"`
 	Artists     []Artist           `bson:"artists" json:"artists"`
 }

@@ -21,8 +21,8 @@
           <div class="artist-details__info">
             @if (artistSg()!.genres && artistSg()!.genres.length > 0) {
               <div class="artist-details__genres">
-                @for (genre of artistSg()!.genres; track genre) {
-                  <span class="artist-details__genre-tag">{{ genre }}</span>
+                @for (genre of artistSg()!.genres; track genre.id) {
+                  <span class="artist-details__genre-tag">{{ genre.name }}</span>
                 }
               </div>
             }
@@ -51,8 +51,8 @@
                     {{ formatDate(album.releaseDate) }}
                   </p>
                   <div class="artist-details__album-genres">
-                    @for (genre of album.genres; track genre) {
-                      <span class="artist-details__album-genre">{{ genre }}</span>
+                    @for (genre of album.genres; track genre.id) {
+                      <span class="artist-details__album-genre">{{ genre.name }}</span>
                     }
                   </div>
                   <p class="artist-details__album-songs">

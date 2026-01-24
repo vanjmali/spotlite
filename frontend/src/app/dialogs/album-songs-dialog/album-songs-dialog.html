@@ -20,7 +20,9 @@
                 <div class="album-songs-dialog__list-item">
                   <div class="album-songs-dialog__song-info">
                     <span class="album-songs-dialog__song-title">{{ song.title }}</span>
-                    <span class="album-songs-dialog__song-meta">{{ song.genre }}</span>
+                    <span class="album-songs-dialog__song-meta">{{
+                      formatGenres(song.genres)
+                    }}</span>
                   </div>
                   <button
                     class="album-songs-dialog__btn-remove"
@@ -58,7 +60,9 @@
                   />
                   <div class="album-songs-dialog__song-info">
                     <span class="album-songs-dialog__song-title">{{ song.title }}</span>
-                    <span class="album-songs-dialog__song-meta">{{ song.genre }}</span>
+                    <span class="album-songs-dialog__song-meta">{{
+                      formatGenres(song.genres)
+                    }}</span>
                   </div>
                 </label>
               }

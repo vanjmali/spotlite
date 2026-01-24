@@ -10,7 +10,7 @@ import (
 )
 
 // HandleRequests wires HTTP routes to user handlers.
-func HandleRequests(ah *handlers.ArtistHandler, sh *handlers.SongHandler, alh *handlers.AlbumHandler) http.Handler {
+func HandleRequests(ah *handlers.ArtistHandler, sh *handlers.SongHandler, alh *handlers.AlbumHandler, gh *handlers.GenreHandler) http.Handler {
 	r := mux.NewRouter()
 	middlewares.HandleHealthz(r)
 
@@ -42,6 +42,13 @@ func HandleRequests(ah *handlers.ArtistHandler, sh *handlers.SongHandler, alh *h
 	api.HandleFunc("/albums/{id}/songs", alh.HandleAddAlbumSongs).Methods("POST")
 	api.HandleFunc("/albums/{id}/songs", alh.HandleGetAlbumSongs).Methods("GET")
 	api.HandleFunc("/albums/{id}/songs/{songId}", alh.HandleDeleteAlbumSong).Methods("DELETE")
+
+	// Genres endpoints
+	api.HandleFunc("/genres", gh.HandleGetGenres).Methods("GET")
+	api.HandleFunc("/genres", gh.HandleCreateGenre).Methods("POST")
+	api.HandleFunc("/genres/{id}", gh.HandleGetGenreById).Methods("GET")
+	api.HandleFunc("/genres/{id}", gh.HandleUpdateGenre).Methods("PATCH")
+	api.HandleFunc("/genres/{id}", gh.HandleDeleteGenre).Methods("DELETE")
 
 	return r
 }

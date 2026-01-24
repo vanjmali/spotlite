@@ -1,0 +1,14 @@
+@use 'variables/colors' as *;
+
+.genre-editor-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+}

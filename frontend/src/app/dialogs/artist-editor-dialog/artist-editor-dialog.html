@@ -21,47 +21,13 @@
       ></app-textarea-input>
 
       <!-- Genres Section -->
-      <div class="artist-editor-dialog__genres">
-        <label class="artist-editor-dialog__label">Genres</label>
-        <div class="artist-editor-dialog__genre-input">
-          <input
-            #genreInput
-            type="text"
-            class="artist-editor-dialog__genre-field"
-            [value]="currentGenreSg()"
-            (input)="currentGenreSg.set(genreInput.value)"
-            placeholder="e.g., Pop"
-            (keyup.enter)="onAddGenre()"
-          />
-          <button
-            type="button"
-            class="artist-editor-dialog__btn-add-genre"
-            (click)="onAddGenre()"
-            [disabled]="!currentGenreSg().trim()"
-          >
-            <mat-icon>add</mat-icon>
-          </button>
-        </div>
-
-        <!-- Genre Tags -->
-        @if (genresSg().length > 0) {
-          <div class="artist-editor-dialog__genre-tags">
-            @for (genre of genresSg(); track genre; let i = $index) {
-              <div class="artist-editor-dialog__genre-tag">
-                <span>{{ genre }}</span>
-                <button
-                  type="button"
-                  class="artist-editor-dialog__genre-remove"
-                  (click)="onRemoveGenre(i)"
-                  title="Remove genre"
-                >
-                  <mat-icon>close</mat-icon>
-                </button>
-              </div>
-            }
-          </div>
-        }
-      </div>
+      <app-select-input
+        label="Genres"
+        placeholder="Select genres"
+        [required]="true"
+        [options]="genreOptionsSg()"
+        [(value)]="genreIdsSg"
+      />
 
       @if (errorSg()) {
         <app-message [message]="errorSg()" type="error" />

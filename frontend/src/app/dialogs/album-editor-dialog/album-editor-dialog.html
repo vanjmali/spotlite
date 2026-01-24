@@ -10,46 +10,13 @@
 
       <app-date-input label="Release Date" [required]="true" [(value)]="releaseDateSg" />
 
-      <!-- Genres Section -->
-      <div class="album-editor-dialog__genres">
-        <label class="album-editor-dialog__label">Genres</label>
-        <div class="album-editor-dialog__genre-input">
-          <input
-            #genreInput
-            type="text"
-            class="album-editor-dialog__genre-field"
-            [value]="currentGenreSg()"
-            (input)="currentGenreSg.set(genreInput.value)"
-            placeholder="Enter a genre and click Add"
-            (keyup.enter)="addGenre()"
-          />
-          <button
-            class="album-editor-dialog__btn-add-genre"
-            type="button"
-            (click)="addGenre()"
-            [disabled]="!currentGenreSg().trim()"
-          >
-            Add
-          </button>
-        </div>
-        @if (genresSg().length > 0) {
-          <div class="album-editor-dialog__genre-tags">
-            @for (genre of genresSg(); track genre) {
-              <span class="album-editor-dialog__genre-tag">
-                {{ genre }}
-                <button
-                  type="button"
-                  class="album-editor-dialog__btn-remove-genre"
-                  (click)="removeGenre(genre)"
-                  title="Remove genre"
-                >
-                  ×
-                </button>
-              </span>
-            }
-          </div>
-        }
-      </div>
+      <app-select-input
+        label="Genres"
+        placeholder="Select genres"
+        [required]="true"
+        [options]="genreOptionsSg()"
+        [(value)]="genreIdsSg"
+      />
 
       <app-select-input
         label="Artists"

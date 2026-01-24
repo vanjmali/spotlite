@@ -9,7 +9,7 @@ import (
 type CreateAlbumDto struct {
 	Title       string   `json:"title" validate:"required,min=2,max=100"`
 	ReleaseDate string   `json:"release_date" validate:"required,len=10"` // Date string in YYYY-MM-DD format
-	Genres      []string `json:"genres" validate:"required,min=1,dive,required,min=2,max=30"`
+	GenreIds    []string `json:"genre_ids" validate:"required,min=1,dive,required,len=24,hexadecimal"`
 	SongIds     []string `json:"song_ids" validate:"required,min=1,dive,required,len=24,hexadecimal"`
 	ArtistIds   []string `json:"artist_ids" validate:"required,min=1,dive,required,len=24,hexadecimal"`
 }
@@ -18,7 +18,7 @@ type CreateAlbumDto struct {
 type UpdateAlbumDto struct {
 	Title       *string   `json:"title" validate:"omitempty,min=2,max=100"`
 	ReleaseDate *string   `json:"release_date" validate:"omitempty,len=10"` // Date string in YYYY-MM-DD format
-	Genres      *[]string `json:"genres" validate:"omitempty,min=1,dive,required,min=2,max=30"`
+	GenreIds    *[]string `json:"genre_ids" validate:"omitempty,min=1,dive,required,len=24,hexadecimal"`
 	ArtistIds   *[]string `json:"artist_ids" validate:"omitempty,min=1,dive,required,len=24,hexadecimal"`
 }
 

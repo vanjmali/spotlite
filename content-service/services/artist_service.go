@@ -8,6 +8,7 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/content/dtos"
+	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
 	"github.com/vanjmali/spotlite/content/repositories"
 	"go.mongodb.org/mongo-driver/bson"
@@ -23,15 +24,15 @@ var (
 )
 
 type ArtistService struct {
-	r  *repositories.ArtistRepository
-	tr trace.Tracer
+	r            *repositories.ArtistRepository
+	genreService *GenreService
+	tr           trace.Tracer
 }
 
 // NewArtistService builds a ArtistService with repository.
-func NewArtistService(r repositories.ArtistRepository) *ArtistService {
-	tr := otel.Tracer("artist-service/artist-service")
-	s := ArtistService{r: &r, tr: tr}
-
+func NewArtistService(r repositories.ArtistRepository, genreService GenreService) *ArtistService {
+	tr := otel.Tracer("content-service/artist-service")
+	s := ArtistService{r: &r, genreService: &genreService, tr: tr}
 	return &s
 }
 
@@ -40,10 +41,38 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 	ctx, span := s.tr.Start(ctx, "artist.create")
 	defer span.End()
 
+	resolveGenreCtx, resolveGenreSpan := s.tr.Start(ctx, "artist.create.resolve_genres")
+
+	embeddedGenre := make([]entities.Genre, 0)
+
+	for _, genresIdStr := range reqDto.GenreIds {
+		genre, err := s.genreService.FindGenreByID(resolveGenreCtx, genresIdStr)
+		if err != nil {
+			resolveGenreSpan.RecordError(err)
+			resolveGenreSpan.End()
+
+			switch {
+			case errors.Is(err, ErrObjectIdCastFailed):
+				return ErrObjectIdCastFailed
+			case errors.Is(err, ErrGenreNotFound):
+				return ErrGenreNotFound
+			default:
+				return err
+			}
+		}
+
+		embeddedGenre = append(embeddedGenre, entities.Genre{
+			ID:   genre.ID,
+			Name: genre.Name,
+		})
+	}
+
+	resolveGenreSpan.End()
+
 	// Converts ArtistDto to Artist entity.
 	// No uniqueness check for artist name is done here.
 	createCtx, createSpan := s.tr.Start(ctx, "artist.create.create_artist")
-	artistEntity, err := mappers.ToArtistEntity(reqDto)
+	artistEntity, err := mappers.ToArtistEntity(reqDto, embeddedGenre)
 	if err != nil {
 		createSpan.RecordError(err)
 		createSpan.End()
@@ -66,7 +95,7 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 }
 
 // FindArtistByID retrieves a single artist by its ID.
-func (s *ArtistService) FindArtistByID(ctx context.Context, idStr string) (*dtos.ArtistDto, error) {
+func (s *ArtistService) FindArtistByID(ctx context.Context, idStr string) (*entities.Artist, error) {
 	ctx, span := s.tr.Start(ctx, "artist.find_by_id")
 	defer span.End()
 
@@ -85,7 +114,7 @@ func (s *ArtistService) FindArtistByID(ctx context.Context, idStr string) (*dtos
 }
 
 // UpdateArtist updates an existing artist with the provided partial data.
-func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos.UpdateArtistDto) (*dtos.ArtistDto, error) {
+func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos.UpdateArtistDto) (*entities.Artist, error) {
 	ctx, span := s.tr.Start(ctx, "artist.update_artist")
 	defer span.End()
 
@@ -105,8 +134,30 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 	if dto.Name != nil {
 		update["name"] = *dto.Name
 	}
-	if dto.Genres != nil {
-		update["genres"] = *dto.Genres
+	if dto.GenreIds != nil {
+		embeddedGenres := make([]entities.Genre, 0)
+		for _, genreIdStr := range *dto.GenreIds {
+			genre, err := s.genreService.FindGenreByID(ctx, genreIdStr)
+			if err != nil {
+				buildSpan.RecordError(err)
+				buildSpan.End()
+
+				switch {
+				case errors.Is(err, ErrObjectIdCastFailed):
+					return nil, ErrObjectIdCastFailed
+				case errors.Is(err, ErrGenreNotFound):
+					return nil, ErrGenreNotFound
+				default:
+					return nil, err
+				}
+			}
+
+			embeddedGenres = append(embeddedGenres, entities.Genre{
+				ID:   genre.ID,
+				Name: genre.Name,
+			})
+		}
+		update["genres"] = embeddedGenres
 	}
 	if dto.Description != nil {
 		update["description"] = *dto.Description
@@ -192,7 +243,10 @@ func (s *ArtistService) GetArtists(ctx context.Context, q ArtistsQuery) (*dtos.A
 	}
 
 	if q.Genre != "" {
-		filter["genres"] = q.Genre
+		filter["genres.name"] = bson.M{
+			"$regex":   q.Genre,
+			"$options": "i",
+		}
 	}
 
 	p := pagination.NewPagination(q.Page, q.Size)

@@ -44,7 +44,11 @@
                   {{ song.title }}
                 </td>
                 <td class="songs-management__cell songs-management__cell--genre">
-                  <span class="songs-management__genre-tag">{{ song.genre }}</span>
+                  <div class="songs-management__genre-list">
+                    @for (genre of song.genres; track genre.id) {
+                      <span class="songs-management__genre-tag">{{ genre.name }}</span>
+                    }
+                  </div>
                 </td>
                 <td class="songs-management__cell songs-management__cell--duration">
                   {{ formatDuration(song.lengthSeconds) }}

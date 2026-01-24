@@ -50,9 +50,9 @@
                 </td>
                 <td class="albums-management__cell albums-management__cell--genres">
                   <div class="albums-management__genre-list">
-                    @for (genre of album.genres; track genre) {
+                    @for (genre of album.genres; track genre.id) {
                       <span class="albums-management__genre-tag">
-                        {{ genre }}
+                        {{ genre.name }}
                       </span>
                     }
                   </div>

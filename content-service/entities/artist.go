@@ -6,6 +6,6 @@ import "go.mongodb.org/mongo-driver/bson/primitive"
 type Artist struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Name        string             `bson:"name" json:"name"`
-	Genres      []string           `bson:"genres" json:"genres"`
+	Genres      []Genre            `bson:"genres" json:"genres"`
 	Description string             `bson:"description" json:"description"`
 }

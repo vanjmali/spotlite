@@ -6,7 +6,7 @@ require (
 	github.com/go-playground/validator/v10 v10.29.0
 	github.com/gorilla/mux v1.8.1
 	github.com/vanjmali/spotlite/common-lib v0.0.0
-	go.mongodb.org/mongo-driver v1.17.6
+	go.mongodb.org/mongo-driver v1.17.7
 	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo v0.64.0
 	go.opentelemetry.io/otel v1.39.0
 	go.opentelemetry.io/otel/trace v1.39.0

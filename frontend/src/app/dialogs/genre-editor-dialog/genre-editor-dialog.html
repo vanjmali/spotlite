@@ -1,0 +1,31 @@
+@if (isOpen()) {
+  <app-dialog [title]="dialogTitle()" (closed)="cancel()">
+    <div content class="genre-editor-dialog">
+      <app-text-input
+        label="Genre Name"
+        [required]="true"
+        [min]="2"
+        [(value)]="nameSg"
+        placeholder="e.g., Pop"
+      ></app-text-input>
+
+      @if (errorSg()) {
+        <app-message [message]="errorSg()" type="error" />
+      }
+    </div>
+
+    <div footer class="genre-editor-dialog__footer">
+      <button class="btn-secondary" type="button" (click)="cancel()" [disabled]="isLoadingSg()">
+        Cancel
+      </button>
+      <button
+        class="btn-primary"
+        type="button"
+        (click)="submit()"
+        [disabled]="!isFormValid() || isLoadingSg()"
+      >
+        {{ submitButtonText() }}
+      </button>
+    </div>
+  </app-dialog>
+}
