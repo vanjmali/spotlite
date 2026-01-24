@@ -5,11 +5,14 @@ import (
 	"errors"
 	"log"
 
+	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
 	"github.com/vanjmali/spotlite/content/repositories"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -74,4 +77,85 @@ func (s *GenreService) FindGenreByID(ctx context.Context, idStr string) (*entiti
 	}
 
 	return genre, nil
+}
+
+func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.UpdateGenreDto) (*entities.Genre, error) {
+	ctx, span := s.tr.Start(ctx, "genre.update")
+	defer span.End()
+
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		span.RecordError(err)
+		return nil, ErrObjectIdCastFailed
+	}
+
+	update := make(map[string]any)
+	if dto.Name != nil {
+		update["name"] = *dto.Name
+	}
+
+	if len(update) == 0 {
+		err := errors.New("no fields to update")
+		span.RecordError(err)
+		return nil, err
+	}
+
+	genre, err := s.r.UpdateByID(ctx, id, update)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			span.RecordError(err)
+			return nil, ErrGenreNotFound
+		}
+		span.RecordError(err)
+		return nil, err
+	}
+
+	return genre, nil
+}
+
+func (s *GenreService) DeleteGenre(ctx context.Context, idStr string) error {
+	ctx, span := s.tr.Start(ctx, "genre.delete")
+	defer span.End()
+
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		span.RecordError(err)
+		return ErrObjectIdCastFailed
+	}
+
+	res, err := s.r.DeleteByID(ctx, id)
+	if err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	if res.DeletedCount == 0 {
+		err = ErrGenreNotFound
+		span.RecordError(err)
+		return err
+	}
+
+	return nil
+}
+
+type GenresQuery struct {
+	Page int
+	Size int
+	Name string
+}
+
+func (s *GenreService) GetGenres(ctx context.Context, q GenresQuery) (*dtos.GenreListResponseDto, error) {
+	ctx, span := s.tr.Start(ctx, "genres.get_all")
+	defer span.End()
+
+	filter := bson.M{}
+	if q.Name != "" {
+		filter["name"] = bson.M{
+			"$regex":   q.Name,
+			"$options": "i",
+		}
+	}
+
+	p := pagination.NewPagination(q.Page, q.Size)
+	return listWithPagination(ctx, p, filter, s.r.FindAll)
 }

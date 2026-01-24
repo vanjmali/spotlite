@@ -136,3 +136,19 @@ func Conflict(w http.ResponseWriter, message ...string) error {
 
 	return Error(w, r)
 }
+
+// NotImplemented issues a 501 Not Implemented error response with a standard message.
+func NotImplemented(w http.ResponseWriter, message ...string) error {
+	msg := "Not implemented."
+	if len(message) > 0 && message[0] != "" {
+		msg = message[0]
+	}
+
+	r := ErrorResponse{
+		HttpCode: http.StatusNotImplemented,
+		Code:     "not_implemented",
+		Message:  msg,
+	}
+
+	return Error(w, r)
+}
