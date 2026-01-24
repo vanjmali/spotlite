@@ -1,0 +1,73 @@
+<app-widget title="Manage Genres">
+  <button
+    actions
+    class="genres-management__btn-add-circle"
+    (click)="onAddNew()"
+    [disabled]="isLoadingSg()"
+    title="Add new genre"
+    matTooltip="Add new genre"
+  >
+    <mat-icon>add</mat-icon>
+  </button>
+
+  <div content class="genres-management">
+    @if (isLoadingSg()) {
+      <div class="genres-management__loading">
+        <p>Loading genres...</p>
+      </div>
+    }
+
+    @if (!isLoadingSg() && genresSg().length === 0) {
+      <div class="genres-management__empty">
+        <p>No genres found. Create one to get started!</p>
+      </div>
+    }
+
+    @if (!isLoadingSg() && genresSg().length > 0) {
+      <div class="genres-management__table-wrapper">
+        <table class="genres-management__table">
+          <thead class="genres-management__table-head">
+            <tr>
+              <th class="genres-management__col-name">Name</th>
+              <th class="genres-management__col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="genres-management__table-body">
+            @for (genre of genresSg(); track genre.id) {
+              <tr class="genres-management__row">
+                <td class="genres-management__cell genres-management__cell--name">
+                  {{ genre.name }}
+                </td>
+                <td class="genres-management__cell genres-management__cell--actions">
+                  <button
+                    class="genres-management__btn-action genres-management__btn-edit"
+                    (click)="onEdit(genre)"
+                    title="Edit genre"
+                    matTooltip="Edit"
+                  >
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button
+                    class="genres-management__btn-action genres-management__btn-delete"
+                    (click)="onDelete(genre)"
+                    title="Delete genre"
+                    matTooltip="Delete"
+                  >
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </div>
+</app-widget>
+
+<app-genre-editor-dialog
+  [genre]="selectedGenreSg()"
+  [isOpen]="isDialogOpenSg()"
+  (closed)="isDialogOpenSg.set(false)"
+  (saved)="onDialogSaved()"
+></app-genre-editor-dialog>

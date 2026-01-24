@@ -45,9 +45,9 @@
                 </td>
                 <td class="artists-management__cell artists-management__cell--genres">
                   <div class="artists-management__genre-list">
-                    @for (genre of artist.genres; track genre) {
+                    @for (genre of artist.genres; track genre.id) {
                       <span class="artists-management__genre-tag">
-                        {{ genre }}
+                        {{ genre.name }}
                       </span>
                     }
                   </div>

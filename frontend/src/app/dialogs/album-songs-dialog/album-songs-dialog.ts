@@ -195,4 +195,9 @@ export class AlbumSongsDialogComponent {
   onClose(): void {
     this.cancel();
   }
+
+  formatGenres(genres: Song['genres'] | undefined): string {
+    if (!genres || genres.length === 0) return '—';
+    return genres.map((genre) => genre.name).join(', ');
+  }
 }

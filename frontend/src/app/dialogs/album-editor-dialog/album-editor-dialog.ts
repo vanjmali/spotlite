@@ -12,6 +12,7 @@ import {
 import { AlbumService, Album, CreateAlbumDto, UpdateAlbumDto } from '@app/services/album.service';
 import { ArtistService } from '@app/services/artist.service';
 import { SongService, type Song } from '@app/services/song.service';
+import { GenreService } from '@app/services/genre.service';
 
 @Component({
   selector: 'app-album-editor-dialog',
@@ -32,6 +33,7 @@ export class AlbumEditorDialogComponent {
   private readonly albumService = inject(AlbumService);
   private readonly artistService = inject(ArtistService);
   private readonly songService = inject(SongService);
+  private readonly genreService = inject(GenreService);
 
   readonly album = input<Album | null>(null);
   readonly isOpen = input<boolean>(false);
@@ -41,10 +43,10 @@ export class AlbumEditorDialogComponent {
   readonly isSavingSg = signal(false);
   readonly titleSg = signal('');
   readonly releaseDateSg = signal('');
-  readonly genresSg = signal<string[]>([]);
-  readonly currentGenreSg = signal('');
+  readonly genreIdsSg = signal<string[]>([]);
   readonly selectedArtistIdsSg = signal<string[]>([]);
   readonly artistOptionsSg = signal<SelectOption[]>([]);
+  readonly genreOptionsSg = signal<SelectOption[]>([]);
   readonly availableSongsSg = signal<Song[]>([]);
   readonly selectedSongIdsSg = signal<string[]>([]);
   readonly isLoadingSongsSg = signal(false);
@@ -60,14 +62,13 @@ export class AlbumEditorDialogComponent {
   readonly isFormValid = computed(() => {
     const title = this.titleSg().trim();
     const releaseDate = this.releaseDateSg().trim();
-    const genres = this.genresSg();
+    const genreIds = this.genreIdsSg();
     const artists = this.selectedArtistIdsSg();
 
     return (
       title.length > 0 &&
       releaseDate.length > 0 &&
-      genres.length >= 1 &&
-      genres.every((g) => g.length > 0) &&
+      genreIds.length >= 1 &&
       artists.length > 0 &&
       this.isSongsValid()
     );
@@ -77,14 +78,14 @@ export class AlbumEditorDialogComponent {
     effect(() => {
       if (this.isOpen()) {
         this.loadArtists();
+        this.loadGenres();
         if (this.album()) {
           // Edit mode - populate form
           const albumData = this.album();
           if (albumData) {
             this.titleSg.set(albumData.title);
             this.releaseDateSg.set(albumData.releaseDate);
-            this.genresSg.set([...albumData.genres]);
-            this.currentGenreSg.set('');
+            this.genreIdsSg.set(albumData.genres.map((genre) => genre.id));
             // Set artists array
             const artistIds = albumData.artists.map((a) => a.id);
             this.selectedArtistIdsSg.set(artistIds);
@@ -94,8 +95,7 @@ export class AlbumEditorDialogComponent {
           // Create mode - clear form
           this.titleSg.set('');
           this.releaseDateSg.set('');
-          this.genresSg.set([]);
-          this.currentGenreSg.set('');
+          this.genreIdsSg.set([]);
           this.selectedArtistIdsSg.set([]);
           this.selectedSongIdsSg.set([]);
           this.availableSongsSg.set([]);
@@ -127,6 +127,22 @@ export class AlbumEditorDialogComponent {
       },
       error: (error) => {
         console.error('Failed to load artists:', error);
+      },
+    });
+  }
+
+  private loadGenres(): void {
+    this.genreService.getGenres(1, 200).subscribe({
+      next: (response) => {
+        this.genreOptionsSg.set(
+          response.items.map((genre) => ({
+            label: genre.name,
+            value: genre.id,
+          }))
+        );
+      },
+      error: (error) => {
+        console.error('Failed to load genres:', error);
       },
     });
   }
@@ -175,25 +191,13 @@ export class AlbumEditorDialogComponent {
     return this.selectedSongIdsSg().includes(songId);
   }
 
-  addGenre(): void {
-    const genre = this.currentGenreSg().trim();
-    if (genre && !this.genresSg().includes(genre)) {
-      this.genresSg.update((genres) => [...genres, genre]);
-      this.currentGenreSg.set('');
-    }
-  }
-
-  removeGenre(genre: string): void {
-    this.genresSg.update((genres) => genres.filter((g) => g !== genre));
-  }
-
   onSave(): void {
     this.isLoadingSg.set(true);
     if (this.isCreateMode()) {
       const albumDto: CreateAlbumDto = {
         title: this.titleSg(),
         release_date: this.releaseDateSg(),
-        genres: this.genresSg(),
+        genre_ids: this.genreIdsSg(),
         song_ids: this.selectedSongIdsSg(),
         artist_ids: this.selectedArtistIdsSg(),
       };
@@ -221,7 +225,7 @@ export class AlbumEditorDialogComponent {
     const updateDto: UpdateAlbumDto = {
       title: this.titleSg(),
       release_date: this.releaseDateSg(),
-      genres: this.genresSg(),
+      genre_ids: this.genreIdsSg(),
       artist_ids: this.selectedArtistIdsSg(),
     };
 

@@ -8,11 +8,12 @@
         [(value)]="titleSg"
       />
 
-      <app-text-input
-        label="Genre"
-        placeholder="Enter genre"
+      <app-select-input
+        label="Genres"
+        placeholder="Select genres"
         [required]="true"
-        [(value)]="genreSg"
+        [options]="genreOptionsSg()"
+        [(value)]="genreIdsSg"
       />
 
       <app-text-input

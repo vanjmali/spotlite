@@ -9,6 +9,8 @@ import {
   TextareaInputComponent,
 } from '../../shared';
 import { ArtistService, Artist } from '../../services/artist.service';
+import { SelectInputComponent, type SelectOption } from '@app/shared/components/input';
+import { GenreService } from '@app/services/genre.service';
 
 @Component({
   selector: 'app-artist-editor-dialog',
@@ -21,12 +23,14 @@ import { ArtistService, Artist } from '../../services/artist.service';
     MessageComponent,
     TextInputComponent,
     TextareaInputComponent,
+    SelectInputComponent,
   ],
   templateUrl: './artist-editor-dialog.html',
   styleUrl: './artist-editor-dialog.scss',
 })
 export class ArtistEditorDialogComponent {
   private readonly artistService = inject(ArtistService);
+  private readonly genreService = inject(GenreService);
 
   // Inputs
   readonly artist = input<Artist | null>(null);
@@ -39,8 +43,8 @@ export class ArtistEditorDialogComponent {
   // State - Form fields as signals
   readonly nameSg = signal('');
   readonly descriptionSg = signal('');
-  readonly genresSg = signal<string[]>([]);
-  readonly currentGenreSg = signal('');
+  readonly genreIdsSg = signal<string[]>([]);
+  readonly genreOptionsSg = signal<SelectOption[]>([]);
 
   // UI State
   readonly isLoadingSg = signal(false);
@@ -53,14 +57,9 @@ export class ArtistEditorDialogComponent {
   readonly isFormValid = computed(() => {
     const name = this.nameSg().trim();
     const description = this.descriptionSg().trim();
-    const genres = this.genresSg();
+    const genreIds = this.genreIdsSg();
 
-    return (
-      name.length >= 2 &&
-      description.length >= 2 &&
-      genres.length >= 1 &&
-      genres.every((g) => g.length >= 2 && g.length <= 30)
-    );
+    return name.length >= 2 && description.length >= 2 && genreIds.length >= 1;
   });
 
   constructor() {
@@ -70,40 +69,31 @@ export class ArtistEditorDialogComponent {
       if (artist) {
         this.nameSg.set(artist.name);
         this.descriptionSg.set(artist.description);
-        this.genresSg.set([...artist.genres]);
+        this.genreIdsSg.set(artist.genres.map((genre) => genre.id));
       } else {
         this.nameSg.set('');
         this.descriptionSg.set('');
-        this.genresSg.set([]);
+        this.genreIdsSg.set([]);
       }
-      this.currentGenreSg.set('');
+      this.loadGenres();
       this.errorSg.set('');
     });
   }
 
-  onAddGenre(): void {
-    const genre = this.currentGenreSg().trim();
-    if (!genre) return;
-
-    // Validate genre length (2-30 chars to match backend)
-    if (genre.length < 2 || genre.length > 30) {
-      this.errorSg.set('Genre must be between 2 and 30 characters');
-      return;
-    }
-
-    // Check if genre already exists
-    if (this.genresSg().includes(genre)) {
-      this.errorSg.set('This genre is already added');
-      return;
-    }
-
-    this.genresSg.update((genres) => [...genres, genre]);
-    this.currentGenreSg.set('');
-    this.errorSg.set('');
-  }
-
-  onRemoveGenre(index: number): void {
-    this.genresSg.update((genres) => genres.filter((_, i) => i !== index));
+  private loadGenres(): void {
+    this.genreService.getGenres(1, 200).subscribe({
+      next: (response) => {
+        this.genreOptionsSg.set(
+          response.items.map((genre) => ({
+            label: genre.name,
+            value: genre.id,
+          }))
+        );
+      },
+      error: (error) => {
+        console.error('Failed to load genres:', error);
+      },
+    });
   }
 
   submit(): void {
@@ -118,7 +108,7 @@ export class ArtistEditorDialogComponent {
     const payload = {
       name: this.nameSg().trim(),
       description: this.descriptionSg().trim(),
-      genres: this.genresSg(),
+      genre_ids: this.genreIdsSg(),
     };
 
     if (this.isEdit()) {
@@ -155,8 +145,7 @@ export class ArtistEditorDialogComponent {
   cancel(): void {
     this.nameSg.set('');
     this.descriptionSg.set('');
-    this.genresSg.set([]);
-    this.currentGenreSg.set('');
+    this.genreIdsSg.set([]);
     this.errorSg.set('');
     this.closed.emit();
   }

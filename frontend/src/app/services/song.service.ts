@@ -2,26 +2,27 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Artist } from './artist.service';
+import { Genre } from './genre.service';
 
 // Song interfaces
 export interface Song {
   id: string;
   title: string;
-  genre: string;
+  genres: Genre[];
   lengthSeconds: number;
   artists: Artist[];
 }
 
 export interface CreateSongDto {
   title: string;
-  genre: string;
+  genre_ids: string[];
   length_seconds: number;
   artist_ids: string[];
 }
 
 export interface UpdateSongDto {
   title?: string;
-  genre?: string;
+  genre_ids?: string[];
   length_seconds?: number;
   artist_ids?: string[];
 }
@@ -50,6 +51,7 @@ export class SongService {
     filters?: {
       title?: string;
       genre?: string;
+      genre_id?: string;
       artist_id?: string;
     }
   ): Observable<PaginatedResponse<Song>> {
@@ -60,6 +62,9 @@ export class SongService {
     }
     if (filters?.genre) {
       params = params.set('genre', filters.genre);
+    }
+    if (filters?.genre_id) {
+      params = params.set('genre_id', filters.genre_id);
     }
     if (filters?.artist_id) {
       params = params.set('artist_id', filters.artist_id);

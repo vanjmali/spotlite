@@ -3,13 +3,14 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Artist } from './artist.service';
 import { Song } from './song.service';
+import { Genre } from './genre.service';
 
 // Album interfaces
 export interface Album {
   id: string;
   title: string;
   releaseDate: string;
-  genres: string[];
+  genres: Genre[];
   songs: Song[];
   artists: Artist[];
 }
@@ -17,7 +18,7 @@ export interface Album {
 export interface CreateAlbumDto {
   title: string;
   release_date: string;
-  genres: string[];
+  genre_ids: string[];
   song_ids: string[];
   artist_ids: string[];
 }
@@ -25,7 +26,7 @@ export interface CreateAlbumDto {
 export interface UpdateAlbumDto {
   title?: string;
   release_date?: string;
-  genres?: string[];
+  genre_ids?: string[];
   artist_ids?: string[];
 }
 
@@ -57,6 +58,7 @@ export class AlbumService {
     filters?: {
       title?: string;
       genres?: string;
+      genre_id?: string;
       artist_id?: string;
     }
   ): Observable<PaginatedResponse<Album>> {
@@ -67,6 +69,9 @@ export class AlbumService {
     }
     if (filters?.genres) {
       params = params.set('genres', filters.genres);
+    }
+    if (filters?.genre_id) {
+      params = params.set('genre_id', filters.genre_id);
     }
     if (filters?.artist_id) {
       params = params.set('artist_id', filters.artist_id);

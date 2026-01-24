@@ -118,6 +118,13 @@ export const routes: Routes = [
     component: AdminPage,
     children: [
       {
+        path: 'genres',
+        loadComponent: () =>
+          import('./pages/admin-page/components/genres-management/genres-management.component').then(
+            (m) => m.GenresManagementComponent
+          ),
+      },
+      {
         path: 'artists',
         loadComponent: () =>
           import('./pages/admin-page/components/artists-management/artists-management.component').then(

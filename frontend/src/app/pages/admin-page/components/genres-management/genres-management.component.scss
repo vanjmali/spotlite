@@ -1,6 +1,6 @@
 @use 'variables/colors' as *;
 
-.songs-management {
+.genres-management {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -62,17 +62,11 @@
     width: 100%;
     border-collapse: collapse;
     background-color: $color-gray-850;
-
-    @media (max-width: 768px) {
-      font-size: 0.75rem;
-    }
   }
 
   &__table-head {
     background-color: $color-gray-800;
     border-bottom: 2px solid $color-gray-700;
-    position: sticky;
-    top: 0;
 
     th {
       padding: 1rem;
@@ -100,25 +94,13 @@
     }
   }
 
-  &__col-title {
-    width: 20%;
-  }
-
-  &__col-genre {
-    width: 15%;
-  }
-
-  &__col-duration {
-    width: 12%;
-  }
-
-  &__col-artists {
-    width: 38%;
+  &__col-name {
+    width: 70%;
   }
 
   &__col-actions {
-    width: 15%;
-    text-align: center;
+    width: 30%;
+    text-align: right;
   }
 
   &__row {
@@ -133,55 +115,14 @@
     font-size: 0.875rem;
     vertical-align: middle;
 
-    &--title {
+    &--name {
       font-weight: 500;
       color: $color-primary-light;
     }
 
-    &--genre {
-      text-transform: capitalize;
+    &--actions {
+      text-align: right;
     }
-
-    &--duration {
-      font-family: 'Courier New', monospace;
-      color: $color-gray-400;
-    }
-
-    &--artists {
-      max-width: 300px;
-    }
-  }
-
-  &__artist-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  &__genre-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  &__genre-tag {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    background-color: $color-primary;
-    color: $color-white;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 500;
-  }
-
-  &__artist-tag {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    background-color: $color-gray-700;
-    color: $color-gray-200;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 500;
   }
 
   &__btn-action {
@@ -208,6 +149,22 @@
     &:disabled {
       opacity: 0.6;
       cursor: not-allowed;
+    }
+  }
+
+  &__btn-edit {
+    color: $color-gray-200;
+
+    &:hover:not(:disabled) {
+      color: $color-primary-light;
+    }
+  }
+
+  &__btn-delete {
+    color: $color-danger;
+
+    &:hover:not(:disabled) {
+      color: $color-danger-light;
     }
   }
 }

@@ -10,6 +10,7 @@ import {
 } from '@app/shared/components/input';
 import { SongService, Song, CreateSongDto } from '@app/services/song.service';
 import { ArtistService } from '@app/services/artist.service';
+import { GenreService } from '@app/services/genre.service';
 
 @Component({
   selector: 'app-song-editor-dialog',
@@ -28,6 +29,7 @@ import { ArtistService } from '@app/services/artist.service';
 export class SongEditorDialogComponent {
   private readonly songService = inject(SongService);
   private readonly artistService = inject(ArtistService);
+  private readonly genreService = inject(GenreService);
 
   readonly song = input<Song | null>(null);
   readonly isOpen = input<boolean>(false);
@@ -36,10 +38,11 @@ export class SongEditorDialogComponent {
 
   readonly isSavingSg = signal(false);
   readonly titleSg = signal('');
-  readonly genreSg = signal('');
+  readonly genreIdsSg = signal<string[]>([]);
   readonly durationSg = signal('');
   readonly selectedArtistIdsSg = signal<string[]>([]);
   readonly artistOptionsSg = signal<SelectOption[]>([]);
+  readonly genreOptionsSg = signal<SelectOption[]>([]);
 
   // Computed
   readonly dialogTitle = computed(() => 'Create Song');
@@ -47,14 +50,14 @@ export class SongEditorDialogComponent {
   readonly isLoadingSg = signal(false);
   readonly isFormValid = computed(() => {
     const title = this.titleSg().trim();
-    const genre = this.genreSg().trim();
     const duration = this.durationSg().trim();
     const artists = this.selectedArtistIdsSg();
+    const genreIds = this.genreIdsSg();
 
     return (
       title.length > 0 &&
-      genre.length > 0 &&
       duration.length > 0 &&
+      genreIds.length > 0 &&
       artists.length > 0 &&
       !isNaN(parseInt(duration))
     );
@@ -64,13 +67,14 @@ export class SongEditorDialogComponent {
     effect(() => {
       if (this.isOpen()) {
         this.loadArtists();
+        this.loadGenres();
         if (this.song()) {
           // Edit mode - populate form
           const songData = this.song();
           if (songData) {
             this.titleSg.set(songData.title);
-            this.genreSg.set(songData.genre);
             this.durationSg.set(songData.lengthSeconds.toString());
+            this.genreIdsSg.set(songData.genres.map((genre) => genre.id));
             // Set artists array
             const artistIds = songData.artists.map((a) => a.id);
             this.selectedArtistIdsSg.set(artistIds);
@@ -78,8 +82,8 @@ export class SongEditorDialogComponent {
         } else {
           // Create mode - clear form
           this.titleSg.set('');
-          this.genreSg.set('');
           this.durationSg.set('');
+          this.genreIdsSg.set([]);
           this.selectedArtistIdsSg.set([]);
         }
       }
@@ -102,11 +106,27 @@ export class SongEditorDialogComponent {
     });
   }
 
+  private loadGenres(): void {
+    this.genreService.getGenres(1, 200).subscribe({
+      next: (response) => {
+        this.genreOptionsSg.set(
+          response.items.map((genre) => ({
+            label: genre.name,
+            value: genre.id,
+          }))
+        );
+      },
+      error: (error) => {
+        console.error('Failed to load genres:', error);
+      },
+    });
+  }
+
   onSave(): void {
     this.isLoadingSg.set(true);
     const songDto: CreateSongDto = {
       title: this.titleSg(),
-      genre: this.genreSg(),
+      genre_ids: this.genreIdsSg(),
       length_seconds: parseInt(this.durationSg()),
       artist_ids: this.selectedArtistIdsSg(),
     };

@@ -16,6 +16,7 @@ export class ConfigAsideComponent {
   readonly expandedSg = signal(false);
 
   readonly configOptions = [
+    { key: 'genres', icon: 'category', label: 'Manage Genres' },
     { key: 'artists', icon: 'person', label: 'Manage Artists' },
     { key: 'albums', icon: 'album', label: 'Manage Albums' },
     { key: 'songs', icon: 'music_note', label: 'Manage Songs' },
