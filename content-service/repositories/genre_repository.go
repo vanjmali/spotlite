@@ -19,7 +19,7 @@ func (r *GenreRepository) getCollection() *mongo.Collection {
 	return r.Client.Database(r.DbName).Collection(r.CollName)
 }
 
-// NewRepository constructs a GenreRepository for the given database and collection.
+// NewGenreRepository constructs a GenreRepository for the given database and collection.
 func NewGenreRepository(dbName string, collName string, c *mongo.Client) *GenreRepository {
 	r := GenreRepository{Client: c, DbName: dbName, CollName: collName}
 	return &r
