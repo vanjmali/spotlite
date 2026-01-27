@@ -188,6 +188,12 @@ func (h *AlbumHandler) HandleUpdateAlbum(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	if err := h.v.Struct(dto); err != nil {
+		log.Printf("trace_id=%s failed to validate update album request: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.BadRequest(w, "invalid request body")
+		return
+	}
+
 	updatedAlbum, err := h.s.UpdateAlbum(r.Context(), id, dto)
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):

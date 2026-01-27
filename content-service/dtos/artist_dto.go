@@ -16,9 +16,9 @@ type ArtistDto struct {
 
 // UpdateArtistDto represents the payload for updating an existing artist. Pointers allow partial updates.
 type UpdateArtistDto struct {
-	Name        *string   `json:"name" validate:"omitempty,min=2"`
+	Name        *string   `json:"name" validate:"omitempty,required,min=2"`
 	GenreIds    *[]string `json:"genre_ids" validate:"omitempty,min=1,dive,required,len=24,hexadecimal"`
-	Description *string   `json:"description" validate:"omitempty,min=2"`
+	Description *string   `json:"description" validate:"omitempty,required,min=2"`
 }
 
 // ArtistListResponseDto represents the response payload when returning a paginated list of artists.

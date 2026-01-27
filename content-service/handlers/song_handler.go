@@ -98,6 +98,12 @@ func (h *SongHandler) HandleUpdateSong(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := h.v.Struct(dto); err != nil {
+		log.Printf("trace_id=%s failed to validate update song request: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.BadRequest(w, "invalid request body")
+		return
+	}
+
 	updatedSong, err := h.s.UpdateSong(r.Context(), id, dto)
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
