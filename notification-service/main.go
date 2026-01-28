@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gocql/gocql"
@@ -46,16 +45,6 @@ var config = server.ServerRunConfiguration{
 		}
 
 		return h, shutdown, err
-	},
-	GracefulShutdownTimeout: 10,
-	Server: struct {
-		ReadTimeout  time.Duration
-		WriteTimeout time.Duration
-		IdleTimeout  time.Duration
-	}{
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
 	},
 }
 

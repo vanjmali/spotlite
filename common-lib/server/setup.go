@@ -17,14 +17,19 @@ import (
 )
 
 type ServerRunConfiguration struct {
-	TelemetryName           string
-	Port                    string
-	ConfigureValidation     func(v *validator.Validate) error
-	CreateHandler           func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error)
+	TelemetryName       string
+	Port                string
+	ConfigureValidation func(v *validator.Validate) error
+	CreateHandler       func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error)
+	// GracefulShutdownTimeout is the maximum amount of time to wait for the server to shutdown gracefully. If zero, a default of 10 seconds is used.
 	GracefulShutdownTimeout time.Duration
-	Server                  struct {
+	// Server configuration overrides. Defaults will be used for any zero values. 
+	Server struct {
+		// ReadTimeout is the maximum duration for reading the entire request, including the body. Default is 15 seconds.
 		ReadTimeout  time.Duration
+		// WriteTimeout is the maximum duration before timing out writes of the response. Default is 15 seconds.
 		WriteTimeout time.Duration
+		// IdleTimeout is the maximum amount of time to wait for the next request when keep-alives are enabled. Default is 60 seconds.
 		IdleTimeout  time.Duration
 	}
 }
