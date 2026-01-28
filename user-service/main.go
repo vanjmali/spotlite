@@ -73,6 +73,8 @@ var config = server.ServerRunConfiguration{
 		}
 
 		ms, us, rts, prs := createServices(mail, ur, rtr, prr)
+		h = createHandlers(v, us, rts, prs)
+
 		asynqShutdown = setupAsynq(us, ms)
 		shutdown = func() error {
 			if err := mongo.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
@@ -90,7 +92,6 @@ var config = server.ServerRunConfiguration{
 			return nil
 		}
 
-		h = createHandlers(v, us, rts, prs)
 		return h, shutdown, err
 	},
 }
@@ -169,6 +170,8 @@ func createHandlers(
 	return routers.HandleRequests(uh, rth, prh)
 }
 
+// setupAsynq initializes and starts the asynq server, client, scheduler, workers and task router.
+// Returns a shutdown function to gracefully stop asynq components.
 func setupAsynq(us *services.UserService, ms *services.MailService) func() error {
 	redAddr := utils.MustGetEnv("REDIS_ADDR")
 	redConn := asynq.RedisClientOpt{Addr: redAddr}

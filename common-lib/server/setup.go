@@ -29,6 +29,8 @@ type ServerRunConfiguration struct {
 	}
 }
 
+// Run starts the HTTP server based on the provided configuration.
+// It handles graceful shutdown on receiving termination signals.
 func Run(ctx context.Context, config ServerRunConfiguration) error {
 	requests.RegisterCommonValidationMessages()
 	shutdownTelemetry, err := configureTelemetry(ctx, config)
@@ -56,6 +58,7 @@ func Run(ctx context.Context, config ServerRunConfiguration) error {
 	log.Printf("Starting server on port %s...\n", config.Port)
 	srvErr := make(chan error, 1)
 	go func() {
+		// Send startup errors to the main goroutine so cleanup can run.
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			srvErr <- err
 		}
@@ -68,11 +71,15 @@ func Run(ctx context.Context, config ServerRunConfiguration) error {
 	var serverErr error
 	select {
 	case serverErr = <-srvErr:
+		// Server failed to start; trigger cleanup path.
 		serverErr = fmt.Errorf("HTTP server error: %w", serverErr)
 		cancel()
 	case <-ctxQuit.Done():
 	}
-	log.Println("Shutting down server...")
+
+	if serverErr == nil {
+		log.Println("Shutting down server...")
+	}
 
 	shutdownTimeout := config.GracefulShutdownTimeout
 	if shutdownTimeout == 0 {
@@ -85,6 +92,7 @@ func Run(ctx context.Context, config ServerRunConfiguration) error {
 	g, ctxShutDown := errgroup.WithContext(ctxShutDown)
 
 	g.Go(func() error {
+		// Stop accepting new connections and drain existing ones.
 		if err := srv.Shutdown(ctxShutDown); err != nil {
 			return fmt.Errorf("server shutdown failed: %w", err)
 		}
@@ -92,6 +100,7 @@ func Run(ctx context.Context, config ServerRunConfiguration) error {
 	})
 
 	g.Go(func() error {
+		// Allow services to release external resources.
 		if shutdown == nil {
 			return nil
 		}
