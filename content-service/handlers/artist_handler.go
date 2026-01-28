@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -82,15 +81,11 @@ func (h *ArtistHandler) HandleUpdateArtist(w http.ResponseWriter, r *http.Reques
 	id := vars["id"]
 
 	var dto dtos.UpdateArtistDto
-	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		log.Printf("trace_id=%s failed to decode request body: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.BadRequest(w, "invalid request body")
-		return
-	}
-
-	if err := h.v.Struct(dto); err != nil {
-		log.Printf("trace_id=%s failed to validate update artist request: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.BadRequest(w, "invalid request body")
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &dto); !ok {
+		if err != nil {
+			log.Printf("trace_id=%s invalid request body: %v", telemetry.TraceID(r.Context()), err)
+			_ = respond.BadRequest(w, "invalid request body")
+		}
 		return
 	}
 
