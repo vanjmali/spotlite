@@ -83,8 +83,9 @@ func run() error {
 	sh := handlers.NewSongHandler(*ss, *v)
 	alh := handlers.NewAlbumHandler(*als, *v)
 	gh := handlers.NewGenreHandler(*gs, *v)
+	gsh := handlers.NewGlobalSearchHandler(*gs, *ss, *als, *as)
 
-	r := routers.HandleRequests(ah, sh, alh, gh)
+	r := routers.HandleRequests(ah, sh, alh, gh, gsh)
 
 	srvAddr := ":" + port
 
