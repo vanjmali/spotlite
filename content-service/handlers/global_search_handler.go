@@ -31,7 +31,7 @@ func NewGlobalSearchHandler(gs services.GenreService, ss services.SongService, a
 func (h *GlobalSearchHandler) HandleGlobalSearch(w http.ResponseWriter, r *http.Request) {
 	searchTerm := r.URL.Query().Get("q")
 	if searchTerm == "" {
-		respond.BadRequest(w, "Search query 'q' is required")
+		_ = respond.BadRequest(w, "Search query 'q' is required")
 		return
 	}
 
@@ -97,7 +97,7 @@ func (h *GlobalSearchHandler) HandleGlobalSearch(w http.ResponseWriter, r *http.
 		_ = respond.InternalServerError(w)
 	}
 
-	respond.OkJson(w, map[string]any{
+	_ = respond.OkJson(w, map[string]any{
 		"genres":  genres,
 		"albums":  albums,
 		"songs":   songs,
