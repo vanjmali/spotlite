@@ -15,7 +15,7 @@ type SongDto struct {
 
 // UpdateSongDto represents the payload for updating an existing song. Pointers allow partial updates.
 type UpdateSongDto struct {
-	Title         *string   `json:"title" validate:"omitempty,min=2"`
+	Title         *string   `json:"title" validate:"omitempty,required,min=2"`
 	GenreIds      *[]string `json:"genre_ids" validate:"omitempty,min=1,dive,required,len=24,hexadecimal"`
 	LengthSeconds *int      `json:"length_seconds" validate:"omitempty,gt=0"`
 	ArtistIds     *[]string `json:"artist_ids" validate:"omitempty,min=1,dive,required,len=24,hexadecimal"`
