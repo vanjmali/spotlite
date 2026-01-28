@@ -7,19 +7,18 @@ import (
 	"time"
 
 	"github.com/vanjmali/spotlite/user-service/entities"
-	infraMongo "github.com/vanjmali/spotlite/user-service/infrastructure/mongo"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func TestLoadSeed(mc *mongo.Client) {
+func TestLoadSeed(mc *mongo.Client, dbName string) {
 	const (
 		totalUsers  = 600
 		insertBatch = 500
 	)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
-	c := mc.Database(infraMongo.DatabaseName()).Collection(`users`)
+	c := mc.Database(dbName).Collection(`users`)
 
 	now := time.Now().UTC()
 	expiryDate := now.AddDate(0, 0, 5)
