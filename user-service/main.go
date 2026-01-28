@@ -6,15 +6,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/hibiken/asynq"
 	"github.com/vanjmali/spotlite/common-lib/requests"
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
+	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/common-lib/validations"
 	"github.com/vanjmali/spotlite/user-service/handlers"
@@ -26,85 +22,154 @@ import (
 	"github.com/vanjmali/spotlite/user-service/routers"
 	"github.com/vanjmali/spotlite/user-service/services"
 	"github.com/vanjmali/spotlite/user-service/validation"
+	"github.com/wneessen/go-mail"
+	mongodriver "go.mongodb.org/mongo-driver/mongo"
 )
 
-var port = utils.GetEnv("APP_PORT", "3000")
+var config = server.ServerRunConfiguration{
+	TelemetryName: "user-service",
+	Port:          utils.GetEnv("APP_PORT", "3000"),
+	ConfigureValidation: func(v *validator.Validate) error {
+		requests.RegisterJSONTagNameFunc(v)
+		if err := requests.RegisterValidation(v, validation.CheckStrongPassword); err != nil {
+			return fmt.Errorf("failed to register strong password validation: %w", err)
+		}
 
-func main() {
-	if err := run(); err != nil {
-		log.Fatalf("FATAL: Couldn't start user service: %v", err)
-	}
+		if err := requests.RegisterValidation(v, validation.CheckValidUsername); err != nil {
+			return fmt.Errorf("failed to register username validation: %w", err)
+		}
+
+		if err := requests.RegisterValidation(v, validations.CheckValidName); err != nil {
+			return fmt.Errorf("failed to register name validation: %w", err)
+		}
+
+		return nil
+	},
+	CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
+		mongo, mail, err := createClients(ctx)
+		if err != nil {
+			err = fmt.Errorf("failed to create clients: %w", err)
+			return h, shutdown, err
+		}
+
+		// Cleanup resources on error
+		var asynqShutdown func() error
+		defer func() {
+			if err == nil {
+				// No error, do nothing when function exits
+				return
+			}
+			_ = mongo.Disconnect(ctx)
+			_ = mail.Close()
+			if asynqShutdown != nil {
+				_ = asynqShutdown()
+			}
+		}()
+
+		ur, rtr, prr, err := createRepositories(ctx, mongo)
+		if err != nil {
+			err = fmt.Errorf("failed to create repositories: %w", err)
+			return h, shutdown, err
+		}
+
+		ms, us, rts, prs := createServices(mail, ur, rtr, prr)
+		asynqShutdown = setupAsynq(us, ms)
+		shutdown = func() error {
+			if err := mongo.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
+				return fmt.Errorf("failed to disconnect mongo client: %w", err)
+			}
+
+			if err := mail.Close(); err != nil {
+				return fmt.Errorf("failed to close mail client: %w", err)
+			}
+
+			if err := asynqShutdown(); err != nil {
+				return fmt.Errorf("failed to shutdown asynq: %w", err)
+			}
+
+			return nil
+		}
+
+		h = createHandlers(v, us, rts, prs)
+		return h, shutdown, err
+	},
 }
 
-func run() error {
-	ctx := context.Background()
-
-	// Initialize user service telemetry
-	tr, err := telemetry.Init(ctx, "user-service")
+func createClients(ctx context.Context) (*mongodriver.Client, *mail.Client, error) {
+	mongo, err := mongo.InitMongoClient()
 	if err != nil {
-		return fmt.Errorf("failed to initialize user service tracing: %w", err)
+		return nil, nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
 	}
 
-	defer func() {
-		if err := tr.Shutdown(ctx); err != nil {
-			log.Printf("failed to shut down user service tracer provider: %v", err)
-		}
-	}()
-
-	// Initialize clients
-	dbc, err := mongo.InitMongoClient()
+	mail, err := mailing.InitClientFromEnv()
 	if err != nil {
-		return fmt.Errorf("cannot start application without DB connection: %w", err)
+		_ = mongo.Disconnect(ctx)
+		return nil, nil, fmt.Errorf("failed to initialize mail client: %w", err)
 	}
 
-	mc, err := mailing.InitClientFromEnv()
-	if err != nil {
-		_ = dbc.Disconnect(context.Background())
-		return fmt.Errorf("cannot start application without mailing service: %w", err)
+	return mongo, mail, nil
+}
+
+func createRepositories(ctx context.Context, mongo *mongodriver.Client) (
+	services.UserRepository,
+	services.RefreshTokenRepository,
+	services.PasswordRecoveryRepository,
+	error,
+) {
+	name := utils.MustGetEnv("DB_NAME")
+	ur := repositories.NewUserRepositoryMongo(name, "users", mongo)
+	rtr := repositories.NewRefreshTokenRepository(name, "refresh_tokens", mongo)
+	prr := repositories.NewPasswordRecoveryRepository(name, "password_recovery_tokens", mongo)
+
+	if err := rtr.EnsureRefreshIndexes(ctx); err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to ensure refresh token indexes: %w", err)
 	}
 
-	// Utility function which seeds the database with users so we could test out the email scheduler
-	// load.TestLoadSeed(dbc)
+	return ur, rtr, prr, nil
+}
 
-	// Configure validators
-	requests.RegisterCommonValidationMessages()
-	v := validator.New()
-	requests.RegisterJSONTagNameFunc(v)
-
-	if err := requests.RegisterValidation(v, validation.CheckStrongPassword); err != nil {
-		return fmt.Errorf("failed to register strong password validation: %w", err)
-	}
-
-	if err := requests.RegisterValidation(v, validation.CheckValidUsername); err != nil {
-		return fmt.Errorf("failed to register username validation: %w", err)
-	}
-
-	if err := requests.RegisterValidation(v, validations.CheckValidName); err != nil {
-		return fmt.Errorf("failed to register name validation: %w", err)
-	}
-
-	defer dbc.Disconnect(context.Background())
-	defer mc.Close()
-
-	// repository initialization
-	ur := repositories.NewUserRepositoryMongo(mongo.DatabaseName(), "users", dbc)
-	rtr := repositories.NewRefreshTokenRepository(mongo.DatabaseName(), "refresh_tokens", dbc)
-	if err := rtr.EnsureRefreshIndexes(context.Background()); err != nil {
-		return fmt.Errorf("failed to ensure refresh token indexes: %w", err)
-	}
-	prr := repositories.NewPasswordRecoveryRepository(mongo.DatabaseName(), "password_recovery_tokens", dbc)
-
-	// service initialization
+func createServices(
+	mail *mail.Client,
+	ur services.UserRepository,
+	rr services.RefreshTokenRepository,
+	pt services.PasswordRecoveryRepository) (
+	*services.MailService,
+	*services.UserService,
+	*services.RefreshTokenService,
+	*services.PasswordRecoveryService,
+) {
 	mailCfg := services.MailConfig{
 		VerificationEndpoint: utils.MustGetEnv("SRV_USER_VERIFICATION_ENDPOINT"),
 		PasswordResetURL:     utils.MustGetEnv("SRV_USER_PASSWORD_RESET_URL"),
 		MailFromAddress:      utils.MustGetEnv("MAIL_FROM"),
 	}
-	ms := services.InitMailingService(mc, mailCfg)
-	us := services.NewUserService(ur, ms)
-	rts := services.NewRefreshTokenService(rtr)
-	prs := services.NewPasswordRecoveryService(ur, prr, ms)
 
+	ms := services.InitMailingService(mail, mailCfg)
+	us := services.NewUserService(ur, ms)
+	rts := services.NewRefreshTokenService(rr)
+	prs := services.NewPasswordRecoveryService(ur, pt, ms)
+
+	return ms, us, rts, prs
+}
+
+func createHandlers(
+	v *validator.Validate,
+	us *services.UserService,
+	rts *services.RefreshTokenService,
+	prs *services.PasswordRecoveryService,
+) http.Handler {
+	uh := handlers.NewUserHandler(*us, *v, *rts, handlers.UserHandlerConfig{
+		VerificationSuccessUrl: utils.MustGetEnv("SRV_USER_VERIFICATION_SUCCESS_URL"),
+		VerificationFailureUrl: utils.MustGetEnv("SRV_USER_VERIFICATION_FAILURE_URL"),
+	})
+
+	rth := handlers.NewRefreshTokenHandler(*rts, *us, *v)
+	prh := handlers.NewPasswordRecoveryHandler(*prs, *v)
+
+	return routers.HandleRequests(uh, rth, prh)
+}
+
+func setupAsynq(us *services.UserService, ms *services.MailService) func() error {
 	redAddr := utils.MustGetEnv("REDIS_ADDR")
 	redConn := asynq.RedisClientOpt{Addr: redAddr}
 
@@ -128,60 +193,11 @@ func run() error {
 	// Starts task router and scheduler in separate go routines
 	as.Start(mux)
 
-	uh := handlers.NewUserHandler(*us, *v, *rts, handlers.UserHandlerConfig{
-		VerificationSuccessUrl: utils.MustGetEnv("SRV_USER_VERIFICATION_SUCCESS_URL"),
-		VerificationFailureUrl: utils.MustGetEnv("SRV_USER_VERIFICATION_FAILURE_URL"),
-	})
+	return as.Stop
+}
 
-	rth := handlers.NewRefreshTokenHandler(*rts, *us, *v)
-	prh := handlers.NewPasswordRecoveryHandler(*prs, *v)
-
-	r := routers.HandleRequests(uh, rth, prh)
-
-	srvAddr := ":" + port
-
-	srv := &http.Server{
-		Addr:         srvAddr,
-		Handler:      r,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+func main() {
+	if err := server.Run(context.Background(), config); err != nil {
+		log.Fatalf("failed to start server: %v", err)
 	}
-
-	// stop is a channel which stores a maximum of one os signal
-	stop := make(chan os.Signal, 1)
-
-	// when an os.Interupt (ctrl + C) OR Sigterm call occurs, sends a signal to the stop channel
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
-	// starts  the http server in a new goroutine so graceful shutdown mechanism doesn't get blocked and can
-	// react of signals
-	go func() {
-		log.Printf("INFO: Listening on %s", srvAddr)
-		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("ERROR: failed to start server: %s", err)
-		}
-	}()
-
-	// stops the line of execution here until the stop channels gets a signal
-	<-stop
-	log.Println("DEBUG: Shutting down gracefully...")
-
-	// graceful shutdown starts
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Printf("ERROR: HTTP server Shutdown error: %v", err)
-	}
-
-	// Making sure we stop the scheduler, server, client
-	err = as.Stop()
-	if err != nil {
-		return err
-	}
-
-	log.Println("DEBUG: Shutdown complete")
-
-	return nil
 }
