@@ -16,8 +16,8 @@ type CreateAlbumDto struct {
 
 // UpdateAlbumDto represents the payload for updating an existing album. Pointers allow partial updates.
 type UpdateAlbumDto struct {
-	Title       *string   `json:"title" validate:"omitempty,min=2,max=100"`
-	ReleaseDate *string   `json:"release_date" validate:"omitempty,len=10"` // Date string in YYYY-MM-DD format
+	Title       *string   `json:"title" validate:"omitempty,required,min=2,max=100"`
+	ReleaseDate *string   `json:"release_date" validate:"omitempty,required,len=10"` // Date string in YYYY-MM-DD format
 	GenreIds    *[]string `json:"genre_ids" validate:"omitempty,min=1,dive,required,len=24,hexadecimal"`
 	ArtistIds   *[]string `json:"artist_ids" validate:"omitempty,min=1,dive,required,len=24,hexadecimal"`
 }
