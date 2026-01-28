@@ -201,6 +201,6 @@ func setupAsynq(us *services.UserService, ms *services.MailService) func() error
 
 func main() {
 	if err := server.Run(context.Background(), config); err != nil {
-		log.Fatalf("failed to start server: %v", err)
+		log.Fatalf("failed to start user service: %v", err)
 	}
 }

@@ -125,6 +125,6 @@ func createHandlers(
 
 func main() {
 	if err := server.Run(context.Background(), config); err != nil {
-		log.Fatalf("failed to start server: %v", err)
+		log.Fatalf("failed to start content service: %v", err)
 	}
 }
