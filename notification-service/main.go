@@ -26,9 +26,6 @@ var (
 var config = server.ServerRunConfiguration{
 	TelemetryName: "notification-service",
 	Port:          utils.GetEnv("APP_PORT", "3000"),
-	ConfigureValidation: func(v *validator.Validate) error {
-		return nil
-	},
 	CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
 		cs, err := createClients()
 		if err != nil {
