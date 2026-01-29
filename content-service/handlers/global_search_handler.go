@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/vanjmali/spotlite/common-lib/respond"
+	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/services"
 	"golang.org/x/sync/errgroup"
@@ -38,12 +40,12 @@ func (h *GlobalSearchHandler) HandleGlobalSearch(w http.ResponseWriter, r *http.
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	g, ctx := errgroup.WithContext(ctx)
+	g := new(errgroup.Group)
 
-	artists := []entities.Artist{}
+	genres := []entities.Genre{}
 	albums := []entities.Album{}
 	songs := []entities.Song{}
-	genres := []entities.Genre{}
+	artists := []entities.Artist{}
 
 	g.Go(func() error {
 		res, err := h.genreService.GetGenres(ctx, services.GenresQuery{
@@ -51,10 +53,14 @@ func (h *GlobalSearchHandler) HandleGlobalSearch(w http.ResponseWriter, r *http.
 			Size: 5,
 			Name: searchTerm,
 		})
-		if err == nil && res != nil {
+		if err != nil {
+			log.Printf("trace_id=%s genre search failed: %v", telemetry.TraceID(ctx), err)
+			return nil
+		}
+		if res != nil {
 			genres = res.Items
 		}
-		return err
+		return nil
 	})
 
 	g.Go(func() error {
@@ -63,10 +69,14 @@ func (h *GlobalSearchHandler) HandleGlobalSearch(w http.ResponseWriter, r *http.
 			Size:  5,
 			Title: searchTerm,
 		})
-		if err == nil && res != nil {
+		if err != nil {
+			log.Printf("trace_id=%s album search failed: %v", telemetry.TraceID(ctx), err)
+			return nil
+		}
+		if res != nil {
 			albums = res.Items
 		}
-		return err
+		return nil
 	})
 
 	g.Go(func() error {
@@ -75,10 +85,14 @@ func (h *GlobalSearchHandler) HandleGlobalSearch(w http.ResponseWriter, r *http.
 			Size:  5,
 			Title: searchTerm,
 		})
-		if err == nil && res != nil {
+		if err != nil {
+			log.Printf("trace_id=%s song search failed: %v", telemetry.TraceID(ctx), err)
+			return nil
+		}
+		if res != nil {
 			songs = res.Items
 		}
-		return err
+		return nil
 	})
 
 	g.Go(func() error {
@@ -87,15 +101,17 @@ func (h *GlobalSearchHandler) HandleGlobalSearch(w http.ResponseWriter, r *http.
 			Size: 5,
 			Name: searchTerm,
 		})
-		if err == nil && res != nil {
+		if err != nil {
+			log.Printf("trace_id=%s artist search failed: %v", telemetry.TraceID(ctx), err)
+			return nil
+		}
+		if res != nil {
 			artists = res.Items
 		}
-		return err
+		return nil
 	})
 
-	if err := g.Wait(); err != nil {
-		_ = respond.InternalServerError(w)
-	}
+	_ = g.Wait()
 
 	_ = respond.OkJson(w, map[string]any{
 		"genres":  genres,
