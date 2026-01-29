@@ -8,6 +8,7 @@ import (
 // SongDto represents the data transfer object for a song entity.
 type SongDto struct {
 	Title         string   `json:"title" validate:"required,min=2"`
+	AlbumId       string   `json:"album_id" validate:"required,len=24,hexadecimal"`
 	GenreIds      []string `json:"genre_ids" validate:"required,min=1,dive,required,len=24,hexadecimal"`
 	LengthSeconds int      `json:"length_seconds" validate:"required,gt=0"`
 	ArtistIds     []string `json:"artist_ids" validate:"required,min=1,dive,required,len=24,hexadecimal"`
