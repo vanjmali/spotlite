@@ -264,6 +264,7 @@ func (s *ArtistService) GetArtists(ctx context.Context, q ArtistsQuery) (*dtos.A
 	}, nil
 }
 
+// Exists checks if an artist with the given ID exists.
 func (s *ArtistService) Exists(ctx context.Context, artistIDstr string) (bool, error) {
 	ctx, span := s.tr.Start(ctx, "artists.exists")
 	defer span.End()
