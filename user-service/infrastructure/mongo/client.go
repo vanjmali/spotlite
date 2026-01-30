@@ -41,8 +41,3 @@ func InitMongoClient() (*mongo.Client, error) {
 
 	return client, nil
 }
-
-// DatabaseName returns the DB name from env variable.
-func DatabaseName() string {
-	return os.Getenv("DB_NAME")
-}

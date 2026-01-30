@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -92,9 +91,11 @@ func (h *SongHandler) HandleUpdateSong(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	var dto dtos.UpdateSongDto
-	if err := json.NewDecoder(r.Body).Decode(&dto); err != nil {
-		log.Printf("trace_id=%s failed to decode request body: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.BadRequest(w, "invalid request body")
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &dto); !ok {
+		if err != nil {
+			log.Printf("trace_id=%s invalid request body: %v", telemetry.TraceID(r.Context()), err)
+			_ = respond.BadRequest(w, "invalid request body")
+		}
 		return
 	}
 
