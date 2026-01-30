@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option go_package = "github.com/vanjmali/spotlite/common-lib/proto/content_service;content_service_pb";
+
+package content_service;
+
+service ContentChecker {
+    rpc CheckGenreExistence (CheckIdRequest) returns (ExistenceResponse);
+    rpc CheckArtistExistence (CheckIdRequest) returns (ExistenceResponse); 
+}
+
+message CheckIdRequest {
+    string entity_id = 1;
+}
+
+message ExistenceResponse {
+    bool exists = 1;
+}

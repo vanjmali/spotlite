@@ -170,12 +170,9 @@ func (s *GenreService) Exists(ctx context.Context, genreIDstr string) (bool, err
 		return false, err
 	}
 
-	existsCtx, existsSpan := s.tr.Start(ctx, "genres.exists.existence_check")
-	defer existsSpan.End()
-
-	exists, err := s.r.Exists(existsCtx, genreID)
+	exists, err := s.r.Exists(ctx, genreID)
 	if err != nil {
-		existsSpan.RecordError(err)
+		span.RecordError(err)
 		return false, err
 	}
 

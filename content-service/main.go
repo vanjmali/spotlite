@@ -5,20 +5,25 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	pb "github.com/vanjmali/spotlite/common-lib/proto/content_service"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	commonvalid "github.com/vanjmali/spotlite/common-lib/validations"
 	"github.com/vanjmali/spotlite/content/handlers"
+	infragrpc "github.com/vanjmali/spotlite/content/infrastructure/grpc"
 	"github.com/vanjmali/spotlite/content/infrastructure/mongo"
 	"github.com/vanjmali/spotlite/content/repositories"
 	"github.com/vanjmali/spotlite/content/routers"
 	"github.com/vanjmali/spotlite/content/services"
 	contentvalid "github.com/vanjmali/spotlite/content/validations"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"google.golang.org/grpc"
 )
 
 var config = server.ServerRunConfiguration{
@@ -52,9 +57,44 @@ var config = server.ServerRunConfiguration{
 
 		ar, sr, alr, gr := createRepositories(dbc)
 		gs, as, ss, als := createServices(ar, sr, alr, gr)
+
 		h = createHandlers(v, as, ss, als, gs)
 
+		// define content grpc server
+		contentGrpcServer := &infragrpc.ContentServer{
+			GenreService:  gs,
+			ArtistService: as,
+		}
+		grpcPort := utils.GetEnv("CONTENT_GRPC_PORT", "50051")
+
+		// this doesn't start the server it just reserves the port and prepares everything
+		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+		if err != nil {
+			return h, shutdown, fmt.Errorf("failed to listen on grpc port: %w", err)
+		}
+
+		// this instaniates a new grpc server (engine) which knows how to work with
+		// HTTP/2, serialization...
+		s := grpc.NewServer(
+			grpc.StatsHandler(otelgrpc.NewServerHandler()),
+		)
+
+		// make every request that comes to the ContentCheckerServer defined in the proto file
+		// be forwarded to the contentGrpcServer instance
+		pb.RegisterContentCheckerServer(s, contentGrpcServer)
+
+		// starts the server in a separate go routine to avoid blocking the http server
+		go func() {
+			log.Printf("gRPC server listening on port %s", grpcPort)
+			if err := s.Serve(lis); err != nil {
+				log.Fatalf("failed to serve grpc: %v", err)
+			}
+		}()
+
 		shutdown = func() error {
+			// makes sure to gracefully stop the rpc server
+			s.GracefulStop()
+
 			if err := dbc.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
 				return fmt.Errorf("failed to disconnect mongo client: %w", err)
 			}
@@ -63,6 +103,12 @@ var config = server.ServerRunConfiguration{
 
 		return h, shutdown, err
 	},
+}
+
+func main() {
+	if err := server.Run(context.Background(), config); err != nil {
+		log.Fatalf("failed to start content service: %v", err)
+	}
 }
 
 func createClients() (*mongodriver.Client, error) {
@@ -121,10 +167,4 @@ func createHandlers(
 	gh := handlers.NewGenreHandler(*gs, *v)
 
 	return routers.HandleRequests(ah, sh, alh, gh)
-}
-
-func main() {
-	if err := server.Run(context.Background(), config); err != nil {
-		log.Fatalf("failed to start content service: %v", err)
-	}
 }
