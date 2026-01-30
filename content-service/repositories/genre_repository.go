@@ -98,3 +98,17 @@ func (r *GenreRepository) FindAll(ctx context.Context, filter bson.M, skip int64
 
 	return genres, total, nil
 }
+
+func (r *GenreRepository) Exists(ctx context.Context, genreID primitive.ObjectID) (bool, error) {
+	cnt, err := r.getCollection().CountDocuments(
+		ctx,
+		bson.M{"_id": genreID},
+		options.Count().SetLimit(1),
+	)
+
+	if err != nil {
+		return false, err
+	}
+
+	return cnt > 0, nil
+}
