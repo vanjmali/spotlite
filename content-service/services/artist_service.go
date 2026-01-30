@@ -263,3 +263,25 @@ func (s *ArtistService) GetArtists(ctx context.Context, q ArtistsQuery) (*dtos.A
 		Total: total,
 	}, nil
 }
+
+func (s *ArtistService) Exists(ctx context.Context, artistIDstr string) (bool, error) {
+	ctx, span := s.tr.Start(ctx, "artists.exists")
+	defer span.End()
+
+	artistID, err := primitive.ObjectIDFromHex(artistIDstr)
+	if err != nil {
+		span.RecordError(err)
+		return false, err
+	}
+
+	existsCtx, existsSpan := s.tr.Start(ctx, "artists.exists.existence_check")
+	defer existsSpan.End()
+
+	exists, err := s.r.Exists(existsCtx, artistID)
+	if err != nil {
+		existsSpan.RecordError(err)
+		return false, err
+	}
+
+	return exists, nil
+}
