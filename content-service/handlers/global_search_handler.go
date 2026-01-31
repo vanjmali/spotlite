@@ -33,6 +33,7 @@ func NewGlobalSearchHandler(gs services.GenreService, ss services.SongService, a
 func (h *GlobalSearchHandler) HandleGlobalSearch(w http.ResponseWriter, r *http.Request) {
 	searchTerm := r.URL.Query().Get("q")
 	if searchTerm == "" {
+		log.Printf("trace_id=%s search query 'q' is required", telemetry.TraceID(r.Context()))
 		_ = respond.BadRequest(w, "Search query 'q' is required")
 		return
 	}
