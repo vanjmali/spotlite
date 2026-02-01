@@ -2,8 +2,11 @@ package grpc
 
 import (
 	"context"
+	"errors"
+	"log"
 
 	pb "github.com/vanjmali/spotlite/common-lib/proto/content_service"
+	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/content/services"
 
 	"google.golang.org/grpc/codes"
@@ -11,27 +14,51 @@ import (
 )
 
 type ContentServer struct {
-	pb.UnimplementedContentCheckerServer
+	pb.UnimplementedGetContentEntityServer
 
-	GenreService  *services.GenreService
-	ArtistService *services.ArtistService
+	gs *services.GenreService
+	as *services.ArtistService
 }
 
-func (s *ContentServer) CheckGenreExistence(ctx context.Context, req *pb.CheckIdRequest) (*pb.ExistenceResponse, error) {
-	exists, err := s.GenreService.Exists(ctx, req.GetEntityId())
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "genre existence check failed: %v", err)
+func NewContentServer(gs *services.GenreService, as *services.ArtistService) *ContentServer {
+	return &ContentServer{
+		gs: gs,
+		as: as,
 	}
-
-	return &pb.ExistenceResponse{Exists: exists}, nil
 }
 
-func (s *ContentServer) CheckArtistExistence(ctx context.Context, req *pb.CheckIdRequest) (*pb.ExistenceResponse, error) {
-	exists, err := s.ArtistService.Exists(ctx, req.GetEntityId())
-
+func (s *ContentServer) GetArtist(ctx context.Context, req *pb.EntityIDRequest) (*pb.GetContentEntityResponse, error) {
+	a, err := s.as.FindArtistByID(ctx, req.EntityId)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "artist existence check failed: %v", err)
+		log.Printf("trace_id=%s failed while fetching artist: %v", telemetry.TraceID(ctx), err)
+
+		switch {
+		case errors.Is(err, services.ErrObjectIdCastFailed):
+			return nil, status.Error(codes.InvalidArgument, "Invalid artist ID format")
+		case errors.Is(err, services.ErrArtistNotFound):
+			return nil, status.Error(codes.NotFound, "Artist not found")
+		default:
+			return nil, status.Error(codes.Internal, "An unexpected error has occurred while fetching artist")
+		}
 	}
 
-	return &pb.ExistenceResponse{Exists: exists}, nil
+	return &pb.GetContentEntityResponse{Name: a.Name}, nil
+}
+
+func (s *ContentServer) GetGenre(ctx context.Context, req *pb.EntityIDRequest) (*pb.GetContentEntityResponse, error) {
+	g, err := s.gs.FindGenreByID(ctx, req.EntityId)
+	if err != nil {
+		log.Printf("trace_id=%s failed while fetching genre: %v", telemetry.TraceID(ctx), err)
+
+		switch {
+		case errors.Is(err, services.ErrObjectIdCastFailed):
+			return nil, status.Error(codes.InvalidArgument, "Invalid genre ID format")
+		case errors.Is(err, services.ErrGenreNotFound):
+			return nil, status.Error(codes.NotFound, "Genre not found")
+		default:
+			return nil, status.Error(codes.Internal, "An unexpected error has occurred while fetching genre")
+		}
+	}
+
+	return &pb.GetContentEntityResponse{Name: g.Name}, nil
 }

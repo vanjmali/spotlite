@@ -87,8 +87,8 @@ func createClients() (*mongodriver.Client, *grpc.ClientConn, error) {
 	return dbc, gc, nil
 }
 
-func createAdapters(gc *grpc.ClientConn) *adapters.GrpcContentChecker {
-	return adapters.NewGrpcContentChecker(gc)
+func createAdapters(gc *grpc.ClientConn) *adapters.GrpcContentEntityGetter {
+	return adapters.NewGrpcContentEntityGetter(gc)
 }
 
 func createRepositories(dbc *mongodriver.Client) *repositories.SubscriptionRepository {
@@ -100,7 +100,7 @@ func createRepositories(dbc *mongodriver.Client) *repositories.SubscriptionRepos
 
 func createServices(
 	sr *repositories.SubscriptionRepository,
-	gcc *adapters.GrpcContentChecker,
+	gcc *adapters.GrpcContentEntityGetter,
 ) *services.SubscriptionService {
 	ss := services.NewSubscriptionService(sr, gcc)
 

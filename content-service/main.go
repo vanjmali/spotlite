@@ -61,10 +61,7 @@ var config = server.ServerRunConfiguration{
 		h = createHandlers(v, as, ss, als, gs)
 
 		// define content grpc server
-		contentGrpcServer := &infragrpc.ContentServer{
-			GenreService:  gs,
-			ArtistService: as,
-		}
+		contentGrpcServer := infragrpc.NewContentServer(gs, as)
 		grpcPort := utils.GetEnv("CONTENT_GRPC_PORT", "50051")
 
 		// this doesn't start the server it just reserves the port and prepares everything
@@ -79,9 +76,9 @@ var config = server.ServerRunConfiguration{
 			grpc.StatsHandler(otelgrpc.NewServerHandler()),
 		)
 
-		// make every request that comes to the ContentCheckerServer defined in the proto file
+		// make every request that comes to the GetContentEntityServer defined in the proto file
 		// be forwarded to the contentGrpcServer instance
-		pb.RegisterContentCheckerServer(s, contentGrpcServer)
+		pb.RegisterGetContentEntityServer(s, contentGrpcServer)
 
 		// starts the server in a separate go routine to avoid blocking the http server
 		go func() {

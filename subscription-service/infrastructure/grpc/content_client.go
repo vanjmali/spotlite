@@ -9,35 +9,35 @@ import (
 	"google.golang.org/grpc"
 )
 
-type GrpcContentChecker struct {
-	client pb.ContentCheckerClient
+type GrpcContentEntityGetter struct {
+	client pb.GetContentEntityClient
 }
 
-func NewGrpcContentChecker(gc *grpc.ClientConn) *GrpcContentChecker {
-	return &GrpcContentChecker{
-		client: pb.NewContentCheckerClient(gc),
+func NewGrpcContentEntityGetter(gc *grpc.ClientConn) *GrpcContentEntityGetter {
+	return &GrpcContentEntityGetter{
+		client: pb.NewGetContentEntityClient(gc),
 	}
 }
 
-func (g *GrpcContentChecker) CheckExistence(ctx context.Context, entityID string, subType entities.SubscriptionType) (bool, error) {
-	req := &pb.CheckIdRequest{EntityId: entityID}
+func (g *GrpcContentEntityGetter) GetEntity(ctx context.Context, entityID string, subType entities.SubscriptionType) (string, error) {
+	req := &pb.EntityIDRequest{EntityId: entityID}
 
 	switch subType {
 	case entities.GenreSubscription:
-		resp, err := g.client.CheckGenreExistence(ctx, req)
+		resp, err := g.client.GetGenre(ctx, req)
 		if err != nil {
-			return false, err
+			return "", err
 		}
-		return resp.GetExists(), nil
+		return resp.GetName(), nil
 
 	case entities.ArtistSubscription:
-		resp, err := g.client.CheckArtistExistence(ctx, req)
+		resp, err := g.client.GetArtist(ctx, req)
 		if err != nil {
-			return false, err
+			return "", err
 		}
-		return resp.GetExists(), nil
+		return resp.GetName(), nil
 
 	default:
-		return false, fmt.Errorf("unsupported subscription type: %s", subType)
+		return "", fmt.Errorf("unsupported subscription type: %s", subType)
 	}
 }
