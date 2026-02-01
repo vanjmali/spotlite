@@ -11,7 +11,7 @@ import (
 
 var ErrSubscriptionMapping = errors.New("an error has occurred while processing subscription request")
 
-func ToSubscriptionEntity(req *dtos.CreateSubscriptionDto, subscriberIDstr string) (*entities.Subscription, error) {
+func ToSubscriptionEntity(req *dtos.CreateSubscriptionDto, subscriberIDstr string, entityName string) (*entities.Subscription, error) {
 	now := time.Now()
 
 	subscriberID, err := primitive.ObjectIDFromHex(subscriberIDstr)
@@ -30,5 +30,6 @@ func ToSubscriptionEntity(req *dtos.CreateSubscriptionDto, subscriberIDstr strin
 		EntityID:     entityId,
 		Type:         req.Type,
 		SubscribedAt: now,
+		EntityName:   entityName,
 	}, nil
 }

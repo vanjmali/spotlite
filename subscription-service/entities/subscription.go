@@ -19,4 +19,5 @@ type Subscription struct {
 	EntityID     primitive.ObjectID `bson:"entity_id,omitempty" json:"entity_id"`
 	Type         SubscriptionType   `bson:"sub_type,omitempty" json:"sub_type"`
 	SubscribedAt time.Time          `bson:"subscribed_at,omitempty" json:"subscribed_at"`
+	EntityName   string             `bson:"entity_name,omitempty" json:"entity_name"`
 }
