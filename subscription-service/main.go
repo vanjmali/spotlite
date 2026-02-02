@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/vanjmali/spotlite/common-lib/server"
@@ -16,7 +17,9 @@ import (
 	"github.com/vanjmali/spotlite/subscriptions/repositories"
 	"github.com/vanjmali/spotlite/subscriptions/routers"
 	"github.com/vanjmali/spotlite/subscriptions/services"
+	"go.mongodb.org/mongo-driver/bson"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -40,6 +43,11 @@ var config = server.ServerRunConfiguration{
 			_ = gc.Close()
 			_ = dbc.Disconnect(ctx)
 		}()
+
+		err = initializeSubscriptionIndexes(ctx, dbc)
+		if err != nil {
+			return nil, nil, err
+		}
 
 		gcc := createAdapters(gc)
 		sr := createRepositories(dbc)
@@ -81,10 +89,43 @@ func createClients() (*mongodriver.Client, *grpc.ClientConn, error) {
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 	if err != nil {
-
-		log.Fatalf("did not connect: %v", err)
+		return nil, nil, fmt.Errorf("failed to establish a RPC connection with the content-service: %w", err)
 	}
 	return dbc, gc, nil
+}
+
+func initializeSubscriptionIndexes(ctx context.Context, c *mongodriver.Client) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	models := []mongodriver.IndexModel{
+		// compound index which groups and sorts subscriptions by subscriber_id and sorts it by entity_id field,
+		// it provides efficient user following list lookup and has a constraint which forbids duplicate subscriptions
+		//
+		// other than that it also provides fast check is the user subscribed to particular content when located on
+		// genre/artist page, since it will be fetched by these two fields
+		{
+			Keys:    bson.D{{Key: "subscriber_id", Value: 1}, {Key: "entity_id", Value: 1}},
+			Options: options.Index().SetUnique(true),
+		},
+		// allows efficient user following list retrieval, subscriptions are sorted in chronological order starting from
+		// latest
+		{
+			Keys: bson.D{{Key: "subscriber_id", Value: 1}, {Key: "subscribed_at", Value: -1}},
+		},
+		// using this index we can efficiently fetch all subscriptions by entity_id which is useful for sending notifications
+		// to users when new albums drop/ new artists of a genre are created. JSYK The compound index won't do the job.
+		{
+			Keys: bson.D{{Key: "entity_id", Value: 1}},
+		},
+	}
+
+	_, err := c.Database(mongo.DatabaseName()).
+		Collection("subscriptions").
+		Indexes().
+		CreateMany(ctx, models)
+
+	return err
 }
 
 func createAdapters(gc *grpc.ClientConn) *adapters.GrpcContentEntityGetter {

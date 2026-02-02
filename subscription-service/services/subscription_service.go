@@ -37,6 +37,8 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 	defer entityExistenceSpan.End()
 
 	entityName, err := s.gcc.GetEntity(entityExistenceCtx, req.EntityID, entities.SubscriptionType(req.Type))
+
+	// TODO handle different error types differently
 	if err != nil {
 		entityExistenceSpan.RecordError(err)
 		return ErrEntityNotFound

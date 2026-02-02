@@ -2,10 +2,13 @@ package repositories
 
 import (
 	"context"
+	"errors"
 
 	"github.com/vanjmali/spotlite/subscriptions/entities"
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
+var ErrSubscriptionAlreadyExists = errors.New("User is already subscribed to the given content.")
 
 type SubscriptionRepository struct {
 	DbName   string
@@ -28,7 +31,12 @@ func (r *SubscriptionRepository) Create(s *entities.Subscription, ctx context.Co
 
 	_, err := c.InsertOne(ctx, s)
 	if err != nil {
-		return err
+		switch {
+		case mongo.IsDuplicateKeyError(err):
+			return ErrSubscriptionAlreadyExists
+		default:
+			return err
+		}
 	}
 
 	return nil

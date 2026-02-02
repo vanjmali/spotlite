@@ -11,6 +11,7 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/subscriptions/dtos"
 	"github.com/vanjmali/spotlite/subscriptions/mappers"
+	"github.com/vanjmali/spotlite/subscriptions/repositories"
 	"github.com/vanjmali/spotlite/subscriptions/services"
 )
 
@@ -44,6 +45,9 @@ func (h *SubscriptionHandler) HandleSubscribe(w http.ResponseWriter, r *http.Req
 		case errors.Is(err, services.ErrEntityNotFound):
 			log.Printf("trace_id=%s failed to process subscribe request: %v", telemetry.TraceID(r.Context()), err)
 			_ = respond.UnprocessableEntity(w, err.Error())
+		case errors.Is(err, repositories.ErrSubscriptionAlreadyExists):
+			log.Printf("trace_id=%s failed to process subscribe request: %v", telemetry.TraceID(r.Context()), err)
+			_ = respond.Conflict(w, err.Error())
 		default:
 			log.Printf("trace_id=%s failed to create subscription: %v", telemetry.TraceID(r.Context()), err)
 			_ = respond.InternalServerError(w)
