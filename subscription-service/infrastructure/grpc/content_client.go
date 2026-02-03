@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	pb "github.com/vanjmali/spotlite/common-lib/proto/content_service"
-	"github.com/vanjmali/spotlite/subscriptions/entities"
+	"github.com/vanjmali/spotlite/common-lib/subscription"
 	"google.golang.org/grpc"
 )
 
@@ -19,18 +19,18 @@ func NewGrpcContentEntityGetter(gc *grpc.ClientConn) *GrpcContentEntityGetter {
 	}
 }
 
-func (g *GrpcContentEntityGetter) GetEntity(ctx context.Context, entityID string, subType entities.SubscriptionType) (string, error) {
+func (g *GrpcContentEntityGetter) GetEntity(ctx context.Context, entityID string, subType subscription.SubscriptionType) (string, error) {
 	req := &pb.EntityIDRequest{EntityId: entityID}
 
 	switch subType {
-	case entities.GenreSubscription:
+	case subscription.GenreSubscription:
 		resp, err := g.client.GetGenre(ctx, req)
 		if err != nil {
 			return "", err
 		}
 		return resp.GetName(), nil
 
-	case entities.ArtistSubscription:
+	case subscription.ArtistSubscription:
 		resp, err := g.client.GetArtist(ctx, req)
 		if err != nil {
 			return "", err

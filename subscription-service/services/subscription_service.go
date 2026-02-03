@@ -5,16 +5,22 @@ import (
 	"errors"
 
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
-	"github.com/vanjmali/spotlite/subscriptions/dtos"
-	"github.com/vanjmali/spotlite/subscriptions/entities"
-	adapters "github.com/vanjmali/spotlite/subscriptions/infrastructure/grpc"
-	"github.com/vanjmali/spotlite/subscriptions/mappers"
-	"github.com/vanjmali/spotlite/subscriptions/repositories"
+	"github.com/vanjmali/spotlite/common-lib/subscription"
+	"github.com/vanjmali/spotlite/subscription-service/dtos"
+	adapters "github.com/vanjmali/spotlite/subscription-service/infrastructure/grpc"
+	"github.com/vanjmali/spotlite/subscription-service/mappers"
+	"github.com/vanjmali/spotlite/subscription-service/repositories"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-var ErrEntityNotFound = errors.New("genre/artist couldn't be found")
+var (
+	ErrEntityNotFound  = errors.New("genre/artist couldn't be found")
+	ErrInvalidEntityID = errors.New("error has ocurred while parsing genre/artist id")
+	ErrUpstreamFailure = errors.New("error has ocurred while fetching artist/genre")
+)
 
 type SubscriptionService struct {
 	sr  *repositories.SubscriptionRepository
@@ -36,12 +42,24 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 	entityExistenceCtx, entityExistenceSpan := s.tr.Start(ctx, "subscription.create.entity_exists")
 	defer entityExistenceSpan.End()
 
-	entityName, err := s.gcc.GetEntity(entityExistenceCtx, req.EntityID, entities.SubscriptionType(req.Type))
+	entityName, err := s.gcc.GetEntity(entityExistenceCtx, req.EntityID, subscription.SubscriptionType(req.Type))
 
-	// TODO handle different error types differently
 	if err != nil {
 		entityExistenceSpan.RecordError(err)
-		return ErrEntityNotFound
+
+		st, ok := status.FromError(err)
+		if !ok {
+			return err
+		}
+
+		switch st.Code() {
+		case codes.NotFound:
+			return ErrEntityNotFound
+		case codes.InvalidArgument:
+			return ErrInvalidEntityID
+		default:
+			return ErrUpstreamFailure
+		}
 	}
 
 	userIDstr := middlewares.GetUserIdFromContext(ctx)

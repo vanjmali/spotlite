@@ -9,14 +9,16 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
-	"github.com/vanjmali/spotlite/subscriptions/handlers"
-	adapters "github.com/vanjmali/spotlite/subscriptions/infrastructure/grpc"
-	"github.com/vanjmali/spotlite/subscriptions/infrastructure/mongo"
-	"github.com/vanjmali/spotlite/subscriptions/repositories"
-	"github.com/vanjmali/spotlite/subscriptions/routers"
-	"github.com/vanjmali/spotlite/subscriptions/services"
+	"github.com/vanjmali/spotlite/subscription-service/handlers"
+	adapters "github.com/vanjmali/spotlite/subscription-service/infrastructure/grpc"
+	"github.com/vanjmali/spotlite/subscription-service/infrastructure/mongo"
+	"github.com/vanjmali/spotlite/subscription-service/repositories"
+	"github.com/vanjmali/spotlite/subscription-service/routers"
+	"github.com/vanjmali/spotlite/subscription-service/services"
+	"github.com/vanjmali/spotlite/subscription-service/validation"
 	"go.mongodb.org/mongo-driver/bson"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -28,6 +30,18 @@ import (
 var config = server.ServerRunConfiguration{
 	TelemetryName: "subscription-service",
 	Port:          utils.GetEnv("APP_PORT", "3000"),
+	ConfigureValidation: func(v *validator.Validate) error {
+		requests.RegisterJSONTagNameFunc(v)
+		if err := requests.RegisterValidation(v, validation.CheckValidEntityID); err != nil {
+			return fmt.Errorf("failed to register entity ID validation: %w", err)
+		}
+
+		if err := requests.RegisterValidation(v, validation.CheckValidSubscriptionType); err != nil {
+			return fmt.Errorf("failed to register subscription type validation: %w", err)
+		}
+
+		return nil
+	},
 	CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
 		dbc, gc, err := createClients()
 		if err != nil {

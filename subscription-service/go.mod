@@ -1,4 +1,4 @@
-module github.com/vanjmali/spotlite/subscriptions
+module github.com/vanjmali/spotlite/subscription-service
 
 go 1.25.5
 

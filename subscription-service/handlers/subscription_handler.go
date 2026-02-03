@@ -9,10 +9,10 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
-	"github.com/vanjmali/spotlite/subscriptions/dtos"
-	"github.com/vanjmali/spotlite/subscriptions/mappers"
-	"github.com/vanjmali/spotlite/subscriptions/repositories"
-	"github.com/vanjmali/spotlite/subscriptions/services"
+	"github.com/vanjmali/spotlite/subscription-service/dtos"
+	"github.com/vanjmali/spotlite/subscription-service/mappers"
+	"github.com/vanjmali/spotlite/subscription-service/repositories"
+	"github.com/vanjmali/spotlite/subscription-service/services"
 )
 
 type SubscriptionHandler struct {

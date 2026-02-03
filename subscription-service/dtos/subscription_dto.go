@@ -1,8 +1,10 @@
 package dtos
 
-import "github.com/vanjmali/spotlite/subscriptions/entities"
+import (
+	"github.com/vanjmali/spotlite/common-lib/subscription"
+)
 
 type CreateSubscriptionDto struct {
-	EntityID string                    `json:"entity_id"`
-	Type     entities.SubscriptionType `json:"sub_type"`
+	EntityID string                        `json:"entity_id" validate:"required,validentityid"`
+	Type     subscription.SubscriptionType `json:"sub_type" validate:"required,validsubtype"`
 }

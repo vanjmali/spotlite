@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/vanjmali/spotlite/subscriptions/dtos"
-	"github.com/vanjmali/spotlite/subscriptions/entities"
+	"github.com/vanjmali/spotlite/subscription-service/dtos"
+	"github.com/vanjmali/spotlite/subscription-service/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

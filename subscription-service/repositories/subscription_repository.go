@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/vanjmali/spotlite/subscriptions/entities"
+	"github.com/vanjmali/spotlite/subscription-service/entities"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
