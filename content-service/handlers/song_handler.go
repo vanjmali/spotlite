@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 
@@ -162,4 +163,72 @@ func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 	handleListResponse(w, r, "songs", func(ctx context.Context) (any, error) {
 		return h.s.GetSongs(ctx, query)
 	})
+}
+
+func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		_ = respond.BadRequest(w, "missing file")
+		return
+	}
+	defer file.Close()
+
+	mime := header.Header.Get("Content-Type")
+	if mime == "" {
+		mime = "application/octet-stream"
+	}
+
+	ext := ".mp3"
+
+	updated, err := h.s.UploadAudio(r.Context(), id, file, ext, mime)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrSongNotFound):
+			_ = respond.NotFound(w)
+		case errors.Is(err, services.ErrObjectIdCastFailed):
+			_ = respond.BadRequest(w, "Invalid ID format")
+		default:
+			_ = respond.InternalServerError(w)
+		}
+		return
+	}
+	_ = respond.OkJson(w, updated)
+}
+
+func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+
+	song, err := h.s.FindSongById(r.Context(), id)
+	if err != nil {
+		log.Printf("trace_id=%s failed to get song: %v", telemetry.TraceID(r.Context()), err)
+
+		switch {
+		case errors.Is(err, services.ErrSongNotFound):
+			_ = respond.NotFound(w)
+			return
+		case errors.Is(err, services.ErrObjectIdCastFailed):
+			_ = respond.BadRequest(w, "Invalid ID format")
+			return
+		default:
+			_ = respond.InternalServerError(w)
+			return
+		}
+	}
+	rc, err := h.s.OpenAudio(r.Context(), song.AudioPath)
+	if err != nil {
+		_ = respond.InternalServerError(w)
+		return
+	}
+	defer rc.Close()
+
+	if song.AudioMimeType != "" {
+		w.Header().Set("Content-Type", song.AudioMimeType)
+	} else {
+		w.Header().Set("Content-Type", "application/octet-stream")
+	}
+
+	_, _ = io.Copy(w, rc)
+
 }

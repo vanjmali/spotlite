@@ -17,6 +17,7 @@ import (
 	"github.com/vanjmali/spotlite/content/repositories"
 	"github.com/vanjmali/spotlite/content/routers"
 	"github.com/vanjmali/spotlite/content/services"
+	"github.com/vanjmali/spotlite/content/storage"
 	contentvalid "github.com/vanjmali/spotlite/content/validations"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 )
@@ -42,16 +43,30 @@ var config = server.ServerRunConfiguration{
 			return h, shutdown, err
 		}
 
+		hdfsStore, err := storage.NewHDFSStorage()
+		if err != nil {
+			err = fmt.Errorf("failed to init hdfs client: %w", err)
+			_ = dbc.Disconnect(ctx)
+			return h, shutdown, err
+		}
+
+		if err := hdfsStore.EnsureBaseDir(); err != nil {
+			err = fmt.Errorf("failed to ensure hdfs base dir: %w", err)
+			_ = dbc.Disconnect(ctx)
+			return h, shutdown, err
+		}
+
 		// Cleanup resources on error
 		defer func() {
 			if err == nil {
 				return
 			}
 			_ = dbc.Disconnect(ctx)
+			_ = hdfsStore.Close()
 		}()
 
 		ar, sr, alr, gr := createRepositories(dbc)
-		gs, as, ss, als := createServices(ar, sr, alr, gr)
+		gs, as, ss, als := createServices(ar, sr, alr, gr, hdfsStore)
 		h = createHandlers(v, as, ss, als, gs)
 
 		shutdown = func() error {
@@ -72,6 +87,7 @@ func createClients() (*mongodriver.Client, error) {
 	}
 
 	return dbc, nil
+
 }
 
 func createRepositories(dbc *mongodriver.Client) (
@@ -94,6 +110,7 @@ func createServices(
 	sr *repositories.SongRepository,
 	alr *repositories.AlbumRepository,
 	gr *repositories.GenreRepository,
+	hdfsStore *storage.HDFSStorage,
 ) (
 	*services.GenreService,
 	*services.ArtistService,
@@ -102,7 +119,7 @@ func createServices(
 ) {
 	gs := services.NewGenreService(*gr)
 	as := services.NewArtistService(*ar, *gs)
-	ss := services.NewSongService(*sr, *as, *gs)
+	ss := services.NewSongService(*sr, *as, *gs, *hdfsStore)
 	als := services.NewAlbumService(*alr, *as, *ss, *gs)
 
 	return gs, as, ss, als

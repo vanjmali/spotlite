@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"io"
 	"log"
 
 	"github.com/vanjmali/spotlite/common-lib/pagination"
@@ -11,6 +12,7 @@ import (
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
 	"github.com/vanjmali/spotlite/content/repositories"
+	"github.com/vanjmali/spotlite/content/storage"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -24,13 +26,14 @@ type SongService struct {
 	songRepo      *repositories.SongRepository
 	artistService *ArtistService
 	genreService  *GenreService
+	hdfs          *storage.HDFSStorage
 	tr            trace.Tracer
 }
 
 // NewSongService creates and returns a new SongService with the provided repository and artist service.
-func NewSongService(songRepo repositories.SongRepository, artistService ArtistService, genreService GenreService) *SongService {
+func NewSongService(songRepo repositories.SongRepository, artistService ArtistService, genreService GenreService, hdfs storage.HDFSStorage) *SongService {
 	tr := otel.Tracer("content-service/song-service")
-	s := SongService{songRepo: &songRepo, artistService: &artistService, genreService: &genreService, tr: tr}
+	s := SongService{songRepo: &songRepo, artistService: &artistService, genreService: &genreService, hdfs: &hdfs, tr: tr}
 
 	return &s
 }
@@ -339,4 +342,35 @@ func (s *SongService) GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongLis
 		Size:  p.Size,
 		Total: total,
 	}, nil
+}
+
+func (s *SongService) UploadAudio(ctx context.Context, idStr string, r io.Reader, ext string, mime string) (*entities.Song, error) {
+	ctx, span := s.tr.Start(ctx, "song.upload_audio")
+	defer span.End()
+
+	_, parseSpan := s.tr.Start(ctx, "song.upload_audio.parse_id")
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		parseSpan.RecordError(err)
+		parseSpan.End()
+		return nil, ErrObjectIdCastFailed
+	}
+	parseSpan.End()
+
+	checkExistsCtx, checkExistsSpan := s.tr.Start(ctx, "song.upload_audio.check_exists")
+	_, err = s.songRepo.FindByID(checkExistsCtx, id)
+	if err != nil {
+		checkExistsSpan.RecordError(err)
+		checkExistsSpan.End()
+		return nil, ErrSongNotFound
+	}
+	checkExistsSpan.End()
+
+	audioPath, size, err := s.hdfs.UploadSongAudio(id.Hex(), r, ext)
+
+	return s.songRepo.UpdateAudioByID(ctx, id, audioPath, size, mime)
+}
+
+func (s *SongService) OpenAudio(ctx context.Context, audioPath string) (io.ReadCloser, error) {
+	return s.hdfs.Open(audioPath)
 }
