@@ -29,9 +29,9 @@ type SongService struct {
 }
 
 // NewSongService creates and returns a new SongService with the provided repository and artist service.
-func NewSongService(songRepo repositories.SongRepository, artistService ArtistService, genreService GenreService, albumService AlbumService) *SongService {
+func NewSongService(songRepo repositories.SongRepository, artistService ArtistService, genreService GenreService) *SongService {
 	tr := otel.Tracer("content-service/song-service")
-	s := SongService{songRepo: &songRepo, artistService: &artistService, genreService: &genreService, albumService: &albumService, tr: tr}
+	s := SongService{songRepo: &songRepo, artistService: &artistService, genreService: &genreService, tr: tr}
 
 	return &s
 }

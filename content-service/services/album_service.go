@@ -23,15 +23,15 @@ var ErrAlbumNotFound = errors.New("album not found")
 type AlbumService struct {
 	albumRepo     *repositories.AlbumRepository
 	artistService *ArtistService
-	songService   *SongService
+	songRepo      *repositories.SongRepository
 	genreService  *GenreService
 	tr            trace.Tracer
 }
 
 // NewAlbumService creates and returns a new AlbumService with the provided repository and dependent services.
-func NewAlbumService(r repositories.AlbumRepository, artistService ArtistService, songService SongService, genreService GenreService) *AlbumService {
+func NewAlbumService(r repositories.AlbumRepository, songRepo repositories.SongRepository, artistService ArtistService, genreService GenreService) *AlbumService {
 	tr := otel.Tracer("content-service/album-service")
-	s := AlbumService{albumRepo: &r, artistService: &artistService, songService: &songService, genreService: &genreService, tr: tr}
+	s := AlbumService{albumRepo: &r, songRepo: &songRepo, artistService: &artistService, genreService: &genreService, tr: tr}
 
 	return &s
 }
@@ -99,39 +99,8 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 
 	resolveGenreSpan.End()
 
-	resolveSongCtx, resolveSongSpan := s.tr.Start(ctx, "album.create.resolve_song")
-
-	embeddedSong := make([]entities.Song, 0)
-
-	for _, songsIdStr := range albumDto.SongIds {
-		song, err := s.songService.FindSongById(resolveSongCtx, songsIdStr)
-		if err != nil {
-			resolveSongSpan.RecordError(err)
-			resolveSongSpan.End()
-
-			switch {
-			case errors.Is(err, ErrObjectIdCastFailed):
-				return ErrObjectIdCastFailed
-			case errors.Is(err, ErrSongNotFound):
-				return ErrSongNotFound
-			default:
-				return err
-			}
-		}
-
-		embeddedSong = append(embeddedSong, entities.Song{
-			ID:            song.ID,
-			Title:         song.Title,
-			Genres:        song.Genres,
-			LengthSeconds: song.LengthSeconds,
-			Artists:       song.Artists,
-		})
-	}
-
-	resolveSongSpan.End()
-
 	createCtx, createSpan := s.tr.Start(ctx, "album.create.create_album")
-	albumEntity, err := mappers.ToAlbumEntity(albumDto, embeddedArtist, embeddedGenre, embeddedSong)
+	albumEntity, err := mappers.ToAlbumEntity(albumDto, embeddedArtist, embeddedGenre)
 	if err != nil {
 		createSpan.RecordError(err)
 		createSpan.End()
@@ -299,17 +268,16 @@ func (s *AlbumService) AddSongsToAlbum(ctx context.Context, idStr string, dto dt
 
 	embeddedSong := make([]entities.Song, 0, len(dto.Ids))
 	for _, songsIdStr := range dto.Ids {
-		song, err := s.songService.FindSongById(ctx, songsIdStr)
+		songId, err := primitive.ObjectIDFromHex(songsIdStr)
 		if err != nil {
 			span.RecordError(err)
-			switch {
-			case errors.Is(err, ErrObjectIdCastFailed):
-				return nil, ErrObjectIdCastFailed
-			case errors.Is(err, ErrSongNotFound):
-				return nil, ErrSongNotFound
-			default:
-				return nil, err
-			}
+			return nil, ErrObjectIdCastFailed
+		}
+
+		song, err := s.songRepo.FindByID(ctx, songId)
+		if err != nil {
+			span.RecordError(err)
+			return nil, ErrSongNotFound
 		}
 
 		if _, ok := existing[song.ID]; ok {

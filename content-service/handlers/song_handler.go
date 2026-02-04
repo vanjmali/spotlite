@@ -51,6 +51,9 @@ func (h *SongHandler) HandleCreateSong(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, services.ErrAlbumNotFound):
 			_ = respond.NotFound(w)
 			return
+		case errors.Is(err, services.ErrGenreNotFound):
+			_ = respond.NotFound(w)
+			return
 		default:
 			log.Printf("trace_id=%s failed to create song: %v", telemetry.TraceID(r.Context()), err)
 			_ = respond.InternalServerError(w)
