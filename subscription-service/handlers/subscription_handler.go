@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/gorilla/mux"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
@@ -13,6 +14,7 @@ import (
 	"github.com/vanjmali/spotlite/subscription-service/mappers"
 	"github.com/vanjmali/spotlite/subscription-service/repositories"
 	"github.com/vanjmali/spotlite/subscription-service/services"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type SubscriptionHandler struct {
@@ -53,6 +55,27 @@ func (h *SubscriptionHandler) HandleSubscribe(w http.ResponseWriter, r *http.Req
 			_ = respond.InternalServerError(w)
 			return
 		}
+	}
+
+	respond.NoContent(w)
+}
+
+func (h *SubscriptionHandler) HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	entityIdStr := vars["entityID"]
+
+	entityId, err := primitive.ObjectIDFromHex(entityIdStr)
+	if err != nil {
+		log.Printf("trace_id=%s failed to process unsubscribe request: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.BadRequest(w, "Invalid entity ID.")
+		return
+	}
+
+	err = h.s.Unsubscribe(entityId, r.Context())
+	if err != nil {
+		log.Printf("trace_id=%s failed to process unsubscribe request: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.InternalServerError(w)
+		return
 	}
 
 	respond.NoContent(w)

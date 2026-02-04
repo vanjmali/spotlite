@@ -5,6 +5,8 @@ import (
 	"errors"
 
 	"github.com/vanjmali/spotlite/subscription-service/entities"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -37,6 +39,21 @@ func (r *SubscriptionRepository) Create(s *entities.Subscription, ctx context.Co
 		default:
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (r *SubscriptionRepository) Delete(entityID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) error {
+	c := r.getCollection()
+
+	_, err := c.DeleteOne(ctx, bson.M{
+		"subscriber_id": userID,
+		"entity_id":     entityID,
+	})
+
+	if err != nil {
+		return err
 	}
 
 	return nil

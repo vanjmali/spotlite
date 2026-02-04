@@ -10,6 +10,7 @@ import (
 	adapters "github.com/vanjmali/spotlite/subscription-service/infrastructure/grpc"
 	"github.com/vanjmali/spotlite/subscription-service/mappers"
 	"github.com/vanjmali/spotlite/subscription-service/repositories"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
@@ -36,10 +37,10 @@ func NewSubscriptionService(sr *repositories.SubscriptionRepository, gcc *adapte
 }
 
 func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx context.Context) error {
-	ctx, span := s.tr.Start(ctx, "subscription.create")
+	ctx, span := s.tr.Start(ctx, "subscription.subscribe")
 	defer span.End()
 
-	entityExistenceCtx, entityExistenceSpan := s.tr.Start(ctx, "subscription.create.entity_exists")
+	entityExistenceCtx, entityExistenceSpan := s.tr.Start(ctx, "subscription.subscribe.entity_exists")
 	defer entityExistenceSpan.End()
 
 	entityName, err := s.gcc.GetEntity(entityExistenceCtx, req.EntityID, subscription.SubscriptionType(req.Type))
@@ -70,11 +71,34 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 		return err
 	}
 
-	createCtx, createSpan := s.tr.Start(ctx, "subscription.create.save_subscription")
+	createCtx, createSpan := s.tr.Start(ctx, "subscription.subscribe.save_subscription")
 	defer createSpan.End()
 
 	if err := s.sr.Create(se, createCtx); err != nil {
 		createSpan.RecordError(err)
+		return err
+	}
+
+	return nil
+}
+
+func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx context.Context) error {
+	ctx, span := s.tr.Start(ctx, "subscription.unsubscribe")
+	defer span.End()
+
+	userIDstr := middlewares.GetUserIdFromContext(ctx)
+
+	userID, err := primitive.ObjectIDFromHex(userIDstr)
+	if err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	deleteCtx, deleteSpan := s.tr.Start(ctx, "subscription.unsubcribe.delete")
+	defer deleteSpan.End()
+
+	if err := s.sr.Delete(entityId, userID, deleteCtx); err != nil {
+		deleteSpan.RecordError(err)
 		return err
 	}
 
