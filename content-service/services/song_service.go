@@ -365,14 +365,16 @@ func (s *SongService) UploadAudio(ctx context.Context, idStr string, r io.Reader
 	if err != nil {
 		checkExistsSpan.RecordError(err)
 		checkExistsSpan.End()
-		return nil, ErrSongNotFound
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrSongNotFound
+		}
+		return nil, err
 	}
 	checkExistsSpan.End()
 
 	audioPath, size, err := s.hdfs.UploadSongAudio(id.Hex(), r, ext)
 	if err != nil {
 		span.RecordError(err)
-		span.End()
 		return nil, ErrAudioUploadFailed
 	}
 

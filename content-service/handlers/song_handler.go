@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"path/filepath"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
@@ -166,10 +167,17 @@ func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
+
 	id := mux.Vars(r)["id"]
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
+
+		if err.Error() == "http: request body too large" {
+			_ = respond.BadRequest(w, "file too large (max 50MB)")
+			return
+		}
 		_ = respond.BadRequest(w, "missing file")
 		return
 	}
@@ -180,7 +188,10 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 		mime = "application/octet-stream"
 	}
 
-	ext := ".mp3"
+	ext := filepath.Ext(header.Filename)
+	if ext == "" {
+		ext = ".bin"
+	}
 
 	updated, err := h.s.UploadAudio(r.Context(), id, file, ext, mime)
 	if err != nil {
