@@ -94,6 +94,8 @@ func BadRequest(w http.ResponseWriter, message ...string) error {
 	return Error(w, r)
 }
 
+// UnprocessableEntity issues a 422 Unprocessable Entity error response with a custom message.
+// This status code is used when the request is syntactically correct but semantically invalid (e.g., fails business rules).
 func UnprocessableEntity(w http.ResponseWriter, message ...string) error {
 	msg := "Unprocessable entity"
 	if len(message) > 0 && message[0] != "" {

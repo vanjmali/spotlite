@@ -44,17 +44,17 @@ func (r *SubscriptionRepository) Create(s *entities.Subscription, ctx context.Co
 	return nil
 }
 
-func (r *SubscriptionRepository) Delete(entityID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) error {
+func (r *SubscriptionRepository) Delete(entityID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) (int64, error) {
 	c := r.getCollection()
 
-	_, err := c.DeleteOne(ctx, bson.M{
+	res, err := c.DeleteOne(ctx, bson.M{
 		"subscriber_id": userID,
 		"entity_id":     entityID,
 	})
 
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	return nil
+	return res.DeletedCount, nil
 }

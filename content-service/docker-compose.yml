@@ -12,6 +12,8 @@ services:
       DB_PASS: ${SRV_CONTENT_MONGO_PASSWORD?}
       DB_NAME: ${SRV_CONTENT_MONGO_DATABASE?}
       APP_PORT: ${APP_HTTP_PORT}
+      CONTENT_GRPC_ADDRESS: ${CONTENT_GRPC_ADDRESS}
+
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true

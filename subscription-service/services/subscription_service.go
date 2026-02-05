@@ -18,9 +18,10 @@ import (
 )
 
 var (
-	ErrEntityNotFound  = errors.New("genre/artist couldn't be found")
-	ErrInvalidEntityID = errors.New("error has ocurred while parsing genre/artist id")
-	ErrUpstreamFailure = errors.New("error has ocurred while fetching artist/genre")
+	ErrEntityNotFound       = errors.New("genre/artist couldn't be found")
+	ErrSubscriptionNotFound = errors.New("subscription not found")
+	ErrInvalidEntityID      = errors.New("error has ocurred while parsing genre/artist id")
+	ErrUpstreamFailure      = errors.New("error has ocurred while fetching artist/genre")
 )
 
 type SubscriptionService struct {
@@ -97,9 +98,15 @@ func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx conte
 	deleteCtx, deleteSpan := s.tr.Start(ctx, "subscription.unsubcribe.delete")
 	defer deleteSpan.End()
 
-	if err := s.sr.Delete(entityId, userID, deleteCtx); err != nil {
+	ddc, err := s.sr.Delete(entityId, userID, deleteCtx)
+	if err != nil {
 		deleteSpan.RecordError(err)
 		return err
+	}
+
+	if ddc != 1 {
+		deleteSpan.RecordError(err)
+		return ErrSubscriptionNotFound
 	}
 
 	return nil

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	pb "github.com/vanjmali/spotlite/common-lib/proto/content_service"
@@ -60,25 +61,14 @@ var config = server.ServerRunConfiguration{
 
 		h = createHandlers(v, as, ss, als, gs)
 
-		// define content grpc server
-		contentGrpcServer := infragrpc.NewContentServer(gs, as)
-		grpcPort := utils.GetEnv("CONTENT_GRPC_PORT", "50051")
+		// configures grpc server
+		s, grpcPort := createGrpcServer(gs, as)
 
 		// this doesn't start the server it just reserves the port and prepares everything
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
 		if err != nil {
 			return h, shutdown, fmt.Errorf("failed to listen on grpc port: %w", err)
 		}
-
-		// this instaniates a new grpc server (engine) which knows how to work with
-		// HTTP/2, serialization...
-		s := grpc.NewServer(
-			grpc.StatsHandler(otelgrpc.NewServerHandler()),
-		)
-
-		// make every request that comes to the GetContentEntityServer defined in the proto file
-		// be forwarded to the contentGrpcServer instance
-		pb.RegisterGetContentEntityServer(s, contentGrpcServer)
 
 		// starts the server in a separate go routine to avoid blocking the http server
 		go func() {
@@ -164,4 +154,23 @@ func createHandlers(
 	gh := handlers.NewGenreHandler(*gs, *v)
 
 	return routers.HandleRequests(ah, sh, alh, gh)
+}
+
+func createGrpcServer(gs *services.GenreService, as *services.ArtistService) (*grpc.Server, string) {
+	// define content grpc server
+	contentGrpcServer := infragrpc.NewContentServer(gs, as)
+	grpcTarget := utils.MustGetEnv("CONTENT_GRPC_ADDRESS")
+	grpcPort := strings.Split(grpcTarget, ":")[1]
+
+	// this instaniates a new grpc server (engine) which knows how to work with
+	// HTTP/2, serialization...
+	s := grpc.NewServer(
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+	)
+
+	// make every request that comes to the GetContentEntityServer defined in the proto file
+	// be forwarded to the contentGrpcServer instance
+	pb.RegisterGetContentEntityServer(s, contentGrpcServer)
+
+	return s, grpcPort
 }

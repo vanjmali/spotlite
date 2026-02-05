@@ -169,7 +169,6 @@ services:
     volumes:
       - keys:/run/keys:ro
     environment:
-      JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
     depends_on:
       key-gen:
