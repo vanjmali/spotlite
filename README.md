@@ -64,7 +64,8 @@ Dashboards and tools:
 - http://localhost:8080 - Traefik dashboard
 - http://localhost:3000/dev/jaeger - Jaeger UI for viewing traces (via Traefik)
 - http://localhost:3000/dev/user-service - [Mongo Express](https://github.com/mongo-express/mongo-express) to User Service
-- http://localhost:3000/dev/subscription-service - [mongo-express](https://github.com/mongo-express/mongo-express) to Subscription Service
+- http://localhost:3000/dev/content-service - [Mongo Express](https://github.com/mongo-express/mongo-express) to Content Service
+- http://localhost:3000/dev/subscription-service - [Mongo Express](https://github.com/mongo-express/mongo-express) to Subscription Service
 
 Database connections for services:
 
