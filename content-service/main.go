@@ -137,7 +137,7 @@ func createServices(
 	as := services.NewArtistService(*ar, *gs)
 	ss := services.NewSongService(*sr, *as, *gs)
 	als := services.NewAlbumService(*alr, *as, *ss, *gs)
-	glss := services.NewGlobalSearchService(*gs, *ss, *als, *as)
+	glss := services.NewGlobalSearchService(gs, ss, als, as)
 
 	return gs, as, ss, als, glss
 }
@@ -154,7 +154,7 @@ func createHandlers(
 	sh := handlers.NewSongHandler(*ss, *v)
 	alh := handlers.NewAlbumHandler(*als, *v)
 	gh := handlers.NewGenreHandler(*gs, *v)
-	gsh := handlers.NewGlobalSearchHandler(*glss)
+	gsh := handlers.NewGlobalSearchHandler(glss)
 
 	return routers.HandleRequests(ah, sh, alh, gh, gsh)
 }

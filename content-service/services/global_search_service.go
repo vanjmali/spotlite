@@ -15,20 +15,36 @@ import (
 )
 
 type GlobalSearchService struct {
-	genreService  *GenreService
-	songService   *SongService
-	albumService  *AlbumService
-	artistService *ArtistService
+	genreService  GenreSearcher
+	songService   SongSearcher
+	albumService  AlbumSearcher
+	artistService ArtistSearcher
 	tr            trace.Tracer
 }
 
-func NewGlobalSearchService(gs GenreService, ss SongService, as AlbumService, ars ArtistService) *GlobalSearchService {
+type GenreSearcher interface {
+	GetGenres(ctx context.Context, q GenresQuery) (*dtos.GenreListResponseDto, error)
+}
+
+type AlbumSearcher interface {
+	GetAlbums(ctx context.Context, q AlbumsQuery) (*dtos.AlbumListResponseDto, error)
+}
+
+type SongSearcher interface {
+	GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongListResponseDto, error)
+}
+
+type ArtistSearcher interface {
+	GetArtists(ctx context.Context, q ArtistsQuery) (*dtos.ArtistListResponseDto, error)
+}
+
+func NewGlobalSearchService(gs GenreSearcher, ss SongSearcher, as AlbumSearcher, ars ArtistSearcher) *GlobalSearchService {
 	tr := otel.Tracer("content-service/global-search-service")
 	s := GlobalSearchService{
-		genreService:  &gs,
-		songService:   &ss,
-		albumService:  &as,
-		artistService: &ars,
+		genreService:  gs,
+		songService:   ss,
+		albumService:  as,
+		artistService: ars,
 		tr:            tr,
 	}
 	return &s

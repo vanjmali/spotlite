@@ -14,9 +14,9 @@ type GlobalSearchHandler struct {
 	s *services.GlobalSearchService
 }
 
-func NewGlobalSearchHandler(s services.GlobalSearchService) *GlobalSearchHandler {
+func NewGlobalSearchHandler(s *services.GlobalSearchService) *GlobalSearchHandler {
 	return &GlobalSearchHandler{
-		s: &s,
+		s: s,
 	}
 }
 
