@@ -53,6 +53,8 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 			return err
 		}
 
+		// TODO: Handle different types of errors with resiliency mechanisms
+		//nolint:exhaustive
 		switch st.Code() {
 		case codes.NotFound:
 			return ErrEntityNotFound
