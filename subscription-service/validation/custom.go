@@ -14,11 +14,7 @@ var CheckValidSubscriptionType = requests.CustomValidator{
 	Func: func(fl validator.FieldLevel) bool {
 		subType := fl.Field().String()
 
-		if !subscription.IsValidSubscriptionType(subscription.SubscriptionType(subType)) {
-			return false
-		}
-
-		return true
+		return subscription.IsValidSubscriptionType(subscription.SubscriptionType(subType))
 	},
 	ErrorMessage: func(fe validator.FieldError) string {
 		return "subscription type must be valid."
