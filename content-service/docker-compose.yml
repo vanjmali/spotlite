@@ -6,12 +6,12 @@ services:
         common-lib: ../common-lib
       dockerfile: ../Dockerfile.microservice
     environment:
+      APP_PORT: 3000
       DB_HOST: content-mongodb
       DB_PORT: 27017
       DB_USER: ${SRV_CONTENT_MONGO_USERNAME?}
       DB_PASS: ${SRV_CONTENT_MONGO_PASSWORD?}
       DB_NAME: ${SRV_CONTENT_MONGO_DATABASE?}
-      APP_PORT: ${APP_HTTP_PORT}
       GRPC_PORT: ${SRV_CONTENT_GRPC_PORT?}
 
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318

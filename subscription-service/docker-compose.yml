@@ -6,12 +6,12 @@ services:
         common-lib: ../common-lib
       dockerfile: ../Dockerfile.microservice
     environment:
+      APP_PORT: 3000
       DB_HOST: subscription-mongodb
       DB_PORT: 27017
       DB_USER: ${SRV_SUB_MONGO_USERNAME?}
       DB_PASS: ${SRV_SUB_MONGO_PASSWORD?}
       DB_NAME: ${SRV_SUB_MONGO_DATABASE?}
-      APP_PORT: ${APP_HTTP_PORT}
       CONTENT_GRPC_ADDRESS: ${SRV_SUB_CONTENT_GRPC_ADDRESS?}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
