@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
-	"github.com/vanjmali/spotlite/common-lib/subscription"
 	"github.com/vanjmali/spotlite/subscription-service/dtos"
 	adapters "github.com/vanjmali/spotlite/subscription-service/infrastructure/grpc"
 	"github.com/vanjmali/spotlite/subscription-service/mappers"
@@ -44,7 +43,7 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 	entityExistenceCtx, entityExistenceSpan := s.tr.Start(ctx, "subscription.subscribe.entity_exists")
 	defer entityExistenceSpan.End()
 
-	entityName, err := s.gcc.GetEntity(entityExistenceCtx, req.EntityID, subscription.SubscriptionType(req.Type))
+	entityName, err := s.gcc.GetEntity(entityExistenceCtx, req.EntityID, req.Type)
 
 	if err != nil {
 		entityExistenceSpan.RecordError(err)
