@@ -1,0 +1,65 @@
+services:
+  subscription-service:
+    build:
+      context: .
+      additional_contexts:
+        common-lib: ../common-lib
+      dockerfile: ../Dockerfile.microservice
+    environment:
+      DB_HOST: subscription-mongodb
+      DB_PORT: 27017
+      DB_USER: ${SRV_SUB_MONGO_USERNAME?}
+      DB_PASS: ${SRV_SUB_MONGO_PASSWORD?}
+      DB_NAME: ${SRV_SUB_MONGO_DATABASE?}
+      APP_PORT: ${APP_HTTP_PORT}
+      CONTENT_GRPC_ADDRESS: ${SRV_SUB_CONTENT_GRPC_ADDRESS?}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    labels:
+      traefik.enable: true
+      traefik.docker.network: spotlite-api-gateway
+      traefik.http.routers.subscription-service.rule: PathPrefix(`/api/subscriptions`)
+      traefik.http.routers.subscription-service.middlewares: subscription-service-strip-prefix,rate-limit-global@file
+      traefik.http.middlewares.subscription-service-strip-prefix.stripprefix.prefixes: /api/subscriptions
+      traefik.http.middlewares.subscription-service-strip-prefix.stripprefix.forceslash: false
+      traefik.http.services.subscription-service.loadbalancer.server.port: "3000"
+      traefik.http.services.subscription-service.loadbalancer.healthcheck.path: /healthz
+      traefik.http.services.subscription-service.loadbalancer.healthcheck.interval: 5s
+      traefik.http.services.subscription-service.loadbalancer.healthcheck.timeout: 2s
+    depends_on:
+      subscription-mongodb:
+        condition: service_healthy
+    networks:
+      - api-gateway
+      - subscription-internal
+
+  subscription-mongodb:
+    image: mongo:8.2
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${SRV_SUB_MONGO_ROOT_USERNAME?}
+      MONGO_INITDB_ROOT_PASSWORD: ${SRV_SUB_MONGO_ROOT_PASSWORD?}
+      MONGO_INITDB_DATABASE: ${SRV_SUB_MONGO_DATABASE?}
+      SRV_SUB_MONGO_USERNAME: ${SRV_SUB_MONGO_USERNAME?}
+      SRV_SUB_MONGO_PASSWORD: ${SRV_SUB_MONGO_PASSWORD?}
+    healthcheck:
+      # healthcheck uses username and password value from subscription-mongodb environment variables defined above
+      test:
+        [
+          "CMD-SHELL",
+          'mongosh --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval ''db.adminCommand("ping")''',
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - subscription-mongo-data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - subscription-internal
+
+networks:
+  api-gateway:
+    name: spotlite-api-gateway
+  subscription-internal:
+
+volumes:
+  subscription-mongo-data:

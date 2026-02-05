@@ -23,8 +23,8 @@ jobs:
           - user-service
           - content-service
           - notification-service
+          - subscription-service
           # - rating-service
-          # - subscription-service
           # - recommendation-service
           # - analytics-service
     defaults:

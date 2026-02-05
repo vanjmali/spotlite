@@ -11,7 +11,9 @@ services:
       DB_USER: ${SRV_CONTENT_MONGO_USERNAME?}
       DB_PASS: ${SRV_CONTENT_MONGO_PASSWORD?}
       DB_NAME: ${SRV_CONTENT_MONGO_DATABASE?}
-      APP_PORT: 3000
+      APP_PORT: ${APP_HTTP_PORT}
+      GRPC_PORT: ${SRV_CONTENT_GRPC_PORT?}
+
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true
@@ -37,10 +39,11 @@ services:
       SRV_CONTENT_MONGO_USERNAME: ${SRV_CONTENT_MONGO_USERNAME?}
       SRV_CONTENT_MONGO_PASSWORD: ${SRV_CONTENT_MONGO_PASSWORD?}
     healthcheck:
+      # healthcheck uses username and password value from content-mongodb environment variables defined above
       test:
         [
           "CMD-SHELL",
-          'mongosh --username $SRV_CONTENT_MONGO_ROOT_USERNAME --password $SRV_CONTENT_MONGO_ROOT_PASSWORD --authenticationDatabase admin --eval ''db.adminCommand("ping")''',
+          'mongosh --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval ''db.adminCommand("ping")''',
         ]
       interval: 3s
       timeout: 5s

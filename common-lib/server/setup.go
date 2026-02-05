@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -23,14 +24,14 @@ type ServerRunConfiguration struct {
 	CreateHandler       func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error)
 	// GracefulShutdownTimeout is the maximum amount of time to wait for the server to shutdown gracefully. If zero, a default of 10 seconds is used.
 	GracefulShutdownTimeout time.Duration
-	// Server configuration overrides. Defaults will be used for any zero values. 
+	// Server configuration overrides. Defaults will be used for any zero values.
 	Server struct {
 		// ReadTimeout is the maximum duration for reading the entire request, including the body. Default is 15 seconds.
-		ReadTimeout  time.Duration
+		ReadTimeout time.Duration
 		// WriteTimeout is the maximum duration before timing out writes of the response. Default is 15 seconds.
 		WriteTimeout time.Duration
 		// IdleTimeout is the maximum amount of time to wait for the next request when keep-alives are enabled. Default is 60 seconds.
-		IdleTimeout  time.Duration
+		IdleTimeout time.Duration
 	}
 }
 
@@ -38,12 +39,26 @@ type ServerRunConfiguration struct {
 // It handles graceful shutdown on receiving termination signals.
 func Run(ctx context.Context, config ServerRunConfiguration) error {
 	requests.RegisterCommonValidationMessages()
+	shutdownTimeout := config.GracefulShutdownTimeout
+	if shutdownTimeout == 0 {
+		shutdownTimeout = 10 * time.Second
+	}
+
 	shutdownTelemetry, err := configureTelemetry(ctx, config)
 	if err != nil {
 		return err
 	}
 
-	defer shutdownTelemetry()
+	defer func() {
+		ctxShutdown, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+
+		// Ensure context is cancelled after shutdown.
+		// Defer inside this function to ensure it runs after shutdownTelemetry completes.
+		defer cancel()
+
+		// Shutdown telemetry before exiting.
+		shutdownTelemetry(ctxShutdown)
+	}()
 
 	v := validator.New()
 	if config.ConfigureValidation != nil {
@@ -70,15 +85,14 @@ func Run(ctx context.Context, config ServerRunConfiguration) error {
 	}()
 
 	// Listen for shutdown signal
-	ctxQuit, cancel := context.WithCancel(ctx)
-	go listenForShutdownSignal(cancel)
+	ctxQuit, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	var serverErr error
 	select {
 	case serverErr = <-srvErr:
 		// Server failed to start; trigger cleanup path.
 		serverErr = fmt.Errorf("HTTP server error: %w", serverErr)
-		cancel()
 	case <-ctxQuit.Done():
 	}
 
@@ -86,19 +100,14 @@ func Run(ctx context.Context, config ServerRunConfiguration) error {
 		log.Println("Shutting down server...")
 	}
 
-	shutdownTimeout := config.GracefulShutdownTimeout
-	if shutdownTimeout == 0 {
-		shutdownTimeout = 10 * time.Second
-	}
-
-	ctxShutDown, cancel := context.WithTimeout(ctx, shutdownTimeout)
+	ctxShutDown, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	g, ctxShutDown := errgroup.WithContext(ctxShutDown)
 
 	g.Go(func() error {
 		// Stop accepting new connections and drain existing ones.
-		if err := srv.Shutdown(ctxShutDown); err != nil {
+		if err := srv.Shutdown(ctxShutDown); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return fmt.Errorf("server shutdown failed: %w", err)
 		}
 		return nil
@@ -129,14 +138,14 @@ func Run(ctx context.Context, config ServerRunConfiguration) error {
 	return nil
 }
 
-func configureTelemetry(ctx context.Context, config ServerRunConfiguration) (func(), error) {
+func configureTelemetry(ctx context.Context, config ServerRunConfiguration) (func(context.Context), error) {
 	tr, err := telemetry.Init(ctx, config.TelemetryName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize %s tracing: %w", config.TelemetryName, err)
 	}
 
-	return func() {
-		if err := tr.Shutdown(ctx); err != nil {
+	return func(shutdownCtx context.Context) {
+		if err := tr.Shutdown(shutdownCtx); err != nil {
 			log.Printf("failed to shut down %s tracer provider: %v", config.TelemetryName, err)
 		}
 	}, nil
@@ -163,13 +172,4 @@ func getHttpServerConfig(config ServerRunConfiguration) *http.Server {
 	}
 
 	return srv
-}
-
-func listenForShutdownSignal(cancelFunc context.CancelFunc) {
-	// Listen for interrupt signal to gracefully shutdown the server
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-	<-quit
-	log.Println("Shutdown signal received, exiting...")
-	cancelFunc()
 }

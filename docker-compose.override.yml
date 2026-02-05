@@ -80,22 +80,11 @@ services:
       - NG_CLI_ANALYTICS=false # disable telemetry
 
   # --- User Service ---
-  # For local development
 
   # in the development environment we want the user service to depend on the key-gen, because
   # without it JWTs can't be signed and validated. Also, we are defining volumes and env vars.
   # which the user service will need only in local dev. environment
   user-service:
-    volumes:
-      - keys:/run/keys:ro
-    environment:
-      JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
-      JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
-    depends_on:
-      key-gen:
-        condition: service_completed_successfully
-
-  notification-service:
     volumes:
       - keys:/run/keys:ro
     environment:
@@ -131,6 +120,8 @@ services:
     networks:
       - api-gateway
       - user-internal
+
+  # --- Content Service ---
   content-mongodb:
     ports:
       - 3102:27017 # expose MongoDB port
@@ -157,11 +148,59 @@ services:
     networks:
       - api-gateway
       - content-internal
-      
+
+  # --- Notification Service ---
+  notification-service:
+    volumes:
+      - keys:/run/keys:ro
+    environment:
+      JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
+      JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+    depends_on:
+      key-gen:
+        condition: service_completed_successfully
+
   notification-cassandra:
     ports:
       - "${CASSANDRA_PORT}:9042"
-      
+
+  # --- Subscription Service ---
+  subscription-service:
+    volumes:
+      - keys:/run/keys:ro
+    environment:
+      JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+    depends_on:
+      key-gen:
+        condition: service_completed_successfully
+
+  subscription-mongodb:
+    ports:
+      - 3103:27017
+
+  subscription-mongo-express: # MongoDB GUI
+    image: mongo-express:1
+    labels:
+      traefik.enable: true
+      traefik.docker.network: spotlite-api-gateway
+      traefik.http.routers.subscription-mongo-express.rule: PathPrefix(`/dev/subscription-service`)
+      traefik.http.routers.subscription-mongo-express.middlewares: subscription-mongo-express-strip-prefix
+      traefik.http.middlewares.subscription-mongo-express-strip-prefix.stripprefix.forceslash: false
+      traefik.http.services.subscription-mongo-express.loadbalancer.server.port: "8081"
+      traefik.http.services.subscription-mongo-express.loadbalancer.healthcheck.path: /dev/subscription-service
+      traefik.http.services.subscription-mongo-express.loadbalancer.healthcheck.interval: 5s
+      traefik.http.services.subscription-mongo-express.loadbalancer.healthcheck.timeout: 2s
+    environment:
+      ME_CONFIG_BASICAUTH: "false"
+      ME_CONFIG_SITE_BASEURL: /dev/subscription-service
+      ME_CONFIG_MONGODB_URL: mongodb://${SRV_SUB_MONGO_ROOT_USERNAME}:${SRV_SUB_MONGO_ROOT_PASSWORD}@subscription-mongodb:27017/?authSource=admin
+    depends_on:
+      subscription-mongodb:
+        condition: service_healthy
+    networks:
+      - api-gateway
+      - subscription-internal
+
 volumes:
   frontend-node-modules:
   keys:
