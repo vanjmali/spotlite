@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var ErrSubscriptionAlreadyExists = errors.New("User is already subscribed to the given content")
+var ErrSubscriptionAlreadyExists = errors.New("user is already subscribed to the given content")
 
 type SubscriptionRepository struct {
 	DbName   string
