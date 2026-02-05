@@ -39,7 +39,7 @@ export class UserProfileDropdownComponent {
   }
 
   navigateToHome(): void {
-    this.router.navigate(['/home']);
+    this.router.navigate(['/']);
   }
 
   toggleDropdown(): void {

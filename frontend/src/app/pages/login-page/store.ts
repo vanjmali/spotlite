@@ -62,7 +62,7 @@ export class LoginStore {
     }
 
     // OTP verified successfully - redirect to home
-    this._router.navigate(['/home']);
+    this._router.navigate(['/']);
     return true;
   }
 

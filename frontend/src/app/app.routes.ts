@@ -79,33 +79,6 @@ export const routes: Routes = [
     component: ResetPasswordPage,
   },
   {
-    path: 'home',
-    component: HomePage,
-    children: [
-      {
-        path: '',
-        loadComponent: () =>
-          import('./pages/home-page/components/artists-list/artists-list.component').then(
-            (m) => m.ArtistsListComponent
-          ),
-      },
-      {
-        path: 'artist/:id',
-        loadComponent: () =>
-          import('./pages/home-page/components/artist-details/artist-details.component').then(
-            (m) => m.ArtistDetailsComponent
-          ),
-      },
-      {
-        path: 'album/:id',
-        loadComponent: () =>
-          import('./pages/home-page/components/album-details/album-details.component').then(
-            (m) => m.AlbumDetailsComponent
-          ),
-      },
-    ],
-  },
-  {
     path: 'inbox',
     component: InboxPage,
   },
@@ -154,7 +127,29 @@ export const routes: Routes = [
   },
   {
     path: '',
-    redirectTo: 'home',
-    pathMatch: 'full',
+    component: HomePage,
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./pages/home-page/components/artists-list/artists-list.component').then(
+            (m) => m.ArtistsListComponent
+          ),
+      },
+      {
+        path: 'artist/:id',
+        loadComponent: () =>
+          import('./pages/home-page/components/artist-details/artist-details.component').then(
+            (m) => m.ArtistDetailsComponent
+          ),
+      },
+      {
+        path: 'album/:id',
+        loadComponent: () =>
+          import('./pages/home-page/components/album-details/album-details.component').then(
+            (m) => m.AlbumDetailsComponent
+          ),
+      },
+    ],
   },
 ];
