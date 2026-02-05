@@ -10,6 +10,7 @@ export class RegistrationStore {
 
   public readonly loadingSg = signal(false);
   public readonly errorSg = signal<string | null>(null);
+  public readonly stepSg = signal<'personal' | 'credentials'>('personal');
 
   // Store personal info for use across steps
   public readonly firstNameSg = signal<string>('');
@@ -22,6 +23,10 @@ export class RegistrationStore {
 
   public clearError(): void {
     this.errorSg.set(null);
+  }
+
+  public setStep(step: 'personal' | 'credentials'): void {
+    this.stepSg.set(step);
   }
 
   public async savePersonalInfo(firstName: string, lastName: string, email: string): Promise<void> {
@@ -41,8 +46,7 @@ export class RegistrationStore {
     this.lastNameSg.set(lastName);
     this.emailSg.set(email);
 
-    // Navigate to credentials step
-    this._router.navigate(['/register/credentials']);
+    this.stepSg.set('credentials');
   }
 
   public async saveCredentials(username: string, password: string): Promise<void> {

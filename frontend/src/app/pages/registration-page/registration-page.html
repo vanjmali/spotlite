@@ -2,7 +2,11 @@
   <img src="assets/images/spotlite-white.png" alt="Spotlite" class="registration-page__icon" />
 
   <div class="registration-page__section">
-    <router-outlet />
+    @if (step() === 'personal') {
+      <app-registration-personal-info-step />
+    } @else {
+      <app-registration-credentials-step />
+    }
 
     <div class="registration-page__login">
       <div class="registration-page__login-text">Already have account?</div>

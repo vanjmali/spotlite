@@ -13,10 +13,6 @@ import { ForgotPasswordPage } from './pages/forgot-password-page/forgot-password
 import { ResetPasswordPage } from './pages/reset-password-page/reset-password-page';
 import { AdminPage } from './pages/admin-page';
 import { CredentialsStep, OtpStep } from './pages/login-page/components';
-import {
-  PersonalInfoStep,
-  RegistrationCredentialsStep,
-} from './pages/registration-page/components';
 import { InboxPage } from './pages/inbox-page';
 
 export const routes: Routes = [
@@ -42,21 +38,6 @@ export const routes: Routes = [
   {
     path: 'register',
     component: RegistrationPage,
-    children: [
-      {
-        path: 'personal-info',
-        component: PersonalInfoStep,
-      },
-      {
-        path: 'credentials',
-        component: RegistrationCredentialsStep,
-      },
-      {
-        path: '',
-        redirectTo: 'personal-info',
-        pathMatch: 'full',
-      },
-    ],
   },
   {
     path: 'verification-success',
