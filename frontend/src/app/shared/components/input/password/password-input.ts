@@ -88,6 +88,11 @@ export class PasswordInputComponent {
       return { isValid: false, error };
     }
 
+    if (/\s/.test(password)) {
+      this.errorSg.set(VALIDATION_MESSAGES.PASSWORD_CRITERIA);
+      return { isValid: false, error: VALIDATION_MESSAGES.PASSWORD_CRITERIA };
+    }
+
     // If criteria are shown, validate all criteria
     if (this.showCriteriaSg()) {
       if (

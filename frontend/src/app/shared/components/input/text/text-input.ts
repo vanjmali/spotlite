@@ -17,6 +17,8 @@ export class TextInputComponent {
   public readonly placeholderSg = input<string>('', { alias: 'placeholder' });
   public readonly minSg = input<number | null>(null, { alias: 'min' });
   public readonly maxSg = input<number | null>(null, { alias: 'max' });
+  public readonly patternSg = input<RegExp | null>(null, { alias: 'pattern' });
+  public readonly patternMessageSg = input<string>('', { alias: 'patternMessage' });
 
   // Two-way binding using model with aliases
   public readonly valueSg = model<string>('', {
@@ -51,6 +53,13 @@ export class TextInputComponent {
 
     if (max !== null && value.length > max) {
       const error = `${this.labelSg()} must be at most ${max} characters`;
+      this.errorSg.set(error);
+      return { isValid: false, error };
+    }
+
+    const pattern = this.patternSg();
+    if (pattern && value && !pattern.test(value)) {
+      const error = this.patternMessageSg() || `${this.labelSg()} is invalid`;
       this.errorSg.set(error);
       return { isValid: false, error };
     }

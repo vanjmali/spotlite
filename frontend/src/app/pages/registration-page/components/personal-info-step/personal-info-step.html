@@ -10,6 +10,8 @@
       [required]="true"
       [min]="2"
       [max]="20"
+      [pattern]="namePattern"
+      [patternMessage]="namePatternMessage('First Name')"
       [value]="firstNameSg()"
       (valueChange)="firstNameSg.set($event)"
       #firstNameInput
@@ -20,6 +22,8 @@
       [required]="true"
       [min]="2"
       [max]="20"
+      [pattern]="namePattern"
+      [patternMessage]="namePatternMessage('Last Name')"
       [value]="lastNameSg()"
       (valueChange)="lastNameSg.set($event)"
       #lastNameInput

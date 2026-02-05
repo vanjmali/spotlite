@@ -42,11 +42,19 @@ export const PASSWORD_PATTERNS = {
 export const MIN_PASSWORD_LENGTH = 10;
 
 /**
+ * Name validation pattern
+ * Allows: letters (Unicode), spaces, hyphens, apostrophes
+ * Length: 2-20 characters
+ */
+export const NAME_PATTERN = /^[\p{L}\s\-']{2,20}$/u;
+
+/**
  * Username validation pattern
  * Allows: letters, numbers, dots, underscores
- * Length: 2+ characters (minimum enforced in TextInputComponent)
+ * Length: 4-20 characters
+ * Must include at least one letter or number
  */
-export const USERNAME_PATTERN = /^[a-zA-Z0-9._]{2,}$/;
+export const USERNAME_PATTERN = /^(?=.*[a-zA-Z0-9])[a-zA-Z0-9._]{4,20}$/;
 
 /**
  * OTP code pattern
@@ -63,12 +71,16 @@ export const VALIDATION_MESSAGES = {
   EMAIL_INVALID: 'Please enter a valid email address',
   PASSWORD_REQUIRED: 'Password is required',
   PASSWORD_CRITERIA:
-    'Password must contain uppercase, lowercase, number, special character, and be at least 10 characters',
+    'Password must contain uppercase, lowercase, number, special character, be at least 10 characters, and have no spaces',
   TEXT_REQUIRED: (label: string) => `${label} is required`,
+  NAME_INVALID: (label: string) =>
+    `${label} must be 2-20 characters long and can only contain letters, spaces, hyphens, and apostrophes.`,
   OTP_REQUIRED: 'OTP code is required',
   OTP_INVALID: 'Invalid OTP code.',
   PASSWORDS_MISMATCH: 'Passwords do not match.',
   USERNAME_REQUIRED: 'Username is required',
+  USERNAME_INVALID:
+    'Username must be 4-20 characters long, can contain letters, numbers, dots, and underscores, and must include at least one letter or number.',
   EMAIL_IN_USE: 'Email is already in use.',
   USERNAME_IN_USE: 'Username is already in use.',
   REGISTRATION_FAILED: 'Registration failed. Please try again.',

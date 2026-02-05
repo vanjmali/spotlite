@@ -4,6 +4,7 @@ import {
   TextInputComponent,
   PasswordInputComponent,
   MessageComponent,
+  USERNAME_PATTERN,
   VALIDATION_MESSAGES,
 } from '@app/shared';
 import { RegistrationStore } from '../../store';
@@ -27,6 +28,8 @@ export class RegistrationCredentialsStep {
   public usernameSg = signal<string>('');
   public passwordSg = signal<string>('');
   public confirmPasswordSg = signal<string>('');
+  public readonly usernamePattern = USERNAME_PATTERN;
+  public readonly validationMessages = VALIDATION_MESSAGES;
 
   public async submit(): Promise<void> {
     this.store.clearError();

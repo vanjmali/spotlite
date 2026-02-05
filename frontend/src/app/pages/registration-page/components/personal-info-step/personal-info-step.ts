@@ -1,6 +1,12 @@
 import { Component, inject, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { TextInputComponent, EmailInputComponent, MessageComponent } from '@app/shared';
+import {
+  TextInputComponent,
+  EmailInputComponent,
+  MessageComponent,
+  NAME_PATTERN,
+  VALIDATION_MESSAGES,
+} from '@app/shared';
 import { RegistrationStore } from '../../store';
 
 @Component({
@@ -20,6 +26,8 @@ export class PersonalInfoStep {
   public firstNameSg = signal<string>('');
   public lastNameSg = signal<string>('');
   public emailSg = signal<string>('');
+  public readonly namePattern = NAME_PATTERN;
+  public readonly namePatternMessage = VALIDATION_MESSAGES.NAME_INVALID;
 
   public async submit(): Promise<void> {
     const firstNameInput = this.firstNameInputSg();
