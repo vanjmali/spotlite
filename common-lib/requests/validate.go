@@ -78,10 +78,6 @@ func getErrorMsg(fe validator.FieldError) string {
 	case "min":
 		return fe.Field() + " is too short"
 	case "email":
-		return "Invalid email format"
-	case "validentityid":
-		return "Entity ID must be valid."
-	case "validsubtype":
 		return "Subscription type must be valid."
 	default:
 		if msgFunc, exists := customValidationMessages[fe.Tag()]; exists {
