@@ -34,9 +34,9 @@ type SongService struct {
 }
 
 // NewSongService creates and returns a new SongService with the provided repository and artist service.
-func NewSongService(songRepo repositories.SongRepository, artistService ArtistService, genreService GenreService, hdfs storage.HDFSStorage) *SongService {
+func NewSongService(songRepo repositories.SongRepository, artistService ArtistService, genreService GenreService, hdfs *storage.HDFSStorage) *SongService {
 	tr := otel.Tracer("content-service/song-service")
-	s := SongService{songRepo: &songRepo, artistService: &artistService, genreService: &genreService, hdfs: &hdfs, tr: tr}
+	s := SongService{songRepo: &songRepo, artistService: &artistService, genreService: &genreService, hdfs: hdfs, tr: tr}
 
 	return &s
 }
@@ -134,14 +134,12 @@ func (s *SongService) FindSongById(ctx context.Context, idStr string) (*entities
 	id, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
 		span.RecordError(err)
-		span.End()
 		return nil, ErrObjectIdCastFailed
 	}
 
 	song, err := s.songRepo.FindByID(ctx, id)
 	if err != nil {
 		span.RecordError(err)
-		span.End()
 		return nil, ErrSongNotFound
 	}
 
@@ -263,6 +261,18 @@ func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
 	}
 	parseSpan.End()
 
+	findSongCtx, findSongSpan := s.tr.Start(ctx, "song.delete_song.find_song")
+	song, err := s.songRepo.FindByID(findSongCtx, id)
+	if err != nil {
+		findSongSpan.RecordError(err)
+		findSongSpan.End()
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return ErrSongNotFound
+		}
+		return err
+	}
+	findSongSpan.End()
+
 	repoCtx, repoSpan := s.tr.Start(ctx, "song.delete.repository_delete")
 	res, err := s.songRepo.DeleteByID(repoCtx, id)
 	if err != nil {
@@ -278,6 +288,13 @@ func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
 		return err
 	}
 	repoSpan.End()
+
+	if song.AudioPath != "" {
+		if err := s.hdfs.Remove(song.AudioPath); err != nil {
+			log.Printf("trace_id=%s failed to delete audio file at path %s: %v", telemetry.TraceID(ctx), song.AudioPath, err)
+
+		}
+	}
 
 	return nil
 }
@@ -361,7 +378,7 @@ func (s *SongService) UploadAudio(ctx context.Context, idStr string, r io.Reader
 	parseSpan.End()
 
 	checkExistsCtx, checkExistsSpan := s.tr.Start(ctx, "song.upload_audio.check_exists")
-	_, err = s.songRepo.FindByID(checkExistsCtx, id)
+	song, err := s.songRepo.FindByID(checkExistsCtx, id)
 	if err != nil {
 		checkExistsSpan.RecordError(err)
 		checkExistsSpan.End()
@@ -372,13 +389,29 @@ func (s *SongService) UploadAudio(ctx context.Context, idStr string, r io.Reader
 	}
 	checkExistsSpan.End()
 
+	_, uploadSpan := s.tr.Start(ctx, "song.upload_audio.hdfs_upload")
 	audioPath, size, err := s.hdfs.UploadSongAudio(id.Hex(), r, ext)
 	if err != nil {
-		span.RecordError(err)
+		uploadSpan.RecordError(err)
+		uploadSpan.End()
 		return nil, ErrAudioUploadFailed
 	}
+	uploadSpan.End()
 
-	return s.songRepo.UpdateAudioByID(ctx, id, audioPath, size, mime)
+	updated, err := s.songRepo.UpdateAudioByID(ctx, id, audioPath, size, mime)
+	if err != nil {
+		span.RecordError(err)
+		_ = s.hdfs.Remove(audioPath)
+		return nil, err
+	}
+
+	if song.AudioPath != "" && song.AudioPath != audioPath {
+		if err := s.hdfs.Remove(song.AudioPath); err != nil {
+			log.Printf("trace_id=%s failed to delete old audio at path %s: %v",
+				telemetry.TraceID(ctx), song.AudioPath, err)
+		}
+	}
+	return updated, nil
 }
 
 func (s *SongService) OpenAudio(ctx context.Context, audioPath string) (io.ReadCloser, error) {

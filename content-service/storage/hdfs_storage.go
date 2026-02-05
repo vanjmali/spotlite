@@ -75,3 +75,7 @@ func (s *HDFSStorage) Open(p string) (io.ReadCloser, error) {
 func (s *HDFSStorage) Close() error {
 	return s.c.Close()
 }
+
+func (s *HDFSStorage) Remove(path string) error {
+	return s.c.Remove(path)
+}

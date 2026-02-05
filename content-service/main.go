@@ -70,6 +70,11 @@ var config = server.ServerRunConfiguration{
 		h = createHandlers(v, as, ss, als, gs)
 
 		shutdown = func() error {
+
+			if err := hdfsStore.Close(); err != nil {
+				return fmt.Errorf("failed to close hdfs client: %w", err)
+			}
+
 			if err := dbc.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
 				return fmt.Errorf("failed to disconnect mongo client: %w", err)
 			}
@@ -119,7 +124,7 @@ func createServices(
 ) {
 	gs := services.NewGenreService(*gr)
 	as := services.NewArtistService(*ar, *gs)
-	ss := services.NewSongService(*sr, *as, *gs, *hdfsStore)
+	ss := services.NewSongService(*sr, *as, *gs, hdfsStore)
 	als := services.NewAlbumService(*alr, *as, *ss, *gs)
 
 	return gs, as, ss, als

@@ -82,7 +82,7 @@ services:
       - SERVICE_PRECONDITION=hdfs-namenode:9870
     volumes:
       - hdfs-datanode-data:/hadoop/dfs/data
-    healthcheck: # ← DODAJ
+    healthcheck: 
       test: ["CMD", "curl", "-f", "http://hdfs-namenode:9870"]
       interval: 10s
       timeout: 5s

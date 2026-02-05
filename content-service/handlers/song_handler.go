@@ -6,10 +6,11 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"path/filepath"
+	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
+	"github.com/h2non/filetype"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
@@ -48,6 +49,9 @@ func (h *SongHandler) HandleCreateSong(w http.ResponseWriter, r *http.Request) {
 			_ = respond.BadRequest(w, "Invalid ID format")
 			return
 		case errors.Is(err, services.ErrArtistNotFound):
+			_ = respond.NotFound(w)
+			return
+		case errors.Is(err, services.ErrGenreNotFound):
 			_ = respond.NotFound(w)
 			return
 		default:
@@ -106,12 +110,15 @@ func (h *SongHandler) HandleUpdateSong(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
 		log.Printf("trace_id=%s invalid song id: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.BadRequest(w, "invalid song id")
+		return
 	case errors.Is(err, services.ErrSongNotFound):
 		log.Printf("trace_id=%s song not found: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.NotFound(w)
+		return
 	case errors.Is(err, services.ErrArtistNotFound):
 		log.Printf("trace_id=%s artist not found: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.NotFound(w)
+		return
 	case err != nil:
 		log.Printf("trace_id=%s failed to update song: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.InternalServerError(w)
@@ -135,9 +142,11 @@ func (h *SongHandler) HandleDeleteSong(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
 		log.Printf("trace_id=%s invalid song id: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.BadRequest(w, "invalid song id")
+		return
 	case errors.Is(err, services.ErrSongNotFound):
 		log.Printf("trace_id=%s song not found: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.NotFound(w)
+		return
 	case err != nil:
 		log.Printf("trace_id=%s failed to delete song: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.InternalServerError(w)
@@ -169,29 +178,79 @@ func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
 
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			_ = respond.PayloadTooLarge(w, "file too large (max 50MB)")
+			return
+		}
+		_ = respond.BadRequest(w, "invalid multipart form")
+		return
+	}
 	id := mux.Vars(r)["id"]
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
-
-		if err.Error() == "http: request body too large" {
-			_ = respond.BadRequest(w, "file too large (max 50MB)")
-			return
-		}
 		_ = respond.BadRequest(w, "missing file")
 		return
 	}
 	defer file.Close()
 
-	mime := header.Header.Get("Content-Type")
-	if mime == "" {
-		mime = "application/octet-stream"
+	log.Printf("trace_id=%s uploaded file: name=%q, size=%d",
+		telemetry.TraceID(r.Context()), header.Filename, header.Size)
+
+	head := make([]byte, 512)
+	n, err := file.Read(head)
+	if err != nil && err != io.EOF {
+		log.Printf("trace_id=%s failed to read file header: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.BadRequest(w, "failed to read file")
+		return
+	}
+	if n == 0 {
+		_ = respond.BadRequest(w, "empty file")
+		return
+	}
+	if _, err := file.Seek(0, 0); err != nil {
+		log.Printf("trace_id=%s failed to seek file: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.InternalServerError(w)
+		return
+	}
+	sniff := head[:n]
+	kind, err := filetype.Match(sniff)
+	if err != nil {
+		log.Printf("trace_id=%s unable to determine file type: %v", telemetry.TraceID(r.Context()), err)
+		_ = respond.BadRequest(w, "unable to determine file type")
+		return
+	}
+	if kind == filetype.Unknown {
+		log.Printf("trace_id=%s unknown file type (filename=%q)", telemetry.TraceID(r.Context()), header.Filename)
+		_ = respond.BadRequest(w, "unknown file type")
+		return
 	}
 
-	ext := filepath.Ext(header.Filename)
-	if ext == "" {
-		ext = ".bin"
+	allowedMimes := map[string]string{
+		"audio/mpeg":   ".mp3", // mp3
+		"audio/wav":    ".wav",
+		"audio/x-wav":  ".wav",
+		"audio/flac":   ".flac",
+		"audio/x-flac": ".flac",
+		"audio/aac":    ".aac",
+		"audio/ogg":    ".ogg",  // ogg container
+		"audio/opus":   ".opus", // opus
+		"audio/mp4":    ".m4a",  // m4a (audio/mp4)
 	}
+
+	mime := kind.MIME.Value
+	ext, ok := allowedMimes[mime]
+	if !ok {
+		log.Printf("trace_id=%s invalid file type: detected_extension=%s, detected_mime=%s, filename=%q",
+			telemetry.TraceID(r.Context()), kind.Extension, mime, header.Filename)
+		_ = respond.BadRequest(w, "file is not a valid audio file")
+		return
+	}
+	log.Printf("trace_id=%s file type validated: extension=%s, mime=%s", telemetry.TraceID(r.Context()), ext, mime)
+
+	// reader := io.MultiReader(bytes.NewReader(sniff), file)
 
 	updated, err := h.s.UploadAudio(r.Context(), id, file, ext, mime)
 	if err != nil {
@@ -199,17 +258,20 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 		case errors.Is(err, services.ErrSongNotFound):
 			log.Printf("trace_id=%s song not found: %s", telemetry.TraceID(r.Context()), id)
 			_ = respond.NotFound(w)
+			return
 		case errors.Is(err, services.ErrAudioUploadFailed):
 			log.Printf("trace_id=%s audio upload failed for song: %s, error: %v", telemetry.TraceID(r.Context()), id, err)
 			_ = respond.InternalServerError(w)
+			return
 		case errors.Is(err, services.ErrObjectIdCastFailed):
 			log.Printf("trace_id=%s invalid id format: %s", telemetry.TraceID(r.Context()), id)
 			_ = respond.BadRequest(w, "Invalid ID format")
+			return
 		default:
 			log.Printf("trace_id=%s unexpected error during audio upload for song %s: %v", telemetry.TraceID(r.Context()), id, err)
 			_ = respond.InternalServerError(w)
+			return
 		}
-		return
 	}
 	_ = respond.OkJson(w, updated)
 }
@@ -233,17 +295,27 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
+
+	if song.AudioPath == "" {
+		_ = respond.NotFound(w)
+		return
+	}
+
 	rc, err := h.s.OpenAudio(r.Context(), song.AudioPath)
 	if err != nil {
+		log.Printf("trace_id=%s failed to open audio file at path %s: %v", telemetry.TraceID(r.Context()), song.AudioPath, err)
 		_ = respond.InternalServerError(w)
 		return
 	}
 	defer rc.Close()
 
+	if song.AudioSize > 0 {
+		w.Header().Set("Content-Length", strconv.FormatInt(song.AudioSize, 10))
+	}
 	if song.AudioMimeType != "" {
 		w.Header().Set("Content-Type", song.AudioMimeType)
 	} else {
-		w.Header().Set("Content-Type", "application/octet-stream")
+		w.Header().Set("Content-Type", "audio/mpeg")
 	}
 
 	_, _ = io.Copy(w, rc)
