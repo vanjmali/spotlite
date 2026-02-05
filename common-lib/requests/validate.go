@@ -59,6 +59,7 @@ func RegisterValidation(v *validator.Validate, c CustomValidator) error {
 		return fmt.Errorf("failed to register validation '%s': %w", c.Tag, err)
 	}
 
+	RegisterValidationMessage(c.Tag, c.ErrorMessage)
 	return nil
 }
 
