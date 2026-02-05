@@ -186,10 +186,16 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrSongNotFound):
+			log.Printf("trace_id=%s song not found: %s", telemetry.TraceID(r.Context()), id)
 			_ = respond.NotFound(w)
+		case errors.Is(err, services.ErrAudioUploadFailed):
+			log.Printf("trace_id=%s audio upload failed for song: %s, error: %v", telemetry.TraceID(r.Context()), id, err)
+			_ = respond.InternalServerError(w)
 		case errors.Is(err, services.ErrObjectIdCastFailed):
+			log.Printf("trace_id=%s invalid id format: %s", telemetry.TraceID(r.Context()), id)
 			_ = respond.BadRequest(w, "Invalid ID format")
 		default:
+			log.Printf("trace_id=%s unexpected error during audio upload for song %s: %v", telemetry.TraceID(r.Context()), id, err)
 			_ = respond.InternalServerError(w)
 		}
 		return

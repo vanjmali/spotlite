@@ -20,7 +20,10 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-var ErrSongNotFound = errors.New("song not found")
+var (
+	ErrSongNotFound      = errors.New("song not found")
+	ErrAudioUploadFailed = errors.New("audio upload failed")
+)
 
 type SongService struct {
 	songRepo      *repositories.SongRepository
@@ -367,6 +370,11 @@ func (s *SongService) UploadAudio(ctx context.Context, idStr string, r io.Reader
 	checkExistsSpan.End()
 
 	audioPath, size, err := s.hdfs.UploadSongAudio(id.Hex(), r, ext)
+	if err != nil {
+		span.RecordError(err)
+		span.End()
+		return nil, ErrAudioUploadFailed
+	}
 
 	return s.songRepo.UpdateAudioByID(ctx, id, audioPath, size, mime)
 }
