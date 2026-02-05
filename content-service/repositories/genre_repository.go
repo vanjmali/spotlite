@@ -105,7 +105,6 @@ func (r *GenreRepository) Exists(ctx context.Context, genreID primitive.ObjectID
 		bson.M{"_id": genreID},
 		options.Count().SetLimit(1),
 	)
-
 	if err != nil {
 		return false, err
 	}

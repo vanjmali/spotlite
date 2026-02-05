@@ -113,7 +113,6 @@ func (r *ArtistRepository) Exists(ctx context.Context, artistID primitive.Object
 		bson.M{"_id": artistID},
 		options.Count().SetLimit(1),
 	)
-
 	if err != nil {
 		return false, err
 	}

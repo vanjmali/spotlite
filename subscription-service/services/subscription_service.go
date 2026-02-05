@@ -5,10 +5,10 @@ import (
 	"errors"
 
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
+	"github.com/vanjmali/spotlite/common-lib/subscription"
 	"github.com/vanjmali/spotlite/subscription-service/dtos"
-	adapters "github.com/vanjmali/spotlite/subscription-service/infrastructure/grpc"
+	"github.com/vanjmali/spotlite/subscription-service/entities"
 	"github.com/vanjmali/spotlite/subscription-service/mappers"
-	"github.com/vanjmali/spotlite/subscription-service/repositories"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -23,13 +23,22 @@ var (
 	ErrUpstreamFailure      = errors.New("error has ocurred while fetching artist/genre")
 )
 
+type SubscriptionRepository interface {
+	Create(s *entities.Subscription, ctx context.Context) error
+	Delete(entityID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) (int64, error)
+}
+
+type ContentEntityGetter interface {
+	GetEntity(ctx context.Context, entityID string, subType subscription.SubscriptionType) (string, error)
+}
+
 type SubscriptionService struct {
-	sr  *repositories.SubscriptionRepository
-	gcc *adapters.GrpcContentEntityGetter
+	sr  SubscriptionRepository
+	gcc ContentEntityGetter
 	tr  trace.Tracer
 }
 
-func NewSubscriptionService(sr *repositories.SubscriptionRepository, gcc *adapters.GrpcContentEntityGetter) *SubscriptionService {
+func NewSubscriptionService(sr SubscriptionRepository, gcc ContentEntityGetter) *SubscriptionService {
 	tr := otel.Tracer("subscription-service/subscription-service")
 	s := SubscriptionService{sr: sr, gcc: gcc, tr: tr}
 
@@ -44,7 +53,6 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 	defer entityExistenceSpan.End()
 
 	entityName, err := s.gcc.GetEntity(entityExistenceCtx, req.EntityID, req.Type)
-
 	if err != nil {
 		entityExistenceSpan.RecordError(err)
 

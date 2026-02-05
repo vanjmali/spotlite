@@ -65,7 +65,7 @@ var config = server.ServerRunConfiguration{
 		s := createGrpcServer(gs, as)
 
 		// this doesn't start the server it just reserves the port and prepares everything
-		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+		lis, err := net.Listen("tcp", ":"+grpcPort)
 		if err != nil {
 			return h, shutdown, fmt.Errorf("failed to listen on grpc port: %w", err)
 		}

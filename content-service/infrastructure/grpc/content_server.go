@@ -28,7 +28,7 @@ func NewContentServer(gs *services.GenreService, as *services.ArtistService) *Co
 }
 
 func (s *ContentServer) GetArtist(ctx context.Context, req *pb.EntityIDRequest) (*pb.GetContentEntityResponse, error) {
-	a, err := s.as.FindArtistByID(ctx, req.EntityId)
+	a, err := s.as.FindArtistByID(ctx, req.GetEntityId())
 	if err != nil {
 		log.Printf("trace_id=%s failed while fetching artist: %v", telemetry.TraceID(ctx), err)
 
@@ -46,7 +46,7 @@ func (s *ContentServer) GetArtist(ctx context.Context, req *pb.EntityIDRequest) 
 }
 
 func (s *ContentServer) GetGenre(ctx context.Context, req *pb.EntityIDRequest) (*pb.GetContentEntityResponse, error) {
-	g, err := s.gs.FindGenreByID(ctx, req.EntityId)
+	g, err := s.gs.FindGenreByID(ctx, req.GetEntityId())
 	if err != nil {
 		log.Printf("trace_id=%s failed while fetching genre: %v", telemetry.TraceID(ctx), err)
 

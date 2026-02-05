@@ -51,7 +51,6 @@ func (r *SubscriptionRepository) Delete(entityID primitive.ObjectID, userID prim
 		"subscriber_id": userID,
 		"entity_id":     entityID,
 	})
-
 	if err != nil {
 		return 0, err
 	}
