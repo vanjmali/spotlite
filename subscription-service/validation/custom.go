@@ -17,7 +17,7 @@ var CheckValidSubscriptionType = requests.CustomValidator{
 		return subscription.IsValidSubscriptionType(subscription.SubscriptionType(subType))
 	},
 	ErrorMessage: func(fe validator.FieldError) string {
-		return "subscription type must be valid."
+		return fe.Field() + " must be a valid subscription type."
 	},
 }
 
@@ -34,6 +34,6 @@ var CheckValidEntityID = requests.CustomValidator{
 		return err == nil
 	},
 	ErrorMessage: func(fe validator.FieldError) string {
-		return "entity ID must be valid."
+		return fe.Field() + " must be a valid ObjectID."
 	},
 }
