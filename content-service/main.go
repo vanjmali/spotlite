@@ -56,9 +56,8 @@ var config = server.ServerRunConfiguration{
 		}()
 
 		ar, sr, alr, gr := createRepositories(dbc)
-		gs, as, ss, als := createServices(ar, sr, alr, gr)
-
-		h = createHandlers(v, as, ss, als, gs)
+		gs, as, ss, als, glss := createServices(ar, sr, alr, gr)
+		h = createHandlers(v, as, ss, als, gs, glss)
 
 		// configures grpc server
 		grpcPort := utils.GetEnv("GRPC_PORT", "50051")
@@ -132,13 +131,15 @@ func createServices(
 	*services.ArtistService,
 	*services.SongService,
 	*services.AlbumService,
+	*services.GlobalSearchService,
 ) {
 	gs := services.NewGenreService(*gr)
 	as := services.NewArtistService(*ar, *gs)
 	ss := services.NewSongService(*sr, *as, *gs)
 	als := services.NewAlbumService(*alr, *as, *ss, *gs)
+	glss := services.NewGlobalSearchService(gs, ss, als, as)
 
-	return gs, as, ss, als
+	return gs, as, ss, als, glss
 }
 
 func createHandlers(
@@ -147,13 +148,15 @@ func createHandlers(
 	ss *services.SongService,
 	als *services.AlbumService,
 	gs *services.GenreService,
+	glss *services.GlobalSearchService,
 ) http.Handler {
 	ah := handlers.NewArtistHandler(*as, *v)
 	sh := handlers.NewSongHandler(*ss, *v)
 	alh := handlers.NewAlbumHandler(*als, *v)
 	gh := handlers.NewGenreHandler(*gs, *v)
+	gsh := handlers.NewGlobalSearchHandler(glss)
 
-	return routers.HandleRequests(ah, sh, alh, gh)
+	return routers.HandleRequests(ah, sh, alh, gh, gsh)
 }
 
 func createGrpcServer(gs *services.GenreService, as *services.ArtistService) *grpc.Server {
