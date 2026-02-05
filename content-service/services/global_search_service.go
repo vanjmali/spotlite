@@ -40,7 +40,7 @@ func (s *GlobalSearchService) GetGlobalSearch(ctx context.Context, searchTerm st
 	searchCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	g := new(errgroup.Group)
+	g, searchCtx := errgroup.WithContext(searchCtx)
 
 	genres := []entities.Genre{}
 	albums := []entities.Album{}
