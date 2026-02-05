@@ -10,7 +10,13 @@ import (
 )
 
 // HandleRequests wires HTTP routes to user handlers.
-func HandleRequests(ah *handlers.ArtistHandler, sh *handlers.SongHandler, alh *handlers.AlbumHandler, gh *handlers.GenreHandler, gsh *handlers.GlobalSearchHandler) http.Handler {
+func HandleRequests(
+	ah *handlers.ArtistHandler,
+	sh *handlers.SongHandler,
+	alh *handlers.AlbumHandler,
+	gh *handlers.GenreHandler,
+	gsh *handlers.GlobalSearchHandler,
+) http.Handler {
 	r := mux.NewRouter()
 	middlewares.HandleHealthz(r)
 

@@ -149,7 +149,6 @@ func createHandlers(
 	als *services.AlbumService,
 	gs *services.GenreService,
 	glss *services.GlobalSearchService,
-
 ) http.Handler {
 	ah := handlers.NewArtistHandler(*as, *v)
 	sh := handlers.NewSongHandler(*ss, *v)
