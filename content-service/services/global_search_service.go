@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
@@ -42,10 +43,13 @@ func (s *GlobalSearchService) GetGlobalSearch(ctx context.Context, searchTerm st
 
 	g, searchCtx := errgroup.WithContext(searchCtx)
 
-	genres := []entities.Genre{}
-	albums := []entities.Album{}
-	songs := []entities.Song{}
-	artists := []entities.Artist{}
+	var (
+		mu      sync.Mutex
+		genres  []entities.Genre
+		albums  []entities.Album
+		songs   []entities.Song
+		artists []entities.Artist
+	)
 
 	g.Go(func() error {
 		_, genreSpan := s.tr.Start(searchCtx, "global_search.search_genres")
@@ -62,7 +66,9 @@ func (s *GlobalSearchService) GetGlobalSearch(ctx context.Context, searchTerm st
 			return nil
 		}
 		if res != nil {
+			mu.Lock()
 			genres = res.Items
+			mu.Unlock()
 		}
 		return nil
 	})
@@ -82,7 +88,9 @@ func (s *GlobalSearchService) GetGlobalSearch(ctx context.Context, searchTerm st
 			return nil
 		}
 		if res != nil {
+			mu.Lock()
 			albums = res.Items
+			mu.Unlock()
 		}
 		return nil
 	})
@@ -102,7 +110,9 @@ func (s *GlobalSearchService) GetGlobalSearch(ctx context.Context, searchTerm st
 			return nil
 		}
 		if res != nil {
+			mu.Lock()
 			songs = res.Items
+			mu.Unlock()
 		}
 		return nil
 	})
@@ -122,7 +132,9 @@ func (s *GlobalSearchService) GetGlobalSearch(ctx context.Context, searchTerm st
 			return nil
 		}
 		if res != nil {
+			mu.Lock()
 			artists = res.Items
+			mu.Unlock()
 		}
 		return nil
 	})
