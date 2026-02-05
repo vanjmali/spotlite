@@ -95,8 +95,7 @@ func createClients() (*mongodriver.Client, *grpc.ClientConn, error) {
 		return nil, nil, fmt.Errorf("failed to initialize subscription service MongoDB client: %w", err)
 	}
 
-	grpcTarget := fmt.Sprintf("content-service:%s", utils.GetEnv("CONTENT_GRPC_PORT", "50051"))
-
+	grpcTarget := utils.MustGetEnv("CONTENT_GRPC_ADDRESS")
 	gc, err := grpc.NewClient(
 		grpcTarget,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),

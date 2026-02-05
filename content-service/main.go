@@ -7,7 +7,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"strings"
 
 	"github.com/go-playground/validator/v10"
 	pb "github.com/vanjmali/spotlite/common-lib/proto/content_service"
@@ -62,7 +61,8 @@ var config = server.ServerRunConfiguration{
 		h = createHandlers(v, as, ss, als, gs)
 
 		// configures grpc server
-		s, grpcPort := createGrpcServer(gs, as)
+		grpcPort := utils.GetEnv("GRPC_PORT", "50051")
+		s := createGrpcServer(gs, as)
 
 		// this doesn't start the server it just reserves the port and prepares everything
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
@@ -156,11 +156,9 @@ func createHandlers(
 	return routers.HandleRequests(ah, sh, alh, gh)
 }
 
-func createGrpcServer(gs *services.GenreService, as *services.ArtistService) (*grpc.Server, string) {
+func createGrpcServer(gs *services.GenreService, as *services.ArtistService) *grpc.Server {
 	// define content grpc server
 	contentGrpcServer := infragrpc.NewContentServer(gs, as)
-	grpcTarget := utils.MustGetEnv("CONTENT_GRPC_ADDRESS")
-	grpcPort := strings.Split(grpcTarget, ":")[1]
 
 	// this instaniates a new grpc server (engine) which knows how to work with
 	// HTTP/2, serialization...
@@ -172,5 +170,5 @@ func createGrpcServer(gs *services.GenreService, as *services.ArtistService) (*g
 	// be forwarded to the contentGrpcServer instance
 	pb.RegisterGetContentEntityServer(s, contentGrpcServer)
 
-	return s, grpcPort
+	return s
 }
