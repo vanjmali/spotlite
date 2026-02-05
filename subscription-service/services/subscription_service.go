@@ -106,7 +106,6 @@ func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx conte
 	}
 
 	if ddc != 1 {
-		deleteSpan.RecordError(err)
 		return ErrSubscriptionNotFound
 	}
 
