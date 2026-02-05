@@ -1,6 +1,6 @@
 # User service
 
-A microservice for user authentication, registration, and management.
+A microservice for user authentication, registration, and user management.
 
 ## Tech stack
 
