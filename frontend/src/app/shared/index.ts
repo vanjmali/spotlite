@@ -11,6 +11,7 @@ export { LoaderComponent } from './components/loader';
 export { HeaderComponent } from './components/header';
 export { PageComponent } from './components/page';
 export { DialogComponent } from './components/dialog';
+export { BrandLogo } from './components/brand-logo';
 export { MessageType } from './enums';
 
 export {

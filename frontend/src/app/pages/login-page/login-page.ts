@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet } from '@angular/router';
 import { LoginStore } from './store';
 import { AuthStepHeader } from '../registration-page/components';
+import { BrandLogo } from '@app/shared';
 
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [CommonModule, AuthStepHeader, RouterOutlet],
+  imports: [CommonModule, AuthStepHeader, RouterOutlet, BrandLogo],
   providers: [LoginStore],
   templateUrl: './login-page.html',
   styleUrls: ['./login-page.scss'],

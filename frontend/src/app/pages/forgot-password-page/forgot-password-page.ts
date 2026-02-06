@@ -1,13 +1,20 @@
 import { Component, inject, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
-import { EmailInputComponent, MessageComponent, LoaderComponent } from '@app/shared';
+import { EmailInputComponent, MessageComponent, LoaderComponent, BrandLogo } from '@app/shared';
 import { PasswordRecoveryService } from '../../services/password-recovery.service';
 
 @Component({
   selector: 'app-forgot-password-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, EmailInputComponent, MessageComponent, LoaderComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    EmailInputComponent,
+    MessageComponent,
+    LoaderComponent,
+    BrandLogo,
+  ],
   templateUrl: './forgot-password-page.html',
   styleUrls: ['./forgot-password-page.scss'],
 })

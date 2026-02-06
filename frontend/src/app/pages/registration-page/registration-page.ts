@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { animate, style, transition, trigger } from '@angular/animations';
+import { BrandLogo } from '@app/shared';
 import {
   PersonalInfoStep,
   RegistrationCredentialsStep,
@@ -20,6 +21,7 @@ export type RegistrationStep = 'personal' | 'credentials' | 'verify';
     PersonalInfoStep,
     RegistrationCredentialsStep,
     RegistrationCheckEmailStep,
+    BrandLogo,
   ],
   providers: [RegistrationStore],
   templateUrl: './registration-page.html',

@@ -1,14 +1,21 @@
 import { Component, inject, signal, viewChild, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterLink } from '@angular/router';
-import { PasswordInputComponent, MessageComponent, LoaderComponent } from '@app/shared';
+import { PasswordInputComponent, MessageComponent, LoaderComponent, BrandLogo } from '@app/shared';
 import { PasswordRecoveryService } from '../../services/password-recovery.service';
 import { VALIDATION_MESSAGES } from '@app/shared';
 
 @Component({
   selector: 'app-reset-password-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, PasswordInputComponent, MessageComponent, LoaderComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    PasswordInputComponent,
+    MessageComponent,
+    LoaderComponent,
+    BrandLogo,
+  ],
   templateUrl: './reset-password-page.html',
   styleUrls: ['./reset-password-page.scss'],
 })
