@@ -1,0 +1,14 @@
+<div class="auth-step-header">
+  @if (showBack) {
+    <button class="auth-step-header__back" type="button" (click)="back.emit()" aria-label="Go back">
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      <span class="auth-step-header__back-text">Back</span>
+    </button>
+  }
+  <div class="auth-step-header__info">
+    @if (showStepCount && stepIndex !== null && totalSteps !== null) {
+      <div class="auth-step-header__count">Step {{ stepIndex }}/{{ totalSteps }}</div>
+    }
+    <div class="auth-step-header__title">{{ title }}</div>
+  </div>
+</div>

@@ -21,5 +21,8 @@ export {
   USERNAME_PATTERN,
   OTP_PATTERN,
   VALIDATION_MESSAGES,
+  applyFieldErrors,
+  type FieldErrors,
+  type FieldErrorHandlers,
   type ValidationResult,
 } from './validation';

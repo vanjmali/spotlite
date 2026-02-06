@@ -10,6 +10,22 @@ export interface ValidationResult {
   error?: string;
 }
 
+export type FieldErrors = Record<string, string>;
+export type FieldErrorHandlers = Record<string, (message: string) => void>;
+
+export const applyFieldErrors = (
+  fields: FieldErrors | undefined,
+  handlers: FieldErrorHandlers
+): void => {
+  if (!fields) return;
+  Object.entries(fields).forEach(([field, message]) => {
+    const handler = handlers[field];
+    if (handler) {
+      handler(message);
+    }
+  });
+};
+
 // ============================================================================
 // REGEX PATTERNS
 // ============================================================================

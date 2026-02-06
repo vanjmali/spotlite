@@ -1,10 +1,27 @@
 <div class="registration-step-footer">
-  <button class="btn-primary" (click)="action.emit()" [disabled]="loading">
-    {{ label }}
-  </button>
-
-  <div class="registration-step-footer__login">
-    <div class="registration-step-footer__login-text">Already have account?</div>
-    <a routerLink="/login" class="link-primary">Login</a>
+  <div
+    class="registration-step-footer__actions"
+    [class.registration-step-footer__actions--stack]="stackActions"
+  >
+    <button class="btn-primary" (click)="action.emit()" [disabled]="loading">
+      {{ loading && loadingLabel ? loadingLabel : label }}
+    </button>
+    @if (secondaryLabel) {
+      <button
+        type="button"
+        class="btn-secondary"
+        (click)="secondaryAction.emit()"
+        [disabled]="secondaryDisabled"
+      >
+        {{ secondaryLabel }}
+      </button>
+    }
   </div>
+
+  @if (hintText && hintLinkText && hintLinkUrl) {
+    <div class="registration-step-footer__login">
+      <div class="registration-step-footer__login-text">{{ hintText }}</div>
+      <a [routerLink]="hintLinkUrl" class="link-primary">{{ hintLinkText }}</a>
+    </div>
+  }
 </div>

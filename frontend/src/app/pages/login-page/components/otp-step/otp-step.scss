@@ -19,17 +19,4 @@
     display: flex;
     justify-content: center;
   }
-
-  &__actions {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  &__password-prompt {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 8px;
-  }
 }

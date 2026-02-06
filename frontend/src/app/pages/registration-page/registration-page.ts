@@ -1,11 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { animate, style, transition, trigger } from '@angular/animations';
-import { MatIconModule } from '@angular/material/icon';
 import {
   PersonalInfoStep,
   RegistrationCredentialsStep,
   RegistrationCheckEmailStep,
+  AuthStepHeader,
 } from './components';
 import { RegistrationStore } from './store';
 
@@ -14,7 +14,13 @@ export type RegistrationStep = 'personal' | 'credentials' | 'verify';
 @Component({
   selector: 'app-registration-page',
   standalone: true,
-  imports: [CommonModule, MatIconModule, PersonalInfoStep, RegistrationCredentialsStep, RegistrationCheckEmailStep],
+  imports: [
+    CommonModule,
+    AuthStepHeader,
+    PersonalInfoStep,
+    RegistrationCredentialsStep,
+    RegistrationCheckEmailStep,
+  ],
   providers: [RegistrationStore],
   templateUrl: './registration-page.html',
   styleUrls: ['./registration-page.scss'],

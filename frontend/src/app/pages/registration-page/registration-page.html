@@ -2,23 +2,14 @@
   <img src="assets/images/spotlite-white.png" alt="Spotlite" class="registration-page__icon" />
 
   <div class="registration-page__section">
-    <div class="registration-page__header">
-      @if (canGoBackSg()) {
-        <button
-          class="registration-page__back"
-          type="button"
-          (click)="goBack()"
-          aria-label="Go back"
-        >
-          <mat-icon aria-hidden="true">arrow_back</mat-icon>
-          <span class="registration-page__back-text">Back</span>
-        </button>
-      }
-      <div class="registration-page__step-info">
-        <div class="registration-page__step-count">Step {{ stepIndexSg() }}/{{ totalSteps }}</div>
-        <div class="registration-page__step-title">{{ stepTitleSg() }}</div>
-      </div>
-    </div>
+    <app-auth-step-header
+      [showBack]="canGoBackSg()"
+      [showStepCount]="true"
+      [stepIndex]="stepIndexSg()"
+      [totalSteps]="totalSteps"
+      [title]="stepTitleSg()"
+      (back)="goBack()"
+    />
 
     <div class="registration-page__body">
       @if (step() === 'personal') {

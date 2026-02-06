@@ -18,26 +18,14 @@
     padding-top: 48px;
   }
 
-  &__signup {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-  }
-
-  &__signup-text {
-    font-size: 14px;
-    color: $color-text-secondary;
-  }
-
   &__section {
     width: 100%;
     max-width: 380px;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
     flex-direction: column;
-    gap: 12px;
+    gap: 20px;
 
     @media (min-width: 480px) {
       width: 380px;
@@ -50,5 +38,18 @@
     @media (min-width: 1024px) {
       width: 420px;
     }
+  }
+
+  &__body {
+    width: 100%;
+    position: relative;
+    min-height: 420px;
+  }
+
+  &__step {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
   }
 }

@@ -34,7 +34,7 @@ export class AuthService {
     email: string,
     username: string,
     password: string
-  ): Promise<{ success: boolean; error?: string; code?: string }> {
+  ): Promise<{ success: boolean; error?: string; code?: string; fields?: Record<string, string> }> {
     try {
       await firstValueFrom(
         this.http.post(`${this.API_BASE}/users/register`, {
@@ -49,13 +49,23 @@ export class AuthService {
       return { success: true };
     } catch (error: unknown) {
       const httpError = error as {
-        error?: { message?: string; code?: string; errors?: Array<{ message: string }> };
+        error?: {
+          message?: string;
+          code?: string;
+          fields?: Record<string, string>;
+          errors?: Array<{ message: string }>;
+        };
       };
       const errorMsg =
         httpError?.error?.message ||
         httpError?.error?.errors?.[0]?.message ||
         VALIDATION_MESSAGES.REGISTRATION_FAILED;
-      return { success: false, error: errorMsg, code: httpError?.error?.code };
+      return {
+        success: false,
+        error: errorMsg,
+        code: httpError?.error?.code,
+        fields: httpError?.error?.fields,
+      };
     }
   }
 
@@ -74,7 +84,10 @@ export class AuthService {
   }
 
   // Login with email and password - backend sends OTP via email
-  async login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+  async login(
+    email: string,
+    password: string
+  ): Promise<{ success: boolean; error?: string; code?: string; fields?: Record<string, string> }> {
     try {
       // Clear any previous session state before new login attempt
       this.logout();
@@ -87,9 +100,14 @@ export class AuthService {
       this.currentEmailSg.set(email);
       return { success: true };
     } catch (error: unknown) {
-      const httpError = error as { error?: { message?: string } };
+      const httpError = error as { error?: { message?: string; code?: string; fields?: Record<string, string> } };
       const errorMsg = httpError?.error?.message || VALIDATION_MESSAGES.LOGIN_FAILED;
-      return { success: false, error: errorMsg };
+      return {
+        success: false,
+        error: errorMsg,
+        code: httpError?.error?.code,
+        fields: httpError?.error?.fields,
+      };
     }
   }
 

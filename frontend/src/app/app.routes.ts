@@ -21,17 +21,12 @@ export const routes: Routes = [
     component: LoginPage,
     children: [
       {
-        path: 'credentials',
+        path: '',
         component: CredentialsStep,
       },
       {
         path: 'otp',
         component: OtpStep,
-      },
-      {
-        path: '',
-        redirectTo: 'credentials',
-        pathMatch: 'full',
       },
     ],
   },

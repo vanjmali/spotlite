@@ -6,6 +6,7 @@ import {
   MessageComponent,
   NAME_PATTERN,
   VALIDATION_MESSAGES,
+  applyFieldErrors,
 } from '@app/shared';
 import { RegistrationStore } from '../../store';
 import { RegistrationStepFooter } from '../step-footer';
@@ -57,8 +58,18 @@ export class PersonalInfoStep {
     const email = this.emailSg();
 
     const result = await this.store.savePersonalInfo(firstName, lastName, email);
-    if (!result.success && result.error && result.errorField === 'email') {
-      emailInput.setExternalError(result.error);
+    if (!result.success) {
+      if (result.error && result.errorField === 'email') {
+        emailInput.setExternalError(result.error);
+      }
+
+      if (result.fields) {
+        applyFieldErrors(result.fields, {
+          email: (msg) => emailInput.setExternalError(msg),
+          first_name: (msg) => firstNameInput.setExternalError(msg),
+          last_name: (msg) => lastNameInput.setExternalError(msg),
+        });
+      }
     }
   }
 }

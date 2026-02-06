@@ -92,13 +92,15 @@ export class PasswordInputComponent {
       return { isValid: false, error };
     }
 
-    if (/\s/.test(password)) {
-      this.errorSg.set(VALIDATION_MESSAGES.PASSWORD_CRITERIA);
-      return { isValid: false, error: VALIDATION_MESSAGES.PASSWORD_CRITERIA };
-    }
-
-    // If criteria are shown, validate all criteria
+    console.log("criteria check:", {
+      show: this.showCriteriaSg(),
+    })
     if (this.showCriteriaSg()) {
+      if (/\s/.test(password)) {
+        this.errorSg.set(VALIDATION_MESSAGES.PASSWORD_CRITERIA);
+        return { isValid: false, error: VALIDATION_MESSAGES.PASSWORD_CRITERIA };
+      }
+
       if (
         !this.hasUppercaseSg() ||
         !this.hasLowercaseSg() ||

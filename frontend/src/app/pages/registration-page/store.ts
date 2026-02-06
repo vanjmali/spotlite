@@ -33,7 +33,12 @@ export class RegistrationStore {
     firstName: string,
     lastName: string,
     email: string
-  ): Promise<{ success: boolean; error?: string; errorField?: 'email' }> {
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    errorField?: 'email';
+    fields?: Record<string, string>;
+  }> {
     this.errorSg.set(null);
     this.loadingSg.set(true);
 
@@ -61,7 +66,7 @@ export class RegistrationStore {
   public async saveCredentials(
     username: string,
     password: string
-  ): Promise<{ success: boolean; error?: string; code?: string }> {
+  ): Promise<{ success: boolean; error?: string; code?: string; fields?: Record<string, string> }> {
     this.errorSg.set(null);
     this.loadingSg.set(true);
 
@@ -80,6 +85,7 @@ export class RegistrationStore {
         success: false,
         error: result.error || VALIDATION_MESSAGES.REGISTRATION_FAILED,
         code: result.code,
+        fields: result.fields,
       };
     }
 

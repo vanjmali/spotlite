@@ -11,6 +11,14 @@ import { RouterLink } from '@angular/router';
 })
 export class RegistrationStepFooter {
   @Input({ required: true }) label!: string;
+  @Input() loadingLabel?: string;
   @Input() loading = false;
+  @Input() stackActions = false;
+  @Input() secondaryLabel?: string;
+  @Input() secondaryDisabled = false;
+  @Input() hintText?: string;
+  @Input() hintLinkText?: string;
+  @Input() hintLinkUrl?: string;
   @Output() action = new EventEmitter<void>();
+  @Output() secondaryAction = new EventEmitter<void>();
 }

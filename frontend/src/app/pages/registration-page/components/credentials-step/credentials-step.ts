@@ -6,6 +6,7 @@ import {
   MessageComponent,
   USERNAME_PATTERN,
   VALIDATION_MESSAGES,
+  applyFieldErrors,
 } from '@app/shared';
 import { RegistrationStore } from '../../store';
 import { RegistrationStepFooter } from '../step-footer';
@@ -68,12 +69,20 @@ export class RegistrationCredentialsStep {
     // Save credentials and navigate
     const username = this.usernameSg();
     const result = await this.store.saveCredentials(username, password);
-    if (!result.success && result.code === 'username_taken') {
-      usernameInput.setExternalError(result.error || VALIDATION_MESSAGES.USERNAME_IN_USE);
-      return;
-    }
-
     if (!result.success) {
+      if (result.code === 'username_taken') {
+        usernameInput.setExternalError(result.error || VALIDATION_MESSAGES.USERNAME_IN_USE);
+        return;
+      }
+
+      if (result.fields) {
+        applyFieldErrors(result.fields, {
+          username: (msg) => usernameInput.setExternalError(msg),
+          password: (msg) => passwordInput.setExternalError(msg),
+        });
+        return;
+      }
+
       this.store.errorSg.set(result.error || VALIDATION_MESSAGES.REGISTRATION_FAILED);
     }
   }

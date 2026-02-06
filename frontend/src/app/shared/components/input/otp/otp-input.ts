@@ -42,6 +42,24 @@ export class OtpInputComponent implements AfterViewInit {
   public onDigitChange(index: number, value: string): void {
     // Only allow numbers
     const sanitized = value.replace(/[^0-9]/g, '');
+    if (sanitized.length > 1) {
+      const nextDigits = sanitized.slice(0, 6 - index).split('');
+      this.digitsSg.update((digits) => {
+        const next = [...digits];
+        nextDigits.forEach((digit, offset) => {
+          next[index + offset] = digit;
+        });
+        return next;
+      });
+
+      this.valueSg.set(this.digitsSg().join(''));
+      this.errorSg.set('');
+
+      const focusIndex = Math.min(index + nextDigits.length, 5);
+      queueMicrotask(() => this.focusBox(focusIndex, false));
+      return;
+    }
+
     this.digitsSg.update((digits) => {
       const next = [...digits];
       next[index] = sanitized.slice(0, 1);
@@ -62,6 +80,8 @@ export class OtpInputComponent implements AfterViewInit {
   }
 
   public onKeyDown(index: number, event: KeyboardEvent): void {
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+
     // Prevent non-numeric characters from being entered
     if (
       !/[0-9]/.test(event.key) &&
@@ -77,10 +97,15 @@ export class OtpInputComponent implements AfterViewInit {
 
       const currentDigits = this.digitsSg();
 
-      // Clear the current box
+      const isCurrentEmpty = !currentDigits[index];
+
       this.digitsSg.update((digits) => {
         const next = [...digits];
-        next[index] = '';
+        if (isCurrentEmpty && index > 0) {
+          next[index - 1] = '';
+        } else {
+          next[index] = '';
+        }
         return next;
       });
 
@@ -92,8 +117,8 @@ export class OtpInputComponent implements AfterViewInit {
       this.errorSg.set('');
 
       // Move focus to previous box if current is empty and index > 0
-      if (index > 0 && !currentDigits[index]) {
-        this.focusBox(index - 1, true);
+      if (isCurrentEmpty && index > 0) {
+        this.focusBox(index - 1, false);
       }
     }
     // Handle left arrow - move to previous box
@@ -128,6 +153,31 @@ export class OtpInputComponent implements AfterViewInit {
   public onBoxClick(event: Event): void {
     const input = event.target as HTMLInputElement | null;
     input?.select();
+  }
+
+  public onPaste(index: number, event: ClipboardEvent): void {
+    event.preventDefault();
+
+    const text = event.clipboardData?.getData('text') ?? '';
+    const digitsOnly = text.replace(/[^0-9]/g, '');
+    if (!digitsOnly) return;
+
+    const startIndex = typeof index === 'number' ? index : 0;
+    const nextDigits = digitsOnly.slice(0, 6 - startIndex).split('');
+
+    this.digitsSg.update((digits) => {
+      const next = [...digits];
+      nextDigits.forEach((digit, offset) => {
+        next[startIndex + offset] = digit;
+      });
+      return next;
+    });
+
+    this.valueSg.set(this.digitsSg().join(''));
+    this.errorSg.set('');
+
+    const focusIndex = Math.min(startIndex + nextDigits.length, 5);
+    queueMicrotask(() => this.focusBox(focusIndex, false));
   }
 
   private focusBox(index: number, select = false): void {

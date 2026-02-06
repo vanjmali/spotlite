@@ -12,7 +12,7 @@ type UserRegistrationDto struct {
 // UserLoginDto holds the credentials submitted when a user signs in.
 type UserLoginDto struct {
 	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,strongpassword"`
+	Password string `json:"password" validate:"required,min=3"`
 }
 
 // VerifyLoginOtpDto carries the email and code for OTP verification during login.

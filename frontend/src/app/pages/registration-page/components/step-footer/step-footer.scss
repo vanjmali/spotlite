@@ -11,6 +11,17 @@
   gap: 16px;
   width: 100%;
 
+  &__actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+  }
+
+  &__actions--stack {
+    flex-direction: column;
+  }
+
   &__login {
     display: flex;
     flex-direction: column;

@@ -16,12 +16,14 @@
     <app-message [message]="success" type="success" />
   }
 
-  <div class="otp-step__actions">
-    <button type="button" class="btn-secondary" (click)="resend()" [disabled]="loadingSg()">
-      Resend Code
-    </button>
-    <button type="button" class="btn-primary" (click)="verify()" [disabled]="loadingSg()">
-      {{ loadingSg() ? 'Logging in...' : 'Login' }}
-    </button>
-  </div>
+  <app-registration-step-footer
+    label="Login"
+    loadingLabel="Logging in..."
+    [loading]="loadingSg()"
+    [stackActions]="true"
+    secondaryLabel="Resend Code"
+    [secondaryDisabled]="loadingSg()"
+    (secondaryAction)="resend()"
+    (action)="verify()"
+  />
 </div>

@@ -1,19 +1,19 @@
-import { Component, inject, signal, viewChild } from '@angular/core';
+import { Component, inject, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
-import { EmailInputComponent, PasswordInputComponent, MessageComponent } from '@app/shared';
+import { Router } from '@angular/router';
+import {
+  EmailInputComponent,
+  PasswordInputComponent,
+  MessageComponent,
+  applyFieldErrors,
+} from '@app/shared';
 import { LoginStore } from '../../store';
+import { RegistrationStepFooter } from '../../../registration-page/components';
 
 @Component({
   selector: 'app-login-credentials-step',
   standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    EmailInputComponent,
-    PasswordInputComponent,
-    MessageComponent,
-  ],
+  imports: [CommonModule, EmailInputComponent, PasswordInputComponent, MessageComponent, RegistrationStepFooter],
   templateUrl: './credentials-step.html',
   styleUrls: ['./credentials-step.scss'],
 })
@@ -22,9 +22,11 @@ export class CredentialsStep {
   public passwordInputSg = viewChild(PasswordInputComponent);
 
   public store = inject(LoginStore);
+  private router = inject(Router);
 
-  public emailSg = signal<string>('');
-  public passwordSg = signal<string>('');
+  public emailSg = this.store.emailSg;
+  public passwordSg = this.store.passwordSg;
+  public loadingSg = this.store.loadingSg;
 
   public async submit(): Promise<void> {
     this.store.clearError();
@@ -41,10 +43,24 @@ export class CredentialsStep {
       return;
     }
 
-    const email = this.emailSg();
-    const password = this.passwordSg();
+    const email = emailInput.valueSg();
+    const password = passwordInput.valueSg();
 
     // Validate credentials and send OTP
-    await this.store.validateCredentials(email, password);
+    const result = await this.store.validateCredentials(email, password);
+    if (!result.success) {
+      if (result.fields) {
+        applyFieldErrors(result.fields, {
+          email: (msg) => emailInput.setExternalError(msg),
+          password: (msg) => passwordInput.setExternalError(msg),
+        });
+        return;
+      }
+
+      this.store.errorSg.set(result.error || 'Login failed');
+      return;
+    }
+
+    this.router.navigate(['/login/otp']);
   }
 }
