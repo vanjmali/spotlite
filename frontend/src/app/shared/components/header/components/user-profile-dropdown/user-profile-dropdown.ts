@@ -68,6 +68,6 @@ export class UserProfileDropdownComponent {
   logout(): void {
     this.closeDropdown();
     this.authService.logout();
-    this.router.navigate(['/login']);
+    this.router.navigate(['/']);
   }
 }

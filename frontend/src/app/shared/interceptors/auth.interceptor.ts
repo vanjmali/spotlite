@@ -130,7 +130,7 @@ export class AuthInterceptor implements HttpInterceptor {
   private handleLogout(): void {
     this.authService.logout();
     if (!this.router.url.includes('/login')) {
-      this.router.navigate(['/login']);
+      this.router.navigate(['/']);
     }
   }
 }
