@@ -89,8 +89,8 @@ export class AuthService {
     password: string
   ): Promise<{ success: boolean; error?: string; code?: string; fields?: Record<string, string> }> {
     try {
-      // Clear any previous session state before new login attempt
-      this.logout();
+      this.accessTokenSg.set(null);
+      this.currentEmailSg.set(null);
 
       await firstValueFrom(
         this.http.post<LoginResponse>(`${this.API_BASE}/users/login`, { email, password })

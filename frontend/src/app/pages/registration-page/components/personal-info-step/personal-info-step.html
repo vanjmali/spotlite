@@ -1,7 +1,7 @@
 @let error = store.errorSg();
 @let loading = store.loadingSg();
 
-<div class="personal-info-step">
+<form class="personal-info-step" (submit)="$event.preventDefault(); submit()">
   <div class="personal-info-step__content">
     <app-email-input
       label="Email address"
@@ -53,9 +53,10 @@
   <app-registration-step-footer
     label="Continue"
     [loading]="loadingSg()"
+    [submit]="true"
     (action)="submit()"
     hintText="Already have account?"
     hintLinkText="Login"
     hintLinkUrl="/login"
   />
-</div>
+</form>

@@ -1,7 +1,7 @@
 @let error = store.errorSg();
 @let success = successSg();
 
-<div class="otp-step">
+<form class="otp-step" (submit)="$event.preventDefault(); verify()">
   <h2 class="otp-step__title">Enter the 6-digit code we sent to {{ store.emailSg() }}</h2>
 
   <div class="otp-step__input-container">
@@ -21,9 +21,10 @@
     loadingLabel="Logging in..."
     [loading]="loadingSg()"
     [stackActions]="true"
+    [submit]="true"
     secondaryLabel="Resend Code"
     [secondaryDisabled]="loadingSg()"
     (secondaryAction)="resend()"
     (action)="verify()"
   />
-</div>
+</form>

@@ -14,6 +14,7 @@ export class RegistrationStepFooter {
   @Input() loadingLabel?: string;
   @Input() loading = false;
   @Input() stackActions = false;
+  @Input() submit = false;
   @Input() secondaryLabel?: string;
   @Input() secondaryDisabled = false;
   @Input() hintText?: string;

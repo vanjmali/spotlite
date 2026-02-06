@@ -3,7 +3,12 @@
     class="registration-step-footer__actions"
     [class.registration-step-footer__actions--stack]="stackActions"
   >
-    <button class="btn-primary" (click)="action.emit()" [disabled]="loading">
+    <button
+      class="btn-primary"
+      [attr.type]="submit ? 'submit' : 'button'"
+      (click)="action.emit()"
+      [disabled]="loading"
+    >
       {{ loading && loadingLabel ? loadingLabel : label }}
     </button>
     @if (secondaryLabel) {
