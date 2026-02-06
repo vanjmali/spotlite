@@ -22,6 +22,8 @@ export {
   OTP_PATTERN,
   VALIDATION_MESSAGES,
   applyFieldErrors,
+  getApiErrorInfo,
+  type ApiErrorInfo,
   type FieldErrors,
   type FieldErrorHandlers,
   type ValidationResult,

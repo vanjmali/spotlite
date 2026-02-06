@@ -1,7 +1,7 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, map, catchError, of } from 'rxjs';
-import { VALIDATION_MESSAGES } from '@app/shared';
+import { getApiErrorInfo, VALIDATION_MESSAGES } from '@app/shared';
 import { environment } from '../../environments/environment';
 import { NotificationService } from './notification.service';
 
@@ -48,23 +48,12 @@ export class AuthService {
 
       return { success: true };
     } catch (error: unknown) {
-      const httpError = error as {
-        error?: {
-          message?: string;
-          code?: string;
-          fields?: Record<string, string>;
-          errors?: Array<{ message: string }>;
-        };
-      };
-      const errorMsg =
-        httpError?.error?.message ||
-        httpError?.error?.errors?.[0]?.message ||
-        VALIDATION_MESSAGES.REGISTRATION_FAILED;
+      const info = getApiErrorInfo(error, VALIDATION_MESSAGES.REGISTRATION_FAILED);
       return {
         success: false,
-        error: errorMsg,
-        code: httpError?.error?.code,
-        fields: httpError?.error?.fields,
+        error: info.userMessage,
+        code: info.code,
+        fields: info.fields,
       };
     }
   }
@@ -100,13 +89,12 @@ export class AuthService {
       this.currentEmailSg.set(email);
       return { success: true };
     } catch (error: unknown) {
-      const httpError = error as { error?: { message?: string; code?: string; fields?: Record<string, string> } };
-      const errorMsg = httpError?.error?.message || VALIDATION_MESSAGES.LOGIN_FAILED;
+      const info = getApiErrorInfo(error, VALIDATION_MESSAGES.LOGIN_FAILED);
       return {
         success: false,
-        error: errorMsg,
-        code: httpError?.error?.code,
-        fields: httpError?.error?.fields,
+        error: info.userMessage,
+        code: info.code,
+        fields: info.fields,
       };
     }
   }

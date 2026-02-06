@@ -26,6 +26,46 @@ export const applyFieldErrors = (
   });
 };
 
+export type ApiErrorInfo = {
+  status?: number;
+  message?: string;
+  code?: string;
+  fields?: Record<string, string>;
+  isRateLimited: boolean;
+  userMessage: string | undefined;
+};
+
+export const getApiErrorInfo = (
+  error: unknown,
+  fallbackMessage?: string
+): ApiErrorInfo => {
+  if (!error || typeof error !== 'object') {
+    return {
+      status: undefined,
+      message: undefined,
+      code: undefined,
+      fields: undefined,
+      isRateLimited: false,
+      userMessage: fallbackMessage,
+    };
+  }
+
+  const err = error as {
+    status?: number;
+    message?: string;
+    error?: { message?: string; code?: string; fields?: Record<string, string> };
+  };
+
+  const status = err.status;
+  const code = err.error?.code;
+  const message = err.error?.message ?? err.message;
+  const fields = err.error?.fields;
+  const isRateLimited = status === 429 || code === 'rate_limit_exceeded';
+  const userMessage = isRateLimited ? VALIDATION_MESSAGES.RATE_LIMITED : message || fallbackMessage;
+
+  return { status, message, code, fields, isRateLimited, userMessage };
+};
+
 // ============================================================================
 // REGEX PATTERNS
 // ============================================================================
@@ -109,4 +149,5 @@ export const VALIDATION_MESSAGES = {
   MISSING_EMAIL: 'Missing email',
   PASSWORD_RESET_FAILED: 'Failed to reset password. Please try again.',
   INVALID_RECOVERY_LINK: 'Invalid or expired recovery link',
+  RATE_LIMITED: 'Too many requests. Please wait and retry.',
 } as const;
