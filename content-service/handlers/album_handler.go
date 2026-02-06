@@ -35,7 +35,7 @@ func (h *AlbumHandler) HandleCreateAlbum(w http.ResponseWriter, r *http.Request)
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
 			log.Printf("trace_id=%s invalid request body: %v", telemetry.TraceID(r.Context()), err)
-			_ = respond.BadRequest(w, "invalid request body")
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
 	}
@@ -43,7 +43,7 @@ func (h *AlbumHandler) HandleCreateAlbum(w http.ResponseWriter, r *http.Request)
 	if err := h.s.Create(r.Context(), &req); err != nil {
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):
-			_ = respond.BadRequest(w, "Invalid ID format")
+			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid ID format"))
 			return
 		case errors.Is(err, services.ErrSongNotFound):
 			_ = respond.NotFound(w)
@@ -72,7 +72,7 @@ func (h *AlbumHandler) HandleGetAlbumById(w http.ResponseWriter, r *http.Request
 
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):
-			_ = respond.BadRequest(w, "Invalid album ID format")
+			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid album ID format"))
 			return
 		case errors.Is(err, services.ErrAlbumNotFound):
 			_ = respond.NotFound(w)
@@ -96,7 +96,7 @@ func (h *AlbumHandler) HandleAddAlbumSongs(w http.ResponseWriter, r *http.Reques
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &dto); !ok {
 		if err != nil {
 			log.Printf("trace_id=%s invalid request body: %v", telemetry.TraceID(r.Context()), err)
-			_ = respond.BadRequest(w, "invalid request body")
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
 	}
@@ -105,7 +105,7 @@ func (h *AlbumHandler) HandleAddAlbumSongs(w http.ResponseWriter, r *http.Reques
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
 		log.Printf("trace_id=%s invalid album id: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.BadRequest(w, "invalid album id")
+		_ = respond.BadRequest(w, respond.ErrorMessage("invalid album id"))
 	case errors.Is(err, services.ErrAlbumNotFound):
 		log.Printf("trace_id=%s album not found: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.NotFound(w)
@@ -134,7 +134,7 @@ func (h *AlbumHandler) HandleGetAlbumSongs(w http.ResponseWriter, r *http.Reques
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
 		log.Printf("trace_id=%s invalid album id: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.BadRequest(w, "invalid album id")
+		_ = respond.BadRequest(w, respond.ErrorMessage("invalid album id"))
 	case errors.Is(err, services.ErrAlbumNotFound):
 		log.Printf("trace_id=%s album not found: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.NotFound(w)
@@ -159,7 +159,7 @@ func (h *AlbumHandler) HandleDeleteAlbumSong(w http.ResponseWriter, r *http.Requ
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
 		log.Printf("trace_id=%s invalid album/song id: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.BadRequest(w, "invalid album or song id")
+		_ = respond.BadRequest(w, respond.ErrorMessage("invalid album or song id"))
 	case errors.Is(err, services.ErrAlbumNotFound):
 		log.Printf("trace_id=%s album not found: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.NotFound(w)
@@ -184,7 +184,7 @@ func (h *AlbumHandler) HandleUpdateAlbum(w http.ResponseWriter, r *http.Request)
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &dto); !ok {
 		if err != nil {
 			log.Printf("trace_id=%s invalid request body: %v", telemetry.TraceID(r.Context()), err)
-			_ = respond.BadRequest(w, "invalid request body")
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
 	}
@@ -192,7 +192,7 @@ func (h *AlbumHandler) HandleUpdateAlbum(w http.ResponseWriter, r *http.Request)
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
 		log.Printf("trace_id=%s invalid album id: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.BadRequest(w, "invalid album id")
+		_ = respond.BadRequest(w, respond.ErrorMessage("invalid album id"))
 	case errors.Is(err, services.ErrAlbumNotFound):
 		log.Printf("trace_id=%s album not found: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.NotFound(w)
@@ -224,7 +224,7 @@ func (h *AlbumHandler) HandleDeleteAlbum(w http.ResponseWriter, r *http.Request)
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
 		log.Printf("trace_id=%s invalid album id: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.BadRequest(w, "invalid album id")
+		_ = respond.BadRequest(w, respond.ErrorMessage("invalid album id"))
 	case errors.Is(err, services.ErrAlbumNotFound):
 		log.Printf("trace_id=%s album not found: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.NotFound(w)

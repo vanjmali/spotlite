@@ -2,15 +2,42 @@
   <img src="assets/images/spotlite-white.png" alt="Spotlite" class="registration-page__icon" />
 
   <div class="registration-page__section">
-    @if (step() === 'personal') {
-      <app-registration-personal-info-step />
-    } @else {
-      <app-registration-credentials-step />
-    }
+    <div class="registration-page__header">
+      @if (canGoBackSg()) {
+        <button
+          class="registration-page__back"
+          type="button"
+          (click)="goBack()"
+          aria-label="Go back"
+        >
+          <mat-icon aria-hidden="true">arrow_back</mat-icon>
+          <span class="registration-page__back-text">Back</span>
+        </button>
+      }
+      <div class="registration-page__step-info">
+        <div class="registration-page__step-count">Step {{ stepIndexSg() }}/{{ totalSteps }}</div>
+        <div class="registration-page__step-title">{{ stepTitleSg() }}</div>
+      </div>
+    </div>
 
-    <div class="registration-page__login">
-      <div class="registration-page__login-text">Already have account?</div>
-      <a routerLink="/login" class="link-primary">Login</a>
+    <div class="registration-page__body">
+      @if (step() === 'personal') {
+        <div class="registration-page__step" [@stepSlide]="animationParams()">
+          <app-registration-personal-info-step />
+        </div>
+      } @else if (step() === 'credentials') {
+        <div class="registration-page__step" [@stepSlide]="animationParams()">
+          <app-registration-credentials-step />
+        </div>
+      } @else if (step() === 'verify') {
+        <div class="registration-page__step" [@stepSlide]="animationParams()">
+          <app-registration-check-email-step />
+        </div>
+      } @else {
+        <div class="registration-page__step" [@stepSlide]="animationParams()">
+          <span>Unknown error occurred.</span>
+        </div>
+      }
     </div>
   </div>
 </div>

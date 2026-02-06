@@ -34,7 +34,7 @@ export class AuthService {
     email: string,
     username: string,
     password: string
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; code?: string }> {
     try {
       await firstValueFrom(
         this.http.post(`${this.API_BASE}/users/register`, {
@@ -49,13 +49,13 @@ export class AuthService {
       return { success: true };
     } catch (error: unknown) {
       const httpError = error as {
-        error?: { message?: string; errors?: Array<{ message: string }> };
+        error?: { message?: string; code?: string; errors?: Array<{ message: string }> };
       };
       const errorMsg =
         httpError?.error?.message ||
         httpError?.error?.errors?.[0]?.message ||
         VALIDATION_MESSAGES.REGISTRATION_FAILED;
-      return { success: false, error: errorMsg };
+      return { success: false, error: errorMsg, code: httpError?.error?.code };
     }
   }
 

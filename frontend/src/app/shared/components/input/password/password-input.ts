@@ -58,6 +58,10 @@ export class PasswordInputComponent {
     this.errorSg.set('');
   }
 
+  public setExternalError(message: string): void {
+    this.errorSg.set(message);
+  }
+
   public togglePasswordVisibility(): void {
     this.showPasswordSg.update((show) => !show);
   }

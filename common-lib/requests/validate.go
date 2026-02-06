@@ -99,12 +99,12 @@ func ReadAndValidateJson(w http.ResponseWriter, v *validator.Validate, rBody io.
 
 	if err := json.NewDecoder(rBody).Decode(&dto); err != nil {
 		if err == io.EOF {
-			return false, respond.BadRequest(w, "Request body can't be empty.")
+			return false, respond.BadRequest(w, respond.ErrorMessage("Request body can't be empty."))
 		}
 
 		syntaxError := &json.SyntaxError{}
 		if errors.As(err, &syntaxError) {
-			return false, respond.BadRequest(w, "Invalid JSON format: "+err.Error()+".")
+			return false, respond.BadRequest(w, respond.ErrorMessage("Invalid JSON format: "+err.Error()+"."))
 		}
 
 		return false, respond.InternalServerError(w)

@@ -29,6 +29,10 @@ export class EmailInputComponent {
     this.errorSg.set('');
   }
 
+  public setExternalError(message: string): void {
+    this.errorSg.set(message);
+  }
+
   public validate(): ValidationResult {
     const email = this.valueSg();
 

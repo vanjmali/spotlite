@@ -4,24 +4,22 @@
   width: 100%;
 }
 
-.credentials-step {
+.registration-step-footer {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   width: 100%;
 
-  app-message {
-    width: 100%;
-    align-self: stretch;
-  }
-
-  &__content {
-    width: 100%;
-    min-height: 100px;
+  &__login {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    align-items: center;
+    gap: 8px;
   }
 
+  &__login-text {
+    font-size: 14px;
+    color: $color-text-secondary;
+  }
 }

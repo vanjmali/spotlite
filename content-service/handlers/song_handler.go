@@ -35,7 +35,7 @@ func (h *SongHandler) HandleCreateSong(w http.ResponseWriter, r *http.Request) {
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
 			log.Printf("trace_id=%s invalid request body: %v", telemetry.TraceID(r.Context()), err)
-			_ = respond.BadRequest(w, "invalid request body")
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
 	}
@@ -43,7 +43,7 @@ func (h *SongHandler) HandleCreateSong(w http.ResponseWriter, r *http.Request) {
 	if err := h.s.Create(r.Context(), &req); err != nil {
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):
-			_ = respond.BadRequest(w, "Invalid ID format")
+			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid ID format"))
 			return
 		case errors.Is(err, services.ErrArtistNotFound):
 			_ = respond.NotFound(w)
@@ -72,7 +72,7 @@ func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) 
 			_ = respond.NotFound(w)
 			return
 		case errors.Is(err, services.ErrObjectIdCastFailed):
-			_ = respond.BadRequest(w, "Invalid ID format")
+			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid ID format"))
 			return
 		default:
 			_ = respond.InternalServerError(w)
@@ -94,7 +94,7 @@ func (h *SongHandler) HandleUpdateSong(w http.ResponseWriter, r *http.Request) {
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &dto); !ok {
 		if err != nil {
 			log.Printf("trace_id=%s invalid request body: %v", telemetry.TraceID(r.Context()), err)
-			_ = respond.BadRequest(w, "invalid request body")
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
 	}
@@ -103,7 +103,7 @@ func (h *SongHandler) HandleUpdateSong(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
 		log.Printf("trace_id=%s invalid song id: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.BadRequest(w, "invalid song id")
+		_ = respond.BadRequest(w, respond.ErrorMessage("invalid song id"))
 	case errors.Is(err, services.ErrSongNotFound):
 		log.Printf("trace_id=%s song not found: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.NotFound(w)
@@ -132,7 +132,7 @@ func (h *SongHandler) HandleDeleteSong(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
 		log.Printf("trace_id=%s invalid song id: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.BadRequest(w, "invalid song id")
+		_ = respond.BadRequest(w, respond.ErrorMessage("invalid song id"))
 	case errors.Is(err, services.ErrSongNotFound):
 		log.Printf("trace_id=%s song not found: %v", telemetry.TraceID(r.Context()), err)
 		_ = respond.NotFound(w)

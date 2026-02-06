@@ -1,0 +1,10 @@
+<div class="registration-step-footer">
+  <button class="btn-primary" (click)="action.emit()" [disabled]="loading">
+    {{ label }}
+  </button>
+
+  <div class="registration-step-footer__login">
+    <div class="registration-step-footer__login-text">Already have account?</div>
+    <a routerLink="/login" class="link-primary">Login</a>
+  </div>
+</div>

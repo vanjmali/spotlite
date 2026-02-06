@@ -14,6 +14,7 @@ import { ErrorComponent } from '../error';
 export class TextInputComponent {
   public readonly labelSg = input<string>('Text', { alias: 'label' });
   public readonly requiredSg = input<boolean>(false, { alias: 'required' });
+  public readonly showRequiredIndicatorSg = input<boolean>(true, { alias: 'showRequiredIndicator' });
   public readonly placeholderSg = input<string>('', { alias: 'placeholder' });
   public readonly minSg = input<number | null>(null, { alias: 'min' });
   public readonly maxSg = input<number | null>(null, { alias: 'max' });
@@ -32,6 +33,10 @@ export class TextInputComponent {
     this.valueSg.set(newValue.trim());
     // Clear error when user starts typing
     this.errorSg.set('');
+  }
+
+  public setExternalError(message: string): void {
+    this.errorSg.set(message);
   }
 
   public validate(): ValidationResult {

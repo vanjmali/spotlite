@@ -2,33 +2,7 @@
 @let loading = store.loadingSg();
 
 <div class="personal-info-step">
-  <h1 class="personal-info-step__title">Create Account</h1>
-
   <div class="personal-info-step__content">
-    <app-text-input
-      label="First Name"
-      [required]="true"
-      [min]="2"
-      [max]="20"
-      [pattern]="namePattern"
-      [patternMessage]="namePatternMessage('First Name')"
-      [value]="firstNameSg()"
-      (valueChange)="firstNameSg.set($event)"
-      #firstNameInput
-    ></app-text-input>
-
-    <app-text-input
-      label="Last Name"
-      [required]="true"
-      [min]="2"
-      [max]="20"
-      [pattern]="namePattern"
-      [patternMessage]="namePatternMessage('Last Name')"
-      [value]="lastNameSg()"
-      (valueChange)="lastNameSg.set($event)"
-      #lastNameInput
-    ></app-text-input>
-
     <app-email-input
       label="Email address"
       [required]="true"
@@ -36,13 +10,49 @@
       (valueChange)="emailSg.set($event)"
       #emailInput
     ></app-email-input>
+
+    <hr class="personal-info-step__divider" />
+
+    <div class="personal-info-step__row">
+      <div class="personal-info-step__field">
+        <app-text-input
+          label="First Name"
+          [required]="true"
+          [showRequiredIndicator]="false"
+          [min]="2"
+          [max]="20"
+          [pattern]="namePattern"
+          [patternMessage]="namePatternMessage('First Name')"
+          [value]="firstNameSg()"
+          (valueChange)="firstNameSg.set($event)"
+          #firstNameInput
+        ></app-text-input>
+      </div>
+
+      <div class="personal-info-step__field">
+        <app-text-input
+          label="Last Name"
+          [required]="true"
+          [showRequiredIndicator]="false"
+          [min]="2"
+          [max]="20"
+          [pattern]="namePattern"
+          [patternMessage]="namePatternMessage('Last Name')"
+          [value]="lastNameSg()"
+          (valueChange)="lastNameSg.set($event)"
+          #lastNameInput
+        ></app-text-input>
+      </div>
+    </div>
   </div>
 
   @if (error) {
     <app-message [message]="error" type="error" />
   }
 
-  <div class="personal-info-step__actions">
-    <button class="btn-primary" (click)="submit()" [disabled]="loading">Continue</button>
-  </div>
+  <app-registration-step-footer
+    label="Continue"
+    [loading]="loadingSg()"
+    (action)="submit()"
+  />
 </div>

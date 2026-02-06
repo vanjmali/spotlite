@@ -1,4 +1,4 @@
-import { Component, inject, signal, viewChild } from '@angular/core';
+import { Component, inject, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   TextInputComponent,
@@ -8,11 +8,18 @@ import {
   VALIDATION_MESSAGES,
 } from '@app/shared';
 import { RegistrationStore } from '../../store';
+import { RegistrationStepFooter } from '../step-footer';
 
 @Component({
   selector: 'app-registration-personal-info-step',
   standalone: true,
-  imports: [CommonModule, TextInputComponent, EmailInputComponent, MessageComponent],
+  imports: [
+    CommonModule,
+    TextInputComponent,
+    EmailInputComponent,
+    MessageComponent,
+    RegistrationStepFooter,
+  ],
   templateUrl: './personal-info-step.html',
   styleUrls: ['./personal-info-step.scss'],
 })
@@ -22,10 +29,10 @@ export class PersonalInfoStep {
   public emailInputSg = viewChild('emailInput', { read: EmailInputComponent });
 
   public store = inject(RegistrationStore);
-
-  public firstNameSg = signal<string>('');
-  public lastNameSg = signal<string>('');
-  public emailSg = signal<string>('');
+  public firstNameSg = this.store.firstNameSg;
+  public lastNameSg = this.store.lastNameSg;
+  public emailSg = this.store.emailSg;
+  public loadingSg = this.store.loadingSg;
   public readonly namePattern = NAME_PATTERN;
   public readonly namePatternMessage = VALIDATION_MESSAGES.NAME_INVALID;
 
@@ -49,6 +56,9 @@ export class PersonalInfoStep {
     const lastName = this.lastNameSg();
     const email = this.emailSg();
 
-    this.store.savePersonalInfo(firstName, lastName, email);
+    const result = await this.store.savePersonalInfo(firstName, lastName, email);
+    if (!result.success && result.error && result.errorField === 'email') {
+      emailInput.setExternalError(result.error);
+    }
   }
 }

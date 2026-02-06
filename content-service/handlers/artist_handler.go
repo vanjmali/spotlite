@@ -33,7 +33,7 @@ func (h *ArtistHandler) HandleCreateArtist(w http.ResponseWriter, r *http.Reques
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
 			log.Printf("trace_id=%s failed to process create artist request: %v", telemetry.TraceID(r.Context()), err)
-			_ = respond.BadRequest(w, "invalid request body")
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
 	}
@@ -59,7 +59,7 @@ func (h *ArtistHandler) HandleGetArtistById(w http.ResponseWriter, r *http.Reque
 
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):
-			_ = respond.BadRequest(w, "Invalid artist ID format")
+			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid artist ID format"))
 			return
 		case errors.Is(err, services.ErrArtistNotFound):
 			_ = respond.NotFound(w)
@@ -84,7 +84,7 @@ func (h *ArtistHandler) HandleUpdateArtist(w http.ResponseWriter, r *http.Reques
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &dto); !ok {
 		if err != nil {
 			log.Printf("trace_id=%s invalid request body: %v", telemetry.TraceID(r.Context()), err)
-			_ = respond.BadRequest(w, "invalid request body")
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
 	}
@@ -93,7 +93,7 @@ func (h *ArtistHandler) HandleUpdateArtist(w http.ResponseWriter, r *http.Reques
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
 		log.Printf("trace_id=%s invalid artist id: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.BadRequest(w, "invalid artist id")
+		_ = respond.BadRequest(w, respond.ErrorMessage("invalid artist id"))
 		return
 	case errors.Is(err, services.ErrArtistNotFound):
 		log.Printf("trace_id=%s artist not found: %v", telemetry.TraceID(r.Context()), err)
@@ -122,7 +122,7 @@ func (h *ArtistHandler) HandleDeleteArtist(w http.ResponseWriter, r *http.Reques
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
 		log.Printf("trace_id=%s invalid artist id: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.BadRequest(w, "invalid artist id")
+		_ = respond.BadRequest(w, respond.ErrorMessage("invalid artist id"))
 		return
 	case errors.Is(err, services.ErrArtistNotFound):
 		log.Printf("trace_id=%s artist not found: %v", telemetry.TraceID(r.Context()), err)
