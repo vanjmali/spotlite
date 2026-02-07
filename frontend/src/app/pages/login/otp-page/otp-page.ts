@@ -1,7 +1,7 @@
-import { Component, inject, OnInit, signal, viewChild } from '@angular/core';
+import { Component, effect, inject, OnInit, signal, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AuthLayout, OtpInputComponent, MessageComponent } from '@app/shared';
+import { AuthLayout, OtpInputComponent, MessageComponent, OTP_PATTERN } from '@app/shared';
 import { AuthFormFooter } from '@app/pages/registration-page/components';
 import { LoginStore } from '../store';
 
@@ -23,6 +23,19 @@ export class OtpPage implements OnInit {
   public loadingSg = this.store.loadingSg;
   public successSg = signal<string | null>(null);
   public readonly title = this.route.snapshot.data?.['authTitle'] ?? 'Verify your code';
+  private readonly lastAutoSubmitCodeSg = signal<string>('');
+  private readonly autoSubmitEffect = effect(() => {
+    if (!this.store.emailSg()) return;
+
+    const code = this.codeSg().trim();
+    if (code.length !== 6) return;
+    if (!OTP_PATTERN.test(code)) return;
+    if (this.loadingSg()) return;
+    if (code === this.lastAutoSubmitCodeSg()) return;
+
+    this.lastAutoSubmitCodeSg.set(code);
+    queueMicrotask(() => this.verify());
+  });
 
   public ngOnInit(): void {
     if (!this.store.emailSg()) {
