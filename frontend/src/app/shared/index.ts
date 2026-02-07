@@ -12,6 +12,7 @@ export { HeaderComponent } from './components/header';
 export { PageComponent } from './components/page';
 export { DialogComponent } from './components/dialog';
 export { BrandLogo } from './components/brand-logo';
+export { AuthLayout } from './components/auth-layout';
 export { MessageType } from './enums';
 
 export {

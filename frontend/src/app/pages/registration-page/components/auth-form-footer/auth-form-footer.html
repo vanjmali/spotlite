@@ -1,0 +1,32 @@
+<div class="auth-form-footer">
+  <div
+    class="auth-form-footer__actions"
+    [class.auth-form-footer__actions--stack]="stackActions"
+  >
+    <button
+      class="btn-primary"
+      [attr.type]="submit ? 'submit' : 'button'"
+      (click)="action.emit()"
+      [disabled]="loading"
+    >
+      {{ loading && loadingLabel ? loadingLabel : label }}
+    </button>
+    @if (secondaryLabel) {
+      <button
+        type="button"
+        class="btn-secondary"
+        (click)="secondaryAction.emit()"
+        [disabled]="secondaryDisabled"
+      >
+        {{ secondaryLabel }}
+      </button>
+    }
+  </div>
+
+  @if (hintText && hintLinkText && hintLinkUrl) {
+    <div class="auth-form-footer__login">
+      <div class="auth-form-footer__login-text">{{ hintText }}</div>
+      <a [routerLink]="hintLinkUrl" class="link-primary">{{ hintLinkText }}</a>
+    </div>
+  }
+</div>

@@ -1,0 +1,36 @@
+@use 'variables/colors' as *;
+
+:host {
+  width: 100%;
+}
+
+.auth-form-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+
+  &__actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+  }
+
+  &__actions--stack {
+    flex-direction: column;
+  }
+
+  &__login {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__login-text {
+    font-size: 14px;
+    color: $color-text-secondary;
+  }
+}

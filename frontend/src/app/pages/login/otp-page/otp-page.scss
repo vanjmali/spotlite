@@ -1,0 +1,22 @@
+@use 'variables/colors' as *;
+
+:host {
+  width: 100%;
+}
+
+.otp-page {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+
+  app-message {
+    width: 100%;
+    align-self: stretch;
+  }
+
+  &__input-container {
+    display: flex;
+    justify-content: center;
+  }
+}

@@ -1,12 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { animate, style, transition, trigger } from '@angular/animations';
-import { BrandLogo } from '@app/shared';
+import { AuthLayout } from '@app/shared';
 import {
   PersonalInfoStep,
   RegistrationCredentialsStep,
-  RegistrationCheckEmailStep,
-  AuthStepHeader,
+  AuthCheckEmail,
 } from './components';
 import { RegistrationStore } from './store';
 
@@ -17,11 +16,10 @@ export type RegistrationStep = 'personal' | 'credentials' | 'verify';
   standalone: true,
   imports: [
     CommonModule,
-    AuthStepHeader,
     PersonalInfoStep,
     RegistrationCredentialsStep,
-    RegistrationCheckEmailStep,
-    BrandLogo,
+    AuthCheckEmail,
+    AuthLayout,
   ],
   providers: [RegistrationStore],
   templateUrl: './registration-page.html',

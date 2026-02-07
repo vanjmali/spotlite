@@ -3,30 +3,37 @@ import {
   VerificationSuccessPage,
   VerificationFailurePage,
   CheckEmailPage,
-  LoginPage,
   RegistrationPage,
   ProfilePage,
 } from './pages';
 
 import { HomePage } from './pages/home-page';
-import { ForgotPasswordPage } from './pages/forgot-password-page/forgot-password-page';
 import { ResetPasswordPage } from './pages/reset-password-page/reset-password-page';
 import { AdminPage } from './pages/admin-page';
-import { CredentialsStep, OtpStep } from './pages/login-page/components';
+import { CredentialsPage } from './pages/login/credentials-page';
+import { OtpPage } from './pages/login/otp-page';
 import { InboxPage } from './pages/inbox-page';
+import { LoginStore } from './pages/login/store';
 
 export const routes: Routes = [
   {
     path: 'login',
-    component: LoginPage,
+    providers: [LoginStore],
     children: [
       {
         path: '',
-        component: CredentialsStep,
+        component: CredentialsPage,
+        data: { authTitle: 'Welcome back' },
       },
       {
         path: 'otp',
-        component: OtpStep,
+        component: OtpPage,
+        data: { authTitle: 'Verify your code' },
+      },
+      {
+        path: 'reset',
+        component: ResetPasswordPage,
+        data: { authTitle: 'Reset your password' },
       },
     ],
   },
@@ -45,14 +52,6 @@ export const routes: Routes = [
   {
     path: 'check-email',
     component: CheckEmailPage,
-  },
-  {
-    path: 'forgot-password',
-    component: ForgotPasswordPage,
-  },
-  {
-    path: 'reset-password',
-    component: ResetPasswordPage,
   },
   {
     path: 'inbox',

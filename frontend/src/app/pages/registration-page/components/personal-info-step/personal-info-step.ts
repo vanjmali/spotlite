@@ -9,7 +9,7 @@ import {
   applyFieldErrors,
 } from '@app/shared';
 import { RegistrationStore } from '../../store';
-import { RegistrationStepFooter } from '../step-footer';
+import { AuthFormFooter } from '../auth-form-footer';
 
 @Component({
   selector: 'app-registration-personal-info-step',
@@ -19,7 +19,7 @@ import { RegistrationStepFooter } from '../step-footer';
     TextInputComponent,
     EmailInputComponent,
     MessageComponent,
-    RegistrationStepFooter,
+    AuthFormFooter,
   ],
   templateUrl: './personal-info-step.html',
   styleUrls: ['./personal-info-step.scss'],
