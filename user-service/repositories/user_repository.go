@@ -84,6 +84,37 @@ func (r *UserRepositoryMongo) ActiveAndRevokeToken(ctx context.Context, token st
 	return ErrTokenExpired
 }
 
+// UpdateVerificationToken replaces the verification token for an inactive account.
+func (r *UserRepositoryMongo) UpdateVerificationToken(ctx context.Context, userID primitive.ObjectID, token string) error {
+	c := r.getCollection()
+
+	filter := bson.M{
+		"_id":            userID,
+		"account_status": account.StatusInactive,
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			"email_verification": bson.M{
+				"type":  entities.AccountVerification,
+				"token": token,
+			},
+			"updated_at": time.Now(),
+		},
+	}
+
+	res, err := c.UpdateOne(ctx, filter, update)
+	if err != nil {
+		return err
+	}
+
+	if res.MatchedCount == 1 && res.ModifiedCount == 1 {
+		return nil
+	}
+
+	return ErrUserNotFound
+}
+
 func (r *UserRepositoryMongo) SetHashPassowrd(ctx context.Context, userId primitive.ObjectID, passwordHash string, newTime, expiresAt time.Time) error {
 	c := r.getCollection()
 

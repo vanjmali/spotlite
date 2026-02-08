@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/vanjmali/spotlite/common-lib/account"
 	"github.com/vanjmali/spotlite/common-lib/clock"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
@@ -36,12 +37,14 @@ var (
 	ErrInvalidCurrentPassword    = errors.New("invalid current password")
 	ErrTooFrequentPasswordChange = errors.New("password changed too frequently")
 	ErrObjectIdCastFailed        = errors.New("failed to convert hex to objectId")
+	ErrVerificationRequired      = errors.New("verification required")
 )
 
 // UserRepository defines the persistence methods required by UserService.
 type UserRepository interface {
 	Create(ctx context.Context, user entities.User) error
 	ActiveAndRevokeToken(ctx context.Context, token string) error
+	UpdateVerificationToken(ctx context.Context, userID primitive.ObjectID, token string) error
 	SetHashPassowrd(ctx context.Context, userId primitive.ObjectID, passwordHash string, newTime, expiresAt time.Time) error
 	SetLoginOtp(ctx context.Context, userId primitive.ObjectID, hash string, expiry time.Time) error
 	ClearLoginOtp(ctx context.Context, userId primitive.ObjectID) error
@@ -153,6 +156,24 @@ func (s *UserService) VerifyAccount(ctx context.Context, token string) error {
 	return nil
 }
 
+func (s *UserService) resendVerification(ctx context.Context, user *entities.User) error {
+	_, span := s.tr.Start(ctx, "user.resend_verification")
+	defer span.End()
+
+	token := uuid.NewString()
+	if err := s.r.UpdateVerificationToken(ctx, user.ID, token); err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	if err := s.ms.SendAccountVerificationEmail(user.Email, token); err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	return nil
+}
+
 // FindUsersForExpiryNotification func, finds users which password expires soon.
 func (s *UserService) FindUsersForExpiryNotification(
 	ctx context.Context,
@@ -207,7 +228,10 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 	_, verifySpan := s.tr.Start(ctx, "user.login.verify_credentials")
 	if user.AccountStatus == account.StatusInactive {
 		verifySpan.End()
-		return ErrUserInactive
+		if err := s.resendVerification(ctx, user); err != nil {
+			return err
+		}
+		return ErrVerificationRequired
 	}
 
 	if s.c.Now().After(user.PasswordExpiresAt) {

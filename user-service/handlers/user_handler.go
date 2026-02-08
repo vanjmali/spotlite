@@ -76,8 +76,14 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, services.ErrExpiredPassword):
 		_ = respond.Unauthorized(w, respond.ErrorMessage("Password expired."))
 		return
-	case errors.Is(err, services.ErrUserInactive):
-		_ = respond.Unauthorized(w, respond.ErrorMessage("User is inactive."))
+	case errors.Is(err, services.ErrVerificationRequired):
+		_ = respond.Forbidden(
+			w,
+			respond.ErrorMessageWithCode(
+				"Verification email sent. Please check your inbox.",
+				"verification_required",
+			),
+		)
 		return
 	case err != nil:
 		log.Printf("trace_id=%s failed to login user: %v", telemetry.TraceID(r.Context()), err)

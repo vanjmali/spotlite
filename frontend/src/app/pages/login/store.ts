@@ -41,7 +41,7 @@ export class LoginStore {
   public async validateCredentials(
     email: string,
     password: string
-  ): Promise<{ success: boolean; error?: string; fields?: Record<string, string> }> {
+  ): Promise<{ success: boolean; error?: string; code?: string; fields?: Record<string, string> }> {
     this.errorSg.set(null);
 
     // Validate credentials against backend
@@ -53,6 +53,7 @@ export class LoginStore {
       return {
         success: false,
         error: result.error || VALIDATION_MESSAGES.INVALID_CREDENTIALS,
+        code: result.code,
         fields: result.fields,
       };
     }

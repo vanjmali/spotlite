@@ -31,23 +31,26 @@ func contextWithUserID(ctx context.Context, userID primitive.ObjectID) context.C
 }
 
 type fakeUserRepo struct {
-	existsByUsernameFn func(context.Context, string) (bool, error)
-	existsByEmailFn    func(context.Context, string) (bool, error)
-	createFn           func(context.Context, entities.User) error
-	findUserByEmailFn  func(context.Context, string) (*entities.User, error)
-	findUserByIDFn     func(context.Context, primitive.ObjectID) (*entities.User, error)
-	setLoginOtpFn      func(context.Context, primitive.ObjectID, string, time.Time) error
-	clearLoginOtpFn    func(context.Context, primitive.ObjectID) error
-	activeAndRevokeFn  func(context.Context, string) error
-	setHashPasswordFn  func(context.Context, primitive.ObjectID, string, time.Time, time.Time) error
+	existsByUsernameFn   func(context.Context, string) (bool, error)
+	existsByEmailFn      func(context.Context, string) (bool, error)
+	createFn             func(context.Context, entities.User) error
+	findUserByEmailFn    func(context.Context, string) (*entities.User, error)
+	findUserByIDFn       func(context.Context, primitive.ObjectID) (*entities.User, error)
+	updateVerificationFn func(context.Context, primitive.ObjectID, string) error
+	setLoginOtpFn        func(context.Context, primitive.ObjectID, string, time.Time) error
+	clearLoginOtpFn      func(context.Context, primitive.ObjectID) error
+	activeAndRevokeFn    func(context.Context, string) error
+	setHashPasswordFn    func(context.Context, primitive.ObjectID, string, time.Time, time.Time) error
 
-	createCalled     bool
-	createdUser      entities.User
-	setLoginCalled   bool
-	setLoginHash     string
-	setLoginExpiry   time.Time
-	clearLoginCalled bool
-	clearLoginUserID primitive.ObjectID
+	createCalled             bool
+	createdUser              entities.User
+	setLoginCalled           bool
+	setLoginHash             string
+	setLoginExpiry           time.Time
+	clearLoginCalled         bool
+	clearLoginUserID         primitive.ObjectID
+	updateVerificationCalled bool
+	updateVerificationToken  string
 }
 
 func (f *fakeUserRepo) Create(ctx context.Context, user entities.User) error {
@@ -62,6 +65,15 @@ func (f *fakeUserRepo) Create(ctx context.Context, user entities.User) error {
 func (f *fakeUserRepo) ActiveAndRevokeToken(ctx context.Context, token string) error {
 	if f.activeAndRevokeFn != nil {
 		return f.activeAndRevokeFn(ctx, token)
+	}
+	return nil
+}
+
+func (f *fakeUserRepo) UpdateVerificationToken(ctx context.Context, userID primitive.ObjectID, token string) error {
+	f.updateVerificationCalled = true
+	f.updateVerificationToken = token
+	if f.updateVerificationFn != nil {
+		return f.updateVerificationFn(ctx, userID, token)
 	}
 	return nil
 }
@@ -272,17 +284,24 @@ func TestUserServiceRegisterSuccess(t *testing.T) {
 func TestUserServiceLoginInactive(t *testing.T) {
 	repo := &fakeUserRepo{
 		findUserByEmailFn: func(ctx context.Context, email string) (*entities.User, error) {
-			return &entities.User{AccountStatus: account.StatusInactive}, nil
+			return &entities.User{
+				ID:            primitive.NewObjectID(),
+				Email:         "user@example.com",
+				AccountStatus: account.StatusInactive,
+			}, nil
 		},
 	}
-	svc := NewUserService(repo, &fakeMailService{})
+	mail := &fakeMailService{}
+	svc := NewUserService(repo, mail)
 
 	err := svc.Login(context.Background(), &dtos.UserLoginDto{
 		Email:    "user@example.com",
 		Password: "StrongPass123!",
 	})
 
-	require.ErrorIs(t, err, ErrUserInactive)
+	require.ErrorIs(t, err, ErrVerificationRequired)
+	require.True(t, repo.updateVerificationCalled, "verification token should be refreshed")
+	require.True(t, mail.verificationCalled, "verification email should be sent")
 }
 
 func TestUserServiceLoginExpiredPassword(t *testing.T) {

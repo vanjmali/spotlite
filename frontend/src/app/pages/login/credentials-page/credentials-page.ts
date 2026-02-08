@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, viewChild } from '@angular/core';
+import { Component, OnInit, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
 import { AuthFormFooter } from '@app/pages/registration-page/components';
 import {
   AuthLayout,
@@ -17,6 +18,7 @@ import { LoginStore } from '../store';
   imports: [
     CommonModule,
     RouterLink,
+    MatIconModule,
     AuthLayout,
     EmailInputComponent,
     PasswordInputComponent,
@@ -38,6 +40,7 @@ export class CredentialsPage implements OnInit {
   public passwordSg = this.store.passwordSg;
   public loadingSg = this.store.loadingSg;
   public readonly title = this.route.snapshot.data?.['authTitle'] ?? 'Welcome back';
+  public verificationNoticeSg = signal(false);
 
   public ngOnInit(): void {
     this.store.clearOtpSession();
@@ -45,6 +48,7 @@ export class CredentialsPage implements OnInit {
 
   public async submit(): Promise<void> {
     this.store.clearError();
+    this.verificationNoticeSg.set(false);
 
     const emailInput = this.emailInputSg();
     const passwordInput = this.passwordInputSg();
@@ -64,6 +68,12 @@ export class CredentialsPage implements OnInit {
     // Validate credentials and send OTP
     const result = await this.store.validateCredentials(email, password);
     if (!result.success) {
+      if (result.code === 'verification_required') {
+        this.store.errorSg.set(null);
+        this.verificationNoticeSg.set(true);
+        return;
+      }
+
       if (result.fields) {
         applyFieldErrors(result.fields, {
           email: (msg) => emailInput.setExternalError(msg),
