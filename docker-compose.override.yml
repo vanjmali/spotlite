@@ -12,9 +12,7 @@ services:
     command: "-js -m 8222"
     ports:
       - "${NATS_MONITOR_PORT?}:8222" # NATS performance monitoring
-      - "${NATS_CLIENT_PORT?}:4222" # client port
-    volumes:
-      - nats-data:/data
+      - "${NATS_CLIENT_PORT?}:4222" # exposed client port for cli testing
 
   nui:
     image: ghcr.io/nats-nui/nui:0.9.1
@@ -228,7 +226,6 @@ services:
 volumes:
   frontend-node-modules:
   keys:
-  nats-data:
 
 networks:
   api-gateway:
