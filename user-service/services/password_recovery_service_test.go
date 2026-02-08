@@ -126,6 +126,14 @@ func (f *fakeUserRepositoryForPasswordRecovery) ActiveAndRevokeToken(ctx context
 	return nil
 }
 
+func (f *fakeUserRepositoryForPasswordRecovery) UpdateVerificationToken(
+	ctx context.Context,
+	userID primitive.ObjectID,
+	token string,
+) error {
+	return nil
+}
+
 func TestPasswordRecoveryServiceRequestPasswordResetUserNotFound(t *testing.T) {
 	userRepo := &fakeUserRepositoryForPasswordRecovery{
 		findUserByEmailFn: func(context.Context, string) (*entities.User, error) {
