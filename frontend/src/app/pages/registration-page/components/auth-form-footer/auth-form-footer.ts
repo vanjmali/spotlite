@@ -14,6 +14,7 @@ export class AuthFormFooter {
   @Input() inProgress = false;
   @Input() stackActions = false;
   @Input() submit = false;
+  @Input() formId?: string;
   @Input() secondaryLabel?: string;
   @Input() secondaryDisabled = false;
   @Input() hintText?: string;

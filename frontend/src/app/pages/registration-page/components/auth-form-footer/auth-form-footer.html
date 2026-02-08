@@ -6,6 +6,7 @@
     <button
       class="btn-primary"
       [attr.type]="submit ? 'submit' : 'button'"
+      [attr.form]="formId || null"
       (click)="action.emit()"
       [disabled]="inProgress"
       [attr.aria-busy]="inProgress ? 'true' : null"
@@ -19,6 +20,7 @@
       <button
         type="button"
         class="btn-secondary"
+        [attr.form]="formId || null"
         (click)="secondaryAction.emit()"
         [disabled]="secondaryDisabled"
         [attr.aria-busy]="secondaryDisabled && inProgress ? 'true' : null"
