@@ -282,12 +282,14 @@ func TestUserServiceRegisterSuccess(t *testing.T) {
 }
 
 func TestUserServiceLoginInactive(t *testing.T) {
+	hashed, _ := auth.HashPassword("StrongPass123!")
 	repo := &fakeUserRepo{
 		findUserByEmailFn: func(ctx context.Context, email string) (*entities.User, error) {
 			return &entities.User{
 				ID:            primitive.NewObjectID(),
 				Email:         "user@example.com",
 				AccountStatus: account.StatusInactive,
+				Password:      hashed,
 			}, nil
 		},
 	}
@@ -302,6 +304,31 @@ func TestUserServiceLoginInactive(t *testing.T) {
 	require.ErrorIs(t, err, ErrVerificationRequired)
 	require.True(t, repo.updateVerificationCalled, "verification token should be refreshed")
 	require.True(t, mail.verificationCalled, "verification email should be sent")
+}
+
+func TestUserServiceLoginInactiveInvalidPassword(t *testing.T) {
+	hashed, _ := auth.HashPassword("CorrectPass123!")
+	repo := &fakeUserRepo{
+		findUserByEmailFn: func(ctx context.Context, email string) (*entities.User, error) {
+			return &entities.User{
+				ID:            primitive.NewObjectID(),
+				Email:         "user@example.com",
+				AccountStatus: account.StatusInactive,
+				Password:      hashed,
+			}, nil
+		},
+	}
+	mail := &fakeMailService{}
+	svc := NewUserService(repo, mail)
+
+	err := svc.Login(context.Background(), &dtos.UserLoginDto{
+		Email:    "user@example.com",
+		Password: "WrongPass123!",
+	})
+
+	require.ErrorIs(t, err, ErrBadCredentials)
+	require.False(t, repo.updateVerificationCalled, "verification token should not be refreshed")
+	require.False(t, mail.verificationCalled, "verification email should not be sent")
 }
 
 func TestUserServiceLoginExpiredPassword(t *testing.T) {

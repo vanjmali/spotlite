@@ -226,6 +226,13 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 	lookupSpan.End()
 
 	_, verifySpan := s.tr.Start(ctx, "user.login.verify_credentials")
+	err = auth.CompareHashAndPassword(user.Password, loginDto.Password)
+	if err != nil {
+		verifySpan.RecordError(err)
+		verifySpan.End()
+		return ErrBadCredentials
+	}
+
 	if user.AccountStatus == account.StatusInactive {
 		verifySpan.End()
 		if err := s.resendVerification(ctx, user); err != nil {
@@ -237,13 +244,6 @@ func (s *UserService) Login(ctx context.Context, loginDto *dtos.UserLoginDto) er
 	if s.c.Now().After(user.PasswordExpiresAt) {
 		verifySpan.End()
 		return ErrExpiredPassword
-	}
-
-	err = auth.CompareHashAndPassword(user.Password, loginDto.Password)
-	if err != nil {
-		verifySpan.RecordError(err)
-		verifySpan.End()
-		return ErrBadCredentials
 	}
 	verifySpan.End()
 
