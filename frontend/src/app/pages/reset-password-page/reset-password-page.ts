@@ -57,6 +57,12 @@ export class ResetPasswordPage implements OnInit {
     this._route.queryParams.subscribe((params) => {
       const token = params['token'];
       if (!token) {
+        this.tokenSg.set(null);
+        this.isValidatingSg.set(false);
+        this.isTokenValidSg.set(false);
+        this.isSuccessSg.set(false);
+        this.isRequestSuccessSg.set(false);
+        this.errorSg.set(null);
         this.isValidatingSg.set(false);
         return;
       }
@@ -115,10 +121,6 @@ export class ResetPasswordPage implements OnInit {
     this._recoveryService.resetPassword(token, password).subscribe({
       next: () => {
         this.isSuccessSg.set(true);
-        // Redirect after 3 seconds
-        setTimeout(() => {
-          this._router.navigate(['/login']);
-        }, 3000);
       },
       error: (err: Error) => {
         this.errorSg.set(err.message);
@@ -153,5 +155,13 @@ export class ResetPasswordPage implements OnInit {
       },
       complete: () => this.isLoadingSg.set(false),
     });
+  }
+
+  public goToRequestReset(): void {
+    this._router.navigate(['/login/reset'], { queryParams: {} });
+  }
+
+  public goToLogin(): void {
+    this._router.navigate(['/login']);
   }
 }
