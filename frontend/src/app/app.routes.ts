@@ -9,6 +9,7 @@ import { OtpPage } from './pages/login/otp-page';
 import { VerifyPage } from './pages/register/verify-page';
 import { InboxPage } from './pages/inbox-page';
 import { LoginStore } from './pages/login/store';
+import { NotFoundPage } from './pages/not-found-page';
 
 export const routes: Routes = [
   {
@@ -118,5 +119,9 @@ export const routes: Routes = [
           ),
       },
     ],
+  },
+  {
+    path: '**',
+    component: NotFoundPage,
   },
 ];

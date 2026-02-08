@@ -3,13 +3,13 @@ import { Component, OnInit, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   AuthLayout,
+  AuthStatusCard,
   EmailInputComponent,
   LoaderComponent,
   MessageComponent,
   PasswordInputComponent,
   VALIDATION_MESSAGES,
 } from '@app/shared';
-import { MatIconModule } from '@angular/material/icon';
 import { PasswordRecoveryService } from '../../services/password-recovery.service';
 import { AuthCheckEmail, AuthFormFooter } from '../registration-page/components';
 
@@ -20,13 +20,13 @@ import { AuthCheckEmail, AuthFormFooter } from '../registration-page/components'
     CommonModule,
     RouterLink,
     AuthLayout,
+    AuthStatusCard,
     PasswordInputComponent,
     MessageComponent,
     LoaderComponent,
     EmailInputComponent,
     AuthCheckEmail,
     AuthFormFooter,
-    MatIconModule,
   ],
   templateUrl: './reset-password-page.html',
   styleUrls: ['./reset-password-page.scss'],

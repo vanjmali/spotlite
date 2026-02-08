@@ -3,21 +3,19 @@
     @if (statusSg() === 'loading') {
       <app-loader title="Verifying your email" message="Please wait a moment." />
     } @else if (statusSg() === 'success') {
-      <div class="verify-page__card">
-        <div class="verify-page__icon verify-page__icon--success">
-          <mat-icon aria-hidden="true">check_circle</mat-icon>
-        </div>
-        <h3 class="verify-page__title">Email verified</h3>
-        <p class="verify-page__text">Your account is now active. You can sign in below.</p>
-      </div>
+      <app-auth-status-card
+        title="Email verified"
+        message="Your account is now active. You can sign in below."
+        icon="check_circle"
+        variant="success"
+      />
     } @else {
-      <div class="verify-page__card">
-        <div class="verify-page__icon verify-page__icon--error">
-          <mat-icon aria-hidden="true">cancel</mat-icon>
-        </div>
-        <h3 class="verify-page__title">Verification failed</h3>
-        <p class="verify-page__text">{{ errorSg() }}</p>
-      </div>
+      <app-auth-status-card
+        title="Verification failed"
+        [message]="errorSg()"
+        icon="cancel"
+        variant="error"
+      />
     }
   </div>
 

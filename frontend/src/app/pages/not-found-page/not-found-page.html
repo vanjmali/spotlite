@@ -1,0 +1,12 @@
+<app-auth-layout title="Page not found" [showStepCount]="false">
+  <div auth-body class="not-found-page__body">
+    <app-auth-status-card
+      title="404 - Page not found"
+      message="The page you were looking for doesn't exist or has been moved."
+      icon="search_off"
+      variant="error"
+    />
+  </div>
+
+  <app-auth-form-footer auth-footer label="Back to home" (action)="goHome()" />
+</app-auth-layout>
