@@ -21,8 +21,7 @@
   <app-auth-form-footer
     auth-footer
     label="Login"
-    loadingLabel="Logging in..."
-    [loading]="loadingSg()"
+    [inProgress]="loadingSg()"
     [stackActions]="true"
     [submit]="true"
     secondaryLabel="Resend Code"

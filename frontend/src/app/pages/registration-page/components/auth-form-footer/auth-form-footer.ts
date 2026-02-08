@@ -11,8 +11,7 @@ import { RouterLink } from '@angular/router';
 })
 export class AuthFormFooter {
   @Input({ required: true }) label!: string;
-  @Input() loadingLabel?: string;
-  @Input() loading = false;
+  @Input() inProgress = false;
   @Input() stackActions = false;
   @Input() submit = false;
   @Input() secondaryLabel?: string;

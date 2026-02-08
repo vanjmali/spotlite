@@ -109,6 +109,11 @@ p {
   cursor: pointer;
   transition: all 200ms ease;
   width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
 
   &:hover:not(:disabled) {
     background-color: $color-primary-dark;
@@ -136,6 +141,11 @@ p {
   cursor: pointer;
   transition: all 200ms ease;
   width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
 
   &:hover:not(:disabled) {
     border-color: $color-text-primary;
@@ -148,6 +158,24 @@ p {
 
   &:disabled {
     opacity: 0.5;
+  }
+}
+
+.btn-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: currentColor;
+  animation: btnSpin 0.8s linear infinite;
+}
+
+@keyframes btnSpin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
   }
 }
 

@@ -7,9 +7,13 @@
       class="btn-primary"
       [attr.type]="submit ? 'submit' : 'button'"
       (click)="action.emit()"
-      [disabled]="loading"
+      [disabled]="inProgress"
+      [attr.aria-busy]="inProgress ? 'true' : null"
     >
-      {{ loading && loadingLabel ? loadingLabel : label }}
+      @if (inProgress) {
+        <span class="btn-spinner" aria-hidden="true"></span>
+      }
+      {{ label }}
     </button>
     @if (secondaryLabel) {
       <button
@@ -17,6 +21,7 @@
         class="btn-secondary"
         (click)="secondaryAction.emit()"
         [disabled]="secondaryDisabled"
+        [attr.aria-busy]="secondaryDisabled && inProgress ? 'true' : null"
       >
         {{ secondaryLabel }}
       </button>
