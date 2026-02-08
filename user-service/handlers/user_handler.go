@@ -16,19 +16,13 @@ import (
 
 // UserHandler wires HTTP handlers to the user service and validators.
 type UserHandler struct {
-	s      *services.UserService
-	v      *validator.Validate
-	rts    *services.RefreshTokenService
-	config UserHandlerConfig
+	s   *services.UserService
+	v   *validator.Validate
+	rts *services.RefreshTokenService
 }
 
-type UserHandlerConfig struct {
-	VerificationSuccessUrl string
-	VerificationFailureUrl string
-}
-
-func NewUserHandler(s services.UserService, v validator.Validate, rts services.RefreshTokenService, c UserHandlerConfig) *UserHandler {
-	h := UserHandler{s: &s, v: &v, rts: &rts, config: c}
+func NewUserHandler(s services.UserService, v validator.Validate, rts services.RefreshTokenService) *UserHandler {
+	h := UserHandler{s: &s, v: &v, rts: &rts}
 	return &h
 }
 
@@ -138,20 +132,20 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 // HandleAccountVerification func, handles user account verification requests and redirects to success/failure pages
 // depending on the result.
 func (h *UserHandler) HandleAccountVerification(w http.ResponseWriter, r *http.Request) {
-	// fetches token query parameter value
-	token := r.URL.Query().Get("token")
-
-	// handle if there is no token sent as query param
-	if token == "" {
-		http.Redirect(w, r, h.config.VerificationFailureUrl, http.StatusSeeOther)
+	var req dtos.VerifyAccountDto
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
+		if err != nil {
+			log.Printf("trace_id=%s failed to process verification request: %v", telemetry.TraceID(r.Context()), err)
+		}
 		return
 	}
 
 	// initialize account verification
-	err := h.s.VerifyAccount(r.Context(), token)
+	err := h.s.VerifyAccount(r.Context(), req.Token)
 	if err != nil {
 		if errors.Is(err, repositories.ErrTokenExpired) {
-			http.Redirect(w, r, h.config.VerificationFailureUrl, http.StatusSeeOther)
+			m := respond.ErrorMessageWithCode("Invalid or expired verification token.", "verification_failed")
+			_ = respond.BadRequest(w, m)
 			return
 		}
 
@@ -161,7 +155,9 @@ func (h *UserHandler) HandleAccountVerification(w http.ResponseWriter, r *http.R
 	}
 
 	// handle account verification success
-	http.Redirect(w, r, h.config.VerificationSuccessUrl, http.StatusSeeOther)
+	if err := respond.Ok(w, "Account verified."); err != nil {
+		log.Printf("trace_id=%s failed to write verify account response: %v", telemetry.TraceID(r.Context()), err)
+	}
 }
 
 // HandleVerifyLoginOtp validates the OTP and issues a JWT token on success.

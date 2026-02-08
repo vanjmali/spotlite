@@ -48,3 +48,8 @@ type ResetPasswordDto struct {
 	Token       string `json:"token" validate:"required"`
 	NewPassword string `json:"new_password" validate:"required,strongpassword"`
 }
+
+// VerifyAccountDto carries the account verification token.
+type VerifyAccountDto struct {
+	Token string `json:"token" validate:"required"`
+}

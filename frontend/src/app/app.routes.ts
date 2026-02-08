@@ -1,17 +1,12 @@
 import { Routes } from '@angular/router';
-import {
-  VerificationSuccessPage,
-  VerificationFailurePage,
-  CheckEmailPage,
-  RegistrationPage,
-  ProfilePage,
-} from './pages';
+import { CheckEmailPage, RegistrationPage, ProfilePage } from './pages';
 
 import { HomePage } from './pages/home-page';
 import { ResetPasswordPage } from './pages/reset-password-page/reset-password-page';
 import { AdminPage } from './pages/admin-page';
 import { CredentialsPage } from './pages/login/credentials-page';
 import { OtpPage } from './pages/login/otp-page';
+import { VerifyPage } from './pages/register/verify-page';
 import { InboxPage } from './pages/inbox-page';
 import { LoginStore } from './pages/login/store';
 
@@ -38,16 +33,13 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'register/verify',
+    component: VerifyPage,
+    data: { authTitle: 'Verify your email' },
+  },
+  {
     path: 'register',
     component: RegistrationPage,
-  },
-  {
-    path: 'verification-success',
-    component: VerificationSuccessPage,
-  },
-  {
-    path: 'verification-failure',
-    component: VerificationFailurePage,
   },
   {
     path: 'check-email',

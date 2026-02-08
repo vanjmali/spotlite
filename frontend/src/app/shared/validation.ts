@@ -149,5 +149,6 @@ export const VALIDATION_MESSAGES = {
   MISSING_EMAIL: 'Missing email',
   PASSWORD_RESET_FAILED: 'Failed to reset password. Please try again.',
   INVALID_RECOVERY_LINK: 'Invalid or expired recovery link',
+  VERIFICATION_FAILED: 'Verification failed. Please try again.',
   RATE_LIMITED: 'Too many requests. Please wait and retry.',
 } as const;

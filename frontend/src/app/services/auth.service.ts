@@ -169,6 +169,27 @@ export class AuthService {
     }
   }
 
+  // Verify account email token
+  async verifyAccount(
+    token: string
+  ): Promise<{ success: boolean; error?: string; code?: string }> {
+    try {
+      await firstValueFrom(
+        this.http.post(`${this.API_BASE}/users/verify`, {
+          token,
+        })
+      );
+      return { success: true };
+    } catch (error: unknown) {
+      const info = getApiErrorInfo(error, VALIDATION_MESSAGES.VERIFICATION_FAILED);
+      return {
+        success: false,
+        error: info.userMessage,
+        code: info.code,
+      };
+    }
+  }
+
   // Logout - clear tokens and signals
   logout(): void {
     void firstValueFrom(
