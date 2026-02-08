@@ -6,6 +6,7 @@ services:
         common-lib: ../common-lib
       dockerfile: ../Dockerfile.microservice
     environment:
+      APP_PORT: 3000
       REDIS_ADDR: user-redis:6379
       DB_HOST: user-mongodb
       DB_PORT: 27017
@@ -28,7 +29,6 @@ services:
       APP_REFRESH_COOKIE_DOMAIN: ${SRV_USER_REFRESH_COOKIE_DOMAIN}
       APP_REFRESH_COOKIE_SECURE: ${SRV_USER_REFRESH_COOKIE_SECURE?}
       APP_REFRESH_COOKIE_SAMESITE: ${SRV_USER_REFRESH_COOKIE_SAMESITE?}
-      APP_PORT: ${APP_HTTP_PORT}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true
