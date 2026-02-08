@@ -9,6 +9,7 @@ import {
   PasswordInputComponent,
   VALIDATION_MESSAGES,
 } from '@app/shared';
+import { MatIconModule } from '@angular/material/icon';
 import { PasswordRecoveryService } from '../../services/password-recovery.service';
 import { AuthCheckEmail, AuthFormFooter } from '../registration-page/components';
 
@@ -25,6 +26,7 @@ import { AuthCheckEmail, AuthFormFooter } from '../registration-page/components'
     EmailInputComponent,
     AuthCheckEmail,
     AuthFormFooter,
+    MatIconModule,
   ],
   templateUrl: './reset-password-page.html',
   styleUrls: ['./reset-password-page.scss'],
