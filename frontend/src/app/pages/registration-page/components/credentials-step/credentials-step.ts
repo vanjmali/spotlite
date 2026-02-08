@@ -9,7 +9,7 @@ import {
   applyFieldErrors,
 } from '@app/shared';
 import { RegistrationStore } from '../../store';
-import { AuthFormFooter } from '../auth-form-footer';
+import { FormFooter } from '@app/shared';
 
 @Component({
   selector: 'app-registration-credentials-step',
@@ -19,7 +19,7 @@ import { AuthFormFooter } from '../auth-form-footer';
     TextInputComponent,
     PasswordInputComponent,
     MessageComponent,
-    AuthFormFooter,
+    FormFooter,
   ],
   templateUrl: './credentials-step.html',
   styleUrls: ['./credentials-step.scss'],

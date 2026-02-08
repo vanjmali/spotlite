@@ -3,15 +3,16 @@ import { Component, OnInit, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
   AuthLayout,
-  AuthStatusCard,
   EmailInputComponent,
+  FormFooter,
   LoaderComponent,
   MessageComponent,
   PasswordInputComponent,
+  StatusCard,
   VALIDATION_MESSAGES,
 } from '@app/shared';
 import { PasswordRecoveryService } from '../../services/password-recovery.service';
-import { AuthCheckEmail, AuthFormFooter } from '../registration-page/components';
+import { AuthCheckEmail } from '../registration-page/components';
 
 @Component({
   selector: 'app-reset-password-page',
@@ -20,13 +21,13 @@ import { AuthCheckEmail, AuthFormFooter } from '../registration-page/components'
     CommonModule,
     RouterLink,
     AuthLayout,
-    AuthStatusCard,
+    StatusCard,
     PasswordInputComponent,
     MessageComponent,
     LoaderComponent,
     EmailInputComponent,
     AuthCheckEmail,
-    AuthFormFooter,
+    FormFooter,
   ],
   templateUrl: './reset-password-page.html',
   styleUrls: ['./reset-password-page.scss'],

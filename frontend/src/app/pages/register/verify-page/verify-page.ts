@@ -1,14 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AuthLayout, AuthStatusCard, LoaderComponent, VALIDATION_MESSAGES } from '@app/shared';
-import { AuthFormFooter } from '@app/pages/registration-page/components';
+import { AuthLayout, FormFooter, LoaderComponent, StatusCard, VALIDATION_MESSAGES } from '@app/shared';
 import { AuthService } from '@app/services/auth.service';
 
 @Component({
   selector: 'app-register-verify-page',
   standalone: true,
-  imports: [CommonModule, AuthLayout, AuthStatusCard, LoaderComponent, AuthFormFooter],
+  imports: [CommonModule, AuthLayout, StatusCard, LoaderComponent, FormFooter],
   templateUrl: './verify-page.html',
   styleUrls: ['./verify-page.scss'],
 })

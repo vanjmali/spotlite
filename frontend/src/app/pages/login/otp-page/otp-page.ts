@@ -2,13 +2,13 @@ import { Component, effect, inject, OnInit, signal, viewChild } from '@angular/c
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthLayout, OtpInputComponent, MessageComponent, OTP_PATTERN } from '@app/shared';
-import { AuthFormFooter } from '@app/pages/registration-page/components';
+import { FormFooter } from '@app/shared';
 import { LoginStore } from '../store';
 
 @Component({
   selector: 'app-login-otp-page',
   standalone: true,
-  imports: [CommonModule, AuthLayout, OtpInputComponent, MessageComponent, AuthFormFooter],
+  imports: [CommonModule, AuthLayout, OtpInputComponent, MessageComponent, FormFooter],
   templateUrl: './otp-page.html',
   styleUrls: ['./otp-page.scss'],
 })

@@ -3,13 +3,13 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 @Component({
-  selector: 'app-auth-form-footer',
+  selector: 'app-form-footer',
   standalone: true,
   imports: [CommonModule, RouterLink],
-  templateUrl: './auth-form-footer.html',
-  styleUrls: ['./auth-form-footer.scss'],
+  templateUrl: './form-footer.html',
+  styleUrls: ['./form-footer.scss'],
 })
-export class AuthFormFooter {
+export class FormFooter {
   @Input({ required: true }) label!: string;
   @Input() inProgress = false;
   @Input() stackActions = false;

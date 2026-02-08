@@ -1,9 +1,0 @@
-@let variant = variantSg();
-
-<div class="auth-status-card">
-  <div class="auth-status-card__icon" [class.auth-status-card__icon--success]="variant === 'success'" [class.auth-status-card__icon--error]="variant === 'error'">
-    <mat-icon aria-hidden="true">{{ iconSg() }}</mat-icon>
-  </div>
-  <h3 class="auth-status-card__title">{{ titleSg() }}</h3>
-  <p class="auth-status-card__text">{{ messageSg() }}</p>
-</div>

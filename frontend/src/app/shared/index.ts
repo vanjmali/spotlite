@@ -13,7 +13,7 @@ export { PageComponent } from './components/page';
 export { DialogComponent } from './components/dialog';
 export { BrandLogo } from './components/brand-logo';
 export { AuthLayout } from './components/auth-layout';
-export { AuthStatusCard } from './components/auth-status-card';
+export { StatusCard, FormFooter } from './components/ui';
 export { MessageType } from './enums';
 
 export {

@@ -3,14 +3,14 @@
     @if (statusSg() === 'loading') {
       <app-loader title="Verifying your email" message="Please wait a moment." />
     } @else if (statusSg() === 'success') {
-      <app-auth-status-card
+      <app-status-card
         title="Email verified"
         message="Your account is now active. You can sign in below."
         icon="check_circle"
         variant="success"
       />
     } @else {
-      <app-auth-status-card
+      <app-status-card
         title="Verification failed"
         [message]="errorSg()"
         icon="cancel"
@@ -20,8 +20,8 @@
   </div>
 
   @if (statusSg() === 'success') {
-    <app-auth-form-footer auth-footer label="Go to login" (action)="goToLogin()" />
+    <app-form-footer auth-footer label="Go to login" (action)="goToLogin()" />
   } @else if (statusSg() === 'error') {
-    <app-auth-form-footer auth-footer label="Back to register" (action)="goToRegister()" />
+    <app-form-footer auth-footer label="Back to register" (action)="goToRegister()" />
   }
 </app-auth-layout>

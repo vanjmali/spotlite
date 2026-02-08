@@ -1,7 +1,7 @@
-<div class="auth-form-footer">
+<div class="form-footer">
   <div
-    class="auth-form-footer__actions"
-    [class.auth-form-footer__actions--stack]="stackActions"
+    class="form-footer__actions"
+    [class.form-footer__actions--stack]="stackActions"
   >
     <button
       class="btn-primary"
@@ -31,8 +31,8 @@
   </div>
 
   @if (hintText && hintLinkText && hintLinkUrl) {
-    <div class="auth-form-footer__login">
-      <div class="auth-form-footer__login-text">{{ hintText }}</div>
+    <div class="form-footer__login">
+      <div class="form-footer__login-text">{{ hintText }}</div>
       <a [routerLink]="hintLinkUrl" class="link-primary">{{ hintLinkText }}</a>
     </div>
   }

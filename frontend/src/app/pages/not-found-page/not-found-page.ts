@@ -1,13 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { AuthLayout, AuthStatusCard } from '@app/shared';
-import { AuthFormFooter } from '@app/pages/registration-page/components';
+import { AuthLayout, FormFooter, StatusCard } from '@app/shared';
 
 @Component({
   selector: 'app-not-found-page',
   standalone: true,
-  imports: [CommonModule, AuthLayout, AuthStatusCard, AuthFormFooter],
+  imports: [CommonModule, AuthLayout, StatusCard, FormFooter],
   templateUrl: './not-found-page.html',
   styleUrls: ['./not-found-page.scss'],
 })

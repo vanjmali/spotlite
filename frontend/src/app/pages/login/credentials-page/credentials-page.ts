@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { AuthFormFooter } from '@app/pages/registration-page/components';
+import { FormFooter } from '@app/shared';
 import {
   AuthLayout,
   EmailInputComponent,
@@ -23,7 +23,7 @@ import { LoginStore } from '../store';
     EmailInputComponent,
     PasswordInputComponent,
     MessageComponent,
-    AuthFormFooter,
+    FormFooter,
   ],
   templateUrl: './credentials-page.html',
   styleUrls: ['./credentials-page.scss'],

@@ -4,7 +4,7 @@
   width: 100%;
 }
 
-.auth-status-card {
+.status-card {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -16,7 +16,7 @@
   background: $color-gray-800;
 }
 
-.auth-status-card__icon {
+.status-card__icon {
   width: 46px;
   height: 46px;
   border-radius: 999px;
@@ -28,21 +28,21 @@
   color: $color-text-secondary;
 }
 
-.auth-status-card__icon--success {
+.status-card__icon--success {
   color: $color-primary;
 }
 
-.auth-status-card__icon--error {
+.status-card__icon--error {
   color: $color-danger;
 }
 
-.auth-status-card__title {
+.status-card__title {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
 }
 
-.auth-status-card__text {
+.status-card__text {
   margin: 0;
   color: $color-text-secondary;
   line-height: 1.5;
