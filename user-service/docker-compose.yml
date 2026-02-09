@@ -63,11 +63,12 @@ services:
       test:
         [
           "CMD-SHELL",
-          'mongosh --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval ''db.adminCommand("ping")''',
+          'mongosh --norc --quiet --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval ''db.runCommand({ ping: 1 })''',
         ]
-      interval: 3s
+      interval: 30s
       timeout: 5s
       retries: 5
+      start_period: 20s
     volumes:
       - user-mongo-data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
