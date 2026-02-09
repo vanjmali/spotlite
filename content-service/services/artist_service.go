@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"log"
+	"time"
 
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/content/dtos"
@@ -26,13 +28,14 @@ var (
 type ArtistService struct {
 	r            *repositories.ArtistRepository
 	genreService *GenreService
+	jsc          *events.JetStreamClient
 	tr           trace.Tracer
 }
 
 // NewArtistService builds a ArtistService with repository.
-func NewArtistService(r repositories.ArtistRepository, genreService GenreService) *ArtistService {
+func NewArtistService(r repositories.ArtistRepository, genreService GenreService, jsc events.JetStreamClient) *ArtistService {
 	tr := otel.Tracer("content-service/artist-service")
-	s := ArtistService{r: &r, genreService: &genreService, tr: tr}
+	s := ArtistService{r: &r, genreService: &genreService, tr: tr, jsc: &jsc}
 	return &s
 }
 
@@ -44,6 +47,7 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 	resolveGenreCtx, resolveGenreSpan := s.tr.Start(ctx, "artist.create.resolve_genres")
 
 	embeddedGenre := make([]entities.Genre, 0)
+	genreIDs := []string{}
 
 	for _, genresIdStr := range reqDto.GenreIds {
 		genre, err := s.genreService.FindGenreByID(resolveGenreCtx, genresIdStr)
@@ -65,6 +69,8 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 			ID:   genre.ID,
 			Name: genre.Name,
 		})
+
+		genreIDs = append(genreIDs, genre.ID.Hex())
 	}
 
 	resolveGenreSpan.End()
@@ -88,6 +94,10 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 		log.Printf("trace_id=%s error creating artist in database: %v", telemetry.TraceID(ctx), err)
 		return err
 	}
+
+	aep := toArtistEventPayload(genreIDs, artistEntity.ID.Hex(), artistEntity.Name)
+
+	s.jsc.Publish(ctx, events.SUBJECT_ARTIST_CREATED, aep)
 
 	createSpan.End()
 
@@ -285,4 +295,13 @@ func (s *ArtistService) Exists(ctx context.Context, artistIDstr string) (bool, e
 	}
 
 	return exists, nil
+}
+
+func toArtistEventPayload(genreIDs []string, artistID string, artistName string) *events.ArtistEventPayload {
+	return &events.ArtistEventPayload{
+		GenreIds:   genreIDs,
+		ArtistID:   artistID,
+		ArtistName: artistName,
+		CreatedAt:  time.Now(),
+	}
 }

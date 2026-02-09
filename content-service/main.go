@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	pb "github.com/vanjmali/spotlite/common-lib/proto/content_service"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/server"
@@ -41,7 +42,7 @@ var config = server.ServerRunConfiguration{
 		return nil
 	},
 	CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
-		dbc, err := createClients()
+		dbc, jsc, err := createClients()
 		if err != nil {
 			err = fmt.Errorf("failed to create clients: %w", err)
 			return h, shutdown, err
@@ -55,8 +56,11 @@ var config = server.ServerRunConfiguration{
 			_ = dbc.Disconnect(ctx)
 		}()
 
+		// make sure stream is already initialized
+		jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ALBUM_CREATED, events.SUBJECT_ARTIST_CREATED})
+
 		ar, sr, alr, gr := createRepositories(dbc)
-		gs, as, ss, als, glss := createServices(ar, sr, alr, gr)
+		gs, as, ss, als, glss := createServices(ar, sr, alr, gr, jsc)
 		h = createHandlers(v, as, ss, als, gs, glss)
 
 		// configures grpc server
@@ -84,6 +88,9 @@ var config = server.ServerRunConfiguration{
 			if err := dbc.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
 				return fmt.Errorf("failed to disconnect mongo client: %w", err)
 			}
+
+			jsc.Close()
+
 			return nil
 		}
 
@@ -97,13 +104,18 @@ func main() {
 	}
 }
 
-func createClients() (*mongodriver.Client, error) {
+func createClients() (*mongodriver.Client, *events.JetStreamClient, error) {
 	dbc, err := mongo.InitMongoClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
+		return nil, nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
 	}
 
-	return dbc, nil
+	jsc, err := events.NewClient("nats://nats:4222")
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to initialized NATS jets teram client: %w", err)
+	}
+
+	return dbc, jsc, nil
 }
 
 func createRepositories(dbc *mongodriver.Client) (
@@ -126,6 +138,8 @@ func createServices(
 	sr *repositories.SongRepository,
 	alr *repositories.AlbumRepository,
 	gr *repositories.GenreRepository,
+	jsc *events.JetStreamClient,
+
 ) (
 	*services.GenreService,
 	*services.ArtistService,
@@ -134,9 +148,9 @@ func createServices(
 	*services.GlobalSearchService,
 ) {
 	gs := services.NewGenreService(*gr)
-	as := services.NewArtistService(*ar, *gs)
+	as := services.NewArtistService(*ar, *gs, *jsc)
 	ss := services.NewSongService(*sr, *as, *gs)
-	als := services.NewAlbumService(*alr, *as, *ss, *gs)
+	als := services.NewAlbumService(*alr, *as, *ss, *gs, *jsc)
 	glss := services.NewGlobalSearchService(gs, ss, als, as)
 
 	return gs, as, ss, als, glss

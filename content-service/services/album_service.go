@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/content/dtos"
@@ -25,13 +26,14 @@ type AlbumService struct {
 	artistService *ArtistService
 	songService   *SongService
 	genreService  *GenreService
+	jsc           *events.JetStreamClient
 	tr            trace.Tracer
 }
 
 // NewAlbumService creates and returns a new AlbumService with the provided repository and dependent services.
-func NewAlbumService(r repositories.AlbumRepository, artistService ArtistService, songService SongService, genreService GenreService) *AlbumService {
+func NewAlbumService(r repositories.AlbumRepository, artistService ArtistService, songService SongService, genreService GenreService, jsc events.JetStreamClient) *AlbumService {
 	tr := otel.Tracer("content-service/album-service")
-	s := AlbumService{albumRepo: &r, artistService: &artistService, songService: &songService, genreService: &genreService, tr: tr}
+	s := AlbumService{albumRepo: &r, artistService: &artistService, songService: &songService, genreService: &genreService, jsc: &jsc, tr: tr}
 
 	return &s
 }

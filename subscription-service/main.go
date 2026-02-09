@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
+	"github.com/vanjmali/spotlite/subscription-service/consumers"
 	"github.com/vanjmali/spotlite/subscription-service/handlers"
 	adapters "github.com/vanjmali/spotlite/subscription-service/infrastructure/grpc"
 	"github.com/vanjmali/spotlite/subscription-service/infrastructure/mongo"
@@ -43,7 +45,7 @@ var config = server.ServerRunConfiguration{
 		return nil
 	},
 	CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
-		dbc, gc, err := createClients()
+		dbc, gc, jsc, err := createClients()
 		if err != nil {
 			err = fmt.Errorf("failed to create clients: %w", err)
 			return h, shutdown, err
@@ -63,10 +65,15 @@ var config = server.ServerRunConfiguration{
 			return nil, nil, err
 		}
 
+		jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ALBUM_CREATED, events.SUBJECT_ARTIST_CREATED})
+
 		gcc := createAdapters(gc)
 		sr := createRepositories(dbc)
 		ss := createServices(sr, gcc)
 		h = createHandlers(v, ss)
+		c := createConsumers(ss)
+
+		go jsc.StartConsumer(ctx, events.CONTENT_STREAM, events.SUBJECT_ARTIST_CREATED, events.ARTIST_DURABLE, c.HandleArtistCreated)
 
 		shutdown = func() error {
 			if err := dbc.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
@@ -76,6 +83,9 @@ var config = server.ServerRunConfiguration{
 			if err := gc.Close(); err != nil {
 				return fmt.Errorf("failed to close grpc connection: %w", err)
 			}
+
+			jsc.Close()
+
 			return nil
 		}
 
@@ -89,10 +99,10 @@ func main() {
 	}
 }
 
-func createClients() (*mongodriver.Client, *grpc.ClientConn, error) {
+func createClients() (*mongodriver.Client, *grpc.ClientConn, *events.JetStreamClient, error) {
 	dbc, err := mongo.InitMongoClient()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialize subscription service MongoDB client: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to initialize subscription service MongoDB client: %w", err)
 	}
 
 	grpcTarget := utils.MustGetEnv("CONTENT_GRPC_ADDRESS")
@@ -102,9 +112,16 @@ func createClients() (*mongodriver.Client, *grpc.ClientConn, error) {
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to establish a RPC connection with the content-service: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to establish a RPC connection with the content-service: %w", err)
 	}
-	return dbc, gc, nil
+
+	jsc, err := events.NewClient("nats://nats:4222")
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to initialized NATS jets teram client: %w", err)
+
+	}
+
+	return dbc, gc, jsc, nil
 }
 
 func initializeSubscriptionIndexes(ctx context.Context, c *mongodriver.Client) error {
@@ -164,8 +181,14 @@ func createServices(
 func createHandlers(
 	v *validator.Validate,
 	ss *services.SubscriptionService,
+
 ) http.Handler {
 	sh := handlers.NewSubscriptionHandler(*ss, *v)
 
 	return routers.HandleRequests(sh)
+}
+
+func createConsumers(ss *services.SubscriptionService) *consumers.NatsConsumer {
+	sc := consumers.NewConsumer(ss)
+	return sc
 }
