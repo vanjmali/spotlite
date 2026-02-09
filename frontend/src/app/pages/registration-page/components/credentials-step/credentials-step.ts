@@ -14,13 +14,7 @@ import { FormFooter } from '@app/shared';
 @Component({
   selector: 'app-registration-credentials-step',
   standalone: true,
-  imports: [
-    CommonModule,
-    TextInputComponent,
-    PasswordInputComponent,
-    MessageComponent,
-    FormFooter,
-  ],
+  imports: [CommonModule, TextInputComponent, PasswordInputComponent, MessageComponent, FormFooter],
   templateUrl: './credentials-step.html',
   styleUrls: ['./credentials-step.scss'],
 })
@@ -86,5 +80,4 @@ export class RegistrationCredentialsStep {
       this.store.errorSg.set(result.error || VALIDATION_MESSAGES.REGISTRATION_FAILED);
     }
   }
-
 }

@@ -53,7 +53,6 @@ export class ResetPasswordPage implements OnInit {
   public errorSg = signal<string | null>(null);
   public readonly title = this._route.snapshot.data?.['authTitle'] ?? 'Reset your password';
 
-
   ngOnInit(): void {
     this._route.queryParams.subscribe((params) => {
       const token = params['token'];

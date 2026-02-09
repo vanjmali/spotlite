@@ -170,9 +170,7 @@ export class AuthService {
   }
 
   // Verify account email token
-  async verifyAccount(
-    token: string
-  ): Promise<{ success: boolean; error?: string; code?: string }> {
+  async verifyAccount(token: string): Promise<{ success: boolean; error?: string; code?: string }> {
     try {
       await firstValueFrom(
         this.http.post(`${this.API_BASE}/users/verify`, {

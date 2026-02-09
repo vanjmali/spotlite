@@ -2,11 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
 import { animate, style, transition, trigger } from '@angular/animations';
 import { AuthLayout } from '@app/shared';
-import {
-  PersonalInfoStep,
-  RegistrationCredentialsStep,
-  AuthCheckEmail,
-} from './components';
+import { PersonalInfoStep, RegistrationCredentialsStep, AuthCheckEmail } from './components';
 import { RegistrationStore } from './store';
 
 export type RegistrationStep = 'personal' | 'credentials' | 'verify';
@@ -57,9 +53,7 @@ export class RegistrationPage {
     verify: 'Almost there!',
   };
 
-  public readonly stepIndexSg = computed(
-    () => this.stepOrder.indexOf(this.step()) + 1
-  );
+  public readonly stepIndexSg = computed(() => this.stepOrder.indexOf(this.step()) + 1);
   public readonly stepTitleSg = computed(() => this.stepTitles[this.step()]);
   public readonly canGoBackSg = computed(
     () => this.stepOrder.indexOf(this.step()) > 0 && this.step() !== 'verify'

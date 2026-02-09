@@ -1,7 +1,11 @@
 @let variant = variantSg();
 
 <div class="status-card">
-  <div class="status-card__icon" [class.status-card__icon--success]="variant === 'success'" [class.status-card__icon--error]="variant === 'error'">
+  <div
+    class="status-card__icon"
+    [class.status-card__icon--success]="variant === 'success'"
+    [class.status-card__icon--error]="variant === 'error'"
+  >
     <mat-icon aria-hidden="true">{{ iconSg() }}</mat-icon>
   </div>
   <h3 class="status-card__title">{{ titleSg() }}</h3>

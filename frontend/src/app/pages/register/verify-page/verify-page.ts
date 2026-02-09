@@ -1,7 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { AuthLayout, FormFooter, LoaderComponent, StatusCard, VALIDATION_MESSAGES } from '@app/shared';
+import {
+  AuthLayout,
+  FormFooter,
+  LoaderComponent,
+  StatusCard,
+  VALIDATION_MESSAGES,
+} from '@app/shared';
 import { AuthService } from '@app/services/auth.service';
 
 @Component({

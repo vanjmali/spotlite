@@ -35,10 +35,7 @@ export type ApiErrorInfo = {
   userMessage: string | undefined;
 };
 
-export const getApiErrorInfo = (
-  error: unknown,
-  fallbackMessage?: string
-): ApiErrorInfo => {
+export const getApiErrorInfo = (error: unknown, fallbackMessage?: string): ApiErrorInfo => {
   if (!error || typeof error !== 'object') {
     return {
       status: undefined,

@@ -14,13 +14,7 @@ import { FormFooter } from '@app/shared';
 @Component({
   selector: 'app-registration-personal-info-step',
   standalone: true,
-  imports: [
-    CommonModule,
-    TextInputComponent,
-    EmailInputComponent,
-    MessageComponent,
-    FormFooter,
-  ],
+  imports: [CommonModule, TextInputComponent, EmailInputComponent, MessageComponent, FormFooter],
   templateUrl: './personal-info-step.html',
   styleUrls: ['./personal-info-step.scss'],
 })
