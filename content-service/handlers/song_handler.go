@@ -355,7 +355,7 @@ func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.R
 	if err := r.ParseMultipartForm(100 << 20); err != nil {
 		var maxErr *http.MaxBytesError
 		if errors.As(err, &maxErr) {
-			_ = respond.PayloadTooLarge(w, "payload too large (max 110MB)")
+			_ = respond.PayloadTooLarge(w, "payload too large (max 100MB)")
 			return
 		}
 		_ = respond.BadRequest(w, "invalid multipart form")
