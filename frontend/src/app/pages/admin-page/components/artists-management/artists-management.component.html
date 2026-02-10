@@ -1,4 +1,10 @@
-<app-widget title="Manage Artists">
+<app-item-table
+  title="Manage Artists"
+  [isLoading]="isLoadingSg()"
+  [isEmpty]="!isLoadingSg() && artistsSg().length === 0"
+  emptyMessage="No artists found. Create one to get started!"
+  [showPagination]="!isLoadingSg() && totalSg() > 0"
+>
   <button
     actions
     class="artists-management__btn-add-circle"
@@ -10,71 +16,69 @@
     <mat-icon>add</mat-icon>
   </button>
 
-  <div content class="artists-management">
-    <!-- Loading State -->
-    @if (isLoadingSg()) {
-      <div class="artists-management__loading">
-        <p>Loading artists...</p>
-      </div>
-    }
-
-    <!-- Empty State -->
-    @if (!isLoadingSg() && artistsSg().length === 0) {
-      <div class="artists-management__empty">
-        <p>No artists found. Create one to get started!</p>
-      </div>
-    }
-
-    <!-- Artists Table -->
-    @if (!isLoadingSg() && artistsSg().length > 0) {
-      <div class="artists-management__table-wrapper">
-        <table class="artists-management__table">
-          <thead class="artists-management__table-head">
-            <tr>
-              <th class="artists-management__col-name">Name</th>
-              <th class="artists-management__col-genres">Genres</th>
-              <th class="artists-management__col-description">Description</th>
-              <th class="artists-management__col-actions">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="artists-management__table-body">
-            @for (artist of artistsSg(); track artist.id) {
-              <tr class="artists-management__row">
-                <td class="artists-management__cell artists-management__cell--name">
-                  {{ artist.name }}
-                </td>
-                <td class="artists-management__cell artists-management__cell--genres">
-                  <div class="artists-management__genre-list">
-                    @for (genre of artist.genres; track genre.id) {
-                      <span class="artists-management__genre-tag">
-                        {{ genre.name }}
-                      </span>
-                    }
-                  </div>
-                </td>
-                <td class="artists-management__cell artists-management__cell--description">
-                  <span class="artists-management__description-text">
-                    {{ artist.description }}
+  <div table class="item-table__table-wrapper">
+    <table class="item-table__table artists-management__table">
+      <thead class="item-table__table-head">
+        <tr>
+          <th class="artists-management__col-name">Name</th>
+          <th class="artists-management__col-genres">Genres</th>
+          <th class="artists-management__col-description">Description</th>
+          <th class="artists-management__col-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="item-table__table-body">
+        @for (artist of artistsSg(); track artist.id) {
+          <tr class="item-table__row" (click)="onEdit(artist)">
+            <td class="item-table__cell item-table__cell--title">
+              <button
+                class="item-table__title-link"
+                type="button"
+                (click)="$event.stopPropagation()"
+                title="Edit artist"
+                matTooltip="Edit artist"
+              >
+                {{ artist.name }}
+              </button>
+            </td>
+            <td class="item-table__cell artists-management__cell--genres">
+              <div class="artists-management__genre-list">
+                @for (genre of artist.genres; track genre.id) {
+                  <span class="artists-management__genre-tag">
+                    {{ genre.name }}
                   </span>
-                </td>
-                <td class="artists-management__cell artists-management__cell--actions">
-                  <button
-                    class="artists-management__btn-action artists-management__btn-edit"
-                    (click)="onEdit(artist)"
-                    title="Edit artist"
-                    matTooltip="Edit"
-                  >
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
+                }
+              </div>
+            </td>
+            <td class="item-table__cell artists-management__cell--description">
+              <span class="artists-management__description-text">
+                {{ artist.description }}
+              </span>
+            </td>
+            <td class="item-table__cell artists-management__cell--actions">
+              <button
+                class="item-table__btn-action item-table__btn-edit"
+                (click)="$event.stopPropagation(); onEdit(artist)"
+                title="Edit artist"
+                matTooltip="Edit"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
   </div>
-</app-widget>
+
+  <app-pagination
+    pagination
+    [page]="currentPageSg()"
+    [pageSize]="pageSizeSg()"
+    [total]="totalSg()"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPageSizeChange($event)"
+  />
+</app-item-table>
 
 <!-- Artist Editor Dialog -->
 <app-artist-editor-dialog

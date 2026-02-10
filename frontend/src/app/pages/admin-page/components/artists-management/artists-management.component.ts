@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { WidgetComponent } from '@app/shared/components/widget';
+import { ItemTableComponent } from '@app/shared/components/item-table';
+import { PaginationComponent } from '@app/shared/components/pagination';
 import { ArtistEditorDialogComponent } from '@app/dialogs/artist-editor-dialog';
 import { ArtistService, Artist } from '@app/services/artist.service';
 
@@ -15,7 +16,8 @@ import { ArtistService, Artist } from '@app/services/artist.service';
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
-    WidgetComponent,
+    ItemTableComponent,
+    PaginationComponent,
     ArtistEditorDialogComponent,
   ],
   templateUrl: './artists-management.component.html',
@@ -29,6 +31,7 @@ export class ArtistsManagementComponent {
   // readonly isDeleteLoadingSg = signal<string | null>(null); // Delete disabled for now
   readonly currentPageSg = signal(1);
   readonly pageSizeSg = signal(10);
+  readonly totalSg = signal(0);
   readonly isDialogOpenSg = signal(false);
   readonly selectedArtistSg = signal<Artist | null>(null);
 
@@ -43,6 +46,7 @@ export class ArtistsManagementComponent {
     this.artistService.getArtists(this.currentPageSg(), this.pageSizeSg()).subscribe({
       next: (response) => {
         this.artistsSg.set(response.items || []);
+        this.totalSg.set(response.total ?? 0);
         this.isLoadingSg.set(false);
       },
       error: (error) => {
@@ -66,5 +70,14 @@ export class ArtistsManagementComponent {
     this.isDialogOpenSg.set(false);
     this.selectedArtistSg.set(null);
     this.loadArtists();
+  }
+
+  onPageChange(page: number): void {
+    this.currentPageSg.set(page);
+  }
+
+  onPageSizeChange(size: number): void {
+    this.pageSizeSg.set(size);
+    this.currentPageSg.set(1);
   }
 }

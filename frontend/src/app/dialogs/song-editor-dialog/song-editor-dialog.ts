@@ -8,7 +8,7 @@ import {
   SelectInputComponent,
   type SelectOption,
 } from '@app/shared/components/input';
-import { SongService, Song, CreateSongDto } from '@app/services/song.service';
+import { SongService, Song, CreateSongDto, UpdateSongDto } from '@app/services/song.service';
 import { ArtistService } from '@app/services/artist.service';
 import { GenreService } from '@app/services/genre.service';
 
@@ -45,21 +45,24 @@ export class SongEditorDialogComponent {
   readonly genreOptionsSg = signal<SelectOption[]>([]);
 
   // Computed
-  readonly dialogTitle = computed(() => 'Create Song');
-  readonly submitButtonText = computed(() => 'Create');
+  readonly isEditMode = computed(() => !!this.song());
+  readonly dialogTitle = computed(() => (this.isEditMode() ? 'Edit Song' : 'Create Song'));
+  readonly submitButtonText = computed(() => (this.isEditMode() ? 'Save' : 'Create'));
   readonly isLoadingSg = signal(false);
   readonly isFormValid = computed(() => {
     const title = this.titleSg().trim();
     const duration = this.durationSg().trim();
     const artists = this.selectedArtistIdsSg();
     const genreIds = this.genreIdsSg();
+    const durationValue = parseInt(duration);
 
     return (
-      title.length > 0 &&
+      title.length >= 2 &&
       duration.length > 0 &&
       genreIds.length > 0 &&
       artists.length > 0 &&
-      !isNaN(parseInt(duration))
+      !isNaN(durationValue) &&
+      durationValue > 0
     );
   });
 
@@ -124,14 +127,31 @@ export class SongEditorDialogComponent {
 
   onSave(): void {
     this.isLoadingSg.set(true);
-    const songDto: CreateSongDto = {
-      title: this.titleSg(),
+    const basePayload = {
+      title: this.titleSg().trim(),
       genre_ids: this.genreIdsSg(),
       length_seconds: parseInt(this.durationSg()),
       artist_ids: this.selectedArtistIdsSg(),
     };
 
-    this.songService.createSong(songDto).subscribe({
+    if (this.isEditMode()) {
+      const updateDto: UpdateSongDto = basePayload;
+      this.songService.updateSong(this.song()!.id, updateDto).subscribe({
+        next: () => {
+          this.isLoadingSg.set(false);
+          this.saved.emit();
+          this.cancel();
+        },
+        error: (error) => {
+          console.error('Failed to update song:', error);
+          this.isLoadingSg.set(false);
+        },
+      });
+      return;
+    }
+
+    const createDto: CreateSongDto = basePayload;
+    this.songService.createSong(createDto).subscribe({
       next: () => {
         this.isLoadingSg.set(false);
         this.saved.emit();

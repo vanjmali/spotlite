@@ -1,4 +1,10 @@
-<app-widget title="Manage Songs">
+<app-item-table
+  title="Manage Songs"
+  [isLoading]="isLoadingSg()"
+  [isEmpty]="!isLoadingSg() && songsSg().length === 0"
+  emptyMessage="No songs found. Create one to get started!"
+  [showPagination]="!isLoadingSg() && totalSg() > 0"
+>
   <button
     actions
     class="songs-management__btn-add-circle"
@@ -10,66 +16,75 @@
     <mat-icon>add</mat-icon>
   </button>
 
-  <div content class="songs-management">
-    <!-- Loading State -->
-    @if (isLoadingSg()) {
-      <div class="songs-management__loading">
-        <p>Loading songs...</p>
-      </div>
-    }
-
-    <!-- Empty State -->
-    @if (!isLoadingSg() && songsSg().length === 0) {
-      <div class="songs-management__empty">
-        <p>No songs found. Create one to get started!</p>
-      </div>
-    }
-
-    <!-- Songs Table -->
-    @if (!isLoadingSg() && songsSg().length > 0) {
-      <div class="songs-management__table-wrapper">
-        <table class="songs-management__table">
-          <thead class="songs-management__table-head">
-            <tr>
-              <th class="songs-management__col-title">Title</th>
-              <th class="songs-management__col-genre">Genre</th>
-              <th class="songs-management__col-duration">Duration</th>
-              <th class="songs-management__col-artists">Artists</th>
-            </tr>
-          </thead>
-          <tbody class="songs-management__table-body">
-            @for (song of songsSg(); track song.id) {
-              <tr class="songs-management__row">
-                <td class="songs-management__cell songs-management__cell--title">
-                  {{ song.title }}
-                </td>
-                <td class="songs-management__cell songs-management__cell--genre">
-                  <div class="songs-management__genre-list">
-                    @for (genre of song.genres; track genre.id) {
-                      <span class="songs-management__genre-tag">{{ genre.name }}</span>
-                    }
-                  </div>
-                </td>
-                <td class="songs-management__cell songs-management__cell--duration">
-                  {{ formatDuration(song.lengthSeconds) }}
-                </td>
-                <td class="songs-management__cell songs-management__cell--artists">
-                  <div class="songs-management__artist-list">
-                    @for (artist of song.artists; track artist.id) {
-                      <span class="songs-management__artist-tag">
-                        {{ artist.name }}
-                      </span>
-                    }
-                  </div>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
+  <div table class="item-table__table-wrapper">
+    <table class="item-table__table songs-management__table">
+      <thead class="item-table__table-head">
+        <tr>
+          <th class="songs-management__col-title">Title</th>
+          <th class="songs-management__col-genre">Genre</th>
+          <th class="songs-management__col-duration">Duration</th>
+          <th class="songs-management__col-artists">Artists</th>
+          <th class="songs-management__col-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="item-table__table-body">
+        @for (song of songsSg(); track song.id) {
+          <tr class="item-table__row" (click)="onEdit(song)">
+            <td class="item-table__cell item-table__cell--title">
+              <button
+                class="item-table__title-link"
+                type="button"
+                (click)="$event.stopPropagation()"
+                title="Edit song"
+                matTooltip="Edit song"
+              >
+                {{ song.title }}
+              </button>
+            </td>
+            <td class="item-table__cell songs-management__cell--genre">
+              <div class="songs-management__genre-list">
+                @for (genre of song.genres; track genre.id) {
+                  <span class="songs-management__genre-tag">{{ genre.name }}</span>
+                }
+              </div>
+            </td>
+            <td class="item-table__cell songs-management__cell--duration">
+              {{ formatDuration(song.lengthSeconds) }}
+            </td>
+            <td class="item-table__cell songs-management__cell--artists">
+              <div class="songs-management__artist-list">
+                @for (artist of song.artists; track artist.id) {
+                  <span class="songs-management__artist-tag">
+                    {{ artist.name }}
+                  </span>
+                }
+              </div>
+            </td>
+            <td class="item-table__cell songs-management__cell--actions">
+              <button
+                class="item-table__btn-action item-table__btn-edit"
+                (click)="$event.stopPropagation(); onEdit(song)"
+                title="Edit song"
+                matTooltip="Edit"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
   </div>
-</app-widget>
+
+  <app-pagination
+    pagination
+    [page]="currentPageSg()"
+    [pageSize]="pageSizeSg()"
+    [total]="totalSg()"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPageSizeChange($event)"
+  />
+</app-item-table>
 
 <!-- Song Editor Dialog -->
 <app-song-editor-dialog

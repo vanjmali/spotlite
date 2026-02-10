@@ -132,16 +132,13 @@
   }
 
   &__dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    margin-top: 4px;
+    position: fixed;
+    margin-top: 0;
     background-color: $color-form-input-bg;
     border: 1px solid $color-form-input-border;
     border-radius: 4px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 1000;
+    z-index: 3001;
     max-height: 300px;
     display: flex;
     flex-direction: column;
@@ -214,7 +211,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 999;
+    z-index: 3000;
     display: none;
 
     &--visible {

@@ -1,4 +1,4 @@
-import { Component, input, model, signal, effect } from '@angular/core';
+import { Component, input, model, signal, effect, ElementRef, ViewChild, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,6 +18,12 @@ export interface SelectOption {
   styleUrls: ['./select-input.scss'],
 })
 export class SelectInputComponent {
+  @ViewChild('container', { static: true })
+  private readonly containerRef?: ElementRef<HTMLElement>;
+
+  @ViewChild('dropdown')
+  private readonly dropdownRef?: ElementRef<HTMLElement>;
+
   public readonly labelSg = input<string>('Select', { alias: 'label' });
   public readonly requiredSg = input<boolean>(false, { alias: 'required' });
   public readonly placeholderSg = input<string>('Search...', { alias: 'placeholder' });
@@ -33,6 +39,7 @@ export class SelectInputComponent {
   public readonly isOpenSg = signal<boolean>(false);
   public readonly searchQuerySg = signal<string>('');
   public readonly filteredOptionsSg = signal<SelectOption[]>([]);
+  public readonly dropdownStyleSg = signal<Record<string, string>>({});
 
   constructor() {
     effect(() => {
@@ -43,6 +50,11 @@ export class SelectInputComponent {
       );
       this.filteredOptionsSg.set(filtered);
     });
+
+    effect(() => {
+      if (!this.isOpenSg()) return;
+      setTimeout(() => this.updateDropdownPosition(), 0);
+    });
   }
 
   public toggleDropdown(): void {
@@ -51,6 +63,7 @@ export class SelectInputComponent {
 
   public openDropdown(): void {
     this.isOpenSg.set(true);
+    setTimeout(() => this.updateDropdownPosition(), 0);
   }
 
   public closeDropdown(): void {
@@ -86,6 +99,42 @@ export class SelectInputComponent {
 
   public getLabel(value: string): string {
     return this.optionsSg().find((o) => o.value === value)?.label ?? '';
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    if (this.isOpenSg()) {
+      this.updateDropdownPosition();
+    }
+  }
+
+  @HostListener('window:scroll')
+  onWindowScroll(): void {
+    if (this.isOpenSg()) {
+      this.updateDropdownPosition();
+    }
+  }
+
+  private updateDropdownPosition(): void {
+    const container = this.containerRef?.nativeElement;
+    const dropdown = this.dropdownRef?.nativeElement;
+    if (!container || !dropdown) return;
+
+    const rect = container.getBoundingClientRect();
+    const dropdownHeight = dropdown.offsetHeight || 0;
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - rect.bottom;
+    const shouldOpenAbove = spaceBelow < dropdownHeight + 12;
+
+    const top = shouldOpenAbove ? rect.top - dropdownHeight - 6 : rect.bottom + 6;
+    const left = rect.left;
+    const width = rect.width;
+
+    this.dropdownStyleSg.set({
+      top: `${Math.max(8, top)}px`,
+      left: `${Math.max(8, left)}px`,
+      width: `${Math.max(160, width)}px`,
+    });
   }
 
   public validate(): ValidationResult {

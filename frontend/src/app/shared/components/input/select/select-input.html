@@ -7,7 +7,7 @@
       }
     </label>
 
-    <div class="select-input__container" (click)="openDropdown()">
+    <div class="select-input__container" (click)="openDropdown()" #container>
       <!-- Selected items or placeholder -->
       <div class="select-input__selected">
         @if (valueSg().length > 0) {
@@ -50,7 +50,7 @@
 
     <!-- Dropdown menu -->
     @if (isOpenSg()) {
-      <div class="select-input__dropdown">
+      <div class="select-input__dropdown" [ngStyle]="dropdownStyleSg()" #dropdown>
         <div class="select-input__search-wrapper">
           <mat-icon class="select-input__search-icon">search</mat-icon>
           <input

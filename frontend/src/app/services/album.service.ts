@@ -39,7 +39,7 @@ export interface PaginatedResponse<T> {
   items: T[];
   total: number;
   page: number;
-  pageSize: number;
+  size: number;
 }
 
 @Injectable({
@@ -97,8 +97,8 @@ export class AlbumService {
   /**
    * Update existing album
    */
-  updateAlbum(id: string, dto: UpdateAlbumDto): Observable<void> {
-    return this.http.patch<void>(`${this.apiUrl}/${id}`, dto);
+  updateAlbum(id: string, dto: UpdateAlbumDto): Observable<Album> {
+    return this.http.patch<Album>(`${this.apiUrl}/${id}`, dto);
   }
 
   /**

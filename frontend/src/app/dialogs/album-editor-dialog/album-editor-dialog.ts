@@ -66,8 +66,8 @@ export class AlbumEditorDialogComponent {
     const artists = this.selectedArtistIdsSg();
 
     return (
-      title.length > 0 &&
-      releaseDate.length > 0 &&
+      title.length >= 2 &&
+      releaseDate.length === 10 &&
       genreIds.length >= 1 &&
       artists.length > 0 &&
       this.isSongsValid()
@@ -195,8 +195,8 @@ export class AlbumEditorDialogComponent {
     this.isLoadingSg.set(true);
     if (this.isCreateMode()) {
       const albumDto: CreateAlbumDto = {
-        title: this.titleSg(),
-        release_date: this.releaseDateSg(),
+        title: this.titleSg().trim(),
+        release_date: this.releaseDateSg().trim(),
         genre_ids: this.genreIdsSg(),
         song_ids: this.selectedSongIdsSg(),
         artist_ids: this.selectedArtistIdsSg(),
@@ -223,8 +223,8 @@ export class AlbumEditorDialogComponent {
     }
 
     const updateDto: UpdateAlbumDto = {
-      title: this.titleSg(),
-      release_date: this.releaseDateSg(),
+      title: this.titleSg().trim(),
+      release_date: this.releaseDateSg().trim(),
       genre_ids: this.genreIdsSg(),
       artist_ids: this.selectedArtistIdsSg(),
     };
