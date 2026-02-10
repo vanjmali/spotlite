@@ -276,8 +276,12 @@ func (s *AlbumService) AddSongsToAlbum(ctx context.Context, idStr string, dto dt
 
 		song, err := s.songRepo.FindByID(ctx, songId)
 		if err != nil {
+			if errors.Is(err, mongo.ErrNoDocuments) {
+				span.RecordError(err)
+				return nil, ErrSongNotFound
+			}
 			span.RecordError(err)
-			return nil, ErrSongNotFound
+			return nil, err
 		}
 
 		if _, ok := existing[song.ID]; ok {
