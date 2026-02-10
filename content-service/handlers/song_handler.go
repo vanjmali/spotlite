@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -176,7 +177,7 @@ func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Request) {
-	r.Body = http.MaxBytesReader(w, r.Body, 50<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, 100<<20)
 
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		var maxErr *http.MaxBytesError
@@ -187,6 +188,32 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 		_ = respond.BadRequest(w, "invalid multipart form")
 		return
 	}
+
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
+	}
+
+	mf := r.MultipartForm
+	if mf == nil || mf.File == nil {
+		_ = respond.BadRequest(w, "missing file")
+		return
+	}
+
+	totalFiles := 0
+	for _, list := range mf.File {
+		totalFiles += len(list)
+	}
+
+	if totalFiles != 1 {
+		_ = respond.BadRequest(w, "request must contain exactly one file")
+		return
+	}
+
+	if len(mf.File["file"]) != 1 {
+		_ = respond.BadRequest(w, "exactly one file must be provided under field 'file'")
+		return
+	}
+
 	id := mux.Vars(r)["id"]
 
 	file, header, err := r.FormFile("file")
@@ -210,12 +237,9 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 		_ = respond.BadRequest(w, "empty file")
 		return
 	}
-	if _, err := file.Seek(0, 0); err != nil {
-		log.Printf("trace_id=%s failed to seek file: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.InternalServerError(w)
-		return
-	}
+
 	sniff := head[:n]
+
 	kind, err := filetype.Match(sniff)
 	if err != nil {
 		log.Printf("trace_id=%s unable to determine file type: %v", telemetry.TraceID(r.Context()), err)
@@ -229,15 +253,15 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 	}
 
 	allowedMimes := map[string]string{
-		"audio/mpeg":   ".mp3", // mp3
+		"audio/mpeg":   ".mp3",
 		"audio/wav":    ".wav",
 		"audio/x-wav":  ".wav",
 		"audio/flac":   ".flac",
 		"audio/x-flac": ".flac",
 		"audio/aac":    ".aac",
-		"audio/ogg":    ".ogg",  // ogg container
-		"audio/opus":   ".opus", // opus
-		"audio/mp4":    ".m4a",  // m4a (audio/mp4)
+		"audio/ogg":    ".ogg",
+		"audio/opus":   ".opus",
+		"audio/mp4":    ".m4a",
 	}
 
 	mime := kind.MIME.Value
@@ -248,11 +272,13 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 		_ = respond.BadRequest(w, "file is not a valid audio file")
 		return
 	}
-	log.Printf("trace_id=%s file type validated: extension=%s, mime=%s", telemetry.TraceID(r.Context()), ext, mime)
 
-	// reader := io.MultiReader(bytes.NewReader(sniff), file)
+	log.Printf("trace_id=%s file type validated: extension=%s, mime=%s",
+		telemetry.TraceID(r.Context()), ext, mime)
 
-	updated, err := h.s.UploadAudio(r.Context(), id, file, ext, mime)
+	reader := io.MultiReader(bytes.NewReader(sniff), file)
+
+	updated, err := h.s.UploadAudio(r.Context(), id, reader, ext, mime)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrSongNotFound):
@@ -273,6 +299,7 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
+
 	_ = respond.OkJson(w, updated)
 }
 
