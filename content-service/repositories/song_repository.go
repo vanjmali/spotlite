@@ -28,14 +28,19 @@ func NewSongRepository(dbName string, collName string, c *mongo.Client) *SongRep
 }
 
 // Create func, inserts a new song into the database.
-func (r *SongRepository) Create(ctx context.Context, song entities.Song) error {
+func (r *SongRepository) Create(ctx context.Context, song entities.Song) (primitive.ObjectID, error) {
 	c := r.getCollection()
 
-	_, err := c.InsertOne(ctx, song)
+	res, err := c.InsertOne(ctx, song)
 	if err != nil {
-		return err
+		return primitive.NilObjectID, err
 	}
-	return nil
+	oid, ok := res.InsertedID.(primitive.ObjectID)
+	if !ok {
+		return primitive.NilObjectID, mongo.ErrNilDocument
+	}
+
+	return oid, nil
 }
 
 // FindByID finds song by ID.

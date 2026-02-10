@@ -44,7 +44,7 @@ func (h *SongHandler) HandleCreateSong(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.s.Create(r.Context(), &req); err != nil {
+	if _, err := h.s.Create(r.Context(), &req); err != nil {
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):
 			_ = respond.BadRequest(w, "Invalid ID format")
@@ -179,10 +179,10 @@ func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 100<<20)
 
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
+	if err := r.ParseMultipartForm(100 << 20); err != nil {
 		var maxErr *http.MaxBytesError
 		if errors.As(err, &maxErr) {
-			_ = respond.PayloadTooLarge(w, "file too large (max 50MB)")
+			_ = respond.PayloadTooLarge(w, "file too large (max 100MB)")
 			return
 		}
 		_ = respond.BadRequest(w, "invalid multipart form")
@@ -347,4 +347,113 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 
 	_, _ = io.Copy(w, rc)
 
+}
+
+func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 100<<20)
+
+	if err := r.ParseMultipartForm(100 << 20); err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			_ = respond.PayloadTooLarge(w, "payload too large (max 110MB)")
+			return
+		}
+		_ = respond.BadRequest(w, "invalid multipart form")
+		return
+	}
+	if r.MultipartForm != nil {
+		defer r.MultipartForm.RemoveAll()
+	}
+
+	metaStr := r.FormValue("meta")
+	if metaStr == "" {
+		_ = respond.BadRequest(w, "missing meta")
+		return
+	}
+
+	var dto dtos.SongDto
+	if ok, err := requests.ReadAndValidateJson(w, h.v, io.NopCloser(bytes.NewReader([]byte(metaStr))), &dto); !ok {
+		if err != nil {
+			log.Printf(
+				"trace_id=%s invalid meta payload: %v", telemetry.TraceID(r.Context()), err)
+		}
+		_ = respond.BadRequest(w, "invalid meta")
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		_ = respond.BadRequest(w, "missing file")
+		return
+	}
+	defer file.Close()
+
+	head := make([]byte, 512)
+	n, err := file.Read(head)
+	if err != nil && err != io.EOF {
+		_ = respond.BadRequest(w, "failed to read file")
+		return
+	}
+	if n == 0 {
+		_ = respond.BadRequest(w, "empty file")
+		return
+	}
+	sniff := head[:n]
+
+	kind, err := filetype.Match(sniff)
+	if err != nil || kind == filetype.Unknown {
+		_ = respond.BadRequest(w, "unknown file type")
+		return
+	}
+
+	allowedMimes := map[string]string{
+		"audio/mpeg":   ".mp3",
+		"audio/wav":    ".wav",
+		"audio/x-wav":  ".wav",
+		"audio/flac":   ".flac",
+		"audio/x-flac": ".flac",
+		"audio/aac":    ".aac",
+		"audio/ogg":    ".ogg",
+		"audio/opus":   ".opus",
+		"audio/mp4":    ".m4a",
+	}
+
+	mime := kind.MIME.Value
+	ext, ok := allowedMimes[mime]
+	if !ok {
+		log.Printf("trace_id=%s invalid file type: detected_extension=%s, detected_mime=%s, filename=%q",
+			telemetry.TraceID(r.Context()), kind.Extension, mime, header.Filename)
+		_ = respond.BadRequest(w, "file is not a valid audio file")
+		return
+	}
+
+	reader := io.MultiReader(bytes.NewReader(sniff), file)
+
+	id, err := h.s.Create(r.Context(), &dto)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrObjectIdCastFailed):
+			_ = respond.BadRequest(w, "invalid id format")
+		case errors.Is(err, services.ErrArtistNotFound), errors.Is(err, services.ErrGenreNotFound):
+			_ = respond.NotFound(w)
+		default:
+			_ = respond.InternalServerError(w)
+		}
+		return
+	}
+
+	updated, err := h.s.UploadAudio(r.Context(), id.Hex(), reader, ext, mime)
+	if err != nil {
+		_ = h.s.DeleteSong(r.Context(), id.Hex()) // rollback
+
+		switch {
+		case errors.Is(err, services.ErrAudioUploadFailed):
+			_ = respond.InternalServerError(w)
+		default:
+			_ = respond.InternalServerError(w)
+		}
+		return
+	}
+
+	_ = respond.OkJson(w, updated)
 }

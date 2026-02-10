@@ -42,7 +42,7 @@ func NewSongService(songRepo repositories.SongRepository, artistService ArtistSe
 }
 
 // Create creates a new song with the provided data, resolving associated artists and genre.
-func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
+func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (primitive.ObjectID, error) {
 	ctx, span := s.tr.Start(ctx, "song.create")
 	defer span.End()
 
@@ -58,11 +58,11 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 
 			switch {
 			case errors.Is(err, ErrObjectIdCastFailed):
-				return ErrObjectIdCastFailed
+				return primitive.NilObjectID, ErrObjectIdCastFailed
 			case errors.Is(err, ErrGenreNotFound):
-				return ErrGenreNotFound
+				return primitive.NilObjectID, ErrGenreNotFound
 			default:
-				return err
+				return primitive.NilObjectID, err
 			}
 		}
 
@@ -85,11 +85,11 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 
 			switch {
 			case errors.Is(err, ErrObjectIdCastFailed):
-				return ErrObjectIdCastFailed
+				return primitive.NilObjectID, ErrObjectIdCastFailed
 			case errors.Is(err, ErrArtistNotFound):
-				return ErrArtistNotFound
+				return primitive.NilObjectID, ErrArtistNotFound
 			default:
-				return err
+				return primitive.NilObjectID, err
 			}
 		}
 
@@ -109,21 +109,23 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 		mapSpan.RecordError(err)
 		mapSpan.End()
 		log.Printf("trace_id=%s error converting to song entity: %v", telemetry.TraceID(ctx), err)
-		return err
+		return primitive.NilObjectID, err
 	}
 	mapSpan.End()
 
+	id := songEntity.ID
 	createCtx, createSpan := s.tr.Start(ctx, "song.create.create_song")
-	err = s.songRepo.Create(createCtx, *songEntity)
+	_, err = s.songRepo.Create(createCtx, *songEntity)
 	if err != nil {
 		createSpan.RecordError(err)
 		createSpan.End()
 		log.Printf("trace_id=%s error creating song in database: %v", telemetry.TraceID(ctx), err)
-		return err
+		return primitive.NilObjectID, err
 	}
 
 	createSpan.End()
-	return nil
+
+	return id, nil
 }
 
 // FindSongById retrieves a single song by its ID.
