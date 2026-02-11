@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option go_package = "github.com/vanjmali/spotlite/common-lib/proto/content_service;content_service_pb";
+
+package content_service;
+
+service GetContentEntity {
+    rpc GetArtist (EntityIDRequest) returns (GetContentEntityResponse);
+    rpc GetGenre (EntityIDRequest) returns (GetContentEntityResponse);
+}
+
+message EntityIDRequest {
+    string entity_id = 1;
+}
+
+message GetContentEntityResponse {
+    string name = 1;
+}

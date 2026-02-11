@@ -52,6 +52,9 @@ func (h *SongHandler) HandleCreateSong(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, services.ErrArtistNotFound):
 			_ = respond.NotFound(w)
 			return
+		case errors.Is(err, services.ErrAlbumNotFound):
+			_ = respond.NotFound(w)
+			return
 		case errors.Is(err, services.ErrGenreNotFound):
 			_ = respond.NotFound(w)
 			return

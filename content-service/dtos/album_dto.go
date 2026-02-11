@@ -10,7 +10,6 @@ type CreateAlbumDto struct {
 	Title       string   `json:"title" validate:"required,min=2,max=100"`
 	ReleaseDate string   `json:"release_date" validate:"required,len=10"` // Date string in YYYY-MM-DD format
 	GenreIds    []string `json:"genre_ids" validate:"required,min=1,dive,required,len=24,hexadecimal"`
-	SongIds     []string `json:"song_ids" validate:"required,min=1,dive,required,len=24,hexadecimal"`
 	ArtistIds   []string `json:"artist_ids" validate:"required,min=1,dive,required,len=24,hexadecimal"`
 }
 

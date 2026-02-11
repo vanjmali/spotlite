@@ -105,3 +105,17 @@ func (r *ArtistRepository) FindAll(ctx context.Context, filter bson.M, skip int6
 
 	return artists, total, nil
 }
+
+// Exists func, checks if artist with the given ID exists.
+func (r *ArtistRepository) Exists(ctx context.Context, artistID primitive.ObjectID) (bool, error) {
+	cnt, err := r.getCollection().CountDocuments(
+		ctx,
+		bson.M{"_id": artistID},
+		options.Count().SetLimit(1),
+	)
+	if err != nil {
+		return false, err
+	}
+
+	return cnt > 0, nil
+}

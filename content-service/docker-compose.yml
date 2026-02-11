@@ -13,6 +13,7 @@ services:
       DB_NAME: ${SRV_CONTENT_MONGO_DATABASE?}
       HDFS_URI: ${SRV_CONTENT_HDFS_URI?}
       HDFS_AUDIO_BASE: ${SRV_CONTENT_HDFS_AUDIO_BASE?}
+      GRPC_PORT: ${SRV_CONTENT_GRPC_PORT?}
       APP_PORT: 3000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
@@ -41,14 +42,16 @@ services:
       SRV_CONTENT_MONGO_USERNAME: ${SRV_CONTENT_MONGO_USERNAME?}
       SRV_CONTENT_MONGO_PASSWORD: ${SRV_CONTENT_MONGO_PASSWORD?}
     healthcheck:
+      # healthcheck uses username and password value from content-mongodb environment variables defined above
       test:
         [
           "CMD-SHELL",
-          'mongosh --username $SRV_CONTENT_MONGO_ROOT_USERNAME --password $SRV_CONTENT_MONGO_ROOT_PASSWORD --authenticationDatabase admin --eval ''db.adminCommand("ping")''',
+          'mongosh --norc --quiet --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval ''db.runCommand({ ping: 1 })''',
         ]
-      interval: 3s
+      interval: 30s
       timeout: 5s
       retries: 10
+      start_period: 20s
     volumes:
       - content-mongo-data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro

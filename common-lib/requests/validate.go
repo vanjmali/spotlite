@@ -59,6 +59,7 @@ func RegisterValidation(v *validator.Validate, c CustomValidator) error {
 		return fmt.Errorf("failed to register validation '%s': %w", c.Tag, err)
 	}
 
+	RegisterValidationMessage(c.Tag, c.ErrorMessage)
 	return nil
 }
 
@@ -77,7 +78,7 @@ func getErrorMsg(fe validator.FieldError) string {
 	case "min":
 		return fe.Field() + " is too short"
 	case "email":
-		return "Invalid email format"
+		return fe.Field() + " must be a valid email address"
 	default:
 		if msgFunc, exists := customValidationMessages[fe.Tag()]; exists {
 			return msgFunc(fe)

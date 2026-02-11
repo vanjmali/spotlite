@@ -64,11 +64,14 @@ Dashboards and tools:
 - http://localhost:8080 - Traefik dashboard
 - http://localhost:3000/dev/jaeger - Jaeger UI for viewing traces (via Traefik)
 - http://localhost:3000/dev/user-service - [Mongo Express](https://github.com/mongo-express/mongo-express) to User Service
+- http://localhost:3000/dev/content-service - [Mongo Express](https://github.com/mongo-express/mongo-express) to Content Service
+- http://localhost:3000/dev/subscription-service - [Mongo Express](https://github.com/mongo-express/mongo-express) to Subscription Service
 
 Database connections for services:
 
 - http://localhost:3101 - User Service's MongoDB direct connection
 - http://localhost:3102 - Content Service's MongoDB direct connection
+- http://localhost:3103 - Subscription Service's MongoDB direct connection
 
 ### Useful commands
 
