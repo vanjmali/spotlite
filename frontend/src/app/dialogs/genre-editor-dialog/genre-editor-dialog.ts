@@ -6,6 +6,7 @@ import { DialogComponent, MessageComponent, TextInputComponent } from '../../sha
 import { GenreService, Genre } from '@app/services/genre.service';
 import { runOnOpen } from '@app/shared/utils/dialog';
 import { getHttpErrorMessage } from '@app/shared/utils/http-error';
+import { OptionsService } from '@app/shared/services/options.service';
 
 @Component({
   selector: 'app-genre-editor-dialog',
@@ -23,6 +24,7 @@ import { getHttpErrorMessage } from '@app/shared/utils/http-error';
 })
 export class GenreEditorDialogComponent {
   private readonly genreService = inject(GenreService);
+  private readonly optionsService = inject(OptionsService);
 
   readonly genre = input<Genre | null>(null);
   readonly isOpen = input<boolean>(false);
@@ -68,6 +70,7 @@ export class GenreEditorDialogComponent {
       this.genreService.updateGenre(this.genre()!.id, payload).subscribe({
         next: () => {
           this.isLoadingSg.set(false);
+          this.optionsService.invalidateGenres();
           this.saved.emit();
           this.cancel();
         },
@@ -83,6 +86,7 @@ export class GenreEditorDialogComponent {
     this.genreService.createGenre(payload).subscribe({
       next: () => {
         this.isLoadingSg.set(false);
+        this.optionsService.invalidateGenres();
         this.saved.emit();
         this.cancel();
       },

@@ -130,6 +130,7 @@ export class AlbumEditorDialogComponent {
       this.albumService.createAlbum(albumDto).subscribe({
         next: () => {
           this.isLoadingSg.set(false);
+          this.optionsService.invalidateAlbums();
           this.saved.emit();
           this.cancel();
         },
@@ -158,6 +159,7 @@ export class AlbumEditorDialogComponent {
     this.albumService.updateAlbum(album.id, updateDto).subscribe({
       next: () => {
         this.isLoadingSg.set(false);
+        this.optionsService.invalidateAlbums();
         this.saved.emit();
         this.cancel();
       },

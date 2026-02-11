@@ -113,6 +113,7 @@ export class ArtistEditorDialogComponent {
       this.artistService.updateArtist(this.artist()!.id, payload).subscribe({
         next: () => {
           this.isLoadingSg.set(false);
+          this.optionsService.invalidateArtists();
           this.saved.emit();
           this.cancel();
         },
@@ -127,6 +128,7 @@ export class ArtistEditorDialogComponent {
       this.artistService.createArtist(payload).subscribe({
         next: () => {
           this.isLoadingSg.set(false);
+          this.optionsService.invalidateArtists();
           this.saved.emit();
           this.cancel();
         },
