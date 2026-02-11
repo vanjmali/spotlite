@@ -24,13 +24,14 @@ type SongService struct {
 	songRepo      *repositories.SongRepository
 	artistService *ArtistService
 	genreService  *GenreService
+	albumService  *AlbumService
 	tr            trace.Tracer
 }
 
 // NewSongService creates and returns a new SongService with the provided repository and artist service.
-func NewSongService(songRepo repositories.SongRepository, artistService ArtistService, genreService GenreService) *SongService {
+func NewSongService(songRepo repositories.SongRepository, artistService ArtistService, genreService GenreService, albumService *AlbumService) *SongService {
 	tr := otel.Tracer("content-service/song-service")
-	s := SongService{songRepo: &songRepo, artistService: &artistService, genreService: &genreService, tr: tr}
+	s := SongService{songRepo: &songRepo, artistService: &artistService, genreService: &genreService, albumService: albumService, tr: tr}
 
 	return &s
 }
@@ -39,6 +40,24 @@ func NewSongService(songRepo repositories.SongRepository, artistService ArtistSe
 func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 	ctx, span := s.tr.Start(ctx, "song.create")
 	defer span.End()
+
+	resolveAlbumCtx, resolveAlbumSpan := s.tr.Start(ctx, "song.create.resolve_album")
+	_, err := s.albumService.FindAlbumByID(resolveAlbumCtx, songDto.AlbumId)
+	if err != nil {
+		resolveAlbumSpan.RecordError(err)
+		resolveAlbumSpan.End()
+
+		switch {
+		case errors.Is(err, ErrObjectIdCastFailed):
+			return ErrObjectIdCastFailed
+		case errors.Is(err, ErrAlbumNotFound):
+			return ErrAlbumNotFound
+		default:
+			return err
+		}
+	}
+
+	resolveAlbumSpan.End()
 
 	resolveGenreCtx, resolveGenreSpan := s.tr.Start(ctx, "song.create.resolve_genre")
 
@@ -116,6 +135,13 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 		return err
 	}
 
+	_, err = s.albumService.AddSongsToAlbum(ctx, songDto.AlbumId, dtos.AddAlbumSongsDto{Ids: []string{songEntity.ID.Hex()}})
+	if err != nil {
+		createSpan.RecordError(err)
+		createSpan.End()
+		log.Printf("trace_id=%s error embedding song into album: %v", telemetry.TraceID(ctx), err)
+		return err
+	}
 	createSpan.End()
 	return nil
 }
