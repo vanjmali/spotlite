@@ -70,8 +70,9 @@
             @for (option of filteredOptionsSg(); track option.value) {
               <label class="select-input__option">
                 <input
-                  type="checkbox"
+                  [attr.type]="singleSg() ? 'radio' : 'checkbox'"
                   class="select-input__option-checkbox"
+                  [attr.name]="singleSg() ? groupId : null"
                   [checked]="isSelected(option.value)"
                   (change)="onOptionToggle(option.value)"
                 />

@@ -8,6 +8,17 @@
         [(value)]="titleSg"
       />
 
+      @if (isCreateMode()) {
+        <app-select-input
+          label="Album"
+          placeholder="Select album"
+          [required]="true"
+          [options]="albumOptionsSg()"
+          [single]="true"
+          [(value)]="albumIdSg"
+        />
+      }
+
       <app-select-input
         label="Genres"
         placeholder="Select genres"

@@ -19,7 +19,6 @@ export interface CreateAlbumDto {
   title: string;
   release_date: string;
   genre_ids: string[];
-  song_ids: string[];
   artist_ids: string[];
 }
 

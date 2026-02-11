@@ -11,7 +11,6 @@ import {
 } from '@app/shared/components/input';
 import { AlbumService, Album, CreateAlbumDto, UpdateAlbumDto } from '@app/services/album.service';
 import { ArtistService } from '@app/services/artist.service';
-import { SongService, type Song } from '@app/services/song.service';
 import { GenreService } from '@app/services/genre.service';
 
 @Component({
@@ -32,7 +31,6 @@ import { GenreService } from '@app/services/genre.service';
 export class AlbumEditorDialogComponent {
   private readonly albumService = inject(AlbumService);
   private readonly artistService = inject(ArtistService);
-  private readonly songService = inject(SongService);
   private readonly genreService = inject(GenreService);
 
   readonly album = input<Album | null>(null);
@@ -47,18 +45,12 @@ export class AlbumEditorDialogComponent {
   readonly selectedArtistIdsSg = signal<string[]>([]);
   readonly artistOptionsSg = signal<SelectOption[]>([]);
   readonly genreOptionsSg = signal<SelectOption[]>([]);
-  readonly availableSongsSg = signal<Song[]>([]);
-  readonly selectedSongIdsSg = signal<string[]>([]);
-  readonly isLoadingSongsSg = signal(false);
 
   // Computed
   readonly isCreateMode = computed(() => !this.album());
   readonly dialogTitle = computed(() => (this.isCreateMode() ? 'Create Album' : 'Edit Album'));
   readonly submitButtonText = computed(() => (this.isCreateMode() ? 'Create' : 'Save'));
   readonly isLoadingSg = signal(false);
-  readonly isSongsValid = computed(
-    () => !this.isCreateMode() || this.selectedSongIdsSg().length > 0
-  );
   readonly isFormValid = computed(() => {
     const title = this.titleSg().trim();
     const releaseDate = this.releaseDateSg().trim();
@@ -69,8 +61,7 @@ export class AlbumEditorDialogComponent {
       title.length >= 2 &&
       releaseDate.length === 10 &&
       genreIds.length >= 1 &&
-      artists.length > 0 &&
-      this.isSongsValid()
+      artists.length > 0
     );
   });
 
@@ -89,7 +80,6 @@ export class AlbumEditorDialogComponent {
             // Set artists array
             const artistIds = albumData.artists.map((a) => a.id);
             this.selectedArtistIdsSg.set(artistIds);
-            this.selectedSongIdsSg.set(albumData.songs.map((song) => song.id));
           }
         } else {
           // Create mode - clear form
@@ -97,20 +87,7 @@ export class AlbumEditorDialogComponent {
           this.releaseDateSg.set('');
           this.genreIdsSg.set([]);
           this.selectedArtistIdsSg.set([]);
-          this.selectedSongIdsSg.set([]);
-          this.availableSongsSg.set([]);
         }
-      }
-    });
-
-    // Load songs when selected artists change
-    effect(() => {
-      const selectedArtistIds = this.selectedArtistIdsSg();
-      if (selectedArtistIds.length > 0) {
-        this.loadSongsForArtists(selectedArtistIds);
-      } else {
-        this.availableSongsSg.set([]);
-        this.selectedSongIdsSg.set([]);
       }
     });
   }
@@ -147,50 +124,6 @@ export class AlbumEditorDialogComponent {
     });
   }
 
-  private loadSongsForArtists(artistIds: string[]): void {
-    this.isLoadingSongsSg.set(true);
-    const allSongs: Song[] = [];
-    let loadedCount = 0;
-
-    artistIds.forEach((artistId) => {
-      this.songService.getSongs(1, 100, { artist_id: artistId }).subscribe({
-        next: (response) => {
-          allSongs.push(...response.items);
-          loadedCount++;
-          if (loadedCount === artistIds.length) {
-            // Remove duplicates by song id
-            const uniqueSongs = Array.from(
-              new Map(allSongs.map((song) => [song.id, song])).values()
-            );
-            this.availableSongsSg.set(uniqueSongs);
-            this.isLoadingSongsSg.set(false);
-          }
-        },
-        error: (error) => {
-          console.error('Failed to load songs for artist:', error);
-          loadedCount++;
-          if (loadedCount === artistIds.length) {
-            this.isLoadingSongsSg.set(false);
-          }
-        },
-      });
-    });
-  }
-
-  toggleSongSelection(songId: string): void {
-    this.selectedSongIdsSg.update((ids) => {
-      if (ids.includes(songId)) {
-        return ids.filter((id) => id !== songId);
-      } else {
-        return [...ids, songId];
-      }
-    });
-  }
-
-  isSongSelected(songId: string): boolean {
-    return this.selectedSongIdsSg().includes(songId);
-  }
-
   onSave(): void {
     this.isLoadingSg.set(true);
     if (this.isCreateMode()) {
@@ -198,7 +131,6 @@ export class AlbumEditorDialogComponent {
         title: this.titleSg().trim(),
         release_date: this.releaseDateSg().trim(),
         genre_ids: this.genreIdsSg(),
-        song_ids: this.selectedSongIdsSg(),
         artist_ids: this.selectedArtistIdsSg(),
       };
 

@@ -15,6 +15,7 @@ export interface Song {
 
 export interface CreateSongDto {
   title: string;
+  album_id: string;
   genre_ids: string[];
   length_seconds: number;
   artist_ids: string[];

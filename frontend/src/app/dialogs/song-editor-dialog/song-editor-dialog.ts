@@ -9,6 +9,7 @@ import {
   type SelectOption,
 } from '@app/shared/components/input';
 import { SongService, Song, CreateSongDto, UpdateSongDto } from '@app/services/song.service';
+import { AlbumService } from '@app/services/album.service';
 import { ArtistService } from '@app/services/artist.service';
 import { GenreService } from '@app/services/genre.service';
 
@@ -28,6 +29,7 @@ import { GenreService } from '@app/services/genre.service';
 })
 export class SongEditorDialogComponent {
   private readonly songService = inject(SongService);
+  private readonly albumService = inject(AlbumService);
   private readonly artistService = inject(ArtistService);
   private readonly genreService = inject(GenreService);
 
@@ -41,11 +43,14 @@ export class SongEditorDialogComponent {
   readonly genreIdsSg = signal<string[]>([]);
   readonly durationSg = signal('');
   readonly selectedArtistIdsSg = signal<string[]>([]);
+  readonly albumIdSg = signal<string[]>([]);
   readonly artistOptionsSg = signal<SelectOption[]>([]);
   readonly genreOptionsSg = signal<SelectOption[]>([]);
+  readonly albumOptionsSg = signal<SelectOption[]>([]);
 
   // Computed
   readonly isEditMode = computed(() => !!this.song());
+  readonly isCreateMode = computed(() => !this.song());
   readonly dialogTitle = computed(() => (this.isEditMode() ? 'Edit Song' : 'Create Song'));
   readonly submitButtonText = computed(() => (this.isEditMode() ? 'Save' : 'Create'));
   readonly isLoadingSg = signal(false);
@@ -62,7 +67,8 @@ export class SongEditorDialogComponent {
       genreIds.length > 0 &&
       artists.length > 0 &&
       !isNaN(durationValue) &&
-      durationValue > 0
+      durationValue > 0 &&
+      (!this.isCreateMode() || this.albumIdSg().length > 0)
     );
   });
 
@@ -71,6 +77,7 @@ export class SongEditorDialogComponent {
       if (this.isOpen()) {
         this.loadArtists();
         this.loadGenres();
+        this.loadAlbums();
         if (this.song()) {
           // Edit mode - populate form
           const songData = this.song();
@@ -81,6 +88,7 @@ export class SongEditorDialogComponent {
             // Set artists array
             const artistIds = songData.artists.map((a) => a.id);
             this.selectedArtistIdsSg.set(artistIds);
+            this.albumIdSg.set([]);
           }
         } else {
           // Create mode - clear form
@@ -88,6 +96,7 @@ export class SongEditorDialogComponent {
           this.durationSg.set('');
           this.genreIdsSg.set([]);
           this.selectedArtistIdsSg.set([]);
+          this.albumIdSg.set([]);
         }
       }
     });
@@ -125,6 +134,22 @@ export class SongEditorDialogComponent {
     });
   }
 
+  private loadAlbums(): void {
+    this.albumService.getAlbums(1, 200).subscribe({
+      next: (response) => {
+        this.albumOptionsSg.set(
+          response.items.map((album) => ({
+            label: album.title,
+            value: album.id,
+          }))
+        );
+      },
+      error: (error) => {
+        console.error('Failed to load albums:', error);
+      },
+    });
+  }
+
   onSave(): void {
     this.isLoadingSg.set(true);
     const basePayload = {
@@ -150,7 +175,10 @@ export class SongEditorDialogComponent {
       return;
     }
 
-    const createDto: CreateSongDto = basePayload;
+    const createDto: CreateSongDto = {
+      ...basePayload,
+      album_id: this.albumIdSg()[0] ?? '',
+    };
     this.songService.createSong(createDto).subscribe({
       next: () => {
         this.isLoadingSg.set(false);

@@ -28,6 +28,7 @@ export class SelectInputComponent {
   public readonly requiredSg = input<boolean>(false, { alias: 'required' });
   public readonly placeholderSg = input<string>('Search...', { alias: 'placeholder' });
   public readonly optionsSg = input<SelectOption[]>([], { alias: 'options' });
+  public readonly singleSg = input<boolean>(false, { alias: 'single' });
 
   // Two-way binding for multiple selections
   public readonly valueSg = model<string[]>([], {
@@ -40,6 +41,7 @@ export class SelectInputComponent {
   public readonly searchQuerySg = signal<string>('');
   public readonly filteredOptionsSg = signal<SelectOption[]>([]);
   public readonly dropdownStyleSg = signal<Record<string, string>>({});
+  public readonly groupId = `select-${Math.random().toString(36).slice(2)}`;
 
   constructor() {
     effect(() => {
@@ -80,11 +82,15 @@ export class SelectInputComponent {
       newValues = currentValues.filter((v) => v !== optionValue);
     } else {
       // Add to selection
-      newValues = [...currentValues, optionValue];
+      newValues = this.singleSg() ? [optionValue] : [...currentValues, optionValue];
     }
 
     this.valueSg.set(newValues);
     this.errorSg.set('');
+
+    if (this.singleSg()) {
+      this.closeDropdown();
+    }
   }
 
   public removeSelection(optionValue: string, event: Event): void {
