@@ -17,12 +17,13 @@
     margin-bottom: 1rem;
     gap: 1rem;
   }
-
+  
   &__title {
     margin: 0;
     font-size: 18px;
     font-weight: 600;
     color: $color-text-primary;
+    padding: 0 1rem;
   }
 
   &__actions {

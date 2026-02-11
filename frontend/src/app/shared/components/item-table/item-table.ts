@@ -12,7 +12,7 @@ import { LoaderComponent } from '@app/shared/components/loader';
   encapsulation: ViewEncapsulation.None,
 })
 export class ItemTableComponent {
-  readonly titleSg = input<string>('');
+  readonly titleSg = input<string>('', { alias: 'title' });
   readonly isLoadingSg = input<boolean>(false, { alias: 'isLoading' });
   readonly isEmptySg = input<boolean>(false, { alias: 'isEmpty' });
   readonly emptyMessageSg = input<string>('No items found.', { alias: 'emptyMessage' });
