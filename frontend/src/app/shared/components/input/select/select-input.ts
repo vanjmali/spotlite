@@ -24,6 +24,9 @@ export class SelectInputComponent {
   @ViewChild('dropdown')
   private readonly dropdownRef?: ElementRef<HTMLElement>;
 
+  @ViewChild('searchInput')
+  private readonly searchInputRef?: ElementRef<HTMLInputElement>;
+
   public readonly labelSg = input<string>('Select', { alias: 'label' });
   public readonly requiredSg = input<boolean>(false, { alias: 'required' });
   public readonly placeholderSg = input<string>('Search...', { alias: 'placeholder' });
@@ -42,6 +45,7 @@ export class SelectInputComponent {
   public readonly filteredOptionsSg = signal<SelectOption[]>([]);
   public readonly dropdownStyleSg = signal<Record<string, string>>({});
   public readonly groupId = `select-${Math.random().toString(36).slice(2)}`;
+  public readonly highlightedIndexSg = signal<number>(-1);
 
   constructor() {
     effect(() => {
@@ -51,6 +55,9 @@ export class SelectInputComponent {
         option.label.toLowerCase().includes(query)
       );
       this.filteredOptionsSg.set(filtered);
+      if (this.isOpenSg()) {
+        this.highlightedIndexSg.set(filtered.length > 0 ? 0 : -1);
+      }
     });
 
     effect(() => {
@@ -61,16 +68,25 @@ export class SelectInputComponent {
 
   public toggleDropdown(): void {
     this.isOpenSg.set(!this.isOpenSg());
+    if (this.isOpenSg()) {
+      setTimeout(() => this.focusSearch(), 0);
+      const filtered = this.filteredOptionsSg();
+      this.highlightedIndexSg.set(filtered.length > 0 ? 0 : -1);
+    }
   }
 
   public openDropdown(): void {
     this.isOpenSg.set(true);
     setTimeout(() => this.updateDropdownPosition(), 0);
+    setTimeout(() => this.focusSearch(), 0);
+    const filtered = this.filteredOptionsSg();
+    this.highlightedIndexSg.set(filtered.length > 0 ? 0 : -1);
   }
 
   public closeDropdown(): void {
     this.isOpenSg.set(false);
     this.searchQuerySg.set('');
+    this.highlightedIndexSg.set(-1);
   }
 
   public onOptionToggle(optionValue: string): void {
@@ -107,6 +123,55 @@ export class SelectInputComponent {
     return this.optionsSg().find((o) => o.value === value)?.label ?? '';
   }
 
+  public onContainerKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.toggleDropdown();
+      return;
+    }
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (!this.isOpenSg()) {
+        this.openDropdown();
+      } else {
+        this.focusSearch();
+      }
+      return;
+    }
+
+    if (event.key === 'Escape' && this.isOpenSg()) {
+      event.preventDefault();
+      event.stopPropagation();
+      this.closeDropdown();
+    }
+  }
+
+  public onDropdownKeydown(event: KeyboardEvent): void {
+    const options = this.filteredOptionsSg();
+    if (options.length === 0) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.highlightedIndexSg.update((index) => Math.min(index + 1, options.length - 1));
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.highlightedIndexSg.update((index) => Math.max(index - 1, 0));
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const index = this.highlightedIndexSg();
+      if (index >= 0 && index < options.length) {
+        this.onOptionToggle(options[index].value);
+      }
+    }
+  }
+
   @HostListener('window:resize')
   onWindowResize(): void {
     if (this.isOpenSg()) {
@@ -118,6 +183,18 @@ export class SelectInputComponent {
   onWindowScroll(): void {
     if (this.isOpenSg()) {
       this.updateDropdownPosition();
+    }
+  }
+
+  @HostListener('document:focusin', ['$event'])
+  onDocumentFocusIn(event: FocusEvent): void {
+    if (!this.isOpenSg()) return;
+    const target = event.target as HTMLElement | null;
+    const container = this.containerRef?.nativeElement;
+    const dropdown = this.dropdownRef?.nativeElement;
+    if (!target || !container || !dropdown) return;
+    if (!container.contains(target) && !dropdown.contains(target)) {
+      this.closeDropdown();
     }
   }
 
@@ -141,6 +218,13 @@ export class SelectInputComponent {
       left: `${Math.max(8, left)}px`,
       width: `${Math.max(160, width)}px`,
     });
+  }
+
+  private focusSearch(): void {
+    const searchInput = this.searchInputRef?.nativeElement;
+    if (searchInput) {
+      searchInput.focus();
+    }
   }
 
   public validate(): ValidationResult {

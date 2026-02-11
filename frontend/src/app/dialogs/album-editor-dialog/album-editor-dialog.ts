@@ -1,4 +1,14 @@
-import { Component, input, output, inject, signal, computed } from '@angular/core';
+import {
+  Component,
+  input,
+  output,
+  inject,
+  signal,
+  computed,
+  ElementRef,
+  ViewChild,
+  HostListener,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,6 +24,7 @@ import { AlbumService, Album, CreateAlbumDto, UpdateAlbumDto } from '@app/servic
 import { OptionsService } from '@app/shared/services/options.service';
 import { runOnOpen } from '@app/shared/utils/dialog';
 import { getHttpErrorMessage } from '@app/shared/utils/http-error';
+import { focusFirstFocusable } from '@app/shared/utils/focus';
 
 @Component({
   selector: 'app-album-editor-dialog',
@@ -54,6 +65,8 @@ export class AlbumEditorDialogComponent {
   readonly dialogTitle = computed(() => (this.isCreateMode() ? 'Create Album' : 'Edit Album'));
   readonly submitButtonText = computed(() => (this.isCreateMode() ? 'Create' : 'Save'));
   readonly isLoadingSg = signal(false);
+  @ViewChild('dialogContent')
+  private readonly dialogContentRef?: ElementRef<HTMLElement>;
   readonly isFormValid = computed(() => {
     const title = this.titleSg().trim();
     const releaseDate = this.releaseDateSg().trim();
@@ -91,6 +104,7 @@ export class AlbumEditorDialogComponent {
         this.selectedArtistIdsSg.set([]);
       }
       this.errorSg.set('');
+      setTimeout(() => focusFirstFocusable(this.dialogContentRef?.nativeElement ?? null), 0);
     });
   }
 
@@ -180,6 +194,13 @@ export class AlbumEditorDialogComponent {
   }
 
   onClose(): void {
+    this.cancel();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onDocumentKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Escape' || !this.isOpen()) return;
+    event.preventDefault();
     this.cancel();
   }
 

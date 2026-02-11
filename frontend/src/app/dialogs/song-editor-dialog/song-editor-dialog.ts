@@ -1,4 +1,14 @@
-import { Component, input, output, inject, signal, computed } from '@angular/core';
+import {
+  Component,
+  input,
+  output,
+  inject,
+  signal,
+  computed,
+  ElementRef,
+  ViewChild,
+  HostListener,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,6 +23,7 @@ import { SongService, Song, CreateSongDto, UpdateSongDto } from '@app/services/s
 import { OptionsService } from '@app/shared/services/options.service';
 import { runOnOpen } from '@app/shared/utils/dialog';
 import { getHttpErrorMessage } from '@app/shared/utils/http-error';
+import { focusFirstFocusable } from '@app/shared/utils/focus';
 
 @Component({
   selector: 'app-song-editor-dialog',
@@ -55,6 +66,8 @@ export class SongEditorDialogComponent {
   readonly dialogTitle = computed(() => (this.isEditMode() ? 'Edit Song' : 'Create Song'));
   readonly submitButtonText = computed(() => (this.isEditMode() ? 'Save' : 'Create'));
   readonly isLoadingSg = signal(false);
+  @ViewChild('dialogContent')
+  private readonly dialogContentRef?: ElementRef<HTMLElement>;
   readonly isFormValid = computed(() => {
     const title = this.titleSg().trim();
     const duration = this.durationSg().trim();
@@ -99,6 +112,7 @@ export class SongEditorDialogComponent {
         this.albumIdSg.set([]);
       }
       this.errorSg.set('');
+      setTimeout(() => focusFirstFocusable(this.dialogContentRef?.nativeElement ?? null), 0);
     });
   }
 
@@ -189,6 +203,13 @@ export class SongEditorDialogComponent {
   }
 
   onClose(): void {
+    this.cancel();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onDocumentKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Escape' || !this.isOpen()) return;
+    event.preventDefault();
     this.cancel();
   }
 

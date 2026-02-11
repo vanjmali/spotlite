@@ -1,6 +1,6 @@
 @if (isOpen()) {
   <app-dialog [title]="dialogTitle()" (closed)="cancel()">
-    <div content class="song-editor-dialog">
+    <div content class="song-editor-dialog" #dialogContent>
       @if (errorSg()) {
         <app-message type="error" [message]="errorSg()" />
       }

@@ -1,6 +1,6 @@
 @if (isOpen()) {
   <app-dialog [title]="dialogTitle()" (closed)="cancel()">
-    <div content class="artist-editor-dialog">
+    <div content class="artist-editor-dialog" #dialogContent>
       <!-- Name Input -->
       <app-text-input
         label="Artist Name"

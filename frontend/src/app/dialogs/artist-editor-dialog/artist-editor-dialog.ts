@@ -1,4 +1,14 @@
-import { Component, inject, input, output, signal, computed } from '@angular/core';
+import {
+  Component,
+  inject,
+  input,
+  output,
+  signal,
+  computed,
+  ElementRef,
+  ViewChild,
+  HostListener,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,6 +23,7 @@ import { SelectInputComponent, type SelectOption } from '@app/shared/components/
 import { OptionsService } from '@app/shared/services/options.service';
 import { runOnOpen } from '@app/shared/utils/dialog';
 import { getHttpErrorMessage } from '@app/shared/utils/http-error';
+import { focusFirstFocusable } from '@app/shared/utils/focus';
 
 @Component({
   selector: 'app-artist-editor-dialog',
@@ -50,6 +61,8 @@ export class ArtistEditorDialogComponent {
 
   // UI State
   readonly isLoadingSg = signal(false);
+  @ViewChild('dialogContent')
+  private readonly dialogContentRef?: ElementRef<HTMLElement>;
   readonly errorSg = signal<string>('');
 
   // Computed
@@ -79,6 +92,7 @@ export class ArtistEditorDialogComponent {
       }
       this.loadGenres();
       this.errorSg.set('');
+      setTimeout(() => focusFirstFocusable(this.dialogContentRef?.nativeElement ?? null), 0);
     });
   }
 
@@ -147,5 +161,12 @@ export class ArtistEditorDialogComponent {
     this.genreIdsSg.set([]);
     this.errorSg.set('');
     this.closed.emit();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onDocumentKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Escape' || !this.isOpen()) return;
+    event.preventDefault();
+    this.cancel();
   }
 }

@@ -1,4 +1,14 @@
-import { Component, inject, input, output, signal, computed } from '@angular/core';
+import {
+  Component,
+  inject,
+  input,
+  output,
+  signal,
+  computed,
+  ElementRef,
+  ViewChild,
+  HostListener,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,6 +17,7 @@ import { GenreService, Genre } from '@app/services/genre.service';
 import { runOnOpen } from '@app/shared/utils/dialog';
 import { getHttpErrorMessage } from '@app/shared/utils/http-error';
 import { OptionsService } from '@app/shared/services/options.service';
+import { focusFirstFocusable } from '@app/shared/utils/focus';
 
 @Component({
   selector: 'app-genre-editor-dialog',
@@ -34,6 +45,8 @@ export class GenreEditorDialogComponent {
 
   readonly nameSg = signal('');
   readonly isLoadingSg = signal(false);
+  @ViewChild('dialogContent')
+  private readonly dialogContentRef?: ElementRef<HTMLElement>;
   readonly errorSg = signal('');
 
   readonly isEdit = computed(() => !!this.genre());
@@ -50,6 +63,7 @@ export class GenreEditorDialogComponent {
         this.nameSg.set('');
       }
       this.errorSg.set('');
+      setTimeout(() => focusFirstFocusable(this.dialogContentRef?.nativeElement ?? null), 0);
     });
   }
 
@@ -102,5 +116,12 @@ export class GenreEditorDialogComponent {
     this.nameSg.set('');
     this.errorSg.set('');
     this.closed.emit();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onDocumentKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Escape' || !this.isOpen()) return;
+    event.preventDefault();
+    this.cancel();
   }
 }
