@@ -6,6 +6,7 @@ services:
         common-lib: ../common-lib
       dockerfile: ../Dockerfile.microservice
     environment:
+      APP_PORT: 3000
       DB_HOST: content-mongodb
       DB_PORT: 27017
       DB_USER: ${SRV_CONTENT_MONGO_USERNAME?}
@@ -14,7 +15,6 @@ services:
       HDFS_URI: ${SRV_CONTENT_HDFS_URI?}
       HDFS_AUDIO_BASE: ${SRV_CONTENT_HDFS_AUDIO_BASE?}
       GRPC_PORT: ${SRV_CONTENT_GRPC_PORT?}
-      APP_PORT: 3000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true
