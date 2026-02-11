@@ -1,4 +1,4 @@
-import { Component, input, output, inject, signal, effect, computed } from '@angular/core';
+import { Component, input, output, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,9 +9,11 @@ import {
   DateInputComponent,
   type SelectOption,
 } from '@app/shared/components/input';
+import { MessageComponent } from '@app/shared/components/message';
 import { AlbumService, Album, CreateAlbumDto, UpdateAlbumDto } from '@app/services/album.service';
-import { ArtistService } from '@app/services/artist.service';
-import { GenreService } from '@app/services/genre.service';
+import { OptionsService } from '@app/shared/services/options.service';
+import { runOnOpen } from '@app/shared/utils/dialog';
+import { getHttpErrorMessage } from '@app/shared/utils/http-error';
 
 @Component({
   selector: 'app-album-editor-dialog',
@@ -21,6 +23,7 @@ import { GenreService } from '@app/services/genre.service';
     FormsModule,
     MatIconModule,
     DialogComponent,
+    MessageComponent,
     TextInputComponent,
     DateInputComponent,
     SelectInputComponent,
@@ -30,8 +33,7 @@ import { GenreService } from '@app/services/genre.service';
 })
 export class AlbumEditorDialogComponent {
   private readonly albumService = inject(AlbumService);
-  private readonly artistService = inject(ArtistService);
-  private readonly genreService = inject(GenreService);
+  private readonly optionsService = inject(OptionsService);
 
   readonly album = input<Album | null>(null);
   readonly isOpen = input<boolean>(false);
@@ -39,6 +41,7 @@ export class AlbumEditorDialogComponent {
   readonly closed = output<void>();
 
   readonly isSavingSg = signal(false);
+  readonly errorSg = signal('');
   readonly titleSg = signal('');
   readonly releaseDateSg = signal('');
   readonly genreIdsSg = signal<string[]>([]);
@@ -66,41 +69,35 @@ export class AlbumEditorDialogComponent {
   });
 
   constructor() {
-    effect(() => {
-      if (this.isOpen()) {
-        this.loadArtists();
-        this.loadGenres();
-        if (this.album()) {
-          // Edit mode - populate form
-          const albumData = this.album();
-          if (albumData) {
-            this.titleSg.set(albumData.title);
-            this.releaseDateSg.set(albumData.releaseDate);
-            this.genreIdsSg.set(albumData.genres.map((genre) => genre.id));
-            // Set artists array
-            const artistIds = albumData.artists.map((a) => a.id);
-            this.selectedArtistIdsSg.set(artistIds);
-          }
-        } else {
-          // Create mode - clear form
-          this.titleSg.set('');
-          this.releaseDateSg.set('');
-          this.genreIdsSg.set([]);
-          this.selectedArtistIdsSg.set([]);
+    runOnOpen(this.isOpen, () => {
+      this.loadArtists();
+      this.loadGenres();
+      if (this.album()) {
+        // Edit mode - populate form
+        const albumData = this.album();
+        if (albumData) {
+          this.titleSg.set(albumData.title);
+          this.releaseDateSg.set(albumData.releaseDate);
+          this.genreIdsSg.set(albumData.genres.map((genre) => genre.id));
+          // Set artists array
+          const artistIds = albumData.artists.map((a) => a.id);
+          this.selectedArtistIdsSg.set(artistIds);
         }
+      } else {
+        // Create mode - clear form
+        this.titleSg.set('');
+        this.releaseDateSg.set('');
+        this.genreIdsSg.set([]);
+        this.selectedArtistIdsSg.set([]);
       }
+      this.errorSg.set('');
     });
   }
 
   private loadArtists(): void {
-    this.artistService.getArtists(1, 100).subscribe({
-      next: (response) => {
-        this.artistOptionsSg.set(
-          response.items.map((artist) => ({
-            label: artist.name,
-            value: artist.id,
-          }))
-        );
+    this.optionsService.loadArtists(100).subscribe({
+      next: (options) => {
+        this.artistOptionsSg.set(options);
       },
       error: (error) => {
         console.error('Failed to load artists:', error);
@@ -109,14 +106,9 @@ export class AlbumEditorDialogComponent {
   }
 
   private loadGenres(): void {
-    this.genreService.getGenres(1, 200).subscribe({
-      next: (response) => {
-        this.genreOptionsSg.set(
-          response.items.map((genre) => ({
-            label: genre.name,
-            value: genre.id,
-          }))
-        );
+    this.optionsService.loadGenres(200).subscribe({
+      next: (options) => {
+        this.genreOptionsSg.set(options);
       },
       error: (error) => {
         console.error('Failed to load genres:', error);
@@ -126,6 +118,7 @@ export class AlbumEditorDialogComponent {
 
   onSave(): void {
     this.isLoadingSg.set(true);
+    this.errorSg.set('');
     if (this.isCreateMode()) {
       const albumDto: CreateAlbumDto = {
         title: this.titleSg().trim(),
@@ -142,6 +135,7 @@ export class AlbumEditorDialogComponent {
         },
         error: (error) => {
           console.error('Failed to save album:', error);
+          this.errorSg.set(getHttpErrorMessage(error, 'Failed to create album. Please try again.'));
           this.isLoadingSg.set(false);
         },
       });
@@ -169,6 +163,7 @@ export class AlbumEditorDialogComponent {
       },
       error: (error) => {
         console.error('Failed to save album:', error);
+        this.errorSg.set(getHttpErrorMessage(error, 'Failed to update album. Please try again.'));
         this.isLoadingSg.set(false);
       },
     });
@@ -185,4 +180,5 @@ export class AlbumEditorDialogComponent {
   onClose(): void {
     this.cancel();
   }
+
 }

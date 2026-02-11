@@ -1,6 +1,9 @@
 @if (isOpen()) {
   <app-dialog [title]="dialogTitle()" (closed)="cancel()">
     <div content class="song-editor-dialog">
+      @if (errorSg()) {
+        <app-message type="error" [message]="errorSg()" />
+      }
       <app-text-input
         label="Title"
         placeholder="Enter song title"

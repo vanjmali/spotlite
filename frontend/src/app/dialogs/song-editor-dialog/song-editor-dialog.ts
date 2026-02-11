@@ -1,4 +1,4 @@
-import { Component, input, output, inject, signal, effect, computed } from '@angular/core';
+import { Component, input, output, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -8,10 +8,11 @@ import {
   SelectInputComponent,
   type SelectOption,
 } from '@app/shared/components/input';
+import { MessageComponent } from '@app/shared/components/message';
 import { SongService, Song, CreateSongDto, UpdateSongDto } from '@app/services/song.service';
-import { AlbumService } from '@app/services/album.service';
-import { ArtistService } from '@app/services/artist.service';
-import { GenreService } from '@app/services/genre.service';
+import { OptionsService } from '@app/shared/services/options.service';
+import { runOnOpen } from '@app/shared/utils/dialog';
+import { getHttpErrorMessage } from '@app/shared/utils/http-error';
 
 @Component({
   selector: 'app-song-editor-dialog',
@@ -21,6 +22,7 @@ import { GenreService } from '@app/services/genre.service';
     FormsModule,
     MatIconModule,
     DialogComponent,
+    MessageComponent,
     TextInputComponent,
     SelectInputComponent,
   ],
@@ -29,9 +31,7 @@ import { GenreService } from '@app/services/genre.service';
 })
 export class SongEditorDialogComponent {
   private readonly songService = inject(SongService);
-  private readonly albumService = inject(AlbumService);
-  private readonly artistService = inject(ArtistService);
-  private readonly genreService = inject(GenreService);
+  private readonly optionsService = inject(OptionsService);
 
   readonly song = input<Song | null>(null);
   readonly isOpen = input<boolean>(false);
@@ -39,6 +39,7 @@ export class SongEditorDialogComponent {
   readonly closed = output<void>();
 
   readonly isSavingSg = signal(false);
+  readonly errorSg = signal('');
   readonly titleSg = signal('');
   readonly genreIdsSg = signal<string[]>([]);
   readonly durationSg = signal('');
@@ -73,44 +74,38 @@ export class SongEditorDialogComponent {
   });
 
   constructor() {
-    effect(() => {
-      if (this.isOpen()) {
-        this.loadArtists();
-        this.loadGenres();
-        this.loadAlbums();
-        if (this.song()) {
-          // Edit mode - populate form
-          const songData = this.song();
-          if (songData) {
-            this.titleSg.set(songData.title);
-            this.durationSg.set(songData.lengthSeconds.toString());
-            this.genreIdsSg.set(songData.genres.map((genre) => genre.id));
-            // Set artists array
-            const artistIds = songData.artists.map((a) => a.id);
-            this.selectedArtistIdsSg.set(artistIds);
-            this.albumIdSg.set([]);
-          }
-        } else {
-          // Create mode - clear form
-          this.titleSg.set('');
-          this.durationSg.set('');
-          this.genreIdsSg.set([]);
-          this.selectedArtistIdsSg.set([]);
+    runOnOpen(this.isOpen, () => {
+      this.loadArtists();
+      this.loadGenres();
+      this.loadAlbums();
+      if (this.song()) {
+        // Edit mode - populate form
+        const songData = this.song();
+        if (songData) {
+          this.titleSg.set(songData.title);
+          this.durationSg.set(songData.lengthSeconds.toString());
+          this.genreIdsSg.set(songData.genres.map((genre) => genre.id));
+          // Set artists array
+          const artistIds = songData.artists.map((a) => a.id);
+          this.selectedArtistIdsSg.set(artistIds);
           this.albumIdSg.set([]);
         }
+      } else {
+        // Create mode - clear form
+        this.titleSg.set('');
+        this.durationSg.set('');
+        this.genreIdsSg.set([]);
+        this.selectedArtistIdsSg.set([]);
+        this.albumIdSg.set([]);
       }
+      this.errorSg.set('');
     });
   }
 
   private loadArtists(): void {
-    this.artistService.getArtists(1, 100).subscribe({
-      next: (response) => {
-        this.artistOptionsSg.set(
-          response.items.map((artist) => ({
-            label: artist.name,
-            value: artist.id,
-          }))
-        );
+    this.optionsService.loadArtists(100).subscribe({
+      next: (options) => {
+        this.artistOptionsSg.set(options);
       },
       error: (error) => {
         console.error('Failed to load artists:', error);
@@ -119,14 +114,9 @@ export class SongEditorDialogComponent {
   }
 
   private loadGenres(): void {
-    this.genreService.getGenres(1, 200).subscribe({
-      next: (response) => {
-        this.genreOptionsSg.set(
-          response.items.map((genre) => ({
-            label: genre.name,
-            value: genre.id,
-          }))
-        );
+    this.optionsService.loadGenres(200).subscribe({
+      next: (options) => {
+        this.genreOptionsSg.set(options);
       },
       error: (error) => {
         console.error('Failed to load genres:', error);
@@ -135,14 +125,9 @@ export class SongEditorDialogComponent {
   }
 
   private loadAlbums(): void {
-    this.albumService.getAlbums(1, 200).subscribe({
-      next: (response) => {
-        this.albumOptionsSg.set(
-          response.items.map((album) => ({
-            label: album.title,
-            value: album.id,
-          }))
-        );
+    this.optionsService.loadAlbums(200).subscribe({
+      next: (options) => {
+        this.albumOptionsSg.set(options);
       },
       error: (error) => {
         console.error('Failed to load albums:', error);
@@ -152,6 +137,7 @@ export class SongEditorDialogComponent {
 
   onSave(): void {
     this.isLoadingSg.set(true);
+    this.errorSg.set('');
     const basePayload = {
       title: this.titleSg().trim(),
       genre_ids: this.genreIdsSg(),
@@ -169,6 +155,7 @@ export class SongEditorDialogComponent {
         },
         error: (error) => {
           console.error('Failed to update song:', error);
+          this.errorSg.set(getHttpErrorMessage(error, 'Failed to update song. Please try again.'));
           this.isLoadingSg.set(false);
         },
       });
@@ -187,6 +174,7 @@ export class SongEditorDialogComponent {
       },
       error: (error) => {
         console.error('Failed to save song:', error);
+        this.errorSg.set(getHttpErrorMessage(error, 'Failed to create song. Please try again.'));
         this.isLoadingSg.set(false);
       },
     });
@@ -203,4 +191,5 @@ export class SongEditorDialogComponent {
   onClose(): void {
     this.cancel();
   }
+
 }
