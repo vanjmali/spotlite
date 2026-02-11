@@ -35,7 +35,13 @@ type SongService struct {
 }
 
 // NewSongService creates and returns a new SongService with the provided repository and artist service.
-func NewSongService(songRepo repositories.SongRepository, artistService ArtistService, genreService GenreService, albumService *AlbumService, hdfs *storage.HDFSStorage) *SongService {
+func NewSongService(
+	songRepo repositories.SongRepository,
+	artistService ArtistService,
+	genreService GenreService,
+	albumService *AlbumService,
+	hdfs *storage.HDFSStorage,
+) *SongService {
 	tr := otel.Tracer("content-service/song-service")
 	s := SongService{songRepo: &songRepo, artistService: &artistService, genreService: &genreService, albumService: albumService, hdfs: hdfs, tr: tr}
 
@@ -55,11 +61,11 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (primit
 
 		switch {
 		case errors.Is(err, ErrObjectIdCastFailed):
-			return ErrObjectIdCastFailed
+			return primitive.NilObjectID, ErrObjectIdCastFailed
 		case errors.Is(err, ErrAlbumNotFound):
-			return ErrAlbumNotFound
+			return primitive.NilObjectID, ErrAlbumNotFound
 		default:
-			return err
+			return primitive.NilObjectID, err
 		}
 	}
 
@@ -320,7 +326,6 @@ func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
 	if song.AudioPath != "" {
 		if err := s.hdfs.Remove(song.AudioPath); err != nil {
 			log.Printf("trace_id=%s failed to delete audio file at path %s: %v", telemetry.TraceID(ctx), song.AudioPath, err)
-
 		}
 	}
 

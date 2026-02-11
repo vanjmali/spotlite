@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,7 +19,7 @@ type HDFSStorage struct {
 func NewHDFSStorage() (*HDFSStorage, error) {
 	uri := os.Getenv("HDFS_URI")
 	if uri == "" {
-		return nil, fmt.Errorf("HDFS_URI is not set")
+		return nil, errors.New("HDFS_URI is not set")
 	}
 	base := os.Getenv("HDFS_AUDIO_BASE")
 	if base == "" {
@@ -34,7 +35,7 @@ func NewHDFSStorage() (*HDFSStorage, error) {
 }
 
 func (s *HDFSStorage) EnsureBaseDir() error {
-	return s.c.MkdirAll(s.base, 0755)
+	return s.c.MkdirAll(s.base, 0o755)
 }
 
 func (s *HDFSStorage) UploadSongAudio(songID string, r io.Reader, ext string) (finalPath string, size int64, err error) {

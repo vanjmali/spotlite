@@ -123,7 +123,6 @@ func createClients() (*mongodriver.Client, error) {
 	}
 
 	return dbc, nil
-
 }
 
 func createRepositories(dbc *mongodriver.Client) (
@@ -146,7 +145,6 @@ func createServices(
 	sr *repositories.SongRepository,
 	alr *repositories.AlbumRepository,
 	gr *repositories.GenreRepository,
-	glss *services.GlobalSearchService,
 	hdfsStore *storage.HDFSStorage,
 ) (
 	*services.GenreService,
@@ -158,7 +156,7 @@ func createServices(
 	gs := services.NewGenreService(*gr)
 	as := services.NewArtistService(*ar, *gs)
 	als := services.NewAlbumService(*alr, *sr, *as, *gs)
-	ss := services.NewSongService(*sr, *as, *gs, als, *hdfsStore)
+	ss := services.NewSongService(*sr, *as, *gs, als, hdfsStore)
 	glss := services.NewGlobalSearchService(gs, ss, als, as)
 
 	return gs, as, ss, als, glss
