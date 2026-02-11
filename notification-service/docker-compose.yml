@@ -6,11 +6,11 @@ services:
         common-lib: ../common-lib
       dockerfile: ../Dockerfile.microservice
     environment:
+      APP_PORT: 3000
       CASSANDRA_HOST: ${CASSANDRA_HOST?}
       CASSANDRA_PORT: ${CASSANDRA_PORT?}
       CASSANDRA_DC: ${CASSANDRA_DC?}
       CASSANDRA_KEYSPACE: ${CASSANDRA_KEYSPACE?}
-      APP_PORT: ${APP_HTTP_PORT?}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true

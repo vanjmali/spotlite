@@ -23,8 +23,8 @@ jobs:
           - user-service
           - content-service
           - notification-service
+          - subscription-service
           # - rating-service
-          # - subscription-service
           # - recommendation-service
           # - analytics-service
     defaults:
@@ -52,3 +52,8 @@ jobs:
         with:
           version: v2.7
           working-directory: ${{ matrix.service }}
+
+      - name: go mod tidy
+        run: |
+          go mod tidy -v
+          git diff --exit-code go.mod go.sum

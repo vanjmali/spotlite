@@ -94,6 +94,23 @@ func BadRequest(w http.ResponseWriter, message ...string) error {
 	return Error(w, r)
 }
 
+// UnprocessableEntity issues a 422 Unprocessable Entity error response with a custom message.
+// This status code is used when the request is syntactically correct but semantically invalid (e.g., fails business rules).
+func UnprocessableEntity(w http.ResponseWriter, message ...string) error {
+	msg := "Unprocessable entity"
+	if len(message) > 0 && message[0] != "" {
+		msg = message[0]
+	}
+
+	r := ErrorResponse{
+		HttpCode: http.StatusUnprocessableEntity,
+		Code:     "unprocessable_entity",
+		Message:  msg,
+	}
+
+	return Error(w, r)
+}
+
 // Unauthorized issues a 401 Unauthorized error response.
 // If a custom message is provided, it uses that; otherwise it falls back to the standard message.
 func Unauthorized(w http.ResponseWriter, message ...string) error {

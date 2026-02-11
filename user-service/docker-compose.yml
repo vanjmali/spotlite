@@ -6,6 +6,7 @@ services:
         common-lib: ../common-lib
       dockerfile: ../Dockerfile.microservice
     environment:
+      APP_PORT: 3000
       REDIS_ADDR: user-redis:6379
       DB_HOST: user-mongodb
       DB_PORT: 27017
@@ -28,7 +29,6 @@ services:
       APP_REFRESH_COOKIE_DOMAIN: ${SRV_USER_REFRESH_COOKIE_DOMAIN}
       APP_REFRESH_COOKIE_SECURE: ${SRV_USER_REFRESH_COOKIE_SECURE?}
       APP_REFRESH_COOKIE_SAMESITE: ${SRV_USER_REFRESH_COOKIE_SAMESITE?}
-      APP_PORT: ${APP_HTTP_PORT}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true
@@ -59,14 +59,16 @@ services:
       SRV_USER_MONGO_USERNAME: ${SRV_USER_MONGO_USERNAME?}
       SRV_USER_MONGO_PASSWORD: ${SRV_USER_MONGO_PASSWORD?}
     healthcheck:
+      # healthcheck uses username and password value from user-mongodb environment variables defined above
       test:
         [
           "CMD-SHELL",
-          'mongosh --username $SRV_USER_MONGO_ROOT_USERNAME --password $SRV_USER_MONGO_ROOT_PASSWORD --authenticationDatabase admin --eval ''db.adminCommand("ping")''',
+          'mongosh --norc --quiet --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval ''db.runCommand({ ping: 1 })''',
         ]
-      interval: 3s
+      interval: 30s
       timeout: 5s
       retries: 5
+      start_period: 20s
     volumes:
       - user-mongo-data:/data/db
       - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro

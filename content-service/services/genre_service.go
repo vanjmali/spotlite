@@ -159,3 +159,22 @@ func (s *GenreService) GetGenres(ctx context.Context, q GenresQuery) (*dtos.Genr
 	p := pagination.NewPagination(q.Page, q.Size)
 	return listWithPagination(ctx, p, filter, s.r.FindAll)
 }
+
+func (s *GenreService) Exists(ctx context.Context, genreIDstr string) (bool, error) {
+	ctx, span := s.tr.Start(ctx, "genres.exists")
+	defer span.End()
+
+	genreID, err := primitive.ObjectIDFromHex(genreIDstr)
+	if err != nil {
+		span.RecordError(err)
+		return false, err
+	}
+
+	exists, err := s.r.Exists(ctx, genreID)
+	if err != nil {
+		span.RecordError(err)
+		return false, err
+	}
+
+	return exists, nil
+}
