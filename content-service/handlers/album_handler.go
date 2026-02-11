@@ -45,10 +45,10 @@ func (h *AlbumHandler) HandleCreateAlbum(w http.ResponseWriter, r *http.Request)
 		case errors.Is(err, services.ErrObjectIdCastFailed):
 			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid ID format"))
 			return
-		case errors.Is(err, services.ErrSongNotFound):
+		case errors.Is(err, services.ErrArtistNotFound):
 			_ = respond.NotFound(w)
 			return
-		case errors.Is(err, services.ErrArtistNotFound):
+		case errors.Is(err, services.ErrGenreNotFound):
 			_ = respond.NotFound(w)
 			return
 		default:
