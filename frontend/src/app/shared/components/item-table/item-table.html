@@ -1,5 +1,7 @@
 <app-widget [title]="titleSg()">
-  <ng-content select="[actions]" />
+  <div actions>
+    <ng-content select="[actions]" />
+  </div>
 
   <div content class="item-table">
     @if (isLoadingSg()) {
