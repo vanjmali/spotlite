@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { WidgetComponent } from '@app/shared/components/widget';
 import { LoaderComponent } from '@app/shared/components/loader';
@@ -9,6 +9,7 @@ import { LoaderComponent } from '@app/shared/components/loader';
   imports: [CommonModule, WidgetComponent, LoaderComponent],
   templateUrl: './item-table.html',
   styleUrl: './item-table.scss',
+  encapsulation: ViewEncapsulation.None,
 })
 export class ItemTableComponent {
   readonly titleSg = input<string>('');
