@@ -1,14 +1,13 @@
 package storage
 
 import (
-	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path"
 	"time"
 
 	"github.com/colinmarc/hdfs/v2"
+	"github.com/vanjmali/spotlite/common-lib/utils"
 )
 
 type HDFSStorage struct {
@@ -17,14 +16,8 @@ type HDFSStorage struct {
 }
 
 func NewHDFSStorage() (*HDFSStorage, error) {
-	uri := os.Getenv("HDFS_URI")
-	if uri == "" {
-		return nil, errors.New("HDFS_URI is not set")
-	}
-	base := os.Getenv("HDFS_AUDIO_BASE")
-	if base == "" {
-		base = "/spotlite/audio"
-	}
+	uri := utils.MustGetEnv("HDFS_URI")
+	base := utils.MustGetEnv("HDFS_AUDIO_BASE")
 
 	c, err := hdfs.New(uri)
 	if err != nil {

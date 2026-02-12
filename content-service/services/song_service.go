@@ -140,7 +140,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (primit
 
 	id := songEntity.ID
 	createCtx, createSpan := s.tr.Start(ctx, "song.create.create_song")
-	_, err = s.songRepo.Create(createCtx, *songEntity)
+	id, err = s.songRepo.Create(createCtx, *songEntity)
 	if err != nil {
 		createSpan.RecordError(err)
 		createSpan.End()
@@ -317,6 +317,14 @@ func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
 	}
 	findSongSpan.End()
 
+	removeFromAlbumsCtx, removeFromAlbumsSpan := s.tr.Start(ctx, "song.delete_song.remove_from_albums")
+	if err := s.albumService.RemoveSongFromAllAlbums(removeFromAlbumsCtx, id.Hex()); err != nil {
+		removeFromAlbumsSpan.RecordError(err)
+		removeFromAlbumsSpan.End()
+		return err
+	}
+	removeFromAlbumsSpan.End()
+
 	repoCtx, repoSpan := s.tr.Start(ctx, "song.delete.repository_delete")
 	res, err := s.songRepo.DeleteByID(repoCtx, id)
 	if err != nil {
@@ -334,9 +342,12 @@ func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
 	repoSpan.End()
 
 	if song.AudioPath != "" {
+		cleanupCtx, cleanupSpan := s.tr.Start(ctx, "song.delete_song.remove_audio")
 		if err := s.hdfs.Remove(song.AudioPath); err != nil {
-			log.Printf("trace_id=%s failed to delete audio file at path %s: %v", telemetry.TraceID(ctx), song.AudioPath, err)
+			cleanupSpan.RecordError(err)
+			log.Printf("trace_id=%s failed to delete audio file at path %s: %v", telemetry.TraceID(cleanupCtx), song.AudioPath, err)
 		}
+		cleanupSpan.End()
 	}
 
 	return nil
@@ -445,6 +456,9 @@ func (s *SongService) UploadAudio(ctx context.Context, idStr string, r io.Reader
 	if err != nil {
 		span.RecordError(err)
 		_ = s.hdfs.Remove(audioPath)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrSongNotFound
+		}
 		return nil, err
 	}
 

@@ -27,7 +27,7 @@ services:
     depends_on:
       content-mongodb:
         condition: service_healthy
-      hdfs-namenode:
+      content-hdfs-namenode:
         condition: service_healthy
     networks:
       - api-gateway
@@ -46,7 +46,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'mongosh --norc --quiet --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval ''db.runCommand({ ping: 1 })''',
+          "mongosh --norc --quiet --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval 'db.runCommand({ ping: 1 })'",
         ]
       interval: 30s
       timeout: 5s
@@ -58,40 +58,59 @@ services:
     networks:
       - content-internal
 
-  hdfs-namenode:
-    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+  content-hdfs-namenode:
+    image: apache/hadoop:3.4
+    hostname: content-hdfs-namenode
+    command: ["hdfs", "namenode"]
     environment:
-      - CLUSTER_NAME=spotlite
-      - CORE_CONF_fs_defaultFS=hdfs://hdfs-namenode:8020
-      - HDFS_CONF_dfs_permissions_enabled=false
+      - CLUSTER_NAME=${SRV_CONTENT_HDFS_CLUSTER_NAME?}
+      - CORE-SITE.XML_fs.defaultFS=hdfs://content-hdfs-namenode:8020
+      - HDFS-SITE.XML_dfs.replication=${SRV_CONTENT_HDFS_REPLICATION?}
+      - HDFS-SITE.XML_dfs.permissions.enabled=${SRV_CONTENT_HDFS_PERMISSIONS_ENABLED?}
+      - HDFS-SITE.XML_dfs.namenode.name.dir=file:///data/dfs/name
+      - ENSURE_NAMENODE_DIR=/data/dfs/name
     ports:
       - "9870:9870" # HDFS web UI
       - "8020:8020" # Namenode RPC (za Go client)
     volumes:
-      - hdfs-namenode-data:/hadoop/dfs/name
+      - content-hdfs-namenode-data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9870"]
-      interval: 10s
-      timeout: 5s
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS 'http://localhost:9870/jmx?qry=Hadoop:service=NameNode,name=NameNodeStatus' | grep -E '\"State\"\\s*:\\s*\"(active|standby)\"'",
+        ]
+      interval: 30s
+      timeout: 10s
       retries: 5
+      start_period: 60s
     networks:
       - content-internal
 
-  hdfs-datanode:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+  content-hdfs-datanode:
+    image: apache/hadoop:3.4
+    hostname: content-hdfs-datanode
+    command: ["hdfs", "datanode"]
     environment:
-      - CLUSTER_NAME=spotlite
-      - CORE_CONF_fs_defaultFS=hdfs://hdfs-namenode:8020
-      - SERVICE_PRECONDITION=hdfs-namenode:9870
+      - CLUSTER_NAME=${SRV_CONTENT_HDFS_CLUSTER_NAME?}
+      - CORE-SITE.XML_fs.defaultFS=hdfs://content-hdfs-namenode:8020
+      - HDFS-SITE.XML_dfs.replication=${SRV_CONTENT_HDFS_REPLICATION?}
+      - HDFS-SITE.XML_dfs.permissions.enabled=${SRV_CONTENT_HDFS_PERMISSIONS_ENABLED?}
+      - HDFS-SITE.XML_dfs.datanode.data.dir=file:///data/dfs/data
     volumes:
-      - hdfs-datanode-data:/hadoop/dfs/data
-    healthcheck: 
-      test: ["CMD", "curl", "-f", "http://hdfs-namenode:9870"]
-      interval: 10s
-      timeout: 5s
+      - content-hdfs-datanode-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS 'http://localhost:9864/jmx?qry=Hadoop:service=DataNode,name=DataNodeInfo' >/dev/null",
+        ]
+      interval: 30s
+      timeout: 10s
       retries: 5
+      start_period: 60s
     depends_on:
-      hdfs-namenode:
+      content-hdfs-namenode:
         condition: service_healthy
     networks:
       - content-internal
@@ -103,5 +122,5 @@ networks:
 
 volumes:
   content-mongo-data:
-  hdfs-namenode-data:
-  hdfs-datanode-data:
+  content-hdfs-namenode-data:
+  content-hdfs-datanode-data:
