@@ -10,24 +10,30 @@ import (
 	"github.com/vanjmali/spotlite/subscription-service/services"
 )
 
-type NatsConsumer struct {
+type SubscriptionConsumer struct {
 	ss *services.SubscriptionService
 }
 
-func NewConsumer(ss *services.SubscriptionService) *NatsConsumer {
-	return &NatsConsumer{
+func NewConsumer(ss *services.SubscriptionService) *SubscriptionConsumer {
+	return &SubscriptionConsumer{
 		ss: ss,
 	}
 }
 
-func (h *NatsConsumer) HandleArtistCreated(ctx context.Context, msg jetstream.Msg) error {
-	var payload events.ArtistEventPayload
-	if err := json.Unmarshal(msg.Data(), &payload); err != nil {
-		log.Printf("CRITICAL: Failed to unmarshal ArtistCreatedPayload: %v", err)
+func (h *SubscriptionConsumer) HandleEntityCreated(ctx context.Context, msg jetstream.Msg) error {
+	var p events.EntityCreatedEventPayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		log.Printf("CRITICAL: Failed to unmarshal EntityCreatedPayload: %v", err)
+		msg.Ack()
 		return nil
 	}
 
-	log.Print(payload)
+	err := h.ss.NotifySubscribers(ctx, p)
+	if err != nil {
+		msg.Nak()
+		return err
+	}
 
+	msg.Ack()
 	return nil
 }

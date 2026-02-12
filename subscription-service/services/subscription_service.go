@@ -3,7 +3,9 @@ package services
 import (
 	"context"
 	"errors"
+	"log"
 
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/subscription"
 	"github.com/vanjmali/spotlite/subscription-service/dtos"
@@ -23,9 +25,12 @@ var (
 	ErrUpstreamFailure      = errors.New("error has ocurred while fetching artist/genre")
 )
 
+const BATCH_SIZE = 500
+
 type SubscriptionRepository interface {
 	Create(s *entities.Subscription, ctx context.Context) error
 	Delete(entityID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) (int64, error)
+	FindSubscriptionsByEntityID(ctx context.Context, targetIDStrs []string, batchSize int, lastID string) ([]*entities.Subscription, string, error)
 }
 
 type ContentEntityGetter interface {
@@ -35,12 +40,13 @@ type ContentEntityGetter interface {
 type SubscriptionService struct {
 	sr  SubscriptionRepository
 	gcc ContentEntityGetter
+	jsc events.JetStreamClient
 	tr  trace.Tracer
 }
 
-func NewSubscriptionService(sr SubscriptionRepository, gcc ContentEntityGetter) *SubscriptionService {
+func NewSubscriptionService(sr SubscriptionRepository, gcc ContentEntityGetter, jsc events.JetStreamClient) *SubscriptionService {
 	tr := otel.Tracer("subscription-service/subscription-service")
-	s := SubscriptionService{sr: sr, gcc: gcc, tr: tr}
+	s := SubscriptionService{sr: sr, gcc: gcc, jsc: jsc, tr: tr}
 
 	return &s
 }
@@ -115,6 +121,58 @@ func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx conte
 
 	if ddc != 1 {
 		return ErrSubscriptionNotFound
+	}
+
+	return nil
+}
+
+func (s *SubscriptionService) NotifySubscribers(ctx context.Context, p events.EntityCreatedEventPayload) error {
+	ctx, span := s.tr.Start(ctx, "subscription.notify")
+	defer span.End()
+
+	loopCtx, loopSpan := s.tr.Start(ctx, "subscription.notify.loop")
+	defer loopSpan.End()
+
+	// iterationCount var is being used to track how many batches were processed so we avoid logging false negatives
+	ic := 0
+
+	var lastID string
+	for {
+		subscriptions, nextID, err := s.sr.FindSubscriptionsByEntityID(loopCtx, p.TargetIDs, BATCH_SIZE, lastID)
+		if err != nil {
+			return err
+		}
+
+		if len(subscriptions) == 0 && ic == 0 {
+			log.Printf("DEBUG: No subscriptions were found for specified target IDs")
+			break
+		}
+
+		subscriberIDs := make([]string, 0, len(subscriptions))
+		for _, s := range subscriptions {
+			subscriberIDs = append(subscriberIDs, s.SubscriberID.Hex())
+		}
+
+		sep := events.SubscribersBatchEventPayload{
+			EntityID:      p.EntityID,
+			EntityName:    p.EntityName,
+			EntityType:    p.EntityType,
+			CreatedAt:     p.CreatedAt,
+			SubscriberIDs: subscriberIDs,
+		}
+
+		func() {
+			pubCtx, pubSpan := s.tr.Start(loopCtx, "messaging.publish")
+			defer pubSpan.End()
+
+			if err := s.jsc.Publish(pubCtx, events.SUBJECT_SUBSCRIBER_BATCH, sep); err != nil {
+				pubSpan.RecordError(err)
+				log.Printf("Failed to publish batch: %v", err)
+			}
+		}()
+
+		ic += 1
+		lastID = nextID
 	}
 
 	return nil

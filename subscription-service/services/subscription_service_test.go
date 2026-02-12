@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/subscription"
 	"github.com/vanjmali/spotlite/subscription-service/dtos"
@@ -18,14 +19,23 @@ import (
 )
 
 type fakeSubscriptionRepo struct {
-	createFn func(*entities.Subscription, context.Context) error
-	deleteFn func(primitive.ObjectID, primitive.ObjectID, context.Context) (int64, error)
+	createFn                      func(*entities.Subscription, context.Context) error
+	deleteFn                      func(primitive.ObjectID, primitive.ObjectID, context.Context) (int64, error)
+	findSubscriptionsByEntityIDfn func([]string, int, string, context.Context) ([]*entities.Subscription, string, error)
 
-	createCalled bool
-	created      *entities.Subscription
-	deleteCalled bool
-	deleteUserID primitive.ObjectID
-	deleteEntity primitive.ObjectID
+	createCalled    bool
+	created         *entities.Subscription
+	deleteCalled    bool
+	deleteUserID    primitive.ObjectID
+	deleteEntity    primitive.ObjectID
+	subscriptionIDs []string
+	lastID          string
+	batchSize       int
+}
+
+// FindSubscriptionsByEntityID implements [SubscriptionRepository].
+func (f *fakeSubscriptionRepo) FindSubscriptionsByEntityID(ctx context.Context, targetIDStrs []string, batchSize int, lastID string) ([]*entities.Subscription, string, error) {
+	return make([]*entities.Subscription, 0), "", nil
 }
 
 func (f *fakeSubscriptionRepo) Create(s *entities.Subscription, ctx context.Context) error {
@@ -81,7 +91,7 @@ func TestSubscribeSuccess(t *testing.T) {
 			return "My Genre", nil
 		},
 	}
-	svc := NewSubscriptionService(repo, getter)
+	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
 
 	userID := primitive.NewObjectID()
 	entityID := primitive.NewObjectID()
@@ -106,7 +116,7 @@ func TestSubscribeEntityNotFound(t *testing.T) {
 			return "", status.Error(codes.NotFound, "not found")
 		},
 	}
-	svc := NewSubscriptionService(repo, getter)
+	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
 
 	req := &dtos.CreateSubscriptionDto{
 		EntityID: primitive.NewObjectID().Hex(),
@@ -126,7 +136,7 @@ func TestSubscribeInvalidEntityID(t *testing.T) {
 			return "", status.Error(codes.InvalidArgument, "bad id")
 		},
 	}
-	svc := NewSubscriptionService(repo, getter)
+	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
 
 	req := &dtos.CreateSubscriptionDto{
 		EntityID: primitive.NewObjectID().Hex(),
@@ -146,7 +156,7 @@ func TestSubscribeUpstreamFailure(t *testing.T) {
 			return "", status.Error(codes.Internal, "boom")
 		},
 	}
-	svc := NewSubscriptionService(repo, getter)
+	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
 
 	req := &dtos.CreateSubscriptionDto{
 		EntityID: primitive.NewObjectID().Hex(),
@@ -166,7 +176,7 @@ func TestSubscribeRepoDuplicate(t *testing.T) {
 		},
 	}
 	getter := &fakeContentGetter{}
-	svc := NewSubscriptionService(repo, getter)
+	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
 
 	req := &dtos.CreateSubscriptionDto{
 		EntityID: primitive.NewObjectID().Hex(),
@@ -181,7 +191,7 @@ func TestSubscribeRepoDuplicate(t *testing.T) {
 func TestSubscribeMappingError(t *testing.T) {
 	repo := &fakeSubscriptionRepo{}
 	getter := &fakeContentGetter{}
-	svc := NewSubscriptionService(repo, getter)
+	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
 
 	req := &dtos.CreateSubscriptionDto{
 		EntityID: "invalid-id",
@@ -200,7 +210,7 @@ func TestUnsubscribeSuccess(t *testing.T) {
 			return 1, nil
 		},
 	}
-	svc := NewSubscriptionService(repo, &fakeContentGetter{})
+	svc := NewSubscriptionService(repo, &fakeContentGetter{}, events.JetStreamClient{})
 
 	err := svc.Unsubscribe(primitive.NewObjectID(), contextWithUserID(context.Background(), primitive.NewObjectID()))
 
@@ -214,7 +224,7 @@ func TestUnsubscribeNotFound(t *testing.T) {
 			return 0, nil
 		},
 	}
-	svc := NewSubscriptionService(repo, &fakeContentGetter{})
+	svc := NewSubscriptionService(repo, &fakeContentGetter{}, events.JetStreamClient{})
 
 	err := svc.Unsubscribe(primitive.NewObjectID(), contextWithUserID(context.Background(), primitive.NewObjectID()))
 
@@ -227,7 +237,7 @@ func TestUnsubscribeRepoError(t *testing.T) {
 			return 0, errors.New("delete failed")
 		},
 	}
-	svc := NewSubscriptionService(repo, &fakeContentGetter{})
+	svc := NewSubscriptionService(repo, &fakeContentGetter{}, events.JetStreamClient{})
 
 	err := svc.Unsubscribe(primitive.NewObjectID(), contextWithUserID(context.Background(), primitive.NewObjectID()))
 
@@ -236,7 +246,7 @@ func TestUnsubscribeRepoError(t *testing.T) {
 
 func TestUnsubscribeInvalidUserID(t *testing.T) {
 	repo := &fakeSubscriptionRepo{}
-	svc := NewSubscriptionService(repo, &fakeContentGetter{})
+	svc := NewSubscriptionService(repo, &fakeContentGetter{}, events.JetStreamClient{})
 
 	err := svc.Unsubscribe(primitive.NewObjectID(), context.Background())
 

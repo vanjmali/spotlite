@@ -8,13 +8,15 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gocql/gocql"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
-	"github.com/vanjmali/spotlite/notifications/handlers"
-	"github.com/vanjmali/spotlite/notifications/infrastructure"
-	"github.com/vanjmali/spotlite/notifications/repositories"
-	"github.com/vanjmali/spotlite/notifications/routers"
-	"github.com/vanjmali/spotlite/notifications/services"
+	"github.com/vanjmali/spotlite/notification-service/consumers"
+	"github.com/vanjmali/spotlite/notification-service/handlers"
+	"github.com/vanjmali/spotlite/notification-service/infrastructure"
+	"github.com/vanjmali/spotlite/notification-service/repositories"
+	"github.com/vanjmali/spotlite/notification-service/routers"
+	"github.com/vanjmali/spotlite/notification-service/services"
 )
 
 var (
@@ -26,7 +28,7 @@ var config = server.ServerRunConfiguration{
 	TelemetryName: "notification-service",
 	Port:          utils.GetEnv("APP_PORT", "3000"),
 	CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
-		cs, err := createClients()
+		cs, jsc, err := createClients()
 		if err != nil {
 			err = fmt.Errorf("failed to create clients: %w", err)
 			return h, shutdown, err
@@ -35,9 +37,14 @@ var config = server.ServerRunConfiguration{
 		b := infrastructure.NewBroker()
 		go b.Listen()
 
+		jsc.EnsureStream(ctx, events.SUBSCRIPTIONS_STREAM, []string{events.SUBJECT_SUBSCRIBER_BATCH})
+
 		nr := createRepositories(cs)
-		ns := createServices(nr)
+		ns := createServices(nr, b)
 		h = createHandlers(ns, b)
+		c := createConsumers(ns)
+
+		go jsc.StartConsumer(ctx, events.SUBSCRIPTIONS_STREAM, events.SUBJECT_SUBSCRIBER_BATCH, events.SUB_DURABLE, c.HandleSubscribersBatch)
 
 		shutdown = func() error {
 			cs.Close()
@@ -54,19 +61,24 @@ func main() {
 	}
 }
 
-func createClients() (*gocql.Session, error) {
+func createClients() (*gocql.Session, *events.JetStreamClient, error) {
 	// schema initialization
 	if err := infrastructure.InitializeSchema(cassHost, ks); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// initialize cassandra session which will be used to execute queries
 	cs, err := infrastructure.Initialize(cassHost, ks)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize database session: %w", err)
+		return nil, nil, fmt.Errorf("failed to initialize database session: %w", err)
 	}
 
-	return cs, nil
+	jsc, err := events.NewClient("nats://nats:4222")
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to initialized NATS jet stream client: %w", err)
+	}
+
+	return cs, jsc, nil
 }
 
 func createHandlers(
@@ -79,12 +91,18 @@ func createHandlers(
 
 func createServices(
 	nr *repositories.NotificationRepository,
+	b *infrastructure.Broker,
 ) *services.NotificationService {
-	ns := services.NewNotificationService(nr)
+	ns := services.NewNotificationService(nr, b)
 	return ns
 }
 
 func createRepositories(cs *gocql.Session) *repositories.NotificationRepository {
 	nr := repositories.NewNotificationRepository(cs)
 	return nr
+}
+
+func createConsumers(ns *services.NotificationService) *consumers.NotificationConsumer {
+	sc := consumers.NewConsumer(ns)
+	return sc
 }

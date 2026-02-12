@@ -6,7 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
-	"github.com/vanjmali/spotlite/notifications/handlers"
+	"github.com/vanjmali/spotlite/notification-service/handlers"
 )
 
 func HandleRequests(h *handlers.NotificationHandler) http.Handler {
@@ -19,7 +19,6 @@ func HandleRequests(h *handlers.NotificationHandler) http.Handler {
 	telemetry.AttachMuxTracing(api, "notification-service")
 
 	api.Handle("/", middlewares.RequireAuthenticated(h.GetUserInbox)).Methods("GET")
-	api.Handle("/", middlewares.RequireAuthenticated(h.CreateNotification)).Methods("POST")
 
 	// SSE subscribe endpoint
 	api.Handle("/stream", middlewares.RequireAuthenticated(h.Subscribe)).Methods("GET")

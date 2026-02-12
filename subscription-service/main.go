@@ -65,15 +65,15 @@ var config = server.ServerRunConfiguration{
 			return nil, nil, err
 		}
 
-		jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ALBUM_CREATED, events.SUBJECT_ARTIST_CREATED})
+		jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED})
 
 		gcc := createAdapters(gc)
 		sr := createRepositories(dbc)
-		ss := createServices(sr, gcc)
+		ss := createServices(sr, gcc, jsc)
 		h = createHandlers(v, ss)
 		c := createConsumers(ss)
 
-		go jsc.StartConsumer(ctx, events.CONTENT_STREAM, events.SUBJECT_ARTIST_CREATED, events.ARTIST_DURABLE, c.HandleArtistCreated)
+		go jsc.StartConsumer(ctx, events.CONTENT_STREAM, events.SUBJECT_ENTITY_CREATED, events.ENTITY_DURABLE, c.HandleEntityCreated)
 
 		shutdown = func() error {
 			if err := dbc.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
@@ -172,8 +172,9 @@ func createRepositories(dbc *mongodriver.Client) *repositories.SubscriptionRepos
 func createServices(
 	sr *repositories.SubscriptionRepository,
 	gcc *adapters.GrpcContentEntityGetter,
+	jsc *events.JetStreamClient,
 ) *services.SubscriptionService {
-	ss := services.NewSubscriptionService(sr, gcc)
+	ss := services.NewSubscriptionService(sr, gcc, *jsc)
 
 	return ss
 }
@@ -184,11 +185,10 @@ func createHandlers(
 
 ) http.Handler {
 	sh := handlers.NewSubscriptionHandler(*ss, *v)
-
 	return routers.HandleRequests(sh)
 }
 
-func createConsumers(ss *services.SubscriptionService) *consumers.NatsConsumer {
+func createConsumers(ss *services.SubscriptionService) *consumers.SubscriptionConsumer {
 	sc := consumers.NewConsumer(ss)
 	return sc
 }

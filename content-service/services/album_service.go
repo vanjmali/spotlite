@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"time"
 
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
@@ -46,6 +47,7 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 	resolveArtistCtx, resolveArtistSpan := s.tr.Start(ctx, "album.create.resolve_artist")
 
 	embeddedArtist := make([]entities.Artist, 0)
+	artistIDs := []string{}
 
 	for _, artistsIdStr := range albumDto.ArtistIds {
 		artist, err := s.artistService.FindArtistByID(resolveArtistCtx, artistsIdStr)
@@ -69,6 +71,8 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 			Genres:      artist.Genres,
 			Description: artist.Description,
 		})
+
+		artistIDs = append(artistIDs, artist.ID.Hex())
 	}
 
 	resolveArtistSpan.End()
@@ -148,6 +152,11 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 		log.Printf("trace_id=%s error creating album in database: %v", telemetry.TraceID(ctx), err)
 		return err
 	}
+
+	aep := toAlbumCreatedEvent(artistIDs, albumEntity.ID.Hex(), albumEntity.Title)
+
+	// TODO: Handle error, implement retry mechanism
+	s.jsc.Publish(ctx, events.SUBJECT_ENTITY_CREATED, aep)
 
 	createSpan.End()
 	return nil
@@ -498,4 +507,14 @@ func (s *AlbumService) GetAlbums(ctx context.Context, q AlbumsQuery) (*dtos.Albu
 	}
 
 	return resp, nil
+}
+
+func toAlbumCreatedEvent(artistIDs []string, albumID string, albumName string) *events.EntityCreatedEventPayload {
+	return &events.EntityCreatedEventPayload{
+		TargetIDs:  artistIDs,
+		EntityID:   albumID,
+		EntityName: albumName,
+		CreatedAt:  time.Now(),
+		EntityType: events.AlbumType,
+	}
 }

@@ -1,0 +1,40 @@
+package consumers
+
+import (
+	"context"
+	"encoding/json"
+	"log"
+
+	"github.com/nats-io/nats.go/jetstream"
+	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/notification-service/services"
+)
+
+type NotificationConsumer struct {
+	ns *services.NotificationService
+}
+
+func NewConsumer(ns *services.NotificationService) *NotificationConsumer {
+	return &NotificationConsumer{
+		ns: ns,
+	}
+}
+
+func (h *NotificationConsumer) HandleSubscribersBatch(ctx context.Context, msg jetstream.Msg) error {
+	var p events.SubscribersBatchEventPayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		log.Printf("CRITICAL: Failed to unmarshal SubscribersBatchEventPayload: %v", err)
+		msg.Ack()
+		return nil
+	}
+
+	err := h.ns.CreateNotification(p, ctx)
+	if err != nil {
+		// TODO: handle different types of errors differently
+		msg.Nak()
+		return err
+	}
+
+	msg.Ack()
+	return nil
+}

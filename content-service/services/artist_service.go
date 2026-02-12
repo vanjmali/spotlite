@@ -95,9 +95,10 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 		return err
 	}
 
-	aep := toArtistEventPayload(genreIDs, artistEntity.ID.Hex(), artistEntity.Name)
+	aep := toArtistCreatedEvent(genreIDs, artistEntity.ID.Hex(), artistEntity.Name)
 
-	s.jsc.Publish(ctx, events.SUBJECT_ARTIST_CREATED, aep)
+	// TODO: Handle error, implement retry mechanism
+	s.jsc.Publish(ctx, events.SUBJECT_ENTITY_CREATED, aep)
 
 	createSpan.End()
 
@@ -297,11 +298,12 @@ func (s *ArtistService) Exists(ctx context.Context, artistIDstr string) (bool, e
 	return exists, nil
 }
 
-func toArtistEventPayload(genreIDs []string, artistID string, artistName string) *events.ArtistEventPayload {
-	return &events.ArtistEventPayload{
-		GenreIds:   genreIDs,
-		ArtistID:   artistID,
-		ArtistName: artistName,
+func toArtistCreatedEvent(genreIDs []string, artistID string, artistName string) *events.EntityCreatedEventPayload {
+	return &events.EntityCreatedEventPayload{
+		TargetIDs:  genreIDs,
+		EntityID:   artistID,
+		EntityName: artistName,
 		CreatedAt:  time.Now(),
+		EntityType: events.ArtistType,
 	}
 }
