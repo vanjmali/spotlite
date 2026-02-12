@@ -147,15 +147,25 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (primit
 		log.Printf("trace_id=%s error creating song in database: %v", telemetry.TraceID(ctx), err)
 		return primitive.NilObjectID, err
 	}
+	createSpan.End()
 
-	_, err = s.albumService.AddSongsToAlbum(ctx, songDto.AlbumId, dtos.AddAlbumSongsDto{Ids: []string{songEntity.ID.Hex()}})
+	addToAlbumCtx, addToAlbumSpan := s.tr.Start(ctx, "song.create.add_to_album")
+	_, err = s.albumService.AddSongsToAlbum(addToAlbumCtx, songDto.AlbumId, dtos.AddAlbumSongsDto{Ids: []string{songEntity.ID.Hex()}})
 	if err != nil {
-		createSpan.RecordError(err)
-		createSpan.End()
+		addToAlbumSpan.RecordError(err)
+		addToAlbumSpan.End()
 		log.Printf("trace_id=%s error embedding song into album: %v", telemetry.TraceID(ctx), err)
+
+		rollbackCtx, rollbackSpan := s.tr.Start(ctx, "song.create.rollback")
+		if deleteErr := s.DeleteSong(rollbackCtx, id.Hex()); deleteErr != nil {
+			rollbackSpan.RecordError(deleteErr)
+			rollbackSpan.End()
+			log.Printf("trace_id=%s CRITICAL: failed to rollback song creation for song_id=%s: %v", telemetry.TraceID(ctx), id.Hex(), deleteErr)
+		}
+		rollbackSpan.End()
 		return primitive.NilObjectID, err
 	}
-	createSpan.End()
+	addToAlbumSpan.End()
 
 	return id, nil
 }
