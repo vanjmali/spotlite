@@ -138,9 +138,8 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (primit
 	}
 	mapSpan.End()
 
-	id := songEntity.ID
 	createCtx, createSpan := s.tr.Start(ctx, "song.create.create_song")
-	_, err = s.songRepo.Create(createCtx, *songEntity)
+	id, err := s.songRepo.Create(createCtx, *songEntity)
 	if err != nil {
 		createSpan.RecordError(err)
 		createSpan.End()
