@@ -4,19 +4,34 @@ import (
 	"time"
 )
 
+type EntityType string
+
 const (
-	CONTENT_STREAM = "CONTENT"
+	ArtistType EntityType = "ARTIST"
+	AlbumType  EntityType = "ALBUM"
 
-	SUBJECT_ARTIST_CREATED = "content.created.artist"
-	ARTIST_DURABLE         = "ARTIST_CREATOR"
+	CONTENT_STREAM       = "CONTENT"
+	SUBSCRIPTIONS_STREAM = "SUBSCRIPTIONS"
 
-	SUBJECT_ALBUM_CREATED = "content.created.album"
-	ALBUM_DURABLE         = "ALBUM_CREATOR"
+	SUBJECT_ENTITY_CREATED = "content.created"
+	ENTITY_DURABLE         = "ENTITY_CREATOR"
+
+	SUBJECT_SUBSCRIBER_BATCH = "subscribers.batch.process"
+	SUB_DURABLE              = "SUBSCRIBER_PROCESSOR"
 )
 
-type ArtistEventPayload struct {
-	GenreIds   []string  `json:"genre_ids"`
-	CreatedAt  time.Time `json:"created_at"`
-	ArtistID   string    `json:"artist_id"`
-	ArtistName string    `json:"artist_name"`
+type EntityCreatedEventPayload struct {
+	TargetIDs  []string   `json:"target_ids"`
+	CreatedAt  time.Time  `json:"created_at"`
+	EntityID   string     `json:"entity_id"`
+	EntityName string     `json:"entity_name"`
+	EntityType EntityType `json:"entity_type"`
+}
+
+type SubscribersBatchEventPayload struct {
+	EntityID      string     `json:"entity_id"`
+	EntityName    string     `json:"entity_name"`
+	EntityType    EntityType `json:"entity_type"`
+	CreatedAt     time.Time  `json:"created_at"`
+	SubscriberIDs []string   `json:"subscriber_ids"`
 }
