@@ -38,7 +38,7 @@ func NewNotificationService(r *repositories.NotificationRepository, b *infrastru
 	return &s
 }
 
-// CreateNotification function
+// CreateNotification function.
 func (s *NotificationService) CreateNotification(np events.SubscribersBatchEventPayload, ctx context.Context) error {
 	ctx, span := s.tr.Start(ctx, "notification.create_notification")
 	defer span.End()
@@ -46,7 +46,6 @@ func (s *NotificationService) CreateNotification(np events.SubscribersBatchEvent
 	var notifType entities.NotificationType
 
 	for _, sID := range np.SubscriberIDs {
-
 		switch np.EntityType {
 		case events.AlbumType:
 			notifType = entities.NotificationNewAlbum

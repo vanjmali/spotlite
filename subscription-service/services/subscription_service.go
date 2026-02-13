@@ -178,7 +178,6 @@ func (s *SubscriptionService) NotifySubscribers(ctx context.Context, p events.En
 			retry.DelayType(retry.BackOffDelay),
 			retry.Context(loopCtx),
 		)
-
 		if err != nil {
 			log.Printf("Failed to publish batch: %v", err)
 			return err

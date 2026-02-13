@@ -34,7 +34,13 @@ type AlbumService struct {
 }
 
 // NewAlbumService creates and returns a new AlbumService with the provided repository and dependent services.
-func NewAlbumService(r repositories.AlbumRepository, artistService ArtistService, songRepository repositories.SongRepository, genreService GenreService, jsc events.JetStreamClient) *AlbumService {
+func NewAlbumService(
+	r repositories.AlbumRepository,
+	artistService ArtistService,
+	songRepository repositories.SongRepository,
+	genreService GenreService,
+	jsc events.JetStreamClient,
+) *AlbumService {
 	tr := otel.Tracer("content-service/album-service")
 	s := AlbumService{albumRepo: &r, artistService: &artistService, songRepository: &songRepository, genreService: &genreService, jsc: &jsc, tr: tr}
 
@@ -143,7 +149,6 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 		retry.DelayType(retry.BackOffDelay),
 		retry.Context(createCtx),
 	)
-
 	if err != nil {
 		createSpan.RecordError(err)
 		log.Printf("Failed to publish entity created event: %v", err)

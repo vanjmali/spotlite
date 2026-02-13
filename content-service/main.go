@@ -139,7 +139,6 @@ func createServices(
 	alr *repositories.AlbumRepository,
 	gr *repositories.GenreRepository,
 	jsc *events.JetStreamClient,
-
 ) (
 	*services.GenreService,
 	*services.ArtistService,

@@ -118,7 +118,6 @@ func createClients() (*mongodriver.Client, *grpc.ClientConn, *events.JetStreamCl
 	jsc, err := events.NewClient("nats://nats:4222")
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to initialized NATS jets teram client: %w", err)
-
 	}
 
 	return dbc, gc, jsc, nil
@@ -182,7 +181,6 @@ func createServices(
 func createHandlers(
 	v *validator.Validate,
 	ss *services.SubscriptionService,
-
 ) http.Handler {
 	sh := handlers.NewSubscriptionHandler(*ss, *v)
 	return routers.HandleRequests(sh)

@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+//nolint:unused
 type fakeSubscriptionRepo struct {
 	createFn func(*entities.Subscription, context.Context) error
 	deleteFn func(primitive.ObjectID, primitive.ObjectID, context.Context) (int64, error)
@@ -33,9 +34,12 @@ type fakeSubscriptionRepo struct {
 }
 
 // FindSubscriptionsByEntityID implements [SubscriptionRepository].
-//
-//nolint:unused
-func (f *fakeSubscriptionRepo) FindSubscriptionsByEntityID(ctx context.Context, targetIDStrs []string, batchSize int, lastID string) ([]*entities.Subscription, string, error) {
+func (f *fakeSubscriptionRepo) FindSubscriptionsByEntityID(
+	ctx context.Context,
+	targetIDStrs []string,
+	batchSize int,
+	lastID string,
+) ([]*entities.Subscription, string, error) {
 	return make([]*entities.Subscription, 0), "", nil
 }
 

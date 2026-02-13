@@ -145,7 +145,6 @@ func (c *JetStreamClient) StartConsumer(
 					defer wg.Done()
 					c.processMessage(m, handler)
 				}(msg)
-
 			}
 
 			wg.Wait()
@@ -155,13 +154,12 @@ func (c *JetStreamClient) StartConsumer(
 			if msgCount == 0 {
 				time.Sleep(time.Millisecond * 100)
 			}
-
 		}
 	}
 }
 
 // processMessage is a private function which is used to process the message and send a signal to the message queue
-// based on the operation result (NAK for failure, ACK for success)
+// based on the operation result (NAK for failure, ACK for success).
 func (c *JetStreamClient) processMessage(msg jetstream.Msg, handler SubscribeHandler) {
 	parentCtx := otel.GetTextMapPropagator().Extract(context.Background(), propagation.HeaderCarrier(msg.Headers()))
 	spanCtx, span := c.tracer.Start(parentCtx, "process "+msg.Subject(), trace.WithSpanKind(trace.SpanKindConsumer))
