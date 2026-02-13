@@ -19,9 +19,8 @@ import (
 )
 
 type fakeSubscriptionRepo struct {
-	createFn                      func(*entities.Subscription, context.Context) error
-	deleteFn                      func(primitive.ObjectID, primitive.ObjectID, context.Context) (int64, error)
-	findSubscriptionsByEntityIDfn func([]string, int, string, context.Context) ([]*entities.Subscription, string, error)
+	createFn func(*entities.Subscription, context.Context) error
+	deleteFn func(primitive.ObjectID, primitive.ObjectID, context.Context) (int64, error)
 
 	createCalled    bool
 	created         *entities.Subscription
@@ -34,6 +33,8 @@ type fakeSubscriptionRepo struct {
 }
 
 // FindSubscriptionsByEntityID implements [SubscriptionRepository].
+//
+//nolint:unused
 func (f *fakeSubscriptionRepo) FindSubscriptionsByEntityID(ctx context.Context, targetIDStrs []string, batchSize int, lastID string) ([]*entities.Subscription, string, error) {
 	return make([]*entities.Subscription, 0), "", nil
 }
