@@ -47,7 +47,6 @@ export class NotificationService {
       const notificationString = event.data;
 
       const notificationObject = this.transformToNotificationObject(notificationString);
-      console.log(notificationObject);
 
       this.zone.run(() => {
         const current = this.notificationsSubject.value;

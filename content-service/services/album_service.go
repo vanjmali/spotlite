@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
@@ -155,8 +156,30 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 
 	aep := toAlbumCreatedEvent(artistIDs, albumEntity.ID.Hex(), albumEntity.Title)
 
-	// TODO: Handle error, implement retry mechanism
-	s.jsc.Publish(ctx, events.SUBJECT_ENTITY_CREATED, aep)
+	err = retry.Do(
+		func() error {
+			pubCtx, pubSpan := s.tr.Start(createCtx, "messaging.publish")
+			defer pubSpan.End()
+
+			if err := s.jsc.Publish(pubCtx, events.SUBJECT_ENTITY_CREATED, aep); err != nil {
+				pubSpan.RecordError(err)
+				return err
+			}
+
+			return nil
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(createCtx),
+	)
+
+	if err != nil {
+		createSpan.RecordError(err)
+		log.Printf("Failed to publish entity created event: %v", err)
+
+		return err
+	}
 
 	createSpan.End()
 	return nil

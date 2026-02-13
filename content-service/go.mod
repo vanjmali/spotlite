@@ -3,6 +3,7 @@ module github.com/vanjmali/spotlite/content
 go 1.25.5
 
 require (
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/gorilla/mux v1.8.1
 	github.com/vanjmali/spotlite/common-lib v0.0.0

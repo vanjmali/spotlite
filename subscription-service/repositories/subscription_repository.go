@@ -12,7 +12,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var ErrSubscriptionAlreadyExists = errors.New("user is already subscribed to the given content")
+var (
+	ErrSubscriptionAlreadyExists = errors.New("user is already subscribed to the given content")
+	ErrFindSubscriptions         = errors.New("error has occured while finding subscriptions for the given parameters")
+	ErrSubscriptionCursor        = errors.New("error has occured while loading subscription cursor")
+)
 
 type SubscriptionRepository struct {
 	DbName   string
@@ -84,7 +88,10 @@ func (r *SubscriptionRepository) FindSubscriptionsByEntityID(
 	}
 
 	if lastID != "" {
-		objID, _ := primitive.ObjectIDFromHex(lastID)
+		objID, err := primitive.ObjectIDFromHex(lastID)
+		if err != nil {
+			return nil, "", fmt.Errorf("ERROR: (Parse) An error has occurred while converting target IDs: %w", err)
+		}
 		filter["_id"] = bson.M{"$gt": objID}
 	}
 
@@ -94,14 +101,14 @@ func (r *SubscriptionRepository) FindSubscriptionsByEntityID(
 
 	cursor, err := c.Find(ctx, filter, opts)
 	if err != nil {
-		return nil, "", fmt.Errorf("ERROR: (Find) An error has occurred while finding subscriptions: %w", err)
+		return nil, "", ErrFindSubscriptions
 	}
 
 	defer cursor.Close(ctx)
 
 	var subs []*entities.Subscription
 	if err := cursor.All(ctx, &subs); err != nil {
-		return nil, "", fmt.Errorf("ERROR: (Cursor.All) An error has occurred while finding subscriptions: %w", err)
+		return nil, "", ErrSubscriptionCursor
 	}
 
 	var nextID string

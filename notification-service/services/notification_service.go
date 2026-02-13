@@ -15,7 +15,11 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-var ErrMissingUserID = errors.New("UserID is missing")
+var (
+	ErrMissingUserID     = errors.New("UserID is missing")
+	ErrJsonMarshal       = errors.New("an error has occured while serializing json object")
+	ErrInvalidEntityType = errors.New("invalid subscription entity type")
+)
 
 type NotificationService struct {
 	r *repositories.NotificationRepository
@@ -34,7 +38,7 @@ func NewNotificationService(r *repositories.NotificationRepository, b *infrastru
 	return &s
 }
 
-// CreateNotification function is implemented only for demonstration purposes.
+// CreateNotification function
 func (s *NotificationService) CreateNotification(np events.SubscribersBatchEventPayload, ctx context.Context) error {
 	ctx, span := s.tr.Start(ctx, "notification.create_notification")
 	defer span.End()
@@ -49,8 +53,7 @@ func (s *NotificationService) CreateNotification(np events.SubscribersBatchEvent
 		case events.ArtistType:
 			notifType = entities.NotificationNewArtist
 		default:
-			// TODO: create custom error
-			return errors.New("er cn")
+			return ErrInvalidEntityType
 		}
 
 		notificationID := gocql.TimeUUID()
@@ -72,7 +75,7 @@ func (s *NotificationService) CreateNotification(np events.SubscribersBatchEvent
 
 		np, err := json.Marshal(n)
 		if err != nil {
-			return err
+			return ErrJsonMarshal
 		}
 
 		s.b.Broadcast <- infrastructure.NewNotification(sID, np)

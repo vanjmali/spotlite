@@ -6,6 +6,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
@@ -73,8 +74,6 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 		genreIDs = append(genreIDs, genre.ID.Hex())
 	}
 
-	resolveGenreSpan.End()
-
 	// Converts ArtistDto to Artist entity.
 	// No uniqueness check for artist name is done here.
 	createCtx, createSpan := s.tr.Start(ctx, "artist.create.create_artist")
@@ -97,8 +96,27 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 
 	aep := toArtistCreatedEvent(genreIDs, artistEntity.ID.Hex(), artistEntity.Name)
 
-	// TODO: Handle error, implement retry mechanism
-	s.jsc.Publish(ctx, events.SUBJECT_ENTITY_CREATED, aep)
+	err = retry.Do(
+		func() error {
+			pubCtx, pubSpan := s.tr.Start(createCtx, "messaging.publish")
+			defer pubSpan.End()
+
+			if err := s.jsc.Publish(pubCtx, events.SUBJECT_ENTITY_CREATED, aep); err != nil {
+				pubSpan.RecordError(err)
+				return err
+			}
+
+			return nil
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(createCtx),
+	)
+	if err != nil {
+		log.Printf("Failed to publish entity created event: %v", err)
+		return err
+	}
 
 	createSpan.End()
 

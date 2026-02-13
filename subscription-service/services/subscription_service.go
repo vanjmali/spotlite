@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"log"
+	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/subscription"
@@ -23,6 +25,7 @@ var (
 	ErrSubscriptionNotFound = errors.New("subscription not found")
 	ErrInvalidEntityID      = errors.New("error has ocurred while parsing genre/artist id")
 	ErrUpstreamFailure      = errors.New("error has ocurred while fetching artist/genre")
+	ErrPublish              = errors.New("error has occured while publishing subscriber batch event")
 )
 
 const BATCH_SIZE = 500
@@ -133,9 +136,6 @@ func (s *SubscriptionService) NotifySubscribers(ctx context.Context, p events.En
 	loopCtx, loopSpan := s.tr.Start(ctx, "subscription.notify.loop")
 	defer loopSpan.End()
 
-	// iterationCount var is being used to track how many batches were processed so we avoid logging false negatives
-	ic := 0
-
 	var lastID string
 	for {
 		subscriptions, nextID, err := s.sr.FindSubscriptionsByEntityID(loopCtx, p.TargetIDs, BATCH_SIZE, lastID)
@@ -143,7 +143,7 @@ func (s *SubscriptionService) NotifySubscribers(ctx context.Context, p events.En
 			return err
 		}
 
-		if len(subscriptions) == 0 && ic == 0 {
+		if len(subscriptions) == 0 {
 			log.Printf("DEBUG: No subscriptions were found for specified target IDs")
 			break
 		}
@@ -161,17 +161,29 @@ func (s *SubscriptionService) NotifySubscribers(ctx context.Context, p events.En
 			SubscriberIDs: subscriberIDs,
 		}
 
-		func() {
-			pubCtx, pubSpan := s.tr.Start(loopCtx, "messaging.publish")
-			defer pubSpan.End()
+		err = retry.Do(
+			func() error {
+				pubCtx, pubSpan := s.tr.Start(loopCtx, "messaging.publish")
+				defer pubSpan.End()
 
-			if err := s.jsc.Publish(pubCtx, events.SUBJECT_SUBSCRIBER_BATCH, sep); err != nil {
-				pubSpan.RecordError(err)
-				log.Printf("Failed to publish batch: %v", err)
-			}
-		}()
+				if err := s.jsc.Publish(pubCtx, events.SUBJECT_SUBSCRIBER_BATCH, sep); err != nil {
+					pubSpan.RecordError(err)
+					return err
+				}
 
-		ic += 1
+				return nil
+			},
+			retry.Attempts(3),
+			retry.Delay(time.Second),
+			retry.DelayType(retry.BackOffDelay),
+			retry.Context(loopCtx),
+		)
+
+		if err != nil {
+			log.Printf("Failed to publish batch: %v", err)
+			return err
+		}
+
 		lastID = nextID
 	}
 

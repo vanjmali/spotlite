@@ -3,6 +3,7 @@ package consumers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log"
 
 	"github.com/nats-io/nats.go/jetstream"
@@ -24,17 +25,18 @@ func (h *NotificationConsumer) HandleSubscribersBatch(ctx context.Context, msg j
 	var p events.SubscribersBatchEventPayload
 	if err := json.Unmarshal(msg.Data(), &p); err != nil {
 		log.Printf("CRITICAL: Failed to unmarshal SubscribersBatchEventPayload: %v", err)
-		msg.Ack()
 		return nil
 	}
 
 	err := h.ns.CreateNotification(p, ctx)
 	if err != nil {
-		// TODO: handle different types of errors differently
-		msg.Nak()
-		return err
+		switch {
+		case errors.Is(err, services.ErrInvalidEntityType), errors.Is(err, services.ErrJsonMarshal):
+			return nil
+		default:
+			return err
+		}
 	}
 
-	msg.Ack()
 	return nil
 }
