@@ -65,7 +65,7 @@ var config = server.ServerRunConfiguration{
 			return nil, nil, err
 		}
 
-		jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBSCRIPTIONS_STREAM})
+		_ = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBSCRIPTIONS_STREAM})
 
 		gcc := createAdapters(gc)
 		sr := createRepositories(dbc)

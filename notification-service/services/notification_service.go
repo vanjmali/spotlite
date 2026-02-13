@@ -47,7 +47,7 @@ func (s *NotificationService) CreateNotification(np events.SubscribersBatchEvent
 
 	for _, sID := range np.SubscriberIDs {
 
-		switch events.EntityType(np.EntityType) {
+		switch np.EntityType {
 		case events.AlbumType:
 			notifType = entities.NotificationNewAlbum
 		case events.ArtistType:

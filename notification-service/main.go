@@ -37,7 +37,7 @@ var config = server.ServerRunConfiguration{
 		b := infrastructure.NewBroker()
 		go b.Listen()
 
-		jsc.EnsureStream(ctx, events.SUBSCRIPTIONS_STREAM, []string{events.SUBJECT_SUBSCRIBER_BATCH})
+		_ = jsc.EnsureStream(ctx, events.SUBSCRIPTIONS_STREAM, []string{events.SUBJECT_SUBSCRIBER_BATCH})
 
 		nr := createRepositories(cs)
 		ns := createServices(nr, b)

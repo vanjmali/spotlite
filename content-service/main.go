@@ -57,7 +57,7 @@ var config = server.ServerRunConfiguration{
 		}()
 
 		// make sure stream is already initialized
-		jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED})
+		_ = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED})
 
 		ar, sr, alr, gr := createRepositories(dbc)
 		gs, as, ss, als, glss := createServices(ar, sr, alr, gr, jsc)
