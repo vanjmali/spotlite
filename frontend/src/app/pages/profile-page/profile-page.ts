@@ -6,6 +6,7 @@ import { signal } from '@angular/core';
 import { PageComponent } from '../../shared';
 import { WidgetComponent } from '@app/shared/components/widget';
 import { ChangePasswordDialogComponent } from '../../dialogs';
+import { ProfileSuccessCalloutComponent } from './components/profile-success-callout';
 
 @Component({
   selector: 'app-profile-page',
@@ -16,6 +17,7 @@ import { ChangePasswordDialogComponent } from '../../dialogs';
     MatIconModule,
     WidgetComponent,
     ChangePasswordDialogComponent,
+    ProfileSuccessCalloutComponent,
   ],
   templateUrl: './profile-page.html',
   styleUrls: ['./profile-page.scss'],
@@ -23,6 +25,7 @@ import { ChangePasswordDialogComponent } from '../../dialogs';
 export class ProfilePage {
   private readonly router = inject(Router);
   readonly isChangePasswordDialogOpenSg = signal<boolean>(false);
+  readonly passwordUpdateSuccessSg = signal<string>('');
 
   navigateToEditProfile(): void {
     // TODO: Implement edit profile navigation when component is created
@@ -35,5 +38,13 @@ export class ProfilePage {
 
   closeChangePasswordDialog(): void {
     this.isChangePasswordDialogOpenSg.set(false);
+  }
+
+  onPasswordSaved(): void {
+    this.passwordUpdateSuccessSg.set('Password successfully updated.');
+  }
+
+  dismissPasswordSaved(): void {
+    this.passwordUpdateSuccessSg.set('');
   }
 }

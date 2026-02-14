@@ -233,11 +233,20 @@ export class AuthService {
         }
       )
       .pipe(
-        map(() => ({ success: true as const, error: undefined })),
+        map(() => ({
+          success: true as const,
+          error: undefined,
+          code: undefined as string | undefined,
+          fields: undefined as Record<string, string> | undefined,
+        })),
         catchError((error: unknown) => {
-          const httpError = error as { error?: { message?: string } };
-          const errorMsg = httpError?.error?.message || 'Failed to change password';
-          return of({ success: false as const, error: errorMsg });
+          const info = getApiErrorInfo(error, 'Failed to change password');
+          return of({
+            success: false as const,
+            error: info.userMessage,
+            code: info.code,
+            fields: info.fields,
+          });
         })
       );
   }

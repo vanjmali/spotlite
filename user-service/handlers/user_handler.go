@@ -39,11 +39,26 @@ func (h *UserHandler) HandleChangePassword(w http.ResponseWriter, r *http.Reques
 
 	switch {
 	case errors.Is(err, services.ErrInvalidCurrentPassword):
-		_ = respond.BadRequest(w, respond.ErrorMessage("Invalid current password."))
+		payload := respond.ErrorMessageWithCode(
+			"Invalid current password.",
+			"invalid_current_password",
+		)
+		_ = respond.BadRequest(w, payload)
+		return
+	case errors.Is(err, services.ErrNewPasswordMatchesCurrent):
+		payload := respond.ErrorMessageWithCode(
+			"New password must be different from current password.",
+			"password_same_as_current",
+		)
+		_ = respond.BadRequest(w, payload)
 		return
 
 	case errors.Is(err, services.ErrTooFrequentPasswordChange):
-		_ = respond.BadRequest(w, respond.ErrorMessage("Password can only be changed once every 24 hours."))
+		payload := respond.ErrorMessageWithCode(
+			"Password can only be changed once every 24 hours.",
+			"too_frequent_password_change",
+		)
+		_ = respond.BadRequest(w, payload)
 		return
 	case err != nil:
 		_ = respond.InternalServerError(w)

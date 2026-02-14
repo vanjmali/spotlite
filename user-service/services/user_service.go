@@ -35,6 +35,7 @@ var (
 	ErrOtpExpired                = errors.New("expired otp")
 	ErrBadCredentials            = errors.New("invalid credentials")
 	ErrInvalidCurrentPassword    = errors.New("invalid current password")
+	ErrNewPasswordMatchesCurrent = errors.New("new password must not match current password")
 	ErrTooFrequentPasswordChange = errors.New("password changed too frequently")
 	ErrObjectIdCastFailed        = errors.New("failed to convert hex to objectId")
 	ErrVerificationRequired      = errors.New("verification required")
@@ -431,6 +432,11 @@ func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswo
 		passwordSpan.RecordError(err)
 		passwordSpan.End()
 		return ErrInvalidCurrentPassword
+	}
+
+	if dto.CurrentPassword == dto.NewPassword {
+		passwordSpan.End()
+		return ErrNewPasswordMatchesCurrent
 	}
 
 	if user.PasswordLastChanged.Compare(s.c.Now().Add(-24*time.Hour)) >= 0 {

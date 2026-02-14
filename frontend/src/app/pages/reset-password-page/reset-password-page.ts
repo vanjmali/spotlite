@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal, viewChild } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import {
+  applyFieldErrors,
   AuthLayout,
   EmailInputComponent,
   FormFooter,
@@ -89,7 +90,7 @@ export class ResetPasswordPage implements OnInit {
     });
   }
 
-  public submit(): void {
+  public async submit(): Promise<void> {
     this.clearError();
 
     const passwordInput = this.passwordInputSg();
@@ -118,16 +119,24 @@ export class ResetPasswordPage implements OnInit {
 
     this.isLoadingSg.set(true);
 
-    this._recoveryService.resetPassword(token, password).subscribe({
-      next: () => {
-        this.isSuccessSg.set(true);
-      },
-      error: (err: Error) => {
-        this.errorSg.set(err.message);
-        this.isLoadingSg.set(false);
-      },
-      complete: () => this.isLoadingSg.set(false),
-    });
+    const result = await this._recoveryService.resetPassword(token, password);
+    this.isLoadingSg.set(false);
+
+    if (result.success) {
+      this.isSuccessSg.set(true);
+      return;
+    }
+
+    if (result.fields) {
+      applyFieldErrors(result.fields, {
+        password: (msg) => passwordInput.setExternalError(msg),
+        new_password: (msg) => passwordInput.setExternalError(msg),
+        confirm_password: (msg) => confirmInput.setExternalError(msg),
+      });
+      return;
+    }
+
+    passwordInput.setExternalError(result.error || VALIDATION_MESSAGES.PASSWORD_RESET_FAILED);
   }
 
   public requestReset(): void {

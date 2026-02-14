@@ -33,7 +33,7 @@ type CheckEmailDto struct {
 
 type ChangePasswordDto struct {
 	CurrentPassword string `json:"current_password" validate:"required"`
-	NewPassword     string `json:"new_password" validate:"required,strongpassword,nefield=CurrentPassword"`
+	NewPassword     string `json:"new_password" validate:"required,strongpassword"`
 }
 
 type RequestPasswordResetDto struct {

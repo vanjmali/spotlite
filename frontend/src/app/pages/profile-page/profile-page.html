@@ -1,9 +1,16 @@
 <app-page>
   <div content class="profile-page">
+    @if (passwordUpdateSuccessSg()) {
+      <app-profile-success-callout
+        [message]="passwordUpdateSuccessSg()"
+        (closed)="dismissPasswordSaved()"
+      />
+    }
+
     <!-- Profile Section -->
     <app-widget title="Profile">
       <div content>
-        <button class="profile-page__section-item" (click)="navigateToEditProfile()">
+        <button class="profile-page__section-item" type="button" (click)="navigateToEditProfile()">
           <mat-icon class="profile-page__section-icon">edit</mat-icon>
           <span class="profile-page__section-label">Edit personal info</span>
           <mat-icon class="profile-page__section-arrow">chevron_right</mat-icon>
@@ -14,7 +21,11 @@
     <!-- Security and Privacy Section -->
     <app-widget title="Security and privacy">
       <div content>
-        <button class="profile-page__section-item" (click)="navigateToChangePassword()">
+        <button
+          class="profile-page__section-item"
+          type="button"
+          (click)="navigateToChangePassword()"
+        >
           <mat-icon class="profile-page__section-icon">lock</mat-icon>
           <span class="profile-page__section-label">Change password</span>
           <mat-icon class="profile-page__section-arrow">chevron_right</mat-icon>
@@ -26,5 +37,8 @@
 
 <!-- Change Password Dialog -->
 @if (isChangePasswordDialogOpenSg()) {
-  <app-change-password-dialog (closed)="closeChangePasswordDialog()" />
+  <app-change-password-dialog
+    (closed)="closeChangePasswordDialog()"
+    (saved)="onPasswordSaved()"
+  />
 }
