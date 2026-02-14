@@ -26,6 +26,7 @@ type EntityCreatedEventPayload struct {
 	EntityID   string     `json:"entity_id"`
 	EntityName string     `json:"entity_name"`
 	EntityType EntityType `json:"entity_type"`
+	EventID    string     `json:"event_id"`
 }
 
 type SubscribersBatchEventPayload struct {
@@ -34,4 +35,5 @@ type SubscribersBatchEventPayload struct {
 	EntityType    EntityType `json:"entity_type"`
 	CreatedAt     time.Time  `json:"created_at"`
 	SubscriberIDs []string   `json:"subscriber_ids"`
+	EventID       string     `json:"event_id"`
 }

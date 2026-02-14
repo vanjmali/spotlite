@@ -159,6 +159,7 @@ func (s *SubscriptionService) NotifySubscribers(ctx context.Context, p events.En
 			EntityType:    p.EntityType,
 			CreatedAt:     p.CreatedAt,
 			SubscriberIDs: subscriberIDs,
+			EventID:       p.EventID,
 		}
 
 		err = retry.Do(

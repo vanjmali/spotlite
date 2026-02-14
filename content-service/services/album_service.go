@@ -517,5 +517,6 @@ func toAlbumCreatedEvent(artistIDs []string, albumID string, albumName string) *
 		EntityName: albumName,
 		CreatedAt:  time.Now(),
 		EntityType: events.AlbumType,
+		EventID:    primitive.NewObjectID().Hex(),
 	}
 }

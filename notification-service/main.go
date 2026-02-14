@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gocql/gocql"
+	"github.com/redis/go-redis/v9"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
@@ -28,7 +29,7 @@ var config = server.ServerRunConfiguration{
 	TelemetryName: "notification-service",
 	Port:          utils.GetEnv("APP_PORT", "3000"),
 	CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
-		cs, jsc, err := createClients()
+		cs, jsc, rc, err := createClients(ctx)
 		if err != nil {
 			err = fmt.Errorf("failed to create clients: %w", err)
 			return h, shutdown, err
@@ -40,7 +41,7 @@ var config = server.ServerRunConfiguration{
 		_ = jsc.EnsureStream(ctx, events.SUBSCRIPTIONS_STREAM, []string{events.SUBJECT_SUBSCRIBER_BATCH})
 
 		nr := createRepositories(cs)
-		ns := createServices(nr, b)
+		ns := createServices(nr, rc, b)
 		h = createHandlers(ns, b)
 		c := createConsumers(ns)
 
@@ -48,6 +49,13 @@ var config = server.ServerRunConfiguration{
 
 		shutdown = func() error {
 			cs.Close()
+
+			jsc.Close()
+
+			if err := rc.Close(); err != nil {
+				return err
+			}
+
 			return nil
 		}
 
@@ -61,24 +69,30 @@ func main() {
 	}
 }
 
-func createClients() (*gocql.Session, *events.JetStreamClient, error) {
+func createClients(ctx context.Context) (*gocql.Session, *events.JetStreamClient, *redis.Client, error) {
 	// schema initialization
 	if err := infrastructure.InitializeSchema(cassHost, ks); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	// initialize cassandra session which will be used to execute queries
 	cs, err := infrastructure.Initialize(cassHost, ks)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialize database session: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to initialize database session: %w", err)
+	}
+
+	// initialize redis client
+	rc, err := infrastructure.InitRedis(ctx)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to initialize redis: %w", err)
 	}
 
 	jsc, err := events.NewClient("nats://nats:4222")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialized NATS jet stream client: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to initialized NATS jet stream client: %w", err)
 	}
 
-	return cs, jsc, nil
+	return cs, jsc, rc, nil
 }
 
 func createHandlers(
@@ -91,9 +105,10 @@ func createHandlers(
 
 func createServices(
 	nr *repositories.NotificationRepository,
+	rc *redis.Client,
 	b *infrastructure.Broker,
 ) *services.NotificationService {
-	ns := services.NewNotificationService(nr, b)
+	ns := services.NewNotificationService(nr, rc, b)
 	return ns
 }
 

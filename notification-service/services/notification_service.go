@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"time"
 
 	"github.com/gocql/gocql"
+	"github.com/redis/go-redis/v9"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/notification-service/entities"
@@ -22,16 +25,18 @@ var (
 )
 
 type NotificationService struct {
-	r *repositories.NotificationRepository
-	b *infrastructure.Broker
+	r  *repositories.NotificationRepository
+	rc *redis.Client
+	b  *infrastructure.Broker
 
 	tr trace.Tracer
 }
 
-func NewNotificationService(r *repositories.NotificationRepository, b *infrastructure.Broker) *NotificationService {
+func NewNotificationService(r *repositories.NotificationRepository, rc *redis.Client, b *infrastructure.Broker) *NotificationService {
 	tr := otel.Tracer("notification-service/notification-service")
 	s := NotificationService{
 		r:  r,
+		rc: rc,
 		b:  b,
 		tr: tr,
 	}
@@ -43,9 +48,13 @@ func (s *NotificationService) CreateNotification(np events.SubscribersBatchEvent
 	ctx, span := s.tr.Start(ctx, "notification.create_notification")
 	defer span.End()
 
-	var notifType entities.NotificationType
+	validRecipients, err := filterDuplicateNotifications(s.rc, np.EventID, np.SubscriberIDs, ctx)
+	if err != nil {
+		return err
+	}
 
-	for _, sID := range np.SubscriberIDs {
+	var notifType entities.NotificationType
+	for _, sID := range validRecipients {
 		switch np.EntityType {
 		case events.AlbumType:
 			notifType = entities.NotificationNewAlbum
@@ -100,4 +109,28 @@ func (s *NotificationService) FindInboxByUserID(ctx context.Context) ([]*entitie
 	}
 
 	return ns, nil
+}
+
+func filterDuplicateNotifications(rc *redis.Client, eventID string, userIDs []string, ctx context.Context) ([]string, error) {
+	pipe := rc.Pipeline()
+
+	cmds := make(map[string]*redis.BoolCmd)
+	for _, uid := range userIDs {
+		key := fmt.Sprintf("notif:%s:%s", eventID, uid)
+		cmds[uid] = pipe.SetNX(ctx, key, "1", 15*time.Minute)
+	}
+
+	_, err := pipe.Exec(ctx)
+	if err != nil && err != redis.Nil {
+		return nil, err
+	}
+
+	var usersToNotify []string
+	for uid, cmd := range cmds {
+		if cmd.Val() {
+			usersToNotify = append(usersToNotify, uid)
+		}
+	}
+
+	return usersToNotify, nil
 }

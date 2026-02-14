@@ -323,5 +323,6 @@ func toArtistCreatedEvent(genreIDs []string, artistID string, artistName string)
 		EntityName: artistName,
 		CreatedAt:  time.Now(),
 		EntityType: events.ArtistType,
+		EventID:    primitive.NewObjectID().Hex(),
 	}
 }
