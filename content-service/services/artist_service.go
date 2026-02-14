@@ -115,7 +115,6 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 	)
 	if err != nil {
 		log.Printf("Failed to publish entity created event: %v", err)
-		return err
 	}
 
 	createSpan.End()

@@ -152,8 +152,6 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 	if err != nil {
 		createSpan.RecordError(err)
 		log.Printf("Failed to publish entity created event: %v", err)
-
-		return err
 	}
 
 	createSpan.End()
