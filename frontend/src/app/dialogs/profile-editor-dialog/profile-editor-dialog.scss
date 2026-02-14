@@ -3,7 +3,7 @@
 .profile-editor-dialog {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 
   &__loading {
     display: flex;
@@ -31,5 +31,27 @@
     align-items: center;
     justify-content: flex-end;
     gap: 12px;
+    margin-top: 10px;
+    padding-top: 8px;
+
+    .btn-primary,
+    .btn-secondary {
+      width: auto;
+      min-width: 120px;
+    }
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+
+    @media (max-width: 620px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  &__field {
+    min-width: 0;
   }
 }

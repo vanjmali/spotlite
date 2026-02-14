@@ -17,12 +17,16 @@
     max-width: 800px;
   }
 
+  &__section-content {
+    padding: 8px 10px 12px;
+  }
+
   &__section-item {
     display: flex;
     align-items: center;
     width: 100%;
     gap: 16px;
-    padding: 5px 10px;
+    padding: 8px 10px;
     background: none;
     border: none;
     color: $color-text-primary;

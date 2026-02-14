@@ -15,6 +15,7 @@ import {
   ViewChild,
   computed,
   inject,
+  input,
   output,
   signal,
   viewChild,
@@ -33,6 +34,7 @@ import { focusFirstFocusable } from '@app/shared/utils/focus';
 export class ProfileEditorDialogComponent {
   private readonly userProfileService = inject(UserProfileService);
 
+  readonly embeddedSg = input<boolean>(false, { alias: 'embedded' });
   readonly closed = output<void>();
   readonly saved = output<void>();
 
@@ -170,11 +172,14 @@ export class ProfileEditorDialogComponent {
     this.clearPendingUsernameCheck();
     this.errorSg.set('');
     this.usernameStatusSg.set('idle');
-    this.closed.emit();
+    if (!this.embeddedSg()) {
+      this.closed.emit();
+    }
   }
 
   @HostListener('document:keydown', ['$event'])
   onDocumentKeydown(event: KeyboardEvent): void {
+    if (this.embeddedSg()) return;
     if (event.key !== 'Escape') return;
     event.preventDefault();
     this.cancel();

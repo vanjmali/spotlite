@@ -1,7 +1,6 @@
-import { Component, signal, computed, output, inject } from '@angular/core';
+import { Component, signal, computed, output, inject, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
 import { DialogComponent, PasswordInputComponent, MessageComponent } from '../../shared';
 import { AuthService } from '../../services/auth.service';
 
@@ -11,7 +10,6 @@ import { AuthService } from '../../services/auth.service';
   imports: [
     CommonModule,
     FormsModule,
-    MatIconModule,
     DialogComponent,
     PasswordInputComponent,
     MessageComponent,
@@ -20,10 +18,12 @@ import { AuthService } from '../../services/auth.service';
   styleUrls: ['./change-password-dialog.scss'],
 })
 export class ChangePasswordDialogComponent {
+  readonly embeddedSg = input<boolean>(false, { alias: 'embedded' });
   readonly currentPasswordSg = signal<string>('');
   readonly newPasswordSg = signal<string>('');
   readonly confirmPasswordSg = signal<string>('');
   readonly errorSg = signal<string>('');
+  readonly successSg = signal<string>('');
   readonly loadingSg = signal<boolean>(false);
 
   // Output event
@@ -66,6 +66,7 @@ export class ChangePasswordDialogComponent {
 
     this.loadingSg.set(true);
     this.errorSg.set('');
+    this.successSg.set('');
 
     // Call the change password service
     this.authService
@@ -73,7 +74,14 @@ export class ChangePasswordDialogComponent {
       .subscribe((result) => {
         this.loadingSg.set(false);
         if (result.success) {
-          // Close dialog on success
+          if (this.embeddedSg()) {
+            this.currentPasswordSg.set('');
+            this.newPasswordSg.set('');
+            this.confirmPasswordSg.set('');
+            this.successSg.set('Password successfully changed.');
+            return;
+          }
+
           this.cancel();
         } else {
           // Show error message
@@ -83,6 +91,14 @@ export class ChangePasswordDialogComponent {
   }
 
   cancel(): void {
-    this.closed.emit();
+    this.currentPasswordSg.set('');
+    this.newPasswordSg.set('');
+    this.confirmPasswordSg.set('');
+    this.errorSg.set('');
+    this.successSg.set('');
+
+    if (!this.embeddedSg()) {
+      this.closed.emit();
+    }
   }
 }
