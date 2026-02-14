@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -19,11 +19,6 @@ export class UserProfileDropdownComponent {
   private readonly router = inject(Router);
 
   readonly isDropdownOpenSg = signal(false);
-
-  // Computed signal to get first letter of email
-  readonly firstLetterSg = computed((email = this.authService.currentEmailSg()) => {
-    return email ? email.charAt(0).toUpperCase() : '';
-  });
 
   constructor() {
     effect(() => {

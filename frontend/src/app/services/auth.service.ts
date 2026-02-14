@@ -21,6 +21,20 @@ export class AuthService {
   readonly currentEmailSg = signal<string | null>(null);
   readonly accessTokenSg = signal<string | null>(null);
   readonly isAuthenticatedSg = computed(() => !!this.accessTokenSg());
+  readonly profileInitialSg = computed(() => {
+    const email = this.currentEmailSg();
+    if (email) {
+      return email.charAt(0).toUpperCase();
+    }
+
+    const claims = this.getTokenClaims(this.accessTokenSg());
+    const candidate = [claims?.name, claims?.username, claims?.email, claims?.sub]
+      .find((value) => typeof value === 'string' && value.trim().length > 0)
+      ?.toString()
+      .trim();
+
+    return candidate ? candidate.charAt(0).toUpperCase() : 'U';
+  });
 
   readonly notificationService = inject(NotificationService);
 
@@ -226,5 +240,23 @@ export class AuthService {
           return of({ success: false as const, error: errorMsg });
         })
       );
+  }
+
+  private getTokenClaims(
+    token: string | null
+  ): { name?: string; username?: string; email?: string; sub?: string } | null {
+    if (!token) return null;
+
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+
+    try {
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      const decoded = atob(padded);
+      return JSON.parse(decoded) as { name?: string; username?: string; email?: string; sub?: string };
+    } catch {
+      return null;
+    }
   }
 }

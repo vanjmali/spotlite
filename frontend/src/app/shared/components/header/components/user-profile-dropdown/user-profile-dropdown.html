@@ -7,7 +7,7 @@
     [attr.aria-label]="'Profile menu for ' + (authService.currentEmailSg() || 'user')"
     type="button"
   >
-    <span>{{ firstLetterSg() }}</span>
+    <span>{{ authService.profileInitialSg() }}</span>
   </button>
 
   <!-- Dropdown Menu -->
