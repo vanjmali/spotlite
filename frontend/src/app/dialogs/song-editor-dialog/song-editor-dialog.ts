@@ -212,5 +212,4 @@ export class SongEditorDialogComponent {
     event.preventDefault();
     this.cancel();
   }
-
 }

@@ -254,7 +254,12 @@ export class AuthService {
       const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
       const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
       const decoded = atob(padded);
-      return JSON.parse(decoded) as { name?: string; username?: string; email?: string; sub?: string };
+      return JSON.parse(decoded) as {
+        name?: string;
+        username?: string;
+        email?: string;
+        sub?: string;
+      };
     } catch {
       return null;
     }

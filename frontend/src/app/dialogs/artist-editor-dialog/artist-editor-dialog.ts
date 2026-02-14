@@ -133,7 +133,9 @@ export class ArtistEditorDialogComponent {
         },
         error: (error) => {
           console.error('Failed to update artist:', error);
-          this.errorSg.set(getHttpErrorMessage(error, 'Failed to update artist. Please try again.'));
+          this.errorSg.set(
+            getHttpErrorMessage(error, 'Failed to update artist. Please try again.')
+          );
           this.isLoadingSg.set(false);
         },
       });
@@ -146,12 +148,14 @@ export class ArtistEditorDialogComponent {
           this.saved.emit();
           this.cancel();
         },
-      error: (error) => {
-        console.error('Failed to create artist:', error);
-        this.errorSg.set(getHttpErrorMessage(error, 'Failed to create artist. Please try again.'));
-        this.isLoadingSg.set(false);
-      },
-    });
+        error: (error) => {
+          console.error('Failed to create artist:', error);
+          this.errorSg.set(
+            getHttpErrorMessage(error, 'Failed to create artist. Please try again.')
+          );
+          this.isLoadingSg.set(false);
+        },
+      });
     }
   }
 

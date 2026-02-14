@@ -74,10 +74,7 @@ export class AlbumEditorDialogComponent {
     const artists = this.selectedArtistIdsSg();
 
     return (
-      title.length >= 2 &&
-      releaseDate.length === 10 &&
-      genreIds.length >= 1 &&
-      artists.length > 0
+      title.length >= 2 && releaseDate.length === 10 && genreIds.length >= 1 && artists.length > 0
     );
   });
 
@@ -203,5 +200,4 @@ export class AlbumEditorDialogComponent {
     event.preventDefault();
     this.cancel();
   }
-
 }

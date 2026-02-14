@@ -29,7 +29,12 @@ type AlbumService struct {
 }
 
 // NewAlbumService creates and returns a new AlbumService with the provided repository and dependent services.
-func NewAlbumService(r repositories.AlbumRepository, songRepo repositories.SongRepository, artistService ArtistService, genreService GenreService) *AlbumService {
+func NewAlbumService(
+	r repositories.AlbumRepository,
+	songRepo repositories.SongRepository,
+	artistService ArtistService,
+	genreService GenreService,
+) *AlbumService {
 	tr := otel.Tracer("content-service/album-service")
 	s := AlbumService{albumRepo: &r, songRepo: &songRepo, artistService: &artistService, genreService: &genreService, tr: tr}
 
