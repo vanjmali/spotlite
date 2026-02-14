@@ -46,6 +46,7 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 	defer span.End()
 
 	resolveGenreCtx, resolveGenreSpan := s.tr.Start(ctx, "artist.create.resolve_genres")
+	defer resolveGenreSpan.End()
 
 	embeddedGenre := make([]entities.Genre, 0)
 	genreIDs := []string{}
@@ -54,7 +55,6 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 		genre, err := s.genreService.FindGenreByID(resolveGenreCtx, genresIdStr)
 		if err != nil {
 			resolveGenreSpan.RecordError(err)
-			resolveGenreSpan.End()
 
 			switch {
 			case errors.Is(err, ErrObjectIdCastFailed):
@@ -77,10 +77,11 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 	// Converts ArtistDto to Artist entity.
 	// No uniqueness check for artist name is done here.
 	createCtx, createSpan := s.tr.Start(ctx, "artist.create.create_artist")
+	defer createSpan.End()
+
 	artistEntity, err := mappers.ToArtistEntity(reqDto, embeddedGenre)
 	if err != nil {
 		createSpan.RecordError(err)
-		createSpan.End()
 		log.Printf("trace_id=%s error converting to artist entity: %v", telemetry.TraceID(ctx), err)
 		return err
 	}
@@ -89,7 +90,6 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 	err = s.r.Create(createCtx, *artistEntity)
 	if err != nil {
 		createSpan.RecordError(err)
-		createSpan.End()
 		log.Printf("trace_id=%s error creating artist in database: %v", telemetry.TraceID(ctx), err)
 		return err
 	}
@@ -98,15 +98,8 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 
 	err = retry.Do(
 		func() error {
-			pubCtx, pubSpan := s.tr.Start(createCtx, "messaging.publish")
-			defer pubSpan.End()
 
-			if err := s.jsc.Publish(pubCtx, events.SUBJECT_ENTITY_CREATED, aep); err != nil {
-				pubSpan.RecordError(err)
-				return err
-			}
-
-			return nil
+			return s.jsc.Publish(createCtx, events.SUBJECT_ENTITY_CREATED, aep)
 		},
 		retry.Attempts(3),
 		retry.Delay(time.Second),
@@ -116,8 +109,6 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 	if err != nil {
 		log.Printf("Failed to publish entity created event: %v", err)
 	}
-
-	createSpan.End()
 
 	return nil
 }

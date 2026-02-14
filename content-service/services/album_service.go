@@ -49,10 +49,11 @@ func NewAlbumService(
 
 // Create creates a new album with the provided data, resolving associated artists and songs.
 func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto) error {
-	ctx, span := s.tr.Start(ctx, "album.create")
-	defer span.End()
+	createCtx, createSpan := s.tr.Start(ctx, "album.create")
+	defer createSpan.End()
 
-	resolveArtistCtx, resolveArtistSpan := s.tr.Start(ctx, "album.create.resolve_artist")
+	resolveArtistCtx, resolveArtistSpan := s.tr.Start(createCtx, "album.create.resolve_artist")
+	defer resolveArtistSpan.End()
 
 	embeddedArtist := make([]entities.Artist, 0)
 	artistIDs := []string{}
@@ -61,7 +62,6 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 		artist, err := s.artistService.FindArtistByID(resolveArtistCtx, artistsIdStr)
 		if err != nil {
 			resolveArtistSpan.RecordError(err)
-			resolveArtistSpan.End()
 
 			switch {
 			case errors.Is(err, ErrObjectIdCastFailed):
@@ -83,9 +83,8 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 		artistIDs = append(artistIDs, artist.ID.Hex())
 	}
 
-	resolveArtistSpan.End()
-
-	resolveGenreCtx, resolveGenreSpan := s.tr.Start(ctx, "album.create.resolve_genre")
+	resolveGenreCtx, resolveGenreSpan := s.tr.Start(createCtx, "album.create.resolve_genre")
+	defer resolveGenreSpan.End()
 
 	embeddedGenre := make([]entities.Genre, 0)
 
@@ -93,7 +92,6 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 		genre, err := s.genreService.FindGenreByID(resolveGenreCtx, genreIdStr)
 		if err != nil {
 			resolveGenreSpan.RecordError(err)
-			resolveGenreSpan.End()
 
 			switch {
 			case errors.Is(err, ErrObjectIdCastFailed):
@@ -111,21 +109,19 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 		})
 	}
 
-	resolveGenreSpan.End()
+	createAlCtx, createAlSpan := s.tr.Start(createCtx, "album.create.create_album")
+	defer createAlSpan.End()
 
-	createCtx, createSpan := s.tr.Start(ctx, "album.create.create_album")
 	albumEntity, err := mappers.ToAlbumEntity(albumDto, embeddedArtist, embeddedGenre)
 	if err != nil {
-		createSpan.RecordError(err)
-		createSpan.End()
+		createAlSpan.RecordError(err)
 		log.Printf("trace_id=%s error converting to album entity: %v", telemetry.TraceID(ctx), err)
 		return err
 	}
 
-	err = s.albumRepo.Create(createCtx, *albumEntity)
+	err = s.albumRepo.Create(createAlCtx, *albumEntity)
 	if err != nil {
-		createSpan.RecordError(err)
-		createSpan.End()
+		createAlSpan.RecordError(err)
 		log.Printf("trace_id=%s error creating album in database: %v", telemetry.TraceID(ctx), err)
 		return err
 	}
@@ -134,27 +130,19 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 
 	err = retry.Do(
 		func() error {
-			pubCtx, pubSpan := s.tr.Start(createCtx, "messaging.publish")
-			defer pubSpan.End()
 
-			if err := s.jsc.Publish(pubCtx, events.SUBJECT_ENTITY_CREATED, aep); err != nil {
-				pubSpan.RecordError(err)
-				return err
-			}
-
-			return nil
+			return s.jsc.Publish(createAlCtx, events.SUBJECT_ENTITY_CREATED, aep)
 		},
 		retry.Attempts(3),
 		retry.Delay(time.Second),
 		retry.DelayType(retry.BackOffDelay),
 		retry.Context(createCtx),
 	)
+
 	if err != nil {
-		createSpan.RecordError(err)
 		log.Printf("Failed to publish entity created event: %v", err)
 	}
 
-	createSpan.End()
 	return nil
 }
 

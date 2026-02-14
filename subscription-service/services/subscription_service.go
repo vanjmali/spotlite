@@ -130,10 +130,10 @@ func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx conte
 }
 
 func (s *SubscriptionService) NotifySubscribers(ctx context.Context, p events.EntityCreatedEventPayload) error {
-	ctx, span := s.tr.Start(ctx, "subscription.notify")
-	defer span.End()
+	notCtx, notSpan := s.tr.Start(ctx, "subscription.notify")
+	defer notSpan.End()
 
-	loopCtx, loopSpan := s.tr.Start(ctx, "subscription.notify.loop")
+	loopCtx, loopSpan := s.tr.Start(notCtx, "subscription.notify.loop")
 	defer loopSpan.End()
 
 	var lastID string
@@ -164,15 +164,8 @@ func (s *SubscriptionService) NotifySubscribers(ctx context.Context, p events.En
 
 		err = retry.Do(
 			func() error {
-				pubCtx, pubSpan := s.tr.Start(loopCtx, "messaging.publish")
-				defer pubSpan.End()
 
-				if err := s.jsc.Publish(pubCtx, events.SUBJECT_SUBSCRIBER_BATCH, sep); err != nil {
-					pubSpan.RecordError(err)
-					return err
-				}
-
-				return nil
+				return s.jsc.Publish(loopCtx, events.SUBJECT_SUBSCRIBER_BATCH, sep)
 			},
 			retry.Attempts(3),
 			retry.Delay(time.Second),
@@ -180,6 +173,7 @@ func (s *SubscriptionService) NotifySubscribers(ctx context.Context, p events.En
 			retry.Context(loopCtx),
 		)
 		if err != nil {
+			loopSpan.RecordError(err)
 			log.Printf("Failed to publish batch: %v", err)
 			return err
 		}

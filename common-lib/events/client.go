@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"sync"
 	"time"
 
@@ -143,7 +144,7 @@ func (c *JetStreamClient) StartConsumer(
 
 				go func(m jetstream.Msg) {
 					defer wg.Done()
-					c.processMessage(m, handler)
+					c.processMessage(m, handler, ctx)
 				}(msg)
 			}
 
@@ -160,8 +161,8 @@ func (c *JetStreamClient) StartConsumer(
 
 // processMessage is a private function which is used to process the message and send a signal to the message queue
 // based on the operation result (NAK for failure, ACK for success).
-func (c *JetStreamClient) processMessage(msg jetstream.Msg, handler SubscribeHandler) {
-	parentCtx := otel.GetTextMapPropagator().Extract(context.Background(), propagation.HeaderCarrier(msg.Headers()))
+func (c *JetStreamClient) processMessage(msg jetstream.Msg, handler SubscribeHandler, ctx context.Context) {
+	parentCtx := otel.GetTextMapPropagator().Extract(ctx, propagation.HeaderCarrier(http.Header(msg.Headers())))
 	spanCtx, span := c.tracer.Start(parentCtx, "process "+msg.Subject(), trace.WithSpanKind(trace.SpanKindConsumer))
 	defer span.End()
 
