@@ -1,5 +1,9 @@
 <app-page>
   <div content class="profile-page">
+    @if (profileUpdateSuccessSg()) {
+      <app-message [message]="profileUpdateSuccessSg()" type="success" />
+    }
+
     <!-- Profile Section -->
     <app-widget title="Profile">
       <div content>
@@ -27,4 +31,11 @@
 <!-- Change Password Dialog -->
 @if (isChangePasswordDialogOpenSg()) {
   <app-change-password-dialog (closed)="closeChangePasswordDialog()" />
+}
+
+@if (isProfileEditorDialogOpenSg()) {
+  <app-profile-editor-dialog
+    (closed)="closeProfileEditorDialog()"
+    (saved)="onProfileSaved()"
+  />
 }

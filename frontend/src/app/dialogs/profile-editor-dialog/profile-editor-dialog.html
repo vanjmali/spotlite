@@ -1,0 +1,83 @@
+<app-dialog title="Edit personal info" (closed)="cancel()">
+  <div content class="profile-editor-dialog" #dialogContent>
+    @if (isLoadingProfileSg()) {
+      <div class="profile-editor-dialog__loading">
+        <app-loader />
+      </div>
+    } @else {
+      <app-text-input
+        #usernameInput
+        label="Username"
+        [required]="true"
+        [showRequiredIndicator]="false"
+        [min]="4"
+        [max]="20"
+        [pattern]="usernamePattern"
+        [patternMessage]="usernamePatternMessage"
+        [value]="usernameSg()"
+        (valueChange)="onUsernameChange($event)"
+        placeholder="username"
+      ></app-text-input>
+
+      @if (usernameStatusSg() === 'checking') {
+        <p class="profile-editor-dialog__username-hint">Checking username availability...</p>
+      } @else if (usernameStatusSg() === 'available') {
+        <p
+          class="profile-editor-dialog__username-hint profile-editor-dialog__username-hint--available"
+        >
+          Username is available.
+        </p>
+      } @else if (usernameStatusSg() === 'taken') {
+        <p class="profile-editor-dialog__username-hint profile-editor-dialog__username-hint--taken">
+          Username is already taken.
+        </p>
+      } @else if (usernameStatusSg() === 'error') {
+        <p class="profile-editor-dialog__username-hint">Unable to check username right now.</p>
+      }
+
+      <app-text-input
+        #firstNameInput
+        label="First name"
+        [required]="true"
+        [showRequiredIndicator]="false"
+        [min]="2"
+        [max]="20"
+        [pattern]="namePattern"
+        [patternMessage]="firstNamePatternMessage"
+        [value]="firstNameSg()"
+        (valueChange)="onFirstNameChange($event)"
+        placeholder="First name"
+      ></app-text-input>
+
+      <app-text-input
+        #lastNameInput
+        label="Last name"
+        [required]="true"
+        [showRequiredIndicator]="false"
+        [min]="2"
+        [max]="20"
+        [pattern]="namePattern"
+        [patternMessage]="lastNamePatternMessage"
+        [value]="lastNameSg()"
+        (valueChange)="onLastNameChange($event)"
+        placeholder="Last name"
+      ></app-text-input>
+
+      @if (errorSg()) {
+        <app-message [message]="errorSg()" type="error" />
+      }
+    }
+  </div>
+
+  <div footer class="profile-editor-dialog__footer">
+    <button class="btn-secondary" type="button" (click)="cancel()" [disabled]="isSavingSg()">
+      Cancel
+    </button>
+    <button class="btn-primary" type="button" (click)="submit()" [disabled]="!canSubmitSg()">
+      @if (isSavingSg()) {
+        <span class="btn-spinner" aria-hidden="true"></span>
+      }
+      Save
+    </button>
+  </div>
+</app-dialog>

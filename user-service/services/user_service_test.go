@@ -41,6 +41,7 @@ type fakeUserRepo struct {
 	clearLoginOtpFn      func(context.Context, primitive.ObjectID) error
 	activeAndRevokeFn    func(context.Context, string) error
 	setHashPasswordFn    func(context.Context, primitive.ObjectID, string, time.Time, time.Time) error
+	updateProfileFn      func(context.Context, primitive.ObjectID, string, string, string) error
 
 	createCalled             bool
 	createdUser              entities.User
@@ -143,6 +144,19 @@ func (f *fakeUserRepo) ExistsByEmail(ctx context.Context, email string) (bool, e
 		return f.existsByEmailFn(ctx, email)
 	}
 	return false, nil
+}
+
+func (f *fakeUserRepo) UpdateProfile(
+	ctx context.Context,
+	id primitive.ObjectID,
+	username string,
+	firstName string,
+	lastName string,
+) error {
+	if f.updateProfileFn != nil {
+		return f.updateProfileFn(ctx, id, username, firstName, lastName)
+	}
+	return nil
 }
 
 type fakeMailService struct {

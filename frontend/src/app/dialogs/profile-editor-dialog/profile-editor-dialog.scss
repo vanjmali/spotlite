@@ -1,0 +1,35 @@
+@use 'variables/colors' as *;
+
+.profile-editor-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  &__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 180px;
+  }
+
+  &__username-hint {
+    margin: -6px 0 0;
+    font-size: 0.8rem;
+    color: $color-gray-300;
+  }
+
+  &__username-hint--available {
+    color: #8be08b;
+  }
+
+  &__username-hint--taken {
+    color: $color-form-error;
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+}
