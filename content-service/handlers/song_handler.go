@@ -9,9 +9,14 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"mime/multipart"
 	"net/http"
+	"os"
+	"os/exec"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
@@ -51,6 +56,8 @@ var (
 	errMultipartTooLarge    = errors.New("multipart payload too large")
 	errInvalidMultipartForm = errors.New("invalid multipart form")
 )
+
+var audioDurationDetector = detectAudioDurationSeconds
 
 // NewSongHandler creates and returns a new SongHandler with the provided service and validator.
 func NewSongHandler(s services.SongService, v validator.Validate) *SongHandler {
@@ -185,13 +192,13 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 
 	id := mux.Vars(r)["id"]
 
-	file, reader, ext, mime, ok := getSingleValidatedAudioUpload(w, r)
+	file, reader, ext, mime, lengthSeconds, ok := getSingleValidatedAudioUpload(w, r)
 	if !ok {
 		return
 	}
 	defer file.Close()
 
-	updated, err := h.s.UploadAudio(r.Context(), id, reader, ext, mime)
+	updated, err := h.s.UploadAudio(r.Context(), id, reader, ext, mime, lengthSeconds)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrSongNotFound):
@@ -298,7 +305,7 @@ func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	file, reader, ext, mime, ok := getSingleValidatedAudioUpload(w, r)
+	file, reader, ext, mime, lengthSeconds, ok := getSingleValidatedAudioUpload(w, r)
 	if !ok {
 		return
 	}
@@ -317,7 +324,7 @@ func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	updated, err := h.s.UploadAudio(r.Context(), id.Hex(), reader, ext, mime)
+	updated, err := h.s.UploadAudio(r.Context(), id.Hex(), reader, ext, mime, lengthSeconds)
 	if err != nil {
 		if rollbackErr := h.s.DeleteSong(r.Context(), id.Hex()); rollbackErr != nil {
 			logSecurityEvent(r.Context(), "create_with_audio_rollback_failed", fmt.Sprintf("song_id=%s error=%v", id.Hex(), rollbackErr))
@@ -351,12 +358,12 @@ func parseMultipartWithLimit(w http.ResponseWriter, r *http.Request) error {
 
 // getSingleValidatedAudioUpload enforces one file input, verifies audio type from magic bytes,
 // and rebuilds a full reader (sniffed bytes + remaining stream) for downstream upload.
-func getSingleValidatedAudioUpload(w http.ResponseWriter, r *http.Request) (multipart.File, io.Reader, string, string, bool) {
+func getSingleValidatedAudioUpload(w http.ResponseWriter, r *http.Request) (multipart.File, io.Reader, string, string, *int, bool) {
 	mf := r.MultipartForm
 	if mf == nil || mf.File == nil {
 		logSecurityEvent(r.Context(), "upload_rejected_missing_file", "reason=no_file_part")
 		_ = respond.BadRequest(w, "missing file")
-		return nil, nil, "", "", false
+		return nil, nil, "", "", nil, false
 	}
 
 	totalFiles := 0
@@ -366,19 +373,19 @@ func getSingleValidatedAudioUpload(w http.ResponseWriter, r *http.Request) (mult
 	if totalFiles != 1 {
 		logSecurityEvent(r.Context(), "upload_rejected_multiple_files", fmt.Sprintf("count=%d", totalFiles))
 		_ = respond.BadRequest(w, "request must contain exactly one file")
-		return nil, nil, "", "", false
+		return nil, nil, "", "", nil, false
 	}
 	if len(mf.File["file"]) != 1 {
 		logSecurityEvent(r.Context(), "upload_rejected_invalid_file_field", "field=file")
 		_ = respond.BadRequest(w, "exactly one file must be provided under field 'file'")
-		return nil, nil, "", "", false
+		return nil, nil, "", "", nil, false
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		logSecurityEvent(r.Context(), "upload_rejected_missing_file", "reason=form_file_error")
 		_ = respond.BadRequest(w, "missing file")
-		return nil, nil, "", "", false
+		return nil, nil, "", "", nil, false
 	}
 
 	sniff, err := readFileSniff(file)
@@ -386,14 +393,29 @@ func getSingleValidatedAudioUpload(w http.ResponseWriter, r *http.Request) (mult
 		logSecurityEvent(r.Context(), "upload_rejected_invalid_file", "reason="+err.Error())
 		_ = respond.BadRequest(w, err.Error())
 		_ = file.Close()
-		return nil, nil, "", "", false
+		return nil, nil, "", "", nil, false
 	}
 
 	ext, mime, badRequestMessage, ok := validateAudioFileSniff(r.Context(), sniff, header.Filename)
 	if !ok {
 		_ = respond.BadRequest(w, badRequestMessage)
 		_ = file.Close()
-		return nil, nil, "", "", false
+		return nil, nil, "", "", nil, false
+	}
+
+	lengthSeconds, err := audioDurationDetector(file, mime)
+	if err != nil {
+		logSecurityEvent(r.Context(), "upload_rejected_audio_duration_detection_failed", fmt.Sprintf("filename=%q mime=%s", header.Filename, mime))
+		_ = respond.BadRequest(w, err.Error())
+		_ = file.Close()
+		return nil, nil, "", "", nil, false
+	}
+
+	if _, err := file.Seek(int64(len(sniff)), io.SeekStart); err != nil {
+		logSecurityEvent(r.Context(), "upload_rejected_invalid_file", "reason=failed to reset file cursor")
+		_ = respond.BadRequest(w, "failed to read file")
+		_ = file.Close()
+		return nil, nil, "", "", nil, false
 	}
 
 	log.Printf("trace_id=%s uploaded file: name=%q, size=%d, mime=%s, extension=%s",
@@ -401,7 +423,7 @@ func getSingleValidatedAudioUpload(w http.ResponseWriter, r *http.Request) (mult
 
 	// file.Read already consumed sniff bytes; prepend them so upload reads the entire original file.
 	reader := io.MultiReader(bytes.NewReader(sniff), file)
-	return file, reader, ext, mime, true
+	return file, reader, ext, mime, lengthSeconds, true
 }
 
 // readFileSniff reads up to 512 header bytes used for content-type detection by magic bytes.
@@ -438,6 +460,63 @@ func validateAudioFileSniff(ctx context.Context, sniff []byte, filename string) 
 	}
 
 	return ext, mime, "", true
+}
+
+// detectAudioDurationSeconds derives audio duration from file metadata/header.
+// ffprobe is used to support all allowed audio formats.
+func detectAudioDurationSeconds(file multipart.File, mime string) (*int, error) {
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return nil, errors.New("failed to read audio duration")
+	}
+	defer file.Seek(0, io.SeekStart)
+
+	tmp, err := os.CreateTemp("", "song-audio-*.bin")
+	if err != nil {
+		return nil, errors.New("failed to read audio duration")
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+
+	if _, err := io.Copy(tmp, file); err != nil {
+		_ = tmp.Close()
+		return nil, errors.New("failed to read audio duration")
+	}
+	if err := tmp.Close(); err != nil {
+		return nil, errors.New("failed to read audio duration")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// #nosec G204 - tmpPath is created by os.CreateTemp and not user-controlled.
+	cmd := exec.CommandContext(
+		ctx,
+		"ffprobe",
+		"-v", "error",
+		"-show_entries", "format=duration",
+		"-of", "default=noprint_wrappers=1:nokey=1",
+		tmpPath,
+	)
+
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+
+	if err := cmd.Run(); err != nil {
+		return nil, errors.New("failed to read audio duration")
+	}
+
+	out := strings.TrimSpace(stdout.String())
+	if out == "" {
+		return nil, errors.New("failed to read audio duration")
+	}
+
+	durationSeconds, err := strconv.ParseFloat(out, 64)
+	if err != nil || durationSeconds <= 0 {
+		return nil, errors.New("failed to read audio duration")
+	}
+
+	seconds := max(int(math.Ceil(durationSeconds)), 1)
+	return &seconds, nil
 }
 
 func verifySongAudioChecksumFromReader(ctx context.Context, audioPath string, expected string, r io.Reader) error {

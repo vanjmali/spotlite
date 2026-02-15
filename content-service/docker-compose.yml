@@ -4,7 +4,7 @@ services:
       context: .
       additional_contexts:
         common-lib: ../common-lib
-      dockerfile: ../Dockerfile.microservice
+      dockerfile: ./Dockerfile
     environment:
       APP_PORT: 3000
       DB_HOST: content-mongodb
