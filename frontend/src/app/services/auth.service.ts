@@ -35,7 +35,10 @@ export class AuthService {
       return true;
     }
 
-    if (Array.isArray(claims.roles) && claims.roles.some((role) => role.toLowerCase() === 'admin')) {
+    if (
+      Array.isArray(claims.roles) &&
+      claims.roles.some((role) => role.toLowerCase() === 'admin')
+    ) {
       return true;
     }
 
@@ -271,9 +274,7 @@ export class AuthService {
       );
   }
 
-  private getTokenClaims(
-    token: string | null
-  ): {
+  private getTokenClaims(token: string | null): {
     name?: string;
     username?: string;
     email?: string;
