@@ -198,3 +198,19 @@ func NotImplemented(w http.ResponseWriter, message ...ErrorMessagePayload) error
 	r := createErrorResponse(http.StatusNotImplemented, payload)
 	return Error(w, r)
 }
+
+// PayloadTooLarge issues a 413 Payload Too Large error response with a custom message if provided, otherwise a default message.
+func PayloadTooLarge(w http.ResponseWriter, message ...string) error {
+	msg := "Payload too large."
+	if len(message) > 0 && message[0] != "" {
+		msg = message[0]
+	}
+
+	r := ErrorResponse{
+		HttpCode: http.StatusRequestEntityTooLarge,
+		Code:     "payload_too_large",
+		Message:  msg,
+	}
+
+	return Error(w, r)
+}

@@ -382,6 +382,42 @@ func (s *AlbumService) RemoveSongFromAlbum(ctx context.Context, albumIdStr strin
 	return nil
 }
 
+// RemoveSongFromAllAlbums removes a song from every album that embeds it.
+func (s *AlbumService) RemoveSongFromAllAlbums(ctx context.Context, songIdStr string) error {
+	ctx, span := s.tr.Start(ctx, "album.remove_song_all")
+	defer span.End()
+
+	songId, err := primitive.ObjectIDFromHex(songIdStr)
+	if err != nil {
+		span.RecordError(err)
+		return ErrObjectIdCastFailed
+	}
+
+	filter := bson.M{"songs._id": songId}
+	albums, _, err := s.albumRepo.FindAll(ctx, filter, 0, 0)
+	if err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	for _, album := range albums {
+		filtered := make([]entities.Song, 0, len(album.Songs))
+		for _, song := range album.Songs {
+			if song.ID == songId {
+				continue
+			}
+			filtered = append(filtered, song)
+		}
+
+		if _, err := s.albumRepo.UpdateByID(ctx, album.ID, map[string]any{"songs": filtered}); err != nil {
+			span.RecordError(err)
+			return err
+		}
+	}
+
+	return nil
+}
+
 // DeleteAlbum deletes an album by its ID.
 func (s *AlbumService) DeleteAlbum(ctx context.Context, idStr string) error {
 	ctx, span := s.tr.Start(ctx, "album.delete_album")
