@@ -71,8 +71,6 @@ services:
       - CORE-SITE.XML_fs.defaultFS=hdfs://content-hdfs-namenode:8020
       - HDFS-SITE.XML_dfs.replication=${SRV_CONTENT_HDFS_REPLICATION?}
       - HDFS-SITE.XML_dfs.permissions.enabled=${SRV_CONTENT_HDFS_PERMISSIONS_ENABLED?}
-      - HDFS-SITE.XML_dfs.data.transfer.protection=${SRV_CONTENT_HDFS_DATA_TRANSFER_PROTECTION?}
-      - HDFS-SITE.XML_dfs.encrypt.data.transfer=${SRV_CONTENT_HDFS_ENCRYPT_DATA_TRANSFER?}
       - HDFS-SITE.XML_dfs.namenode.name.dir=file:///data/dfs/name
       - ENSURE_NAMENODE_DIR=/data/dfs/name
     volumes:
@@ -99,8 +97,6 @@ services:
       - CORE-SITE.XML_fs.defaultFS=hdfs://content-hdfs-namenode:8020
       - HDFS-SITE.XML_dfs.replication=${SRV_CONTENT_HDFS_REPLICATION?}
       - HDFS-SITE.XML_dfs.permissions.enabled=${SRV_CONTENT_HDFS_PERMISSIONS_ENABLED?}
-      - HDFS-SITE.XML_dfs.data.transfer.protection=${SRV_CONTENT_HDFS_DATA_TRANSFER_PROTECTION?}
-      - HDFS-SITE.XML_dfs.encrypt.data.transfer=${SRV_CONTENT_HDFS_ENCRYPT_DATA_TRANSFER?}
       - HDFS-SITE.XML_dfs.datanode.data.dir=file:///data/dfs/data
     volumes:
       - content-hdfs-datanode-data:/data

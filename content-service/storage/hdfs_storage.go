@@ -19,7 +19,7 @@ type HDFSStorage struct {
 func NewHDFSStorage() (*HDFSStorage, error) {
 	uri := utils.MustGetEnv("HDFS_URI")
 	base := utils.MustGetEnv("HDFS_AUDIO_BASE")
-	transferProtection, err := normalizeDataTransferProtection(utils.GetEnv("HDFS_DATA_TRANSFER_PROTECTION", hdfs.DataTransferProtectionPrivacy))
+	transferProtection, err := normalizeDataTransferProtection(utils.GetEnv("HDFS_DATA_TRANSFER_PROTECTION", ""))
 	if err != nil {
 		return nil, err
 	}
@@ -62,12 +62,12 @@ func (s *HDFSStorage) UploadSongAudio(songID string, r io.Reader, ext string) (f
 		_ = s.c.Remove(tmpPath)
 		return "", 0, copyErr
 	}
-	if closeErr != nil {
+	if closeErr != nil && !hdfs.IsErrReplicating(closeErr) {
 		_ = s.c.Remove(tmpPath)
 		return "", 0, closeErr
 	}
 
-	if err := s.c.Rename(tmpPath, finalPath); err != nil {
+	if err := s.renameWithRetry(tmpPath, finalPath); err != nil {
 		_ = s.c.Remove(tmpPath)
 		return "", 0, err
 	}
@@ -86,10 +86,34 @@ func (s *HDFSStorage) Remove(path string) error {
 	return s.c.Remove(path)
 }
 
+func (s *HDFSStorage) renameWithRetry(from string, to string) error {
+	const attempts = 20
+	const wait = 100 * time.Millisecond
+
+	var lastErr error
+	for i := 0; i < attempts; i++ {
+		err := s.c.Rename(from, to)
+		if err == nil {
+			return nil
+		}
+
+		lastErr = err
+		if !hdfs.IsErrReplicating(err) {
+			return err
+		}
+
+		time.Sleep(wait)
+	}
+
+	return fmt.Errorf("rename failed after retries: %w", lastErr)
+}
+
 func normalizeDataTransferProtection(v string) (string, error) {
 	protection := strings.ToLower(strings.TrimSpace(v))
 
 	switch protection {
+	case "", "none":
+		return "", nil
 	case hdfs.DataTransferProtectionAuthentication:
 		return hdfs.DataTransferProtectionAuthentication, nil
 	case hdfs.DataTransferProtectionIntegrity:

@@ -39,4 +39,22 @@ func TestNormalizeDataTransferProtection(t *testing.T) {
 			t.Fatal("expected error for unsupported value")
 		}
 	})
+
+	t.Run("accepts none and empty", func(t *testing.T) {
+		got, err := normalizeDataTransferProtection("none")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != "" {
+			t.Fatalf("expected empty protection for none, got %q", got)
+		}
+
+		got, err = normalizeDataTransferProtection("")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != "" {
+			t.Fatalf("expected empty protection for empty value, got %q", got)
+		}
+	})
 }
