@@ -149,7 +149,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (primit
 	createSpan.End()
 
 	addToAlbumCtx, addToAlbumSpan := s.tr.Start(ctx, "song.create.add_to_album")
-	_, err = s.albumService.AddSongsToAlbum(addToAlbumCtx, songDto.AlbumId, dtos.AddAlbumSongsDto{Ids: []string{songEntity.ID.Hex()}})
+	_, err = s.albumService.AddSongsToAlbum(addToAlbumCtx, songDto.AlbumId, dtos.AddAlbumSongsDto{Ids: []string{id.Hex()}})
 	if err != nil {
 		addToAlbumSpan.RecordError(err)
 		addToAlbumSpan.End()
@@ -158,7 +158,6 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (primit
 		rollbackCtx, rollbackSpan := s.tr.Start(ctx, "song.create.rollback")
 		if deleteErr := s.DeleteSong(rollbackCtx, id.Hex()); deleteErr != nil {
 			rollbackSpan.RecordError(deleteErr)
-			rollbackSpan.End()
 			log.Printf("trace_id=%s CRITICAL: failed to rollback song creation for song_id=%s: %v", telemetry.TraceID(ctx), id.Hex(), deleteErr)
 		}
 		rollbackSpan.End()

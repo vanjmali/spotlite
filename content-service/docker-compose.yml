@@ -29,6 +29,8 @@ services:
         condition: service_healthy
       content-hdfs-namenode:
         condition: service_healthy
+      content-hdfs-datanode:
+        condition: service_healthy
     networks:
       - api-gateway
       - content-internal

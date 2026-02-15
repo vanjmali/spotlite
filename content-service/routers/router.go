@@ -35,14 +35,11 @@ func HandleRequests(
 	// Songs endpoints
 	api.HandleFunc("/songs", sh.HandleGetSongs).Methods("GET")
 	api.HandleFunc("/songs/{id}", sh.HandleGetSongById).Methods("GET")
-	api.HandleFunc("/songs", sh.HandleCreateSong).Methods("POST")
+	api.HandleFunc("/songs", sh.HandleCreateSongWithAudio).Methods("POST")
 	api.HandleFunc("/songs/{id}", sh.HandleUpdateSong).Methods("PATCH")
 	api.HandleFunc("/songs/{id}", sh.HandleDeleteSong).Methods("DELETE")
-	// Upload songs
-	api.HandleFunc("/songs/{id}/audio", sh.HandleUploadSongAudio).Methods("POST")
 	api.HandleFunc("/songs/{id}/audio", sh.HandleStreamSongAudio).Methods("GET")
-	// Create song with audio upload in one request
-	api.HandleFunc("/songs/with-audio", sh.HandleCreateSongWithAudio).Methods("POST")
+	api.HandleFunc("/songs/{id}/audio", sh.HandleUploadSongAudio).Methods("PUT")
 
 	// Albums endpoints
 	api.HandleFunc("/albums", alh.HandleGetAlbums).Methods("GET")

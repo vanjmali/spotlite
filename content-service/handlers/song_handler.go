@@ -32,42 +32,6 @@ func NewSongHandler(s services.SongService, v validator.Validate) *SongHandler {
 	return &h
 }
 
-// HandleCreateSong handles HTTP POST requests to create a new song.
-func (h *SongHandler) HandleCreateSong(w http.ResponseWriter, r *http.Request) {
-	var req dtos.SongDto
-
-	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
-		if err != nil {
-			log.Printf("trace_id=%s invalid request body: %v", telemetry.TraceID(r.Context()), err)
-			_ = respond.BadRequest(w, "invalid request body")
-		}
-		return
-	}
-
-	if _, err := h.s.Create(r.Context(), &req); err != nil {
-		switch {
-		case errors.Is(err, services.ErrObjectIdCastFailed):
-			_ = respond.BadRequest(w, "Invalid ID format")
-			return
-		case errors.Is(err, services.ErrArtistNotFound):
-			_ = respond.NotFound(w)
-			return
-		case errors.Is(err, services.ErrAlbumNotFound):
-			_ = respond.NotFound(w)
-			return
-		case errors.Is(err, services.ErrGenreNotFound):
-			_ = respond.NotFound(w)
-			return
-		default:
-			log.Printf("trace_id=%s failed to create song: %v", telemetry.TraceID(r.Context()), err)
-			_ = respond.InternalServerError(w)
-			return
-		}
-	}
-
-	respond.NoContent(w)
-}
-
 // HandleGetSongById handles HTTP GET requests to retrieve a single song by its ID.
 func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -436,7 +400,7 @@ func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.R
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):
 			_ = respond.BadRequest(w, "invalid id format")
-		case errors.Is(err, services.ErrArtistNotFound), errors.Is(err, services.ErrGenreNotFound):
+		case errors.Is(err, services.ErrArtistNotFound), errors.Is(err, services.ErrGenreNotFound), errors.Is(err, services.ErrAlbumNotFound):
 			_ = respond.NotFound(w)
 		default:
 			_ = respond.InternalServerError(w)
