@@ -20,6 +20,7 @@ import (
 	"github.com/vanjmali/spotlite/content/repositories"
 	"github.com/vanjmali/spotlite/content/routers"
 	"github.com/vanjmali/spotlite/content/services"
+	"github.com/vanjmali/spotlite/content/storage"
 	contentvalid "github.com/vanjmali/spotlite/content/validations"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
@@ -47,16 +48,30 @@ var config = server.ServerRunConfiguration{
 			return h, shutdown, err
 		}
 
+		hdfsStore, err := storage.NewHDFSStorage()
+		if err != nil {
+			err = fmt.Errorf("failed to init hdfs client: %w", err)
+			_ = dbc.Disconnect(ctx)
+			return h, shutdown, err
+		}
+
+		if err := hdfsStore.EnsureBaseDir(); err != nil {
+			err = fmt.Errorf("failed to ensure hdfs base dir: %w", err)
+			_ = dbc.Disconnect(ctx)
+			return h, shutdown, err
+		}
+
 		// Cleanup resources on error
 		defer func() {
 			if err == nil {
 				return
 			}
 			_ = dbc.Disconnect(ctx)
+			_ = hdfsStore.Close()
 		}()
 
 		ar, sr, alr, gr := createRepositories(dbc)
-		gs, as, ss, als, glss := createServices(ar, sr, alr, gr)
+		gs, as, ss, als, glss := createServices(ar, sr, alr, gr, hdfsStore)
 		h = createHandlers(v, as, ss, als, gs, glss)
 
 		// configures grpc server
@@ -80,6 +95,10 @@ var config = server.ServerRunConfiguration{
 		shutdown = func() error {
 			// makes sure to gracefully stop the rpc server
 			s.GracefulStop()
+
+			if err := hdfsStore.Close(); err != nil {
+				return fmt.Errorf("failed to close hdfs client: %w", err)
+			}
 
 			if err := dbc.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
 				return fmt.Errorf("failed to disconnect mongo client: %w", err)
@@ -126,6 +145,7 @@ func createServices(
 	sr *repositories.SongRepository,
 	alr *repositories.AlbumRepository,
 	gr *repositories.GenreRepository,
+	hdfsStore *storage.HDFSStorage,
 ) (
 	*services.GenreService,
 	*services.ArtistService,
@@ -136,7 +156,7 @@ func createServices(
 	gs := services.NewGenreService(*gr)
 	as := services.NewArtistService(*ar, *gs)
 	als := services.NewAlbumService(*alr, *sr, *as, *gs)
-	ss := services.NewSongService(*sr, *as, *gs, als)
+	ss := services.NewSongService(*sr, *as, *gs, als, hdfsStore)
 	glss := services.NewGlobalSearchService(gs, ss, als, as)
 
 	return gs, as, ss, als, glss

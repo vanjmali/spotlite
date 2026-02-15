@@ -12,8 +12,11 @@ services:
       DB_USER: ${SRV_CONTENT_MONGO_USERNAME?}
       DB_PASS: ${SRV_CONTENT_MONGO_PASSWORD?}
       DB_NAME: ${SRV_CONTENT_MONGO_DATABASE?}
+      HDFS_URI: ${SRV_CONTENT_HDFS_URI?}
+      HDFS_AUDIO_BASE: ${SRV_CONTENT_HDFS_AUDIO_BASE?}
+      HDFS_USER: ${SRV_CONTENT_HDFS_USER?}
+      HDFS_DATA_TRANSFER_PROTECTION: ${SRV_CONTENT_HDFS_DATA_TRANSFER_PROTECTION?}
       GRPC_PORT: ${SRV_CONTENT_GRPC_PORT?}
-
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true
@@ -25,6 +28,10 @@ services:
       traefik.http.services.content-service.loadbalancer.server.port: "3000"
     depends_on:
       content-mongodb:
+        condition: service_healthy
+      content-hdfs-namenode:
+        condition: service_healthy
+      content-hdfs-datanode:
         condition: service_healthy
     networks:
       - api-gateway
@@ -43,7 +50,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'mongosh --norc --quiet --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval ''db.runCommand({ ping: 1 })''',
+          "mongosh --norc --quiet --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval 'db.runCommand({ ping: 1 })'",
         ]
       interval: 30s
       timeout: 5s
@@ -55,6 +62,60 @@ services:
     networks:
       - content-internal
 
+  content-hdfs-namenode:
+    image: apache/hadoop:3.4
+    hostname: content-hdfs-namenode
+    command: ["hdfs", "namenode"]
+    environment:
+      - CLUSTER_NAME=${SRV_CONTENT_HDFS_CLUSTER_NAME?}
+      - CORE-SITE.XML_fs.defaultFS=hdfs://content-hdfs-namenode:8020
+      - HDFS-SITE.XML_dfs.replication=${SRV_CONTENT_HDFS_REPLICATION?}
+      - HDFS-SITE.XML_dfs.permissions.enabled=${SRV_CONTENT_HDFS_PERMISSIONS_ENABLED?}
+      - HDFS-SITE.XML_dfs.namenode.name.dir=file:///data/dfs/name
+      - ENSURE_NAMENODE_DIR=/data/dfs/name
+    volumes:
+      - content-hdfs-namenode-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS 'http://localhost:9870/jmx?qry=Hadoop:service=NameNode,name=NameNodeStatus' | grep -E '\"State\"\\s*:\\s*\"(active|standby)\"'",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - content-internal
+
+  content-hdfs-datanode:
+    image: apache/hadoop:3.4
+    hostname: content-hdfs-datanode
+    command: ["hdfs", "datanode"]
+    environment:
+      - CLUSTER_NAME=${SRV_CONTENT_HDFS_CLUSTER_NAME?}
+      - CORE-SITE.XML_fs.defaultFS=hdfs://content-hdfs-namenode:8020
+      - HDFS-SITE.XML_dfs.replication=${SRV_CONTENT_HDFS_REPLICATION?}
+      - HDFS-SITE.XML_dfs.permissions.enabled=${SRV_CONTENT_HDFS_PERMISSIONS_ENABLED?}
+      - HDFS-SITE.XML_dfs.datanode.data.dir=file:///data/dfs/data
+    volumes:
+      - content-hdfs-datanode-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS 'http://localhost:9864/jmx?qry=Hadoop:service=DataNode,name=DataNodeInfo' >/dev/null",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      content-hdfs-namenode:
+        condition: service_healthy
+    networks:
+      - content-internal
+
 networks:
   api-gateway:
     name: spotlite-api-gateway
@@ -62,3 +123,5 @@ networks:
 
 volumes:
   content-mongo-data:
+  content-hdfs-namenode-data:
+  content-hdfs-datanode-data:

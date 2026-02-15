@@ -2,7 +2,10 @@ package services
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"io"
 	"log"
 
 	"github.com/vanjmali/spotlite/common-lib/pagination"
@@ -11,6 +14,7 @@ import (
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
 	"github.com/vanjmali/spotlite/content/repositories"
+	"github.com/vanjmali/spotlite/content/storage"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,26 +22,72 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-var ErrSongNotFound = errors.New("song not found")
+var (
+	ErrSongNotFound      = errors.New("song not found")
+	ErrAudioUploadFailed = errors.New("audio upload failed")
+)
+
+type songRepo interface {
+	Create(ctx context.Context, song entities.Song) (primitive.ObjectID, error)
+	FindByID(ctx context.Context, id primitive.ObjectID) (*entities.Song, error)
+	UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]any) (*entities.Song, error)
+	DeleteByID(ctx context.Context, id primitive.ObjectID) (*mongo.DeleteResult, error)
+	FindAll(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Song, int64, error)
+	UpdateAudioByID(
+		ctx context.Context,
+		id primitive.ObjectID,
+		audioPath string,
+		size int64,
+		mime string,
+		checksum string,
+	) (*entities.Song, error)
+}
+
+type artistFinder interface {
+	FindArtistByID(ctx context.Context, idStr string) (*entities.Artist, error)
+}
+
+type genreFinder interface {
+	FindGenreByID(ctx context.Context, idStr string) (*entities.Genre, error)
+}
+
+type albumSongManager interface {
+	FindAlbumByID(ctx context.Context, idStr string) (*entities.Album, error)
+	AddSongsToAlbum(ctx context.Context, idStr string, dto dtos.AddAlbumSongsDto) (*entities.Album, error)
+	RemoveSongFromAllAlbums(ctx context.Context, songIdStr string) error
+}
+
+type audioStore interface {
+	UploadSongAudio(songID string, r io.Reader, ext string) (finalPath string, size int64, err error)
+	Open(p string) (io.ReadCloser, error)
+	Remove(path string) error
+}
 
 type SongService struct {
-	songRepo      *repositories.SongRepository
-	artistService *ArtistService
-	genreService  *GenreService
-	albumService  *AlbumService
+	songRepo      songRepo
+	artistService artistFinder
+	genreService  genreFinder
+	albumService  albumSongManager
+	hdfs          audioStore
 	tr            trace.Tracer
 }
 
 // NewSongService creates and returns a new SongService with the provided repository and artist service.
-func NewSongService(songRepo repositories.SongRepository, artistService ArtistService, genreService GenreService, albumService *AlbumService) *SongService {
+func NewSongService(
+	songRepo repositories.SongRepository,
+	artistService ArtistService,
+	genreService GenreService,
+	albumService *AlbumService,
+	hdfs *storage.HDFSStorage,
+) *SongService {
 	tr := otel.Tracer("content-service/song-service")
-	s := SongService{songRepo: &songRepo, artistService: &artistService, genreService: &genreService, albumService: albumService, tr: tr}
+	s := SongService{songRepo: &songRepo, artistService: &artistService, genreService: &genreService, albumService: albumService, hdfs: hdfs, tr: tr}
 
 	return &s
 }
 
 // Create creates a new song with the provided data, resolving associated artists and genre.
-func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
+func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (primitive.ObjectID, error) {
 	ctx, span := s.tr.Start(ctx, "song.create")
 	defer span.End()
 
@@ -49,11 +99,11 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 
 		switch {
 		case errors.Is(err, ErrObjectIdCastFailed):
-			return ErrObjectIdCastFailed
+			return primitive.NilObjectID, ErrObjectIdCastFailed
 		case errors.Is(err, ErrAlbumNotFound):
-			return ErrAlbumNotFound
+			return primitive.NilObjectID, ErrAlbumNotFound
 		default:
-			return err
+			return primitive.NilObjectID, err
 		}
 	}
 
@@ -71,11 +121,11 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 
 			switch {
 			case errors.Is(err, ErrObjectIdCastFailed):
-				return ErrObjectIdCastFailed
+				return primitive.NilObjectID, ErrObjectIdCastFailed
 			case errors.Is(err, ErrGenreNotFound):
-				return ErrGenreNotFound
+				return primitive.NilObjectID, ErrGenreNotFound
 			default:
-				return err
+				return primitive.NilObjectID, err
 			}
 		}
 
@@ -98,11 +148,11 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 
 			switch {
 			case errors.Is(err, ErrObjectIdCastFailed):
-				return ErrObjectIdCastFailed
+				return primitive.NilObjectID, ErrObjectIdCastFailed
 			case errors.Is(err, ErrArtistNotFound):
-				return ErrArtistNotFound
+				return primitive.NilObjectID, ErrArtistNotFound
 			default:
-				return err
+				return primitive.NilObjectID, err
 			}
 		}
 
@@ -122,28 +172,38 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) error {
 		mapSpan.RecordError(err)
 		mapSpan.End()
 		log.Printf("trace_id=%s error converting to song entity: %v", telemetry.TraceID(ctx), err)
-		return err
+		return primitive.NilObjectID, err
 	}
 	mapSpan.End()
 
 	createCtx, createSpan := s.tr.Start(ctx, "song.create.create_song")
-	err = s.songRepo.Create(createCtx, *songEntity)
+	id, err := s.songRepo.Create(createCtx, *songEntity)
 	if err != nil {
 		createSpan.RecordError(err)
 		createSpan.End()
 		log.Printf("trace_id=%s error creating song in database: %v", telemetry.TraceID(ctx), err)
-		return err
-	}
-
-	_, err = s.albumService.AddSongsToAlbum(ctx, songDto.AlbumId, dtos.AddAlbumSongsDto{Ids: []string{songEntity.ID.Hex()}})
-	if err != nil {
-		createSpan.RecordError(err)
-		createSpan.End()
-		log.Printf("trace_id=%s error embedding song into album: %v", telemetry.TraceID(ctx), err)
-		return err
+		return primitive.NilObjectID, err
 	}
 	createSpan.End()
-	return nil
+
+	addToAlbumCtx, addToAlbumSpan := s.tr.Start(ctx, "song.create.add_to_album")
+	_, err = s.albumService.AddSongsToAlbum(addToAlbumCtx, songDto.AlbumId, dtos.AddAlbumSongsDto{Ids: []string{id.Hex()}})
+	if err != nil {
+		addToAlbumSpan.RecordError(err)
+		addToAlbumSpan.End()
+		log.Printf("trace_id=%s error embedding song into album: %v", telemetry.TraceID(ctx), err)
+
+		rollbackCtx, rollbackSpan := s.tr.Start(ctx, "song.create.rollback")
+		if deleteErr := s.DeleteSong(rollbackCtx, id.Hex()); deleteErr != nil {
+			rollbackSpan.RecordError(deleteErr)
+			log.Printf("trace_id=%s CRITICAL: failed to rollback song creation for song_id=%s: %v", telemetry.TraceID(ctx), id.Hex(), deleteErr)
+		}
+		rollbackSpan.End()
+		return primitive.NilObjectID, err
+	}
+	addToAlbumSpan.End()
+
+	return id, nil
 }
 
 // FindSongById retrieves a single song by its ID.
@@ -154,14 +214,12 @@ func (s *SongService) FindSongById(ctx context.Context, idStr string) (*entities
 	id, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
 		span.RecordError(err)
-		span.End()
 		return nil, ErrObjectIdCastFailed
 	}
 
 	song, err := s.songRepo.FindByID(ctx, id)
 	if err != nil {
 		span.RecordError(err)
-		span.End()
 		return nil, ErrSongNotFound
 	}
 
@@ -283,6 +341,26 @@ func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
 	}
 	parseSpan.End()
 
+	findSongCtx, findSongSpan := s.tr.Start(ctx, "song.delete_song.find_song")
+	song, err := s.songRepo.FindByID(findSongCtx, id)
+	if err != nil {
+		findSongSpan.RecordError(err)
+		findSongSpan.End()
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return ErrSongNotFound
+		}
+		return err
+	}
+	findSongSpan.End()
+
+	removeFromAlbumsCtx, removeFromAlbumsSpan := s.tr.Start(ctx, "song.delete_song.remove_from_albums")
+	if err := s.albumService.RemoveSongFromAllAlbums(removeFromAlbumsCtx, id.Hex()); err != nil {
+		removeFromAlbumsSpan.RecordError(err)
+		removeFromAlbumsSpan.End()
+		return err
+	}
+	removeFromAlbumsSpan.End()
+
 	repoCtx, repoSpan := s.tr.Start(ctx, "song.delete.repository_delete")
 	res, err := s.songRepo.DeleteByID(repoCtx, id)
 	if err != nil {
@@ -298,6 +376,15 @@ func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
 		return err
 	}
 	repoSpan.End()
+
+	if song.AudioPath != "" {
+		cleanupCtx, cleanupSpan := s.tr.Start(ctx, "song.delete_song.remove_audio")
+		if err := s.hdfs.Remove(song.AudioPath); err != nil {
+			cleanupSpan.RecordError(err)
+			log.Printf("trace_id=%s failed to delete audio file at path %s: %v", telemetry.TraceID(cleanupCtx), song.AudioPath, err)
+		}
+		cleanupSpan.End()
+	}
 
 	return nil
 }
@@ -365,4 +452,72 @@ func (s *SongService) GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongLis
 		Size:  p.Size,
 		Total: total,
 	}, nil
+}
+
+func (s *SongService) UploadAudio(ctx context.Context, idStr string, r io.Reader, ext string, mime string) (*entities.Song, error) {
+	ctx, span := s.tr.Start(ctx, "song.upload_audio")
+	defer span.End()
+
+	_, parseSpan := s.tr.Start(ctx, "song.upload_audio.parse_id")
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		parseSpan.RecordError(err)
+		parseSpan.End()
+		return nil, ErrObjectIdCastFailed
+	}
+	parseSpan.End()
+
+	checkExistsCtx, checkExistsSpan := s.tr.Start(ctx, "song.upload_audio.check_exists")
+	song, err := s.songRepo.FindByID(checkExistsCtx, id)
+	if err != nil {
+		checkExistsSpan.RecordError(err)
+		checkExistsSpan.End()
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrSongNotFound
+		}
+		return nil, err
+	}
+	checkExistsSpan.End()
+
+	_, uploadSpan := s.tr.Start(ctx, "song.upload_audio.hdfs_upload")
+	audioPath, size, checksum, err := s.uploadAudioWithChecksum(id.Hex(), r, ext)
+	if err != nil {
+		uploadSpan.RecordError(err)
+		uploadSpan.End()
+		return nil, ErrAudioUploadFailed
+	}
+	uploadSpan.End()
+
+	updated, err := s.songRepo.UpdateAudioByID(ctx, id, audioPath, size, mime, checksum)
+	if err != nil {
+		span.RecordError(err)
+		_ = s.hdfs.Remove(audioPath)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrSongNotFound
+		}
+		return nil, err
+	}
+
+	if song.AudioPath != "" && song.AudioPath != audioPath {
+		if err := s.hdfs.Remove(song.AudioPath); err != nil {
+			log.Printf("trace_id=%s failed to delete old audio at path %s: %v",
+				telemetry.TraceID(ctx), song.AudioPath, err)
+		}
+	}
+	return updated, nil
+}
+
+func (s *SongService) OpenAudio(ctx context.Context, audioPath string) (io.ReadCloser, error) {
+	return s.hdfs.Open(audioPath)
+}
+
+func (s *SongService) uploadAudioWithChecksum(songID string, r io.Reader, ext string) (string, int64, string, error) {
+	hasher := sha256.New()
+	audioPath, size, err := s.hdfs.UploadSongAudio(songID, io.TeeReader(r, hasher), ext)
+	if err != nil {
+		return "", 0, "", err
+	}
+
+	checksum := hex.EncodeToString(hasher.Sum(nil))
+	return audioPath, size, checksum, nil
 }
