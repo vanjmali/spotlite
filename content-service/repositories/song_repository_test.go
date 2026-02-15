@@ -44,11 +44,13 @@ func TestSongRepositoryUpdateAudioByID(t *testing.T) {
 				{Key: "audio_size", Value: int64(42)},
 				{Key: "audio_mime_type", Value: "audio/mpeg"},
 				{Key: "audio_checksum", Value: "sha256-hash"},
+				{Key: "length_seconds", Value: int32(9)},
 			}},
 			bson.E{Key: "ok", Value: 1},
 		))
 
-		got, err := repo.UpdateAudioByID(context.Background(), oid, expectedPath, 42, "audio/mpeg", "sha256-hash")
+		lengthSeconds := 9
+		got, err := repo.UpdateAudioByID(context.Background(), oid, expectedPath, 42, "audio/mpeg", "sha256-hash", &lengthSeconds)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -63,6 +65,9 @@ func TestSongRepositoryUpdateAudioByID(t *testing.T) {
 		}
 		if got.AudioChecksum != "sha256-hash" {
 			t.Fatalf("expected checksum sha256-hash, got %q", got.AudioChecksum)
+		}
+		if got.LengthSeconds != lengthSeconds {
+			t.Fatalf("expected length seconds %d, got %d", lengthSeconds, got.LengthSeconds)
 		}
 	})
 }

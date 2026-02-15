@@ -35,6 +35,9 @@ Optional base URL override (default is `http://localhost:3000/api/content`):
 E2E_BASE_URL=http://localhost:3000/api/content go test -tags e2e ./e2e -run TestAudioFlowE2E -v
 ```
 
+> [!NOTE]
+> `content-service` derives `length_seconds` with `ffprobe`, so runtime image/environment must have `ffprobe` available.
+
 ## Structure
 
 The purpose of this service is to handle the management and retrieval of music content entities:

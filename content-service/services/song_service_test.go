@@ -17,7 +17,7 @@ import (
 
 type fakeSongRepo struct {
 	findByIDFn      func(context.Context, primitive.ObjectID) (*entities.Song, error)
-	updateAudioByID func(context.Context, primitive.ObjectID, string, int64, string, string) (*entities.Song, error)
+	updateAudioByID func(context.Context, primitive.ObjectID, string, int64, string, string, *int) (*entities.Song, error)
 	deleteByIDFn    func(context.Context, primitive.ObjectID) (*mongo.DeleteResult, error)
 
 	lastUpdateID   primitive.ObjectID
@@ -25,6 +25,7 @@ type fakeSongRepo struct {
 	lastUpdateSize int64
 	lastUpdateMime string
 	lastUpdateHash string
+	lastUpdateLen  *int
 }
 
 func (f *fakeSongRepo) Create(context.Context, entities.Song) (primitive.ObjectID, error) {
@@ -60,16 +61,22 @@ func (f *fakeSongRepo) UpdateAudioByID(
 	size int64,
 	mime string,
 	checksum string,
+	lengthSeconds *int,
 ) (*entities.Song, error) {
 	f.lastUpdateID = id
 	f.lastUpdatePath = audioPath
 	f.lastUpdateSize = size
 	f.lastUpdateMime = mime
 	f.lastUpdateHash = checksum
+	f.lastUpdateLen = lengthSeconds
 	if f.updateAudioByID != nil {
-		return f.updateAudioByID(ctx, id, audioPath, size, mime, checksum)
+		return f.updateAudioByID(ctx, id, audioPath, size, mime, checksum, lengthSeconds)
 	}
-	return &entities.Song{ID: id, AudioPath: audioPath, AudioSize: size, AudioMimeType: mime, AudioChecksum: checksum}, nil
+	song := &entities.Song{ID: id, AudioPath: audioPath, AudioSize: size, AudioMimeType: mime, AudioChecksum: checksum}
+	if lengthSeconds != nil {
+		song.LengthSeconds = *lengthSeconds
+	}
+	return song, nil
 }
 
 type fakeAlbumManager struct {
@@ -131,7 +138,7 @@ func newTestSongService(repo songRepo, album albumSongManager, hdfs audioStore) 
 func TestSongServiceUploadAudio_InvalidID(t *testing.T) {
 	svc := newTestSongService(&fakeSongRepo{}, &fakeAlbumManager{}, &fakeAudioStore{})
 
-	_, err := svc.UploadAudio(context.Background(), "bad-id", strings.NewReader("x"), ".mp3", "audio/mpeg")
+	_, err := svc.UploadAudio(context.Background(), "bad-id", strings.NewReader("x"), ".mp3", "audio/mpeg", nil)
 	if !errors.Is(err, ErrObjectIdCastFailed) {
 		t.Fatalf("expected ErrObjectIdCastFailed, got %v", err)
 	}
@@ -145,7 +152,7 @@ func TestSongServiceUploadAudio_SongNotFound(t *testing.T) {
 	}
 	svc := newTestSongService(repo, &fakeAlbumManager{}, &fakeAudioStore{})
 
-	_, err := svc.UploadAudio(context.Background(), primitive.NewObjectID().Hex(), strings.NewReader("x"), ".mp3", "audio/mpeg")
+	_, err := svc.UploadAudio(context.Background(), primitive.NewObjectID().Hex(), strings.NewReader("x"), ".mp3", "audio/mpeg", nil)
 	if !errors.Is(err, ErrSongNotFound) {
 		t.Fatalf("expected ErrSongNotFound, got %v", err)
 	}
@@ -160,14 +167,18 @@ func TestSongServiceUploadAudio_SuccessUpdatesMetadataAndRemovesOldFile(t *testi
 		findByIDFn: func(context.Context, primitive.ObjectID) (*entities.Song, error) {
 			return &entities.Song{ID: id, AudioPath: oldPath}, nil
 		},
-		updateAudioByID: func(_ context.Context, gotID primitive.ObjectID, gotPath string, gotSize int64, gotMime string, gotHash string) (*entities.Song, error) {
-			return &entities.Song{
+		updateAudioByID: func(_ context.Context, gotID primitive.ObjectID, gotPath string, gotSize int64, gotMime string, gotHash string, gotLen *int) (*entities.Song, error) {
+			song := &entities.Song{
 				ID:            gotID,
 				AudioPath:     gotPath,
 				AudioSize:     gotSize,
 				AudioMimeType: gotMime,
 				AudioChecksum: gotHash,
-			}, nil
+			}
+			if gotLen != nil {
+				song.LengthSeconds = *gotLen
+			}
+			return song, nil
 		},
 	}
 	store := &fakeAudioStore{
@@ -187,7 +198,8 @@ func TestSongServiceUploadAudio_SuccessUpdatesMetadataAndRemovesOldFile(t *testi
 	}
 	svc := newTestSongService(repo, &fakeAlbumManager{}, store)
 
-	got, err := svc.UploadAudio(context.Background(), id.Hex(), strings.NewReader("song-bytes"), ".mp3", "audio/mpeg")
+	lengthSeconds := 42
+	got, err := svc.UploadAudio(context.Background(), id.Hex(), strings.NewReader("song-bytes"), ".mp3", "audio/mpeg", &lengthSeconds)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -199,6 +211,9 @@ func TestSongServiceUploadAudio_SuccessUpdatesMetadataAndRemovesOldFile(t *testi
 	}
 	if repo.lastUpdateHash == "" {
 		t.Fatal("expected checksum to be persisted")
+	}
+	if repo.lastUpdateLen == nil || *repo.lastUpdateLen != lengthSeconds {
+		t.Fatalf("expected duration %d to be persisted, got %+v", lengthSeconds, repo.lastUpdateLen)
 	}
 	if store.removedPath != oldPath {
 		t.Fatalf("expected old path to be removed, got %s", store.removedPath)

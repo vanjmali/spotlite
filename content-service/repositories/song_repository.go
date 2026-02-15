@@ -117,11 +117,18 @@ func (r *SongRepository) UpdateAudioByID(
 	size int64,
 	mime string,
 	checksum string,
+	lengthSeconds *int,
 ) (*entities.Song, error) {
-	return r.UpdateByID(ctx, id, map[string]any{
+	update := map[string]any{
 		"audio_path":      audioPath,
 		"audio_size":      size,
 		"audio_mime_type": mime,
 		"audio_checksum":  checksum,
-	})
+	}
+
+	if lengthSeconds != nil {
+		update["length_seconds"] = *lengthSeconds
+	}
+
+	return r.UpdateByID(ctx, id, update)
 }
