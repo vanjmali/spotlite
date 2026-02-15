@@ -12,6 +12,7 @@ import (
 	"math"
 	"mime/multipart"
 	"net/http"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -469,6 +470,21 @@ func detectAudioDurationSeconds(file multipart.File, mime string) (*int, error) 
 	}
 	defer file.Seek(0, io.SeekStart)
 
+	tmp, err := os.CreateTemp("", "song-audio-*.bin")
+	if err != nil {
+		return nil, errors.New("failed to read audio duration")
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+
+	if _, err := io.Copy(tmp, file); err != nil {
+		_ = tmp.Close()
+		return nil, errors.New("failed to read audio duration")
+	}
+	if err := tmp.Close(); err != nil {
+		return nil, errors.New("failed to read audio duration")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -478,14 +494,11 @@ func detectAudioDurationSeconds(file multipart.File, mime string) (*int, error) 
 		"-v", "error",
 		"-show_entries", "format=duration",
 		"-of", "default=noprint_wrappers=1:nokey=1",
-		"-i", "pipe:0",
+		tmpPath,
 	)
-	cmd.Stdin = file
 
 	var stdout bytes.Buffer
-	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
 		return nil, errors.New("failed to read audio duration")
