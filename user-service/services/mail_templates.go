@@ -25,7 +25,7 @@ type EmailTemplateData struct {
 	ResetLink       string
 	FooterYear      string
 	RepoURL         string
-	Styles          string
+	Styles          template.CSS
 }
 
 func defaultEmailTemplateData() EmailTemplateData {
@@ -41,7 +41,7 @@ func renderEmailTemplate(path string, data EmailTemplateData) (string, error) {
 		return "", err
 	}
 
-	data.Styles = string(styles)
+	data.Styles = template.CSS(styles)
 
 	tmpl, err := template.ParseFS(mailTemplateFS, path)
 	if err != nil {
