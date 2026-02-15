@@ -2,7 +2,9 @@ package services
 
 import (
 	"html/template"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // EmailTemplateData contains the data needed for email templates.
@@ -10,6 +12,15 @@ type EmailTemplateData struct {
 	VerificationURL string
 	OTP             string
 	ResetLink       string
+	FooterYear      string
+	RepoURL         string
+}
+
+func defaultEmailTemplateData() EmailTemplateData {
+	return EmailTemplateData{
+		FooterYear: strconv.Itoa(time.Now().Year()),
+		RepoURL:    "https://github.com/vanjmali/spotlite",
+	}
 }
 
 // VerificationEmailTemplate is the HTML template for account verification emails.
@@ -78,6 +89,13 @@ const VerificationEmailTemplate = `<!DOCTYPE html>
         .footer__text {
             margin: 5px 0;
         }
+        .footer__link {
+            color: #d8b4fe;
+            text-decoration: underline;
+        }
+        .footer__link:hover {
+            color: #f5d0fe;
+        }
     </style>
 </head>
 <body>
@@ -95,8 +113,7 @@ const VerificationEmailTemplate = `<!DOCTYPE html>
             <p class="content__text">If you did not create this account, please ignore this email.</p>
         </div>
         <div class="footer">
-            <p class="footer__text">&copy; 2025 Spotlite. All rights reserved.</p>
-            <p class="footer__text">Spotlite | Music Streaming Service</p>
+            <p class="footer__text">&copy; {{.FooterYear}} Spotlite | Demo for university course project. See <a class="footer__link" href="{{.RepoURL}}">GitHub</a></p>
         </div>
     </div>
 </body>
@@ -171,6 +188,13 @@ const LoginOtpEmailTemplate = `<!DOCTYPE html>
         .footer__text {
             margin: 5px 0;
         }
+        .footer__link {
+            color: #d8b4fe;
+            text-decoration: underline;
+        }
+        .footer__link:hover {
+            color: #f5d0fe;
+        }
     </style>
 </head>
 <body>
@@ -185,8 +209,7 @@ const LoginOtpEmailTemplate = `<!DOCTYPE html>
             <p class="content__text">If you did not request this code, you can safely ignore this email.</p>
         </div>
         <div class="footer">
-            <p class="footer__text">&copy; 2025 Spotlite. All rights reserved.</p>
-            <p class="footer__text">Spotlite | Music Streaming Service</p>
+            <p class="footer__text">&copy; {{.FooterYear}} Spotlite | Demo for university course project. See <a class="footer__link" href="{{.RepoURL}}">GitHub</a></p>
         </div>
     </div>
 </body>
@@ -199,9 +222,8 @@ func RenderVerificationEmail(verificationURL string) (string, error) {
 		return "", err
 	}
 
-	data := EmailTemplateData{
-		VerificationURL: verificationURL,
-	}
+	data := defaultEmailTemplateData()
+	data.VerificationURL = verificationURL
 
 	var buf strings.Builder
 	if err := tmpl.Execute(&buf, data); err != nil {
@@ -218,9 +240,8 @@ func RenderLoginOtpEmail(otp string) (string, error) {
 		return "", err
 	}
 
-	data := EmailTemplateData{
-		OTP: otp,
-	}
+	data := defaultEmailTemplateData()
+	data.OTP = otp
 
 	var buf strings.Builder
 	if err := tmpl.Execute(&buf, data); err != nil {
@@ -298,6 +319,13 @@ const PasswordResetEmailTemplate = `<!DOCTYPE html>
         .footer__text {
             margin: 5px 0;
         }
+        .footer__link {
+            color: #d8b4fe;
+            text-decoration: underline;
+        }
+        .footer__link:hover {
+            color: #f5d0fe;
+        }
     </style>
 </head>
 <body>
@@ -314,8 +342,7 @@ const PasswordResetEmailTemplate = `<!DOCTYPE html>
             <p class="content__text">If you did not request this password reset, you can safely ignore this email.</p>
         </div>
         <div class="footer">
-            <p class="footer__text">&copy; 2025 Spotlite. All rights reserved.</p>
-            <p class="footer__text">Spotlite | Music Streaming Service</p>
+            <p class="footer__text">&copy; {{.FooterYear}} Spotlite | Demo for university course project. See <a class="footer__link" href="{{.RepoURL}}">GitHub</a></p>
         </div>
     </div>
 </body>
@@ -328,9 +355,8 @@ func RenderPasswordResetEmail(resetLink string) (string, error) {
 		return "", err
 	}
 
-	data := EmailTemplateData{
-		ResetLink: resetLink,
-	}
+	data := defaultEmailTemplateData()
+	data.ResetLink = resetLink
 
 	var buf strings.Builder
 	if err := tmpl.Execute(&buf, data); err != nil {
