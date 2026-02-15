@@ -36,8 +36,9 @@ func (s *HDFSStorage) UploadSongAudio(songID string, r io.Reader, ext string) (f
 		ext = ".bin"
 	}
 
-	finalPath = path.Join(s.base, fmt.Sprintf("%s%s", songID, ext))
-	tmpPath := finalPath + fmt.Sprintf(".uploading-%d", time.Now().UnixNano())
+	now := time.Now().UnixNano()
+	finalPath = path.Join(s.base, fmt.Sprintf("%s-%d%s", songID, now, ext))
+	tmpPath := finalPath + fmt.Sprintf(".uploading-%d", now)
 
 	w, err := s.c.Create(tmpPath)
 	if err != nil {
