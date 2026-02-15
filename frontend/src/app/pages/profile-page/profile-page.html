@@ -37,8 +37,5 @@
 
 <!-- Change Password Dialog -->
 @if (isChangePasswordDialogOpenSg()) {
-  <app-change-password-dialog
-    (closed)="closeChangePasswordDialog()"
-    (saved)="onPasswordSaved()"
-  />
+  <app-change-password-dialog (closed)="closeChangePasswordDialog()" (saved)="onPasswordSaved()" />
 }
