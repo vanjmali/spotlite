@@ -1,4 +1,5 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { CanMatchFn, Routes } from '@angular/router';
 import { CheckEmailPage, RegistrationPage, ProfilePage } from './pages';
 
 import { HomePage } from './pages/home-page';
@@ -10,6 +11,9 @@ import { VerifyPage } from './pages/register/verify-page';
 import { InboxPage } from './pages/inbox-page';
 import { LoginStore } from './pages/login/store';
 import { NotFoundPage } from './pages/not-found-page';
+import { AuthService } from './services/auth.service';
+
+const adminOnlyMatch: CanMatchFn = () => inject(AuthService).isAdminSg();
 
 export const routes: Routes = [
   {
@@ -57,6 +61,7 @@ export const routes: Routes = [
   {
     path: 'admin',
     component: AdminPage,
+    canMatch: [adminOnlyMatch],
     children: [
       {
         path: 'genres',
