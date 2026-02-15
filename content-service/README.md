@@ -14,6 +14,7 @@ Additional services are available for local development:
 
 - `localhost:3000/dev/content-service` - serves [mongo-express](https://github.com/mongo-express/mongo-express)
 - `localhost:3102` - direct connection to MongoDB
+- `localhost:9870` - HDFS NameNode web UI
 
 ## Structure
 
