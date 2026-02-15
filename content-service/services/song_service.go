@@ -25,12 +25,41 @@ var (
 	ErrAudioUploadFailed = errors.New("audio upload failed")
 )
 
+type songRepo interface {
+	Create(ctx context.Context, song entities.Song) (primitive.ObjectID, error)
+	FindByID(ctx context.Context, id primitive.ObjectID) (*entities.Song, error)
+	UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]any) (*entities.Song, error)
+	DeleteByID(ctx context.Context, id primitive.ObjectID) (*mongo.DeleteResult, error)
+	FindAll(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Song, int64, error)
+	UpdateAudioByID(ctx context.Context, id primitive.ObjectID, audioPath string, size int64, mime string) (*entities.Song, error)
+}
+
+type artistFinder interface {
+	FindArtistByID(ctx context.Context, idStr string) (*entities.Artist, error)
+}
+
+type genreFinder interface {
+	FindGenreByID(ctx context.Context, idStr string) (*entities.Genre, error)
+}
+
+type albumSongManager interface {
+	FindAlbumByID(ctx context.Context, idStr string) (*entities.Album, error)
+	AddSongsToAlbum(ctx context.Context, idStr string, dto dtos.AddAlbumSongsDto) (*entities.Album, error)
+	RemoveSongFromAllAlbums(ctx context.Context, songIdStr string) error
+}
+
+type audioStore interface {
+	UploadSongAudio(songID string, r io.Reader, ext string) (finalPath string, size int64, err error)
+	Open(p string) (io.ReadCloser, error)
+	Remove(path string) error
+}
+
 type SongService struct {
-	songRepo      *repositories.SongRepository
-	artistService *ArtistService
-	genreService  *GenreService
-	albumService  *AlbumService
-	hdfs          *storage.HDFSStorage
+	songRepo      songRepo
+	artistService artistFinder
+	genreService  genreFinder
+	albumService  albumSongManager
+	hdfs          audioStore
 	tr            trace.Tracer
 }
 
