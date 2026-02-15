@@ -38,6 +38,26 @@ func NewUserRepositoryMongo(dbName string, collName string, c *mongo.Client) *Us
 	return &r
 }
 
+// EnsureUserIndexes creates unique indexes that guard against duplicate users.
+func (r *UserRepositoryMongo) EnsureUserIndexes(ctx context.Context) error {
+	c := r.getCollection()
+	_, err := c.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "username", Value: 1}},
+			Options: options.Index().
+				SetName("users_username_unique").
+				SetUnique(true),
+		},
+		{
+			Keys: bson.D{{Key: "email", Value: 1}},
+			Options: options.Index().
+				SetName("users_email_unique").
+				SetUnique(true),
+		},
+	})
+	return err
+}
+
 // Create func, inserts a new user into the database.
 func (r *UserRepositoryMongo) Create(ctx context.Context, user entities.User) error {
 	c := r.getCollection()

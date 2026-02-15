@@ -18,6 +18,7 @@ import (
 	"github.com/vanjmali/spotlite/user-service/repositories"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/crypto/bcrypt"
@@ -131,6 +132,7 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	// insert the user in the database,
 	err = s.r.Create(createCtx, *userEntity)
 	if err != nil {
+		err = mapRegistrationConflict(err)
 		createSpan.RecordError(err)
 		createSpan.End()
 		log.Printf("Error creating user in database: %v", err)
@@ -139,6 +141,40 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	createSpan.End()
 
 	return nil
+}
+
+// mapRegistrationConflict checks for MongoDB duplicate key error and maps it to coresponding error.
+// This is needed because there is a possibility of a race condition between the time we check for existing username/email and the time we insert the new user.
+func mapRegistrationConflict(err error) error {
+	var writeExc mongo.WriteException
+	if errors.As(err, &writeExc) {
+		for _, writeErr := range writeExc.WriteErrors {
+			if writeErr.Code != 11000 {
+				continue
+			}
+
+			msg := strings.ToLower(writeErr.Message)
+			if strings.Contains(msg, "username") {
+				return ErrUsernameTaken
+			}
+			if strings.Contains(msg, "email") {
+				return ErrEmailTaken
+			}
+		}
+	}
+
+	var cmdErr mongo.CommandError
+	if errors.As(err, &cmdErr) && cmdErr.Code == 11000 {
+		msg := strings.ToLower(cmdErr.Message)
+		if strings.Contains(msg, "username") {
+			return ErrUsernameTaken
+		}
+		if strings.Contains(msg, "email") {
+			return ErrEmailTaken
+		}
+	}
+
+	return err
 }
 
 // VerifyAccount func, handles account verification business logic.

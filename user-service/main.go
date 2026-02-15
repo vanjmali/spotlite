@@ -122,6 +122,10 @@ func createRepositories(ctx context.Context, mongo *mongodriver.Client) (
 	rtr := repositories.NewRefreshTokenRepository(name, "refresh_tokens", mongo)
 	prr := repositories.NewPasswordRecoveryRepository(name, "password_recovery_tokens", mongo)
 
+	if err := ur.EnsureUserIndexes(ctx); err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to ensure user indexes: %w", err)
+	}
+
 	if err := rtr.EnsureRefreshIndexes(ctx); err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to ensure refresh token indexes: %w", err)
 	}
