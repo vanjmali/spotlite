@@ -149,6 +149,10 @@ services:
       - api-gateway
       - content-internal
 
+  content-hdfs-namenode:
+    ports:
+      - "9870:9870" # HDFS web UI
+
   # --- Notification Service ---
   notification-service:
     volumes:
