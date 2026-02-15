@@ -40,6 +40,7 @@ type songRepo interface {
 		size int64,
 		mime string,
 		checksum string,
+		lengthSeconds *int,
 	) (*entities.Song, error)
 }
 
@@ -271,9 +272,6 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 		}
 		update["genres"] = embeddedGenres
 	}
-	if dto.LengthSeconds != nil {
-		update["length_seconds"] = *dto.LengthSeconds
-	}
 	if dto.ArtistIds != nil {
 		embeddedArtists := make([]entities.Artist, 0)
 		for _, artistIdStr := range *dto.ArtistIds {
@@ -454,7 +452,7 @@ func (s *SongService) GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongLis
 	}, nil
 }
 
-func (s *SongService) UploadAudio(ctx context.Context, idStr string, r io.Reader, ext string, mime string) (*entities.Song, error) {
+func (s *SongService) UploadAudio(ctx context.Context, idStr string, r io.Reader, ext string, mime string, lengthSeconds *int) (*entities.Song, error) {
 	ctx, span := s.tr.Start(ctx, "song.upload_audio")
 	defer span.End()
 
@@ -488,7 +486,7 @@ func (s *SongService) UploadAudio(ctx context.Context, idStr string, r io.Reader
 	}
 	uploadSpan.End()
 
-	updated, err := s.songRepo.UpdateAudioByID(ctx, id, audioPath, size, mime, checksum)
+	updated, err := s.songRepo.UpdateAudioByID(ctx, id, audioPath, size, mime, checksum, lengthSeconds)
 	if err != nil {
 		span.RecordError(err)
 		_ = s.hdfs.Remove(audioPath)

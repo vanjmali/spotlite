@@ -5,6 +5,7 @@ package e2e
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -90,11 +91,10 @@ func TestAudioFlowE2E(t *testing.T) {
 
 	audioV1 := minimalWAVBytes([]byte("first-audio-payload"))
 	meta := map[string]any{
-		"title":          songTitle,
-		"album_id":       albumID,
-		"genre_ids":      []string{genreID},
-		"length_seconds": 123,
-		"artist_ids":     []string{artistID},
+		"title":      songTitle,
+		"album_id":   albumID,
+		"genre_ids":  []string{genreID},
+		"artist_ids": []string{artistID},
 	}
 	created := createSongWithAudio(t, client, baseURL+"/songs", meta, "track.wav", audioV1)
 	if created.ID == "" {
@@ -258,13 +258,31 @@ func findOneByField[T any](t *testing.T, client *http.Client, endpoint, key, val
 }
 
 func minimalWAVBytes(payload []byte) []byte {
-	header := []byte{
-		'R', 'I', 'F', 'F',
-		0x24, 0x00, 0x00, 0x00,
-		'W', 'A', 'V', 'E',
-		'f', 'm', 't', ' ',
+	if len(payload) > int(^uint32(0)) {
+		panic("payload too large")
 	}
-	return append(header, payload...)
+	dataSize := uint32(len(payload))
+	chunkSize := uint32(36) + dataSize
+	byteRate := uint32(8000 * 2) // 8kHz * mono * 16-bit
+	blockAlign := uint16(2)
+
+	buf := make([]byte, 44+len(payload))
+	copy(buf[0:4], "RIFF")
+	binary.LittleEndian.PutUint32(buf[4:8], chunkSize)
+	copy(buf[8:12], "WAVE")
+	copy(buf[12:16], "fmt ")
+	binary.LittleEndian.PutUint32(buf[16:20], 16)
+	binary.LittleEndian.PutUint16(buf[20:22], 1) // PCM
+	binary.LittleEndian.PutUint16(buf[22:24], 1) // mono
+	binary.LittleEndian.PutUint32(buf[24:28], 8000)
+	binary.LittleEndian.PutUint32(buf[28:32], byteRate)
+	binary.LittleEndian.PutUint16(buf[32:34], blockAlign)
+	binary.LittleEndian.PutUint16(buf[34:36], 16)
+	copy(buf[36:40], "data")
+	binary.LittleEndian.PutUint32(buf[40:44], dataSize)
+	copy(buf[44:], payload)
+
+	return buf
 }
 
 func assertSHA256Hex(t *testing.T, got string, payload []byte) {

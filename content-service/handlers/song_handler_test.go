@@ -2,14 +2,25 @@ package handlers
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"io"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
+
+func withDurationDetector(t *testing.T, fn func(multipart.File, string) (*int, error)) {
+	t.Helper()
+	prev := audioDurationDetector
+	audioDurationDetector = fn
+	t.Cleanup(func() {
+		audioDurationDetector = prev
+	})
+}
 
 type multipartTestFile struct {
 	fieldName string
@@ -43,13 +54,33 @@ func buildMultipartRequest(t *testing.T, files []multipartTestFile) *http.Reques
 }
 
 func minimalWavBytes(payload []byte) []byte {
-	header := []byte{
-		'R', 'I', 'F', 'F',
-		0x24, 0x00, 0x00, 0x00,
-		'W', 'A', 'V', 'E',
-		'f', 'm', 't', ' ',
+	l := len(payload)
+	if l > math.MaxUint32-44 {
+		panic("payload too large for minimal WAV header")
 	}
-	return append(header, payload...)
+
+	dataSize := uint32(l)
+	chunkSize := uint32(36) + dataSize
+	byteRate := uint32(8000 * 2) // 8kHz * mono * 16-bit
+	blockAlign := uint16(2)
+
+	buf := make([]byte, 44+len(payload))
+	copy(buf[0:4], "RIFF")
+	binary.LittleEndian.PutUint32(buf[4:8], chunkSize)
+	copy(buf[8:12], "WAVE")
+	copy(buf[12:16], "fmt ")
+	binary.LittleEndian.PutUint32(buf[16:20], 16)
+	binary.LittleEndian.PutUint16(buf[20:22], 1) // PCM
+	binary.LittleEndian.PutUint16(buf[22:24], 1) // mono
+	binary.LittleEndian.PutUint32(buf[24:28], 8000)
+	binary.LittleEndian.PutUint32(buf[28:32], byteRate)
+	binary.LittleEndian.PutUint16(buf[32:34], blockAlign)
+	binary.LittleEndian.PutUint16(buf[34:36], 16)
+	copy(buf[36:40], "data")
+	binary.LittleEndian.PutUint32(buf[40:44], dataSize)
+	copy(buf[44:], payload)
+
+	return buf
 }
 
 func TestParseMultipartWithLimit_InvalidMultipart(t *testing.T) {
@@ -67,6 +98,11 @@ func TestParseMultipartWithLimit_InvalidMultipart(t *testing.T) {
 }
 
 func TestGetSingleValidatedAudioUpload_ValidAudio_ReturnsFullReader(t *testing.T) {
+	withDurationDetector(t, func(_ multipart.File, _ string) (*int, error) {
+		v := 2
+		return &v, nil
+	})
+
 	original := minimalWavBytes([]byte("track-bytes-after-header"))
 	req := buildMultipartRequest(t, []multipartTestFile{
 		{fieldName: "file", fileName: "track.wav", content: original},
@@ -77,7 +113,7 @@ func TestGetSingleValidatedAudioUpload_ValidAudio_ReturnsFullReader(t *testing.T
 		t.Fatalf("parseMultipartWithLimit failed: %v", err)
 	}
 
-	file, reader, ext, mime, ok := getSingleValidatedAudioUpload(rec, req)
+	file, reader, ext, mime, lengthSeconds, ok := getSingleValidatedAudioUpload(rec, req)
 	if !ok {
 		t.Fatalf("expected valid upload, got status=%d body=%s", rec.Code, rec.Body.String())
 	}
@@ -88,6 +124,9 @@ func TestGetSingleValidatedAudioUpload_ValidAudio_ReturnsFullReader(t *testing.T
 	}
 	if mime != "audio/wav" && mime != "audio/x-wav" {
 		t.Fatalf("expected wav mime, got %q", mime)
+	}
+	if lengthSeconds == nil || *lengthSeconds < 1 {
+		t.Fatalf("expected derived duration to be set, got %+v", lengthSeconds)
 	}
 
 	got, err := io.ReadAll(reader)
@@ -110,7 +149,7 @@ func TestGetSingleValidatedAudioUpload_RejectsMultipleFiles(t *testing.T) {
 		t.Fatalf("parseMultipartWithLimit failed: %v", err)
 	}
 
-	_, _, _, _, ok := getSingleValidatedAudioUpload(rec, req)
+	_, _, _, _, _, ok := getSingleValidatedAudioUpload(rec, req)
 	if ok {
 		t.Fatal("expected validation to fail for multiple files")
 	}
@@ -132,7 +171,7 @@ func TestGetSingleValidatedAudioUpload_RejectsMissingFileField(t *testing.T) {
 		t.Fatalf("parseMultipartWithLimit failed: %v", err)
 	}
 
-	_, _, _, _, ok := getSingleValidatedAudioUpload(rec, req)
+	_, _, _, _, _, ok := getSingleValidatedAudioUpload(rec, req)
 	if ok {
 		t.Fatal("expected validation to fail for missing 'file' field")
 	}
@@ -155,7 +194,7 @@ func TestGetSingleValidatedAudioUpload_RejectsNonAudioMime(t *testing.T) {
 		t.Fatalf("parseMultipartWithLimit failed: %v", err)
 	}
 
-	_, _, _, _, ok := getSingleValidatedAudioUpload(rec, req)
+	_, _, _, _, _, ok := getSingleValidatedAudioUpload(rec, req)
 	if ok {
 		t.Fatal("expected validation to fail for non-audio file")
 	}
