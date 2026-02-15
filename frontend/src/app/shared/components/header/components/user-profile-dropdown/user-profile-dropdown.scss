@@ -1,12 +1,58 @@
 @use 'variables/colors' as *;
 
 .user-profile {
-  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  &__nav-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid $color-gray-600;
+    background: transparent;
+    color: $color-text-primary;
+    border-radius: 50%;
+    padding: 0;
+    cursor: pointer;
+    transition:
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      transform 0.2s ease;
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+
+    &:hover,
+    &:focus-visible {
+      background-color: $color-gray-700;
+      border-color: $color-gray-500;
+      transform: translateY(-1px);
+    }
+
+    &--active {
+      border-color: $color-white;
+      background: $color-white;
+      color: $color-gray-900;
+
+      &:hover,
+      &:focus-visible {
+        background-color: $color-gray-100;
+        border-color: $color-gray-100;
+      }
+    }
+  }
 
   &__avatar {
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -43,100 +89,9 @@
     &:active {
       transform: scale(0.96);
     }
-  }
 
-  &__dropdown {
-    position: absolute;
-    right: 0;
-    top: 100%;
-    margin-top: 12px;
-    background-color: $color-gray-800;
-    border-radius: 4px;
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-    min-width: 180px;
-    overflow: hidden;
-    z-index: 1000;
-    animation: slideDown 0.2s ease-out;
-  }
-
-  &__option {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    padding: 14px 16px;
-    background: none;
-    border: none;
-    color: $color-text-primary;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: left;
-    font-size: 14px;
-    font-weight: 500;
-    border-bottom: none;
-
-    &:hover {
-      background-color: transparent;
-      text-decoration: underline;
+    &--active {
+      border-color: $color-white;
     }
-
-    &:active {
-      background-color: $color-gray-600;
-    }
-
-    &--admin {
-      border-top: 1px solid $color-gray-700;
-      justify-content: space-between;
-      gap: 8px;
-
-      &:hover {
-        background-color: $color-gray-700;
-        text-decoration: none;
-      }
-    }
-
-    &--logout {
-      border-top: 1px solid $color-gray-700;
-
-      &:hover {
-        background-color: $color-gray-700;
-        color: $color-text-primary;
-        text-decoration: none;
-      }
-    }
-  }
-
-  &__option-text {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  &__option-icon {
-    font-size: 18px;
-    width: 18px;
-    height: 18px;
-    color: $color-text-primary;
-    flex-shrink: 0;
-  }
-
-  &__overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 999;
-    background-color: transparent;
-  }
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }

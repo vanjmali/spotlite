@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,8 +18,6 @@ export class UserProfileDropdownComponent {
 
   private readonly router = inject(Router);
 
-  readonly isDropdownOpenSg = signal(false);
-
   constructor() {
     effect(() => {
       const isAuthenticated = this.authService.isAuthenticatedSg();
@@ -33,36 +31,27 @@ export class UserProfileDropdownComponent {
     });
   }
 
-  navigateToHome(): void {
-    this.router.navigate(['/']);
-  }
-
-  toggleDropdown(): void {
-    this.isDropdownOpenSg.update((isOpen) => !isOpen);
-  }
-
-  closeDropdown(): void {
-    this.isDropdownOpenSg.set(false);
-  }
-
   navigateToProfile(): void {
-    this.closeDropdown();
     this.router.navigate(['/profile']);
   }
 
   navigateToInbox(): void {
-    this.closeDropdown();
     this.router.navigate(['/inbox']);
   }
 
   navigateToAdmin(): void {
-    this.closeDropdown();
     this.router.navigate(['/admin']);
   }
 
-  logout(): void {
-    this.closeDropdown();
-    this.authService.logout();
-    this.router.navigate(['/']);
+  isInboxActive(): boolean {
+    return this.router.url.startsWith('/inbox');
+  }
+
+  isAdminActive(): boolean {
+    return this.router.url.startsWith('/admin');
+  }
+
+  isProfileActive(): boolean {
+    return this.router.url.startsWith('/profile');
   }
 }

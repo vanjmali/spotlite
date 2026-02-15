@@ -7,6 +7,7 @@ import { PageComponent } from '../../shared';
 import { WidgetComponent } from '@app/shared/components/widget';
 import { ChangePasswordDialogComponent } from '../../dialogs';
 import { ProfileSuccessCalloutComponent } from './components/profile-success-callout';
+import { AuthService } from '@app/services/auth.service';
 
 @Component({
   selector: 'app-profile-page',
@@ -24,6 +25,7 @@ import { ProfileSuccessCalloutComponent } from './components/profile-success-cal
 })
 export class ProfilePage {
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
   readonly isChangePasswordDialogOpenSg = signal<boolean>(false);
   readonly passwordUpdateSuccessSg = signal<string>('');
 
@@ -46,5 +48,10 @@ export class ProfilePage {
 
   dismissPasswordSaved(): void {
     this.passwordUpdateSuccessSg.set('');
+  }
+
+  logout(): void {
+    this.authService.logout();
+    this.router.navigate(['/']);
   }
 }

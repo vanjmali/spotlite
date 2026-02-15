@@ -60,4 +60,16 @@
     font-size: 24px;
     flex-shrink: 0;
   }
+
+  &__account-actions {
+    display: flex;
+    justify-content: flex-start;
+    padding: 8px 10px;
+  }
+
+  &__logout-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
 }

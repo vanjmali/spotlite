@@ -21,6 +21,26 @@ export class AuthService {
   readonly currentEmailSg = signal<string | null>(null);
   readonly accessTokenSg = signal<string | null>(null);
   readonly isAuthenticatedSg = computed(() => !!this.accessTokenSg());
+  readonly isAdminSg = computed(() => {
+    const claims = this.getTokenClaims(this.accessTokenSg());
+    if (!claims) {
+      return false;
+    }
+
+    if (claims.is_admin === true) {
+      return true;
+    }
+
+    if (typeof claims.role === 'string' && claims.role.toLowerCase() === 'admin') {
+      return true;
+    }
+
+    if (Array.isArray(claims.roles) && claims.roles.some((role) => role.toLowerCase() === 'admin')) {
+      return true;
+    }
+
+    return false;
+  });
   readonly profileInitialSg = computed(() => {
     const email = this.currentEmailSg();
     if (email) {
@@ -253,7 +273,15 @@ export class AuthService {
 
   private getTokenClaims(
     token: string | null
-  ): { name?: string; username?: string; email?: string; sub?: string } | null {
+  ): {
+    name?: string;
+    username?: string;
+    email?: string;
+    sub?: string;
+    role?: string;
+    roles?: string[];
+    is_admin?: boolean;
+  } | null {
     if (!token) return null;
 
     const payload = token.split('.')[1];
