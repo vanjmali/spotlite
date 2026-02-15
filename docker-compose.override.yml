@@ -152,7 +152,6 @@ services:
   content-hdfs-namenode:
     ports:
       - "9870:9870" # HDFS web UI
-      - "8020:8020" # Namenode RPC (for Go client)
 
   # --- Notification Service ---
   notification-service:

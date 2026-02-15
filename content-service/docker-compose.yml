@@ -75,9 +75,6 @@ services:
       - HDFS-SITE.XML_dfs.encrypt.data.transfer=${SRV_CONTENT_HDFS_ENCRYPT_DATA_TRANSFER?}
       - HDFS-SITE.XML_dfs.namenode.name.dir=file:///data/dfs/name
       - ENSURE_NAMENODE_DIR=/data/dfs/name
-    ports:
-      - "9870:9870" # HDFS web UI
-      - "8020:8020" # Namenode RPC (for Go client)
     volumes:
       - content-hdfs-namenode-data:/data
     healthcheck:
