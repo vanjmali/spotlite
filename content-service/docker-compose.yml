@@ -14,6 +14,8 @@ services:
       DB_NAME: ${SRV_CONTENT_MONGO_DATABASE?}
       HDFS_URI: ${SRV_CONTENT_HDFS_URI?}
       HDFS_AUDIO_BASE: ${SRV_CONTENT_HDFS_AUDIO_BASE?}
+      HDFS_USER: ${SRV_CONTENT_HDFS_USER?}
+      HDFS_DATA_TRANSFER_PROTECTION: ${SRV_CONTENT_HDFS_DATA_TRANSFER_PROTECTION?}
       GRPC_PORT: ${SRV_CONTENT_GRPC_PORT?}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
@@ -69,11 +71,13 @@ services:
       - CORE-SITE.XML_fs.defaultFS=hdfs://content-hdfs-namenode:8020
       - HDFS-SITE.XML_dfs.replication=${SRV_CONTENT_HDFS_REPLICATION?}
       - HDFS-SITE.XML_dfs.permissions.enabled=${SRV_CONTENT_HDFS_PERMISSIONS_ENABLED?}
+      - HDFS-SITE.XML_dfs.data.transfer.protection=${SRV_CONTENT_HDFS_DATA_TRANSFER_PROTECTION?}
+      - HDFS-SITE.XML_dfs.encrypt.data.transfer=${SRV_CONTENT_HDFS_ENCRYPT_DATA_TRANSFER?}
       - HDFS-SITE.XML_dfs.namenode.name.dir=file:///data/dfs/name
       - ENSURE_NAMENODE_DIR=/data/dfs/name
     ports:
       - "9870:9870" # HDFS web UI
-      - "8020:8020" # Namenode RPC (za Go client)
+      - "8020:8020" # Namenode RPC (for Go client)
     volumes:
       - content-hdfs-namenode-data:/data
     healthcheck:
@@ -98,6 +102,8 @@ services:
       - CORE-SITE.XML_fs.defaultFS=hdfs://content-hdfs-namenode:8020
       - HDFS-SITE.XML_dfs.replication=${SRV_CONTENT_HDFS_REPLICATION?}
       - HDFS-SITE.XML_dfs.permissions.enabled=${SRV_CONTENT_HDFS_PERMISSIONS_ENABLED?}
+      - HDFS-SITE.XML_dfs.data.transfer.protection=${SRV_CONTENT_HDFS_DATA_TRANSFER_PROTECTION?}
+      - HDFS-SITE.XML_dfs.encrypt.data.transfer=${SRV_CONTENT_HDFS_ENCRYPT_DATA_TRANSFER?}
       - HDFS-SITE.XML_dfs.datanode.data.dir=file:///data/dfs/data
     volumes:
       - content-hdfs-datanode-data:/data

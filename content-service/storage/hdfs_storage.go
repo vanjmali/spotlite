@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/colinmarc/hdfs/v2"
@@ -18,8 +19,18 @@ type HDFSStorage struct {
 func NewHDFSStorage() (*HDFSStorage, error) {
 	uri := utils.MustGetEnv("HDFS_URI")
 	base := utils.MustGetEnv("HDFS_AUDIO_BASE")
+	transferProtection, err := normalizeDataTransferProtection(utils.GetEnv("HDFS_DATA_TRANSFER_PROTECTION", hdfs.DataTransferProtectionPrivacy))
+	if err != nil {
+		return nil, err
+	}
 
-	c, err := hdfs.New(uri)
+	opts := hdfs.ClientOptions{
+		Addresses:              []string{uri},
+		User:                   utils.GetEnv("HDFS_USER", "content-service"),
+		DataTransferProtection: transferProtection,
+	}
+
+	c, err := hdfs.NewClient(opts)
 	if err != nil {
 		return nil, err
 	}
@@ -73,4 +84,19 @@ func (s *HDFSStorage) Close() error {
 
 func (s *HDFSStorage) Remove(path string) error {
 	return s.c.Remove(path)
+}
+
+func normalizeDataTransferProtection(v string) (string, error) {
+	protection := strings.ToLower(strings.TrimSpace(v))
+
+	switch protection {
+	case hdfs.DataTransferProtectionAuthentication:
+		return hdfs.DataTransferProtectionAuthentication, nil
+	case hdfs.DataTransferProtectionIntegrity:
+		return hdfs.DataTransferProtectionIntegrity, nil
+	case hdfs.DataTransferProtectionPrivacy:
+		return hdfs.DataTransferProtectionPrivacy, nil
+	default:
+		return "", fmt.Errorf("invalid HDFS_DATA_TRANSFER_PROTECTION=%q", v)
+	}
 }
