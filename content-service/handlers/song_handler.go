@@ -171,8 +171,10 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 	if err := parseMultipartWithLimit(w, r); err != nil {
 		switch {
 		case errors.Is(err, errMultipartTooLarge):
+			logSecurityEvent(r.Context(), "upload_rejected_payload_too_large", "endpoint=song_audio_upload")
 			_ = respond.PayloadTooLarge(w, maxSongAudioUploadMessage)
 		default:
+			logSecurityEvent(r.Context(), "upload_rejected_invalid_multipart", "endpoint=song_audio_upload")
 			_ = respond.BadRequest(w, "invalid multipart form")
 		}
 		return
@@ -253,7 +255,7 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := verifySongAudioChecksum(r.Context(), song.AudioPath, song.AudioChecksum, audioBytes); err != nil {
-		log.Printf("trace_id=%s checksum verification failed for song=%s: %v", telemetry.TraceID(r.Context()), id, err)
+		logSecurityEvent(r.Context(), "stream_rejected_integrity_check_failed", fmt.Sprintf("song_id=%s path=%s", id, song.AudioPath))
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -267,8 +269,10 @@ func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.R
 	if err := parseMultipartWithLimit(w, r); err != nil {
 		switch {
 		case errors.Is(err, errMultipartTooLarge):
+			logSecurityEvent(r.Context(), "upload_rejected_payload_too_large", "endpoint=song_create_with_audio")
 			_ = respond.PayloadTooLarge(w, maxSongAudioUploadMessage)
 		default:
+			logSecurityEvent(r.Context(), "upload_rejected_invalid_multipart", "endpoint=song_create_with_audio")
 			_ = respond.BadRequest(w, "invalid multipart form")
 		}
 		return
@@ -277,6 +281,7 @@ func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.R
 
 	metaStr := r.FormValue("meta")
 	if metaStr == "" {
+		logSecurityEvent(r.Context(), "upload_rejected_missing_meta", "endpoint=song_create_with_audio")
 		_ = respond.BadRequest(w, "missing meta")
 		return
 	}
@@ -284,8 +289,7 @@ func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.R
 	var dto dtos.SongDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, io.NopCloser(bytes.NewReader([]byte(metaStr))), &dto); !ok {
 		if err != nil {
-			log.Printf(
-				"trace_id=%s invalid meta payload: %v", telemetry.TraceID(r.Context()), err)
+			logSecurityEvent(r.Context(), "upload_rejected_invalid_meta", fmt.Sprintf("error=%v", err))
 		}
 		_ = respond.BadRequest(w, "invalid meta")
 		return
@@ -345,6 +349,7 @@ func parseMultipartWithLimit(w http.ResponseWriter, r *http.Request) error {
 func getSingleValidatedAudioUpload(w http.ResponseWriter, r *http.Request) (multipart.File, io.Reader, string, string, bool) {
 	mf := r.MultipartForm
 	if mf == nil || mf.File == nil {
+		logSecurityEvent(r.Context(), "upload_rejected_missing_file", "reason=no_file_part")
 		_ = respond.BadRequest(w, "missing file")
 		return nil, nil, "", "", false
 	}
@@ -354,22 +359,26 @@ func getSingleValidatedAudioUpload(w http.ResponseWriter, r *http.Request) (mult
 		totalFiles += len(list)
 	}
 	if totalFiles != 1 {
+		logSecurityEvent(r.Context(), "upload_rejected_multiple_files", fmt.Sprintf("count=%d", totalFiles))
 		_ = respond.BadRequest(w, "request must contain exactly one file")
 		return nil, nil, "", "", false
 	}
 	if len(mf.File["file"]) != 1 {
+		logSecurityEvent(r.Context(), "upload_rejected_invalid_file_field", "field=file")
 		_ = respond.BadRequest(w, "exactly one file must be provided under field 'file'")
 		return nil, nil, "", "", false
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
+		logSecurityEvent(r.Context(), "upload_rejected_missing_file", "reason=form_file_error")
 		_ = respond.BadRequest(w, "missing file")
 		return nil, nil, "", "", false
 	}
 
 	sniff, err := readFileSniff(file)
 	if err != nil {
+		logSecurityEvent(r.Context(), "upload_rejected_invalid_file", fmt.Sprintf("reason=%s", err.Error()))
 		_ = respond.BadRequest(w, err.Error())
 		_ = file.Close()
 		return nil, nil, "", "", false
@@ -408,19 +417,18 @@ func readFileSniff(file multipart.File) ([]byte, error) {
 func validateAudioFileSniff(ctx context.Context, sniff []byte, filename string) (string, string, string, bool) {
 	kind, err := filetype.Match(sniff)
 	if err != nil {
-		log.Printf("trace_id=%s unable to determine file type: %v", telemetry.TraceID(ctx), err)
+		logSecurityEvent(ctx, "upload_rejected_type_detection_failed", fmt.Sprintf("filename=%q", filename))
 		return "", "", "unable to determine file type", false
 	}
 	if kind == filetype.Unknown {
-		log.Printf("trace_id=%s unknown file type (filename=%q)", telemetry.TraceID(ctx), filename)
+		logSecurityEvent(ctx, "upload_rejected_unknown_file_type", fmt.Sprintf("filename=%q", filename))
 		return "", "", "unknown file type", false
 	}
 
 	mime := kind.MIME.Value
 	ext, ok := allowedSongAudioMimes[mime]
 	if !ok {
-		log.Printf("trace_id=%s invalid file type: detected_extension=%s, detected_mime=%s, filename=%q",
-			telemetry.TraceID(ctx), kind.Extension, mime, filename)
+		logSecurityEvent(ctx, "upload_rejected_disallowed_mime", fmt.Sprintf("detected_mime=%s filename=%q", mime, filename))
 		return "", "", "file is not a valid audio file", false
 	}
 
@@ -438,7 +446,7 @@ func verifySongAudioChecksum(ctx context.Context, audioPath string, expected str
 		return nil
 	}
 
-	return fmt.Errorf("checksum mismatch path=%s expected=%s got=%s trace_id=%s", audioPath, expected, computed, telemetry.TraceID(ctx))
+	return fmt.Errorf("checksum mismatch path=%s trace_id=%s", audioPath, telemetry.TraceID(ctx))
 }
 
 func setSongAudioResponseHeaders(w http.ResponseWriter, size int64, mime string, fallbackSize int) {
@@ -454,4 +462,8 @@ func setSongAudioResponseHeaders(w http.ResponseWriter, size int64, mime string,
 	}
 
 	w.Header().Set("Content-Type", "audio/mpeg")
+}
+
+func logSecurityEvent(ctx context.Context, event string, details string) {
+	log.Printf("trace_id=%s security_event=%s %s", telemetry.TraceID(ctx), event, details)
 }
