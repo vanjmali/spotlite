@@ -30,8 +30,10 @@ type SongHandler struct {
 	v *validator.Validate
 }
 
-const maxSongAudioUploadBytes = 100 << 20
-const maxSongAudioUploadMessage = "payload too large (max 100MB)"
+const (
+	maxSongAudioUploadBytes   = 100 << 20
+	maxSongAudioUploadMessage = "payload too large (max 100MB)"
+)
 
 var allowedSongAudioMimes = map[string]string{
 	"audio/mpeg":   ".mp3",
@@ -341,7 +343,7 @@ func parseMultipartWithLimit(w http.ResponseWriter, r *http.Request) error {
 		if errors.As(err, &maxErr) {
 			return errMultipartTooLarge
 		}
-		return fmt.Errorf("%w: %v", errInvalidMultipartForm, err)
+		return fmt.Errorf("%w: %w", errInvalidMultipartForm, err)
 	}
 
 	return nil
@@ -381,7 +383,7 @@ func getSingleValidatedAudioUpload(w http.ResponseWriter, r *http.Request) (mult
 
 	sniff, err := readFileSniff(file)
 	if err != nil {
-		logSecurityEvent(r.Context(), "upload_rejected_invalid_file", fmt.Sprintf("reason=%s", err.Error()))
+		logSecurityEvent(r.Context(), "upload_rejected_invalid_file", "reason="+err.Error())
 		_ = respond.BadRequest(w, err.Error())
 		_ = file.Close()
 		return nil, nil, "", "", false
