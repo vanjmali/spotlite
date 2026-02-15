@@ -4,7 +4,7 @@
       class="btn-primary"
       [attr.type]="submit ? 'submit' : 'button'"
       [attr.form]="formId || null"
-      (click)="action.emit()"
+      (click)="onPrimaryClick()"
       [disabled]="inProgress"
       [attr.aria-busy]="inProgress ? 'true' : null"
     >

@@ -22,4 +22,8 @@ export class FormFooter {
   @Input() hintLinkUrl?: string;
   @Output() action = new EventEmitter<void>();
   @Output() secondaryAction = new EventEmitter<void>();
+
+  onPrimaryClick(): void {
+    if (!this.submit) this.action.emit();
+  }
 }
