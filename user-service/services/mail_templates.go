@@ -11,14 +11,12 @@ import (
 const (
 	verificationEmailTemplatePath = "templates/verification_email.html"
 	loginOtpEmailTemplatePath     = "templates/login_otp_email.html"
-	passwordResetTemplatePath     = "templates/password_reset_email.html"
+	resetEmailTemplatePath        = "templates/password_reset_email.html"
 	commonEmailStylesPath         = "templates/email.css"
 )
 
-var (
-	//go:embed templates/*.html templates/*.css
-	mailTemplateFS embed.FS
-)
+//go:embed templates/*.html templates/*.css
+var mailTemplateFS embed.FS
 
 // EmailTemplateData contains the data needed for email templates.
 type EmailTemplateData struct {
@@ -27,7 +25,7 @@ type EmailTemplateData struct {
 	ResetLink       string
 	FooterYear      string
 	RepoURL         string
-	Styles          template.CSS
+	Styles          string
 }
 
 func defaultEmailTemplateData() EmailTemplateData {
@@ -43,7 +41,7 @@ func renderEmailTemplate(path string, data EmailTemplateData) (string, error) {
 		return "", err
 	}
 
-	data.Styles = template.CSS(string(styles))
+	data.Styles = string(styles)
 
 	tmpl, err := template.ParseFS(mailTemplateFS, path)
 	if err != nil {
@@ -79,5 +77,5 @@ func RenderPasswordResetEmail(resetLink string) (string, error) {
 	data := defaultEmailTemplateData()
 	data.ResetLink = resetLink
 
-	return renderEmailTemplate(passwordResetTemplatePath, data)
+	return renderEmailTemplate(resetEmailTemplatePath, data)
 }
