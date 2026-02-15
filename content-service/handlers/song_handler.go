@@ -488,6 +488,7 @@ func detectAudioDurationSeconds(file multipart.File, mime string) (*int, error) 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	// #nosec G204 - tmpPath is created by os.CreateTemp and not user-controlled.
 	cmd := exec.CommandContext(
 		ctx,
 		"ffprobe",
