@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/vanjmali/spotlite/common-lib/account"
@@ -17,8 +18,10 @@ import (
 
 // ErrTokenExpired signals that the verification token was not found or already used.
 var (
-	ErrTokenExpired = errors.New("invalid token")
-	ErrUserNotFound = errors.New("user not found")
+	ErrTokenExpired         = errors.New("invalid token")
+	ErrUserNotFound         = errors.New("user not found")
+	ErrUsernameAlreadyTaken = errors.New("username already taken")
+	ErrEmailAlreadyTaken    = errors.New("email already taken")
 )
 
 // UserRepository provides data access helpers for user documents.
@@ -64,6 +67,34 @@ func (r *UserRepositoryMongo) Create(ctx context.Context, user entities.User) er
 
 	_, err := c.InsertOne(ctx, user)
 	if err != nil {
+		// Check for duplicate key error and determine if it's related to username or email to return specific errors.
+		var writeExc mongo.WriteException
+		if errors.As(err, &writeExc) {
+			for _, writeErr := range writeExc.WriteErrors {
+				if writeErr.Code != 11000 {
+					continue
+				}
+				msg := strings.ToLower(writeErr.Message)
+				if strings.Contains(msg, "username") {
+					return ErrUsernameAlreadyTaken
+				}
+				if strings.Contains(msg, "email") {
+					return ErrEmailAlreadyTaken
+				}
+			}
+		}
+
+		var cmdErr mongo.CommandError
+		if errors.As(err, &cmdErr) && cmdErr.Code == 11000 {
+			msg := strings.ToLower(cmdErr.Message)
+			if strings.Contains(msg, "username") {
+				return ErrUsernameAlreadyTaken
+			}
+			if strings.Contains(msg, "email") {
+				return ErrEmailAlreadyTaken
+			}
+		}
+
 		return err
 	}
 
