@@ -43,11 +43,12 @@ func TestSongRepositoryUpdateAudioByID(t *testing.T) {
 				{Key: "audio_path", Value: expectedPath},
 				{Key: "audio_size", Value: int64(42)},
 				{Key: "audio_mime_type", Value: "audio/mpeg"},
+				{Key: "audio_checksum", Value: "sha256-hash"},
 			}},
 			bson.E{Key: "ok", Value: 1},
 		))
 
-		got, err := repo.UpdateAudioByID(context.Background(), oid, expectedPath, 42, "audio/mpeg")
+		got, err := repo.UpdateAudioByID(context.Background(), oid, expectedPath, 42, "audio/mpeg", "sha256-hash")
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -59,6 +60,9 @@ func TestSongRepositoryUpdateAudioByID(t *testing.T) {
 		}
 		if got.AudioMimeType != "audio/mpeg" {
 			t.Fatalf("expected audio mime audio/mpeg, got %q", got.AudioMimeType)
+		}
+		if got.AudioChecksum != "sha256-hash" {
+			t.Fatalf("expected checksum sha256-hash, got %q", got.AudioChecksum)
 		}
 	})
 }

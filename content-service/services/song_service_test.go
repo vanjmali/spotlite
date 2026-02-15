@@ -17,13 +17,14 @@ import (
 
 type fakeSongRepo struct {
 	findByIDFn      func(context.Context, primitive.ObjectID) (*entities.Song, error)
-	updateAudioByID func(context.Context, primitive.ObjectID, string, int64, string) (*entities.Song, error)
+	updateAudioByID func(context.Context, primitive.ObjectID, string, int64, string, string) (*entities.Song, error)
 	deleteByIDFn    func(context.Context, primitive.ObjectID) (*mongo.DeleteResult, error)
 
 	lastUpdateID   primitive.ObjectID
 	lastUpdatePath string
 	lastUpdateSize int64
 	lastUpdateMime string
+	lastUpdateHash string
 }
 
 func (f *fakeSongRepo) Create(context.Context, entities.Song) (primitive.ObjectID, error) {
@@ -52,15 +53,23 @@ func (f *fakeSongRepo) FindAll(context.Context, bson.M, int64, int64) ([]entitie
 	return nil, 0, errors.New("not implemented")
 }
 
-func (f *fakeSongRepo) UpdateAudioByID(ctx context.Context, id primitive.ObjectID, audioPath string, size int64, mime string) (*entities.Song, error) {
+func (f *fakeSongRepo) UpdateAudioByID(
+	ctx context.Context,
+	id primitive.ObjectID,
+	audioPath string,
+	size int64,
+	mime string,
+	checksum string,
+) (*entities.Song, error) {
 	f.lastUpdateID = id
 	f.lastUpdatePath = audioPath
 	f.lastUpdateSize = size
 	f.lastUpdateMime = mime
+	f.lastUpdateHash = checksum
 	if f.updateAudioByID != nil {
-		return f.updateAudioByID(ctx, id, audioPath, size, mime)
+		return f.updateAudioByID(ctx, id, audioPath, size, mime, checksum)
 	}
-	return &entities.Song{ID: id, AudioPath: audioPath, AudioSize: size, AudioMimeType: mime}, nil
+	return &entities.Song{ID: id, AudioPath: audioPath, AudioSize: size, AudioMimeType: mime, AudioChecksum: checksum}, nil
 }
 
 type fakeAlbumManager struct {
@@ -151,8 +160,14 @@ func TestSongServiceUploadAudio_SuccessUpdatesMetadataAndRemovesOldFile(t *testi
 		findByIDFn: func(context.Context, primitive.ObjectID) (*entities.Song, error) {
 			return &entities.Song{ID: id, AudioPath: oldPath}, nil
 		},
-		updateAudioByID: func(_ context.Context, gotID primitive.ObjectID, gotPath string, gotSize int64, gotMime string) (*entities.Song, error) {
-			return &entities.Song{ID: gotID, AudioPath: gotPath, AudioSize: gotSize, AudioMimeType: gotMime}, nil
+		updateAudioByID: func(_ context.Context, gotID primitive.ObjectID, gotPath string, gotSize int64, gotMime string, gotHash string) (*entities.Song, error) {
+			return &entities.Song{
+				ID:            gotID,
+				AudioPath:     gotPath,
+				AudioSize:     gotSize,
+				AudioMimeType: gotMime,
+				AudioChecksum: gotHash,
+			}, nil
 		},
 	}
 	store := &fakeAudioStore{
@@ -181,6 +196,9 @@ func TestSongServiceUploadAudio_SuccessUpdatesMetadataAndRemovesOldFile(t *testi
 	}
 	if repo.lastUpdatePath != newPath || repo.lastUpdateMime != "audio/mpeg" {
 		t.Fatalf("unexpected update payload: path=%s mime=%s", repo.lastUpdatePath, repo.lastUpdateMime)
+	}
+	if repo.lastUpdateHash == "" {
+		t.Fatal("expected checksum to be persisted")
 	}
 	if store.removedPath != oldPath {
 		t.Fatalf("expected old path to be removed, got %s", store.removedPath)

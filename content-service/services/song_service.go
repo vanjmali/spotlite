@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io"
 	"log"
@@ -31,7 +33,14 @@ type songRepo interface {
 	UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]any) (*entities.Song, error)
 	DeleteByID(ctx context.Context, id primitive.ObjectID) (*mongo.DeleteResult, error)
 	FindAll(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Song, int64, error)
-	UpdateAudioByID(ctx context.Context, id primitive.ObjectID, audioPath string, size int64, mime string) (*entities.Song, error)
+	UpdateAudioByID(
+		ctx context.Context,
+		id primitive.ObjectID,
+		audioPath string,
+		size int64,
+		mime string,
+		checksum string,
+	) (*entities.Song, error)
 }
 
 type artistFinder interface {
@@ -471,7 +480,7 @@ func (s *SongService) UploadAudio(ctx context.Context, idStr string, r io.Reader
 	checkExistsSpan.End()
 
 	_, uploadSpan := s.tr.Start(ctx, "song.upload_audio.hdfs_upload")
-	audioPath, size, err := s.hdfs.UploadSongAudio(id.Hex(), r, ext)
+	audioPath, size, checksum, err := s.uploadAudioWithChecksum(id.Hex(), r, ext)
 	if err != nil {
 		uploadSpan.RecordError(err)
 		uploadSpan.End()
@@ -479,7 +488,7 @@ func (s *SongService) UploadAudio(ctx context.Context, idStr string, r io.Reader
 	}
 	uploadSpan.End()
 
-	updated, err := s.songRepo.UpdateAudioByID(ctx, id, audioPath, size, mime)
+	updated, err := s.songRepo.UpdateAudioByID(ctx, id, audioPath, size, mime, checksum)
 	if err != nil {
 		span.RecordError(err)
 		_ = s.hdfs.Remove(audioPath)
@@ -500,4 +509,15 @@ func (s *SongService) UploadAudio(ctx context.Context, idStr string, r io.Reader
 
 func (s *SongService) OpenAudio(ctx context.Context, audioPath string) (io.ReadCloser, error) {
 	return s.hdfs.Open(audioPath)
+}
+
+func (s *SongService) uploadAudioWithChecksum(songID string, r io.Reader, ext string) (string, int64, string, error) {
+	hasher := sha256.New()
+	audioPath, size, err := s.hdfs.UploadSongAudio(songID, io.TeeReader(r, hasher), ext)
+	if err != nil {
+		return "", 0, "", err
+	}
+
+	checksum := hex.EncodeToString(hasher.Sum(nil))
+	return audioPath, size, checksum, nil
 }

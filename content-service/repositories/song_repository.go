@@ -110,10 +110,18 @@ func (r *SongRepository) FindAll(ctx context.Context, filter bson.M, skip int64,
 	return songs, total, nil
 }
 
-func (r *SongRepository) UpdateAudioByID(ctx context.Context, id primitive.ObjectID, audioPath string, size int64, mime string) (*entities.Song, error) {
+func (r *SongRepository) UpdateAudioByID(
+	ctx context.Context,
+	id primitive.ObjectID,
+	audioPath string,
+	size int64,
+	mime string,
+	checksum string,
+) (*entities.Song, error) {
 	return r.UpdateByID(ctx, id, map[string]any{
 		"audio_path":      audioPath,
 		"audio_size":      size,
 		"audio_mime_type": mime,
+		"audio_checksum":  checksum,
 	})
 }

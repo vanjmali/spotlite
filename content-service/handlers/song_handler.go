@@ -3,6 +3,8 @@ package handlers
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -243,16 +245,22 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 	}
 	defer rc.Close()
 
-	if song.AudioSize > 0 {
-		w.Header().Set("Content-Length", strconv.FormatInt(song.AudioSize, 10))
-	}
-	if song.AudioMimeType != "" {
-		w.Header().Set("Content-Type", song.AudioMimeType)
-	} else {
-		w.Header().Set("Content-Type", "audio/mpeg")
+	audioBytes, err := io.ReadAll(rc)
+	if err != nil {
+		log.Printf("trace_id=%s failed to read audio file at path %s: %v", telemetry.TraceID(r.Context()), song.AudioPath, err)
+		_ = respond.InternalServerError(w)
+		return
 	}
 
-	_, _ = io.Copy(w, rc)
+	if err := verifySongAudioChecksum(r.Context(), song.AudioPath, song.AudioChecksum, audioBytes); err != nil {
+		log.Printf("trace_id=%s checksum verification failed for song=%s: %v", telemetry.TraceID(r.Context()), id, err)
+		_ = respond.InternalServerError(w)
+		return
+	}
+
+	setSongAudioResponseHeaders(w, song.AudioSize, song.AudioMimeType, len(audioBytes))
+
+	_, _ = w.Write(audioBytes)
 }
 
 func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.Request) {
@@ -417,4 +425,33 @@ func validateAudioFileSniff(ctx context.Context, sniff []byte, filename string) 
 	}
 
 	return ext, mime, "", true
+}
+
+func verifySongAudioChecksum(ctx context.Context, audioPath string, expected string, payload []byte) error {
+	if expected == "" {
+		return nil
+	}
+
+	sum := sha256.Sum256(payload)
+	computed := hex.EncodeToString(sum[:])
+	if computed == expected {
+		return nil
+	}
+
+	return fmt.Errorf("checksum mismatch path=%s expected=%s got=%s trace_id=%s", audioPath, expected, computed, telemetry.TraceID(ctx))
+}
+
+func setSongAudioResponseHeaders(w http.ResponseWriter, size int64, mime string, fallbackSize int) {
+	if size > 0 {
+		w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
+	} else {
+		w.Header().Set("Content-Length", strconv.Itoa(fallbackSize))
+	}
+
+	if mime != "" {
+		w.Header().Set("Content-Type", mime)
+		return
+	}
+
+	w.Header().Set("Content-Type", "audio/mpeg")
 }
