@@ -245,24 +245,25 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 		_ = respond.InternalServerError(w)
 		return
 	}
-	defer rc.Close()
-
-	audioBytes, err := io.ReadAll(rc)
-	if err != nil {
-		log.Printf("trace_id=%s failed to read audio file at path %s: %v", telemetry.TraceID(r.Context()), song.AudioPath, err)
-		_ = respond.InternalServerError(w)
-		return
-	}
-
-	if err := verifySongAudioChecksum(r.Context(), song.AudioPath, song.AudioChecksum, audioBytes); err != nil {
+	if err := verifySongAudioChecksumFromReader(r.Context(), song.AudioPath, song.AudioChecksum, rc); err != nil {
+		_ = rc.Close()
 		logSecurityEvent(r.Context(), "stream_rejected_integrity_check_failed", fmt.Sprintf("song_id=%s path=%s", id, song.AudioPath))
 		_ = respond.InternalServerError(w)
 		return
 	}
+	_ = rc.Close()
 
-	setSongAudioResponseHeaders(w, song.AudioSize, song.AudioMimeType, len(audioBytes))
+	streamReader, err := h.s.OpenAudio(r.Context(), song.AudioPath)
+	if err != nil {
+		log.Printf("trace_id=%s failed to reopen audio file at path %s: %v", telemetry.TraceID(r.Context()), song.AudioPath, err)
+		_ = respond.InternalServerError(w)
+		return
+	}
+	defer streamReader.Close()
 
-	_, _ = w.Write(audioBytes)
+	setSongAudioResponseHeaders(w, song.AudioSize, song.AudioMimeType)
+
+	_, _ = io.Copy(w, streamReader)
 }
 
 func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.Request) {
@@ -437,13 +438,16 @@ func validateAudioFileSniff(ctx context.Context, sniff []byte, filename string) 
 	return ext, mime, "", true
 }
 
-func verifySongAudioChecksum(ctx context.Context, audioPath string, expected string, payload []byte) error {
+func verifySongAudioChecksumFromReader(ctx context.Context, audioPath string, expected string, r io.Reader) error {
 	if expected == "" {
 		return nil
 	}
 
-	sum := sha256.Sum256(payload)
-	computed := hex.EncodeToString(sum[:])
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, r); err != nil {
+		return fmt.Errorf("failed to read audio for checksum path=%s trace_id=%s", audioPath, telemetry.TraceID(ctx))
+	}
+	computed := hex.EncodeToString(hasher.Sum(nil))
 	if computed == expected {
 		return nil
 	}
@@ -451,11 +455,9 @@ func verifySongAudioChecksum(ctx context.Context, audioPath string, expected str
 	return fmt.Errorf("checksum mismatch path=%s trace_id=%s", audioPath, telemetry.TraceID(ctx))
 }
 
-func setSongAudioResponseHeaders(w http.ResponseWriter, size int64, mime string, fallbackSize int) {
+func setSongAudioResponseHeaders(w http.ResponseWriter, size int64, mime string) {
 	if size > 0 {
 		w.Header().Set("Content-Length", strconv.FormatInt(size, 10))
-	} else {
-		w.Header().Set("Content-Length", strconv.Itoa(fallbackSize))
 	}
 
 	if mime != "" {
