@@ -127,4 +127,48 @@
     justify-content: flex-end;
     gap: 12px;
   }
+
+  &__file-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__file-picker {
+    display: block;
+    width: 100%;
+  }
+
+  &__file-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    justify-content: flex-start;
+    overflow: hidden;
+  }
+
+  &__file-btn-name {
+    color: $color-gray-300;
+    font-size: 0.875rem;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
 }

@@ -17,14 +17,12 @@ export interface CreateSongDto {
   title: string;
   album_id: string;
   genre_ids: string[];
-  length_seconds: number;
   artist_ids: string[];
 }
 
 export interface UpdateSongDto {
   title?: string;
   genre_ids?: string[];
-  length_seconds?: number;
   artist_ids?: string[];
 }
 
@@ -82,10 +80,13 @@ export class SongService {
   }
 
   /**
-   * Create new song
+   * Create new song with uploaded audio file
    */
-  createSong(song: CreateSongDto): Observable<void> {
-    return this.http.post<void>(this.apiUrl, song);
+  createSongWithAudio(song: CreateSongDto, file: File): Observable<Song> {
+    const formData = new FormData();
+    formData.append('meta', JSON.stringify(song));
+    formData.append('file', file);
+    return this.http.post<Song>(this.apiUrl, formData);
   }
 
   /**
@@ -93,6 +94,15 @@ export class SongService {
    */
   updateSong(id: string, song: UpdateSongDto): Observable<Song> {
     return this.http.patch<Song>(`${this.apiUrl}/${id}`, song);
+  }
+
+  /**
+   * Upload/replace song audio file
+   */
+  uploadSongAudio(id: string, file: File): Observable<Song> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.put<Song>(`${this.apiUrl}/${id}/audio`, formData);
   }
 
   /**

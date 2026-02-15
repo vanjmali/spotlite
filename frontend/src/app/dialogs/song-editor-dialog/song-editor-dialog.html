@@ -30,13 +30,27 @@
         [(value)]="genreIdsSg"
       />
 
-      <app-text-input
-        label="Duration (seconds)"
-        placeholder="Enter duration in seconds"
-        [required]="true"
-        type="number"
-        [(value)]="durationSg"
-      />
+      <div class="song-editor-dialog__file-field">
+        <label class="song-editor-dialog__label" [for]="audioInputId">
+          {{ isCreateMode() ? 'Audio File' : 'Replace Audio (optional)' }}
+        </label>
+        <div class="song-editor-dialog__file-picker">
+          <label class="btn-secondary song-editor-dialog__file-btn" [for]="audioInputId">
+            <span>Choose File</span>
+            <span class="song-editor-dialog__file-btn-name">
+              {{ selectedAudioFileName() || 'No file chosen' }}
+            </span>
+          </label>
+        </div>
+        <input
+          class="song-editor-dialog__file-input"
+          [id]="audioInputId"
+          type="file"
+          accept="audio/*"
+          [required]="isCreateMode()"
+          (change)="onAudioFileChange($event)"
+        />
+      </div>
 
       <app-select-input
         label="Artists"
