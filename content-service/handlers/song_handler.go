@@ -316,7 +316,9 @@ func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.R
 
 	updated, err := h.s.UploadAudio(r.Context(), id.Hex(), reader, ext, mime)
 	if err != nil {
-		_ = h.s.DeleteSong(r.Context(), id.Hex()) // rollback
+		if rollbackErr := h.s.DeleteSong(r.Context(), id.Hex()); rollbackErr != nil {
+			logSecurityEvent(r.Context(), "create_with_audio_rollback_failed", fmt.Sprintf("song_id=%s error=%v", id.Hex(), rollbackErr))
+		}
 
 		switch {
 		case errors.Is(err, services.ErrAudioUploadFailed):
