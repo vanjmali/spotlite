@@ -91,7 +91,7 @@ func (s *HDFSStorage) renameWithRetry(from string, to string) error {
 	const wait = 100 * time.Millisecond
 
 	var lastErr error
-	for i := 0; i < attempts; i++ {
+	for range attempts {
 		err := s.c.Rename(from, to)
 		if err == nil {
 			return nil
