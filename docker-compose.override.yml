@@ -122,6 +122,16 @@ services:
       - user-internal
 
   # --- Content Service ---
+  content-service:
+    volumes:
+      - keys:/run/keys:ro
+    environment:
+      JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
+      JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+    depends_on:
+      key-gen:
+        condition: service_completed_successfully
+
   content-mongodb:
     ports:
       - 3102:27017 # expose MongoDB port

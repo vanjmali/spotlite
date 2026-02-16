@@ -28,35 +28,35 @@ func HandleRequests(
 	// Artists endpoints
 	api.HandleFunc("/artists", ah.HandleGetArtists).Methods("GET")
 	api.HandleFunc("/artists/{id}", ah.HandleGetArtistById).Methods("GET")
-	api.HandleFunc("/artists", ah.HandleCreateArtist).Methods("POST")
-	api.HandleFunc("/artists/{id}", ah.HandleUpdateArtist).Methods("PATCH")
-	api.HandleFunc("/artists/{id}", ah.HandleDeleteArtist).Methods("DELETE")
+	api.Handle("/artists", middlewares.RequireAdmin(ah.HandleCreateArtist)).Methods("POST")
+	api.Handle("/artists/{id}", middlewares.RequireAdmin(ah.HandleUpdateArtist)).Methods("PATCH")
+	api.Handle("/artists/{id}", middlewares.RequireAdmin(ah.HandleDeleteArtist)).Methods("DELETE")
 
 	// Songs endpoints
 	api.HandleFunc("/songs", sh.HandleGetSongs).Methods("GET")
 	api.HandleFunc("/songs/{id}", sh.HandleGetSongById).Methods("GET")
-	api.HandleFunc("/songs", sh.HandleCreateSongWithAudio).Methods("POST")
-	api.HandleFunc("/songs/{id}", sh.HandleUpdateSong).Methods("PATCH")
-	api.HandleFunc("/songs/{id}", sh.HandleDeleteSong).Methods("DELETE")
-	api.HandleFunc("/songs/{id}/audio", sh.HandleStreamSongAudio).Methods("GET")
-	api.HandleFunc("/songs/{id}/audio", sh.HandleUploadSongAudio).Methods("PUT")
+	api.Handle("/songs", middlewares.RequireAdmin(sh.HandleCreateSongWithAudio)).Methods("POST")
+	api.Handle("/songs/{id}", middlewares.RequireAdmin(sh.HandleUpdateSong)).Methods("PATCH")
+	api.Handle("/songs/{id}", middlewares.RequireAdmin(sh.HandleDeleteSong)).Methods("DELETE")
+	api.Handle("/songs/{id}/audio", middlewares.RequireAdmin(sh.HandleUploadSongAudio)).Methods("POST")
+	api.Handle("/songs/{id}/audio", middlewares.RequireAuthenticated(sh.HandleStreamSongAudio)).Methods("GET")
 
 	// Albums endpoints
 	api.HandleFunc("/albums", alh.HandleGetAlbums).Methods("GET")
 	api.HandleFunc("/albums/{id}", alh.HandleGetAlbumById).Methods("GET")
-	api.HandleFunc("/albums", alh.HandleCreateAlbum).Methods("POST")
-	api.HandleFunc("/albums/{id}", alh.HandleUpdateAlbum).Methods("PATCH")
-	api.HandleFunc("/albums/{id}", alh.HandleDeleteAlbum).Methods("DELETE")
-	api.HandleFunc("/albums/{id}/songs", alh.HandleAddAlbumSongs).Methods("POST")
+	api.Handle("/albums", middlewares.RequireAdmin(alh.HandleCreateAlbum)).Methods("POST")
+	api.Handle("/albums/{id}", middlewares.RequireAdmin(alh.HandleUpdateAlbum)).Methods("PATCH")
+	api.Handle("/albums/{id}", middlewares.RequireAdmin(alh.HandleDeleteAlbum)).Methods("DELETE")
+	api.Handle("/albums/{id}/songs", middlewares.RequireAdmin(alh.HandleAddAlbumSongs)).Methods("POST")
 	api.HandleFunc("/albums/{id}/songs", alh.HandleGetAlbumSongs).Methods("GET")
-	api.HandleFunc("/albums/{id}/songs/{songId}", alh.HandleDeleteAlbumSong).Methods("DELETE")
+	api.Handle("/albums/{id}/songs/{songId}", middlewares.RequireAdmin(alh.HandleDeleteAlbumSong)).Methods("DELETE")
 
 	// Genres endpoints
 	api.HandleFunc("/genres", gh.HandleGetGenres).Methods("GET")
-	api.HandleFunc("/genres", gh.HandleCreateGenre).Methods("POST")
+	api.Handle("/genres", middlewares.RequireAdmin(gh.HandleCreateGenre)).Methods("POST")
 	api.HandleFunc("/genres/{id}", gh.HandleGetGenreById).Methods("GET")
-	api.HandleFunc("/genres/{id}", gh.HandleUpdateGenre).Methods("PATCH")
-	api.HandleFunc("/genres/{id}", gh.HandleDeleteGenre).Methods("DELETE")
+	api.Handle("/genres/{id}", middlewares.RequireAdmin(gh.HandleUpdateGenre)).Methods("PATCH")
+	api.Handle("/genres/{id}", middlewares.RequireAdmin(gh.HandleDeleteGenre)).Methods("DELETE")
 
 	// Global search endpoint
 	api.HandleFunc("/search", gsh.HandleGlobalSearch).Methods("GET")
