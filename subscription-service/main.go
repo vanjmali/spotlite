@@ -56,8 +56,10 @@ var config = server.ServerRunConfiguration{
 			if err == nil {
 				return
 			}
+
 			_ = gc.Close()
 			_ = dbc.Disconnect(ctx)
+			jsc.Close()
 		}()
 
 		err = initializeSubscriptionIndexes(ctx, dbc)
@@ -77,20 +79,53 @@ var config = server.ServerRunConfiguration{
 		h = createHandlers(v, ss)
 		c := createConsumers(ss)
 
-		go jsc.StartConsumer(ctx, events.CONTENT_STREAM, events.SUBJECT_ENTITY_CREATED, events.ENTITY_DURABLE, c.HandleEntityCreated)
+		consumerCtx, consumerCancel := context.WithCancel(ctx)
+		consumerDone := make(chan struct{})
+
+		var consumerErr error
+
+		go func() {
+			consumerErr = jsc.StartConsumer(
+				consumerCtx,
+				events.CONTENT_STREAM,
+				events.SUBJECT_ENTITY_CREATED,
+				events.ENTITY_DURABLE,
+				c.HandleEntityCreated,
+			)
+			close(consumerDone)
+		}()
+
+		go func() {
+			<-consumerDone
+			if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
+				log.Printf("subscription consumer stopped unexpectedly: %v", consumerErr)
+			}
+		}()
 
 		shutdown = func() error {
-			if err := dbc.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
-				return fmt.Errorf("failed to disconnect mongo client: %w", err)
+			var errs []error
+
+			consumerCancel()
+			<-consumerDone
+
+			if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
+				errs = append(errs, fmt.Errorf("subscription consumer error: %w", consumerErr))
 			}
 
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
 			if err := gc.Close(); err != nil {
-				return fmt.Errorf("failed to close grpc connection: %w", err)
+				errs = append(errs, fmt.Errorf("grpc close error: %w", err))
+			}
+
+			if err := dbc.Disconnect(shutdownCtx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
+				errs = append(errs, fmt.Errorf("mongo disconnect error: %w", err))
 			}
 
 			jsc.Close()
 
-			return nil
+			return errors.Join(errs...)
 		}
 
 		return h, shutdown, err
