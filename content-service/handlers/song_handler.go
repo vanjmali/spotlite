@@ -100,6 +100,7 @@ func (h *SongHandler) HandleCreateSong(w http.ResponseWriter, r *http.Request) {
 
 	respond.NoContent(w)
 }
+
 // HandleGetSongById handles HTTP GET requests to retrieve a single song by its ID.
 func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)

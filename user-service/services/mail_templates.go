@@ -41,6 +41,7 @@ func renderEmailTemplate(path string, data EmailTemplateData) (string, error) {
 		return "", err
 	}
 
+	//nolint:gosec // Safe: CSS comes from embedded static file bundled at build time.
 	data.Styles = template.CSS(styles)
 
 	tmpl, err := template.ParseFS(mailTemplateFS, path)
