@@ -1,0 +1,10 @@
+:host {
+  width: 100%;
+}
+
+.not-found-page__body {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

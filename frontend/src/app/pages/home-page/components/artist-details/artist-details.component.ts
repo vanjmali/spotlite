@@ -65,10 +65,10 @@ export class ArtistDetailsComponent {
   }
 
   onAlbumClick(album: Album): void {
-    this.router.navigate(['/home/album', album.id]);
+    this.router.navigate(['/album', album.id]);
   }
 
   // goBack(): void {
-  //   this.router.navigate(['/home']);
+  //   this.router.navigate(['/']);
   // }
 }

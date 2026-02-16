@@ -1,0 +1,28 @@
+<app-widget [title]="titleSg()">
+  <div actions>
+    <ng-content select="[actions]" />
+  </div>
+
+  <div content class="item-table">
+    @if (isLoadingSg()) {
+      <div class="item-table__loading">
+        <app-loader />
+      </div>
+    } @else if (isEmptySg()) {
+      <div class="item-table__empty">
+        <p>{{ emptyMessageSg() }}</p>
+      </div>
+    } @else {
+      <div class="item-table__toolbar">
+        <ng-content select="[bulk-actions]" />
+      </div>
+      <ng-content select="[table]" />
+    }
+
+    @if (showPaginationSg()) {
+      <div class="item-table__pagination">
+        <ng-content select="[pagination]" />
+      </div>
+    }
+  </div>
+</app-widget>

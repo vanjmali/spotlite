@@ -1,6 +1,9 @@
 @if (isOpen()) {
   <app-dialog [title]="dialogTitle()" (closed)="cancel()">
-    <div content class="album-editor-dialog">
+    <div content class="album-editor-dialog" #dialogContent>
+      @if (errorSg()) {
+        <app-message type="error" [message]="errorSg()" />
+      }
       <app-text-input
         label="Title"
         placeholder="Enter album title"
@@ -26,37 +29,7 @@
         [(value)]="selectedArtistIdsSg"
       />
 
-      <!-- Songs Section (create only) -->
-      @if (isCreateMode() && selectedArtistIdsSg().length > 0) {
-        <div class="album-editor-dialog__songs">
-          <label class="album-editor-dialog__label">
-            Songs
-            @if (isLoadingSongsSg()) {
-              <span class="album-editor-dialog__loading">(Loading...)</span>
-            }
-          </label>
-          @if (availableSongsSg().length > 0) {
-            <div class="album-editor-dialog__songs-list">
-              @for (song of availableSongsSg(); track song.id) {
-                <div class="album-editor-dialog__song-item">
-                  <input
-                    type="checkbox"
-                    [id]="'song-' + song.id"
-                    [checked]="isSongSelected(song.id)"
-                    (change)="toggleSongSelection(song.id)"
-                    class="album-editor-dialog__song-checkbox"
-                  />
-                  <label [for]="'song-' + song.id" class="album-editor-dialog__song-label">
-                    {{ song.title }}
-                  </label>
-                </div>
-              }
-            </div>
-          } @else if (!isLoadingSongsSg()) {
-            <p class="album-editor-dialog__no-songs">No songs available for selected artists</p>
-          }
-        </div>
-      }
+      <!-- Songs are managed after creation via the manage songs dialog -->
     </div>
 
     <div footer class="album-editor-dialog__footer">
@@ -69,6 +42,9 @@
         (click)="submit()"
         [disabled]="!isFormValid() || isLoadingSg()"
       >
+        @if (isLoadingSg()) {
+          <span class="btn-spinner" aria-hidden="true"></span>
+        }
         {{ submitButtonText() }}
       </button>
     </div>

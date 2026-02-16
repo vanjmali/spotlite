@@ -65,6 +65,42 @@ func NewSongHandler(s services.SongService, v validator.Validate) *SongHandler {
 	return &h
 }
 
+// HandleCreateSong handles HTTP POST requests to create a new song.
+func (h *SongHandler) HandleCreateSong(w http.ResponseWriter, r *http.Request) {
+	var req dtos.SongDto
+
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
+		if err != nil {
+			log.Printf("trace_id=%s invalid request body: %v", telemetry.TraceID(r.Context()), err)
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
+		}
+		return
+	}
+
+	if _, err := h.s.Create(r.Context(), &req); err != nil {
+		switch {
+		case errors.Is(err, services.ErrObjectIdCastFailed):
+			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid ID format"))
+			return
+		case errors.Is(err, services.ErrArtistNotFound):
+			_ = respond.NotFound(w)
+			return
+		case errors.Is(err, services.ErrAlbumNotFound):
+			_ = respond.NotFound(w)
+			return
+		case errors.Is(err, services.ErrGenreNotFound):
+			_ = respond.NotFound(w)
+			return
+		default:
+			log.Printf("trace_id=%s failed to create song: %v", telemetry.TraceID(r.Context()), err)
+			_ = respond.InternalServerError(w)
+			return
+		}
+	}
+
+	respond.NoContent(w)
+}
+
 // HandleGetSongById handles HTTP GET requests to retrieve a single song by its ID.
 func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -79,7 +115,7 @@ func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) 
 			_ = respond.NotFound(w)
 			return
 		case errors.Is(err, services.ErrObjectIdCastFailed):
-			_ = respond.BadRequest(w, "Invalid ID format")
+			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid ID format"))
 			return
 		default:
 			_ = respond.InternalServerError(w)
@@ -101,7 +137,7 @@ func (h *SongHandler) HandleUpdateSong(w http.ResponseWriter, r *http.Request) {
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &dto); !ok {
 		if err != nil {
 			log.Printf("trace_id=%s invalid request body: %v", telemetry.TraceID(r.Context()), err)
-			_ = respond.BadRequest(w, "invalid request body")
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
 	}
@@ -110,7 +146,7 @@ func (h *SongHandler) HandleUpdateSong(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
 		log.Printf("trace_id=%s invalid song id: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.BadRequest(w, "invalid song id")
+		_ = respond.BadRequest(w, respond.ErrorMessage("invalid song id"))
 		return
 	case errors.Is(err, services.ErrSongNotFound):
 		log.Printf("trace_id=%s song not found: %v", telemetry.TraceID(r.Context()), err)
@@ -142,7 +178,7 @@ func (h *SongHandler) HandleDeleteSong(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
 		log.Printf("trace_id=%s invalid song id: %v", telemetry.TraceID(r.Context()), err)
-		_ = respond.BadRequest(w, "invalid song id")
+		_ = respond.BadRequest(w, respond.ErrorMessage("invalid song id"))
 		return
 	case errors.Is(err, services.ErrSongNotFound):
 		log.Printf("trace_id=%s song not found: %v", telemetry.TraceID(r.Context()), err)
@@ -184,7 +220,7 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 			_ = respond.PayloadTooLarge(w, maxSongAudioUploadMessage)
 		default:
 			logSecurityEvent(r.Context(), "upload_rejected_invalid_multipart", "endpoint=song_audio_upload")
-			_ = respond.BadRequest(w, "invalid multipart form")
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid multipart form"))
 		}
 		return
 	}
@@ -211,7 +247,7 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 			return
 		case errors.Is(err, services.ErrObjectIdCastFailed):
 			log.Printf("trace_id=%s invalid id format: %s", telemetry.TraceID(r.Context()), id)
-			_ = respond.BadRequest(w, "Invalid ID format")
+			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid ID format"))
 			return
 		default:
 			log.Printf("trace_id=%s unexpected error during audio upload for song %s: %v", telemetry.TraceID(r.Context()), id, err)
@@ -235,7 +271,7 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 			_ = respond.NotFound(w)
 			return
 		case errors.Is(err, services.ErrObjectIdCastFailed):
-			_ = respond.BadRequest(w, "Invalid ID format")
+			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid ID format"))
 			return
 		default:
 			_ = respond.InternalServerError(w)
@@ -283,7 +319,7 @@ func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.R
 			_ = respond.PayloadTooLarge(w, maxSongAudioUploadMessage)
 		default:
 			logSecurityEvent(r.Context(), "upload_rejected_invalid_multipart", "endpoint=song_create_with_audio")
-			_ = respond.BadRequest(w, "invalid multipart form")
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid multipart form"))
 		}
 		return
 	}
@@ -292,7 +328,7 @@ func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.R
 	metaStr := r.FormValue("meta")
 	if metaStr == "" {
 		logSecurityEvent(r.Context(), "upload_rejected_missing_meta", "endpoint=song_create_with_audio")
-		_ = respond.BadRequest(w, "missing meta")
+		_ = respond.BadRequest(w, respond.ErrorMessage("missing meta"))
 		return
 	}
 
@@ -301,7 +337,7 @@ func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.R
 		if err != nil {
 			logSecurityEvent(r.Context(), "upload_rejected_invalid_meta", fmt.Sprintf("error=%v", err))
 		}
-		_ = respond.BadRequest(w, "invalid meta")
+		_ = respond.BadRequest(w, respond.ErrorMessage("invalid meta"))
 		return
 	}
 
@@ -315,7 +351,7 @@ func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.R
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):
-			_ = respond.BadRequest(w, "invalid id format")
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid id format"))
 		case errors.Is(err, services.ErrArtistNotFound), errors.Is(err, services.ErrGenreNotFound), errors.Is(err, services.ErrAlbumNotFound):
 			_ = respond.NotFound(w)
 		default:
@@ -362,7 +398,7 @@ func getSingleValidatedAudioUpload(w http.ResponseWriter, r *http.Request) (mult
 	mf := r.MultipartForm
 	if mf == nil || mf.File == nil {
 		logSecurityEvent(r.Context(), "upload_rejected_missing_file", "reason=no_file_part")
-		_ = respond.BadRequest(w, "missing file")
+		_ = respond.BadRequest(w, respond.ErrorMessage("missing file"))
 		return nil, nil, "", "", nil, false
 	}
 
@@ -372,33 +408,33 @@ func getSingleValidatedAudioUpload(w http.ResponseWriter, r *http.Request) (mult
 	}
 	if totalFiles != 1 {
 		logSecurityEvent(r.Context(), "upload_rejected_multiple_files", fmt.Sprintf("count=%d", totalFiles))
-		_ = respond.BadRequest(w, "request must contain exactly one file")
+		_ = respond.BadRequest(w, respond.ErrorMessage("request must contain exactly one file"))
 		return nil, nil, "", "", nil, false
 	}
 	if len(mf.File["file"]) != 1 {
 		logSecurityEvent(r.Context(), "upload_rejected_invalid_file_field", "field=file")
-		_ = respond.BadRequest(w, "exactly one file must be provided under field 'file'")
+		_ = respond.BadRequest(w, respond.ErrorMessage("exactly one file must be provided under field 'file'"))
 		return nil, nil, "", "", nil, false
 	}
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		logSecurityEvent(r.Context(), "upload_rejected_missing_file", "reason=form_file_error")
-		_ = respond.BadRequest(w, "missing file")
+		_ = respond.BadRequest(w, respond.ErrorMessage("missing file"))
 		return nil, nil, "", "", nil, false
 	}
 
 	sniff, err := readFileSniff(file)
 	if err != nil {
 		logSecurityEvent(r.Context(), "upload_rejected_invalid_file", "reason="+err.Error())
-		_ = respond.BadRequest(w, err.Error())
+		_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))
 		_ = file.Close()
 		return nil, nil, "", "", nil, false
 	}
 
 	ext, mime, badRequestMessage, ok := validateAudioFileSniff(r.Context(), sniff, header.Filename)
 	if !ok {
-		_ = respond.BadRequest(w, badRequestMessage)
+		_ = respond.BadRequest(w, respond.ErrorMessage(badRequestMessage))
 		_ = file.Close()
 		return nil, nil, "", "", nil, false
 	}
@@ -406,14 +442,14 @@ func getSingleValidatedAudioUpload(w http.ResponseWriter, r *http.Request) (mult
 	lengthSeconds, err := audioDurationDetector(file, mime)
 	if err != nil {
 		logSecurityEvent(r.Context(), "upload_rejected_audio_duration_detection_failed", fmt.Sprintf("filename=%q mime=%s", header.Filename, mime))
-		_ = respond.BadRequest(w, err.Error())
+		_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))
 		_ = file.Close()
 		return nil, nil, "", "", nil, false
 	}
 
 	if _, err := file.Seek(int64(len(sniff)), io.SeekStart); err != nil {
 		logSecurityEvent(r.Context(), "upload_rejected_invalid_file", "reason=failed to reset file cursor")
-		_ = respond.BadRequest(w, "failed to read file")
+		_ = respond.BadRequest(w, respond.ErrorMessage("failed to read file"))
 		_ = file.Close()
 		return nil, nil, "", "", nil, false
 	}

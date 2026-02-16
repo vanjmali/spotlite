@@ -1,39 +1,9 @@
 @use 'variables/colors' as *;
-@use 'mixins' as m;
 
 .check-email-page {
-  height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: $color-bg-primary;
-  color: $color-text-primary;
   flex-direction: column;
-  overflow-y: auto;
-
-  @include m.scrollbar;
-
-  &__section {
-    width: 100%;
-    max-width: 380px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 12px;
-
-    @media (min-width: 480px) {
-      width: 380px;
-    }
-
-    @media (min-width: 768px) {
-      width: 400px;
-    }
-
-    @media (min-width: 1024px) {
-      width: 420px;
-    }
-  }
+  gap: 12px;
 
   &__card {
     width: 100%;
@@ -63,11 +33,13 @@
 
   &__message {
     text-align: center;
+    margin: 0;
   }
 
   &__hint {
     color: $color-text-tertiary;
     text-align: center;
+    margin: 0;
   }
 
   &__button-wrapper {

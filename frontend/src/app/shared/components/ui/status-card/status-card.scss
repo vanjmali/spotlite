@@ -1,0 +1,49 @@
+@use 'variables/colors' as *;
+
+:host {
+  width: 100%;
+}
+
+.status-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 26px 22px;
+  border-radius: 14px;
+  border: 1px solid $color-gray-700;
+  background: $color-gray-800;
+}
+
+.status-card__icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 1.3rem;
+  color: $color-text-secondary;
+}
+
+.status-card__icon--success {
+  color: $color-primary;
+}
+
+.status-card__icon--error {
+  color: $color-danger;
+}
+
+.status-card__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.status-card__text {
+  margin: 0;
+  color: $color-text-secondary;
+  line-height: 1.5;
+}

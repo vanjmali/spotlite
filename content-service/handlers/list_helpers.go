@@ -17,7 +17,7 @@ func handleListResponse(w http.ResponseWriter, r *http.Request, logLabel string,
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):
-			_ = respond.BadRequest(w, "Invalid ID format")
+			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid ID format"))
 		default:
 			log.Printf("trace_id=%s failed to list %s: %v", telemetry.TraceID(r.Context()), logLabel, err)
 			_ = respond.InternalServerError(w)

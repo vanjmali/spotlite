@@ -7,6 +7,7 @@
   border-radius: 8px;
   transition: width 0.3s ease;
   overflow: hidden;
+  width: 64px;
 
   &--expanded {
     width: 250px;
@@ -119,6 +120,21 @@
   }
 
   &--expanded &__menu__option-label {
+    display: block;
+  }
+}
+
+@media (min-width: 1024px) {
+  .config-aside {
+    width: 250px;
+  }
+
+  .config-aside__toggle-wrapper {
+    display: none;
+  }
+
+  .config-aside__menu__header-label,
+  .config-aside__menu__option-label {
     display: block;
   }
 }

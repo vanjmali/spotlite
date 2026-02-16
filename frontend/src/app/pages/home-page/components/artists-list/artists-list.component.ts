@@ -36,6 +36,6 @@ export class ArtistsListComponent {
   }
 
   selectArtist(artist: Artist): void {
-    this.router.navigate(['/home', 'artist', artist.id]);
+    this.router.navigate(['/artist', artist.id]);
   }
 }

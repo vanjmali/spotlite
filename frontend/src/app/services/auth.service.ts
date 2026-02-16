@@ -1,7 +1,7 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, map, catchError, of } from 'rxjs';
-import { VALIDATION_MESSAGES } from '@app/shared';
+import { getApiErrorInfo, VALIDATION_MESSAGES } from '@app/shared';
 import { environment } from '../../environments/environment';
 import { NotificationService } from './notification.service';
 
@@ -21,11 +21,49 @@ export class AuthService {
   readonly currentEmailSg = signal<string | null>(null);
   readonly accessTokenSg = signal<string | null>(null);
   readonly isAuthenticatedSg = computed(() => !!this.accessTokenSg());
+  readonly isAdminSg = computed(() => {
+    const claims = this.getTokenClaims(this.accessTokenSg());
+    if (!claims) {
+      return false;
+    }
+
+    if (claims.is_admin === true) {
+      return true;
+    }
+
+    if (typeof claims.role === 'string' && claims.role.toLowerCase() === 'admin') {
+      return true;
+    }
+
+    if (
+      Array.isArray(claims.roles) &&
+      claims.roles.some((role) => role.toLowerCase() === 'admin')
+    ) {
+      return true;
+    }
+
+    return false;
+  });
+  readonly profileInitialSg = computed(() => {
+    const email = this.currentEmailSg();
+    if (email) {
+      return email.charAt(0).toUpperCase();
+    }
+
+    const claims = this.getTokenClaims(this.accessTokenSg());
+    const candidate = [claims?.name, claims?.username, claims?.email, claims?.sub]
+      .find((value) => typeof value === 'string' && value.trim().length > 0)
+      ?.toString()
+      .trim();
+
+    return candidate ? candidate.charAt(0).toUpperCase() : 'U';
+  });
 
   readonly notificationService = inject(NotificationService);
 
   private readonly API_BASE = environment.apiBaseUrl;
   private readonly http = inject(HttpClient);
+  private refreshAccessTokenLock: Promise<boolean> | null = null;
 
   // Register new user with backend
   async register(
@@ -34,7 +72,7 @@ export class AuthService {
     email: string,
     username: string,
     password: string
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; code?: string; fields?: Record<string, string> }> {
     try {
       await firstValueFrom(
         this.http.post(`${this.API_BASE}/users/register`, {
@@ -48,14 +86,13 @@ export class AuthService {
 
       return { success: true };
     } catch (error: unknown) {
-      const httpError = error as {
-        error?: { message?: string; errors?: Array<{ message: string }> };
+      const info = getApiErrorInfo(error, VALIDATION_MESSAGES.REGISTRATION_FAILED);
+      return {
+        success: false,
+        error: info.userMessage,
+        code: info.code,
+        fields: info.fields,
       };
-      const errorMsg =
-        httpError?.error?.message ||
-        httpError?.error?.errors?.[0]?.message ||
-        VALIDATION_MESSAGES.REGISTRATION_FAILED;
-      return { success: false, error: errorMsg };
     }
   }
 
@@ -74,10 +111,13 @@ export class AuthService {
   }
 
   // Login with email and password - backend sends OTP via email
-  async login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+  async login(
+    email: string,
+    password: string
+  ): Promise<{ success: boolean; error?: string; code?: string; fields?: Record<string, string> }> {
     try {
-      // Clear any previous session state before new login attempt
-      this.logout();
+      this.accessTokenSg.set(null);
+      this.currentEmailSg.set(null);
 
       await firstValueFrom(
         this.http.post<LoginResponse>(`${this.API_BASE}/users/login`, { email, password })
@@ -87,9 +127,13 @@ export class AuthService {
       this.currentEmailSg.set(email);
       return { success: true };
     } catch (error: unknown) {
-      const httpError = error as { error?: { message?: string } };
-      const errorMsg = httpError?.error?.message || VALIDATION_MESSAGES.LOGIN_FAILED;
-      return { success: false, error: errorMsg };
+      const info = getApiErrorInfo(error, VALIDATION_MESSAGES.LOGIN_FAILED);
+      return {
+        success: false,
+        error: info.userMessage,
+        code: info.code,
+        fields: info.fields,
+      };
     }
   }
 
@@ -132,19 +176,29 @@ export class AuthService {
 
   // Refresh access token using httpOnly refresh cookie
   async refreshAccessToken(): Promise<boolean> {
-    try {
-      const response = await firstValueFrom(
-        this.http.post<VerifyOtpResponse>(
-          `${this.API_BASE}/users/refresh-token`,
-          {},
-          { withCredentials: true }
-        )
-      );
-      this.accessTokenSg.set(response.access_token);
-      return true;
-    } catch {
-      return false;
+    if (this.refreshAccessTokenLock) {
+      return this.refreshAccessTokenLock;
     }
+
+    this.refreshAccessTokenLock = (async () => {
+      try {
+        const response = await firstValueFrom(
+          this.http.post<VerifyOtpResponse>(
+            `${this.API_BASE}/users/refresh-token`,
+            {},
+            { withCredentials: true }
+          )
+        );
+        this.accessTokenSg.set(response.access_token);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        this.refreshAccessTokenLock = null;
+      }
+    })();
+
+    return this.refreshAccessTokenLock;
   }
 
   // Resend OTP code to email during login
@@ -160,6 +214,25 @@ export class AuthService {
       const httpError = error as { error?: { message?: string } };
       const errorMsg = httpError?.error?.message || VALIDATION_MESSAGES.OTP_RESEND_FAILED;
       return { success: false, error: errorMsg };
+    }
+  }
+
+  // Verify account email token
+  async verifyAccount(token: string): Promise<{ success: boolean; error?: string; code?: string }> {
+    try {
+      await firstValueFrom(
+        this.http.post(`${this.API_BASE}/users/verify`, {
+          token,
+        })
+      );
+      return { success: true };
+    } catch (error: unknown) {
+      const info = getApiErrorInfo(error, VALIDATION_MESSAGES.VERIFICATION_FAILED);
+      return {
+        success: false,
+        error: info.userMessage,
+        code: info.code,
+      };
     }
   }
 
@@ -194,12 +267,50 @@ export class AuthService {
         }
       )
       .pipe(
-        map(() => ({ success: true as const, error: undefined })),
+        map(() => ({
+          success: true as const,
+          error: undefined,
+          code: undefined as string | undefined,
+          fields: undefined as Record<string, string> | undefined,
+        })),
         catchError((error: unknown) => {
-          const httpError = error as { error?: { message?: string } };
-          const errorMsg = httpError?.error?.message || 'Failed to change password';
-          return of({ success: false as const, error: errorMsg });
+          const info = getApiErrorInfo(error, 'Failed to change password');
+          return of({
+            success: false as const,
+            error: info.userMessage,
+            code: info.code,
+            fields: info.fields,
+          });
         })
       );
+  }
+
+  private getTokenClaims(token: string | null): {
+    name?: string;
+    username?: string;
+    email?: string;
+    sub?: string;
+    role?: string;
+    roles?: string[];
+    is_admin?: boolean;
+  } | null {
+    if (!token) return null;
+
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+
+    try {
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      const decoded = atob(padded);
+      return JSON.parse(decoded) as {
+        name?: string;
+        username?: string;
+        email?: string;
+        sub?: string;
+      };
+    } catch {
+      return null;
+    }
   }
 }

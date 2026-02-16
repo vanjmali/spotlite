@@ -1,0 +1,33 @@
+@let error = store.errorSg();
+@let success = successSg();
+
+<app-auth-layout [title]="title" [showStepCount]="false">
+  <form auth-body class="otp-page" id="login-otp-form" (submit)="$event.preventDefault(); verify()">
+    <h2 class="otp-page__title">Enter the 6-digit code we sent to {{ store.emailSg() }}</h2>
+
+    <div class="otp-page__input-container">
+      <app-otp-input [(value)]="codeSg" [required]="true" />
+    </div>
+
+    @if (error) {
+      <app-message [message]="error" type="error" />
+    }
+
+    @if (success) {
+      <app-message [message]="success" type="success" />
+    }
+  </form>
+
+  <app-form-footer
+    auth-footer
+    label="Login"
+    [inProgress]="loadingSg()"
+    [stackActions]="true"
+    [submit]="true"
+    formId="login-otp-form"
+    secondaryLabel="Resend Code"
+    [secondaryDisabled]="loadingSg()"
+    (secondaryAction)="resend()"
+    (action)="verify()"
+  />
+</app-auth-layout>

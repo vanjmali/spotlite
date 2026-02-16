@@ -1,6 +1,6 @@
 @if (isOpen()) {
   <app-dialog [title]="dialogTitle()" (closed)="cancel()">
-    <div content class="genre-editor-dialog">
+    <div content class="genre-editor-dialog" #dialogContent>
       <app-text-input
         label="Genre Name"
         [required]="true"
@@ -24,6 +24,9 @@
         (click)="submit()"
         [disabled]="!isFormValid() || isLoadingSg()"
       >
+        @if (isLoadingSg()) {
+          <span class="btn-spinner" aria-hidden="true"></span>
+        }
         {{ submitButtonText() }}
       </button>
     </div>

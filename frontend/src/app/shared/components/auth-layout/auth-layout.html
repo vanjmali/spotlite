@@ -1,0 +1,40 @@
+<div class="auth-layout">
+  @if (showHeader) {
+    <app-header />
+  }
+
+  <div class="auth-layout__main">
+    <div class="auth-layout__logo">
+      <app-brand-logo />
+    </div>
+
+    <div class="auth-layout__section">
+      @if (title) {
+        <div class="auth-layout__header">
+          @if (back) {
+            <button class="auth-layout__back" type="button" (click)="back()" aria-label="Go back">
+              <mat-icon aria-hidden="true">arrow_back</mat-icon>
+              <span class="auth-layout__back-text">Back</span>
+            </button>
+          }
+          <div class="auth-layout__info">
+            @if (showStepCount && stepIndex !== null && totalSteps !== null) {
+              <div class="auth-layout__count">Step {{ stepIndex }}/{{ totalSteps }}</div>
+            }
+            <div class="auth-layout__title">{{ title }}</div>
+          </div>
+        </div>
+      }
+
+      <div class="auth-layout__body">
+        <ng-content select="[auth-body]"></ng-content>
+      </div>
+
+      <div class="auth-layout__footer">
+        <ng-content select="[auth-footer]"></ng-content>
+      </div>
+    </div>
+  </div>
+
+  <app-site-footer />
+</div>

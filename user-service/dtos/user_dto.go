@@ -12,7 +12,7 @@ type UserRegistrationDto struct {
 // UserLoginDto holds the credentials submitted when a user signs in.
 type UserLoginDto struct {
 	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,strongpassword"`
+	Password string `json:"password" validate:"required,min=3"`
 }
 
 // VerifyLoginOtpDto carries the email and code for OTP verification during login.
@@ -33,7 +33,7 @@ type CheckEmailDto struct {
 
 type ChangePasswordDto struct {
 	CurrentPassword string `json:"current_password" validate:"required"`
-	NewPassword     string `json:"new_password" validate:"required,strongpassword,nefield=CurrentPassword"`
+	NewPassword     string `json:"new_password" validate:"required,strongpassword"`
 }
 
 type RequestPasswordResetDto struct {
@@ -47,4 +47,9 @@ type ValidateRecoveryTokenDto struct {
 type ResetPasswordDto struct {
 	Token       string `json:"token" validate:"required"`
 	NewPassword string `json:"new_password" validate:"required,strongpassword"`
+}
+
+// VerifyAccountDto carries the account verification token.
+type VerifyAccountDto struct {
+	Token string `json:"token" validate:"required"`
 }

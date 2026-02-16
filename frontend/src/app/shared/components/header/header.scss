@@ -34,7 +34,7 @@
     height: 48px;
     width: 48px;
     object-fit: contain;
-    margin-right: 16px;
+    display: block;
   }
 
   &__logo-button {
@@ -44,6 +44,7 @@
     cursor: pointer;
     display: flex;
     align-items: center;
+    gap: 8px;
     justify-content: center;
     transition: opacity 0.2s ease;
 
@@ -54,5 +55,13 @@
     &:active {
       opacity: 0.6;
     }
+  }
+
+  &__brand {
+    color: $color-text-primary;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1;
   }
 }

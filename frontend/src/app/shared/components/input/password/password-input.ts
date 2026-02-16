@@ -58,6 +58,10 @@ export class PasswordInputComponent {
     this.errorSg.set('');
   }
 
+  public setExternalError(message: string): void {
+    this.errorSg.set(message);
+  }
+
   public togglePasswordVisibility(): void {
     this.showPasswordSg.update((show) => !show);
   }
@@ -88,8 +92,15 @@ export class PasswordInputComponent {
       return { isValid: false, error };
     }
 
-    // If criteria are shown, validate all criteria
+    console.log('criteria check:', {
+      show: this.showCriteriaSg(),
+    });
     if (this.showCriteriaSg()) {
+      if (/\s/.test(password)) {
+        this.errorSg.set(VALIDATION_MESSAGES.PASSWORD_CRITERIA);
+        return { isValid: false, error: VALIDATION_MESSAGES.PASSWORD_CRITERIA };
+      }
+
       if (
         !this.hasUppercaseSg() ||
         !this.hasLowercaseSg() ||

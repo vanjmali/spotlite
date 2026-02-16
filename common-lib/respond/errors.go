@@ -4,6 +4,17 @@ import (
 	"net/http"
 )
 
+// ErrorMessagePayload represents a simple error message structure.
+// If any field is omitted, it defaults to generic message depending on the HTTP status code.
+//
+// Use respond.ErrorMessage() or respond.ErrorMessageWithCode() to create instances of this struct with default values.
+type ErrorMessagePayload struct {
+	// Message is a human-readable description of the error.
+	Message string
+	// Code is a machine-readable error code. Use a snake_case string.
+	Code string
+}
+
 // ErrorResponse represents a generic JSON error payload returned by the API.
 type ErrorResponse struct {
 	HttpCode int `json:"-"`
@@ -17,39 +28,79 @@ type ErrorResponse struct {
 	Fields map[string]string `json:"fields,omitempty"`
 }
 
+// ErrorMessage is a helper function to create an ErrorMessagePayload with just a message.
+// Code will default depending on the HTTP status code used in the response. Use respond.ErrorMessageWithCode() if you want to specify a custom code.
+func ErrorMessage(message string) ErrorMessagePayload {
+	return ErrorMessagePayload{Message: message}
+}
+
+// ErrorMessageWithCode is a helper function to create an ErrorMessagePayload with both message and code.
+func ErrorMessageWithCode(message, code string) ErrorMessagePayload {
+	return ErrorMessagePayload{Message: message, Code: code}
+}
+
+func createErrorResponse(httpCode int, payload ErrorMessagePayload) ErrorResponse {
+	if payload.Message == "" {
+		payload.Message = http.StatusText(httpCode)
+	}
+
+	return ErrorResponse{
+		HttpCode: httpCode,
+		Code:     payload.Code,
+		Message:  payload.Message,
+	}
+}
+
+func mergeErrorPayload(defaults ErrorMessagePayload, overrides ...ErrorMessagePayload) ErrorMessagePayload {
+	if len(overrides) == 0 {
+		return defaults
+	}
+
+	merged := defaults
+	if overrides[0].Code != "" {
+		merged.Code = overrides[0].Code
+	}
+	if overrides[0].Message != "" {
+		merged.Message = overrides[0].Message
+	}
+
+	return merged
+}
+
 // Error issues an error response with the specified HTTP status code and message.
 func Error(w http.ResponseWriter, e ErrorResponse) error {
+	if e.Message == "" {
+		e.Message = http.StatusText(e.HttpCode)
+	}
+
 	r := ErrorResponse{
 		Code:    e.Code,
 		Message: e.Message,
 		Fields:  e.Fields,
 	}
 
-	if e.Message == "" {
-		e.Message = http.StatusText(e.HttpCode)
-	}
-
 	return writeJson(w, e.HttpCode, r)
 }
 
-func TooManyRequests(w http.ResponseWriter) error {
+// ValidationError issues a validation error response with field-level details.
+// It uses HTTP status code 422 (Unprocessable Entity) with code "validation_error" and a generic message.
+func ValidationError(w http.ResponseWriter, fields map[string]string) error {
 	r := ErrorResponse{
-		HttpCode: http.StatusTooManyRequests,
-		Code:     "rate_limit_exceeded",
-		Message:  "Too many requests. Please wait and retry.",
+		HttpCode: http.StatusUnprocessableEntity,
+		Code:     "validation_error",
+		Message:  "One or more fields have validation errors.",
+		Fields:   fields,
 	}
 
 	return Error(w, r)
 }
 
-// ValidationError issues a validation error response with field-level details.
-// It uses HTTP status code 400 (Bad Request) with code "validation_error" and a generic message.
-func ValidationError(w http.ResponseWriter, fields map[string]string) error {
+// TooManyRequests issues a 429 Too Many Requests error response with a standard message.
+func TooManyRequests(w http.ResponseWriter) error {
 	r := ErrorResponse{
-		HttpCode: http.StatusBadRequest,
-		Code:     "validation_error",
-		Message:  "One or more fields have validation errors.",
-		Fields:   fields,
+		HttpCode: http.StatusTooManyRequests,
+		Code:     "rate_limit_exceeded",
+		Message:  "Too many requests. Please wait and retry.",
 	}
 
 	return Error(w, r)
@@ -79,94 +130,72 @@ func InternalServerError(w http.ResponseWriter) error {
 
 // BadRequest issues a 400 Bad Request error response with a custom message.
 // Messages should be clear and concise to help clients understand the issue. Use capitalization and punctuation appropriately.
-func BadRequest(w http.ResponseWriter, message ...string) error {
-	msg := "Bad request."
-	if len(message) > 0 && message[0] != "" {
-		msg = message[0]
-	}
+func BadRequest(w http.ResponseWriter, message ...ErrorMessagePayload) error {
+	payload := mergeErrorPayload(ErrorMessagePayload{
+		Code:    "bad_request",
+		Message: "Bad request.",
+	}, message...)
 
-	r := ErrorResponse{
-		HttpCode: http.StatusBadRequest,
-		Code:     "bad_request",
-		Message:  msg,
-	}
-
+	r := createErrorResponse(http.StatusBadRequest, payload)
 	return Error(w, r)
 }
 
 // UnprocessableEntity issues a 422 Unprocessable Entity error response with a custom message.
 // This status code is used when the request is syntactically correct but semantically invalid (e.g., fails business rules).
-func UnprocessableEntity(w http.ResponseWriter, message ...string) error {
-	msg := "Unprocessable entity"
-	if len(message) > 0 && message[0] != "" {
-		msg = message[0]
-	}
+func UnprocessableEntity(w http.ResponseWriter, message ...ErrorMessagePayload) error {
+	payload := mergeErrorPayload(ErrorMessagePayload{
+		Code:    "unprocessable_entity",
+		Message: "Unprocessable entity",
+	}, message...)
 
-	r := ErrorResponse{
-		HttpCode: http.StatusUnprocessableEntity,
-		Code:     "unprocessable_entity",
-		Message:  msg,
-	}
-
+	r := createErrorResponse(http.StatusUnprocessableEntity, payload)
 	return Error(w, r)
 }
 
 // Unauthorized issues a 401 Unauthorized error response.
-// If a custom message is provided, it uses that; otherwise it falls back to the standard message.
-func Unauthorized(w http.ResponseWriter, message ...string) error {
-	msg := "You are not authorized to access this resource."
-	if len(message) > 0 && message[0] != "" {
-		msg = message[0]
-	}
+// This status code is used when authentication is required and has failed or has not yet been provided.
+func Unauthorized(w http.ResponseWriter, message ...ErrorMessagePayload) error {
+	payload := mergeErrorPayload(ErrorMessagePayload{
+		Code:    "unauthorized",
+		Message: "You are not authorized to access this resource.",
+	}, message...)
 
-	r := ErrorResponse{
-		HttpCode: http.StatusUnauthorized,
-		Code:     "unauthorized",
-		Message:  msg,
-	}
-
+	r := createErrorResponse(http.StatusUnauthorized, payload)
 	return Error(w, r)
 }
 
 // Forbidden issues a 403 Forbidden error response with a standard message.
-func Forbidden(w http.ResponseWriter) error {
-	r := ErrorResponse{
-		HttpCode: http.StatusForbidden,
-		Code:     "forbidden",
-		Message:  "You do not have permission to access this resource.",
-	}
+// This status code is used when the user is authenticated but does not have permission to access the resource.
+func Forbidden(w http.ResponseWriter, message ...ErrorMessagePayload) error {
+	payload := mergeErrorPayload(ErrorMessagePayload{
+		Code:    "forbidden",
+		Message: "You do not have permission to access this resource.",
+	}, message...)
 
+	r := createErrorResponse(http.StatusForbidden, payload)
 	return Error(w, r)
 }
 
-func Conflict(w http.ResponseWriter, message ...string) error {
-	msg := "Conflict occurred."
-	if len(message) > 0 && message[0] != "" {
-		msg = message[0]
-	}
+// Conflict issues a 409 Conflict error response with a custom message.
+// This status code is used when the request could not be completed due to a conflict with the current state of the resource (e.g., duplicate entry).
+func Conflict(w http.ResponseWriter, message ...ErrorMessagePayload) error {
+	payload := mergeErrorPayload(ErrorMessagePayload{
+		Code:    "conflict",
+		Message: "Conflict occurred.",
+	}, message...)
 
-	r := ErrorResponse{
-		HttpCode: http.StatusConflict,
-		Code:     "conflict",
-		Message:  msg,
-	}
-
+	r := createErrorResponse(http.StatusConflict, payload)
 	return Error(w, r)
 }
 
 // NotImplemented issues a 501 Not Implemented error response with a standard message.
-func NotImplemented(w http.ResponseWriter, message ...string) error {
-	msg := "Not implemented."
-	if len(message) > 0 && message[0] != "" {
-		msg = message[0]
-	}
+func NotImplemented(w http.ResponseWriter, message ...ErrorMessagePayload) error {
+	payload := mergeErrorPayload(ErrorMessagePayload{
+		Code:    "not_implemented",
+		Message: "Not implemented.",
+	}, message...)
 
-	r := ErrorResponse{
-		HttpCode: http.StatusNotImplemented,
-		Code:     "not_implemented",
-		Message:  msg,
-	}
-
+	r := createErrorResponse(http.StatusNotImplemented, payload)
 	return Error(w, r)
 }
 

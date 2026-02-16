@@ -1,0 +1,27 @@
+<app-auth-layout [title]="title" [showStepCount]="false">
+  <div auth-body class="verify-page__body">
+    @if (statusSg() === 'loading') {
+      <app-loader title="Verifying your email" message="Please wait a moment." />
+    } @else if (statusSg() === 'success') {
+      <app-status-card
+        title="Email verified"
+        message="Your account is now active. You can sign in below."
+        icon="check_circle"
+        variant="success"
+      />
+    } @else {
+      <app-status-card
+        title="Verification failed"
+        [message]="errorSg()"
+        icon="cancel"
+        variant="error"
+      />
+    }
+  </div>
+
+  @if (statusSg() === 'success') {
+    <app-form-footer auth-footer label="Go to login" (action)="goToLogin()" />
+  } @else if (statusSg() === 'error') {
+    <app-form-footer auth-footer label="Back to register" (action)="goToRegister()" />
+  }
+</app-auth-layout>
