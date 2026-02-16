@@ -113,6 +113,7 @@ func (c *JetStreamClient) StartConsumer(
 		Durable:       durableName,
 		FilterSubject: subject,
 		AckPolicy:     jetstream.AckExplicitPolicy,
+		MaxDeliver:    5,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create consumer: %w", err)
