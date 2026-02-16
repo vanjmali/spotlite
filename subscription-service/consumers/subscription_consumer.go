@@ -31,12 +31,15 @@ func (h *SubscriptionConsumer) HandleEntityCreated(ctx context.Context, msg jets
 
 	err := h.ss.NotifySubscribers(ctx, p)
 	if err != nil {
-		switch {
-		case errors.Is(err, repositories.ErrFindSubscriptions), errors.Is(err, repositories.ErrSubscriptionCursor):
+		// if an error has occured while parsing UUID, converting from string to primitive.objectID,
+		// another try won't make a difference and we want to abort
+		if errors.Is(err, repositories.ErrUUIDParse) {
 			return nil
-		default:
-			return err
 		}
+
+		// errors can be caused because of the database being down, network or any
+		// other infrastructure issues so we want to retry it just in case
+		return err
 	}
 
 	return nil

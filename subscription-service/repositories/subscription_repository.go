@@ -16,6 +16,7 @@ var (
 	ErrSubscriptionAlreadyExists = errors.New("user is already subscribed to the given content")
 	ErrFindSubscriptions         = errors.New("error has occured while finding subscriptions for the given parameters")
 	ErrSubscriptionCursor        = errors.New("error has occured while loading subscription cursor")
+	ErrUUIDParse                 = errors.New("error has occurred while parsing target IDs")
 )
 
 type SubscriptionRepository struct {
@@ -76,7 +77,7 @@ func (r *SubscriptionRepository) FindSubscriptionsByEntityID(
 	for _, t := range targetIDStrs {
 		ID, err := primitive.ObjectIDFromHex(t)
 		if err != nil {
-			return nil, "", fmt.Errorf("ERROR: (Parse) An error has occurred while parsing target IDs: %w", err)
+			return nil, "", ErrUUIDParse
 		}
 		targetIDs = append(targetIDs, ID)
 	}
@@ -90,7 +91,7 @@ func (r *SubscriptionRepository) FindSubscriptionsByEntityID(
 	if lastID != "" {
 		objID, err := primitive.ObjectIDFromHex(lastID)
 		if err != nil {
-			return nil, "", fmt.Errorf("ERROR: (Parse) An error has occurred while converting target IDs: %w", err)
+			return nil, "", ErrUUIDParse
 		}
 		filter["_id"] = bson.M{"$gt": objID}
 	}
@@ -101,14 +102,14 @@ func (r *SubscriptionRepository) FindSubscriptionsByEntityID(
 
 	cursor, err := c.Find(ctx, filter, opts)
 	if err != nil {
-		return nil, "", ErrFindSubscriptions
+		return nil, "", fmt.Errorf("%w: %w", ErrFindSubscriptions, err)
 	}
 
 	defer cursor.Close(ctx)
 
 	var subs []*entities.Subscription
 	if err := cursor.All(ctx, &subs); err != nil {
-		return nil, "", ErrSubscriptionCursor
+		return nil, "", fmt.Errorf("%w: %w", ErrSubscriptionCursor, err)
 	}
 
 	var nextID string
