@@ -46,7 +46,7 @@ var config = server.ServerRunConfiguration{
 		return nil
 	},
 	CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
-		mongo, mail, err := createClients(ctx)
+		mc, mail, err := createClients(ctx)
 		if err != nil {
 			err = fmt.Errorf("failed to create clients: %w", err)
 			return h, shutdown, err
@@ -59,14 +59,14 @@ var config = server.ServerRunConfiguration{
 				// No error, do nothing when function exits
 				return
 			}
-			_ = mongo.Disconnect(ctx)
+			_ = mc.Disconnect(ctx)
 			_ = mail.Close()
 			if asynqShutdown != nil {
 				_ = asynqShutdown()
 			}
 		}()
 
-		ur, rtr, prr, err := createRepositories(ctx, mongo)
+		ur, rtr, prr, err := createRepositories(ctx, mc)
 		if err != nil {
 			err = fmt.Errorf("failed to create repositories: %w", err)
 			return h, shutdown, err
@@ -77,7 +77,7 @@ var config = server.ServerRunConfiguration{
 
 		asynqShutdown = setupAsynq(us, ms)
 		shutdown = func() error {
-			if err := mongo.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
+			if err := mc.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
 				return fmt.Errorf("failed to disconnect mongo client: %w", err)
 			}
 
@@ -192,7 +192,7 @@ func setupAsynq(us *services.UserService, ms *services.MailService) func() error
 
 	// Initialize a scheduler
 	//    minutes *    hours *    day of month *     month *    day of week *
-	as.RegisterSchedule("03 11 * * *")
+	as.RegisterSchedule("01 19 * * *")
 
 	// Starts task router and scheduler in separate go routines
 	as.Start(mux)

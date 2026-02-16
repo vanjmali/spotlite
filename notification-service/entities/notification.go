@@ -9,9 +9,8 @@ import (
 type NotificationType string
 
 const (
-	NotificationTypeNewArtist NotificationType = "new_artist"
-	NotificationNewAlbum      NotificationType = "new_album"
-	NotificationNewSong       NotificationType = "new_song"
+	NotificationNewArtist NotificationType = "ARTIST"
+	NotificationNewAlbum  NotificationType = "ALBUM"
 )
 
 type Notification struct {
@@ -20,9 +19,9 @@ type Notification struct {
 	// instead of using TimeUUID which combines CreatedAt and NotificationID
 	// we keep them separated for easier calculations. If we used TimeUUID
 	// when only the time is needed, we would have to extract it from the TimeUUID
-	CreatedAt      time.Time  `db:"created_at" json:"created_at"`
-	NotificationID gocql.UUID `db:"notification_id" json:"notification_id"`
-
-	Type    NotificationType `db:"notification_type" json:"notification_type"`
-	Message string           `db:"message" json:"message"`
+	CreatedAt      time.Time        `db:"created_at" json:"created_at"`
+	NotificationID gocql.UUID       `db:"notification_id" json:"notification_id"`
+	Type           NotificationType `db:"notification_type" json:"notification_type"`
+	EntityID       string           `db:"entity_id" json:"entity_id"`
+	EntityName     string           `db:"entity_name" json:"entity_name"`
 }

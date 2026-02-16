@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	pb "github.com/vanjmali/spotlite/common-lib/proto/content_service"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/server"
@@ -42,7 +43,7 @@ var config = server.ServerRunConfiguration{
 		return nil
 	},
 	CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
-		dbc, err := createClients()
+		dbc, jsc, err := createClients()
 		if err != nil {
 			err = fmt.Errorf("failed to create clients: %w", err)
 			return h, shutdown, err
@@ -70,8 +71,15 @@ var config = server.ServerRunConfiguration{
 			_ = hdfsStore.Close()
 		}()
 
+		// make sure stream is already initialized
+		err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED})
+		if err != nil {
+			err = fmt.Errorf("failed to ensure NATS stream: %w", err)
+			return h, shutdown, err
+		}
+
 		ar, sr, alr, gr := createRepositories(dbc)
-		gs, as, ss, als, glss := createServices(ar, sr, alr, gr, hdfsStore)
+		gs, as, ss, als, glss := createServices(ar, sr, alr, gr, jsc, hdfsStore)
 		h = createHandlers(v, as, ss, als, gs, glss)
 
 		// configures grpc server
@@ -103,6 +111,9 @@ var config = server.ServerRunConfiguration{
 			if err := dbc.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
 				return fmt.Errorf("failed to disconnect mongo client: %w", err)
 			}
+
+			jsc.Close()
+
 			return nil
 		}
 
@@ -116,13 +127,18 @@ func main() {
 	}
 }
 
-func createClients() (*mongodriver.Client, error) {
+func createClients() (*mongodriver.Client, *events.JetStreamClient, error) {
 	dbc, err := mongo.InitMongoClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
+		return nil, nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
 	}
 
-	return dbc, nil
+	jsc, err := events.NewClient("nats://nats:4222")
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to initialized NATS jets teram client: %w", err)
+	}
+
+	return dbc, jsc, nil
 }
 
 func createRepositories(dbc *mongodriver.Client) (
@@ -145,6 +161,7 @@ func createServices(
 	sr *repositories.SongRepository,
 	alr *repositories.AlbumRepository,
 	gr *repositories.GenreRepository,
+	jsc *events.JetStreamClient,
 	hdfsStore *storage.HDFSStorage,
 ) (
 	*services.GenreService,
@@ -154,8 +171,8 @@ func createServices(
 	*services.GlobalSearchService,
 ) {
 	gs := services.NewGenreService(*gr)
-	as := services.NewArtistService(*ar, *gs)
-	als := services.NewAlbumService(*alr, *sr, *as, *gs)
+	as := services.NewArtistService(*ar, *gs, *jsc)
+	als := services.NewAlbumService(*alr, *as, *sr, *gs, *jsc)
 	ss := services.NewSongService(*sr, *as, *gs, als, hdfsStore)
 	glss := services.NewGlobalSearchService(gs, ss, als, as)
 

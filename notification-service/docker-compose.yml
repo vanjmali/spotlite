@@ -7,6 +7,7 @@ services:
       dockerfile: ../Dockerfile.microservice
     environment:
       APP_PORT: 3000
+      REDIS_ADDR: ${NOTIF_REDIS_ADDR}
       CASSANDRA_HOST: ${CASSANDRA_HOST?}
       CASSANDRA_PORT: ${CASSANDRA_PORT?}
       CASSANDRA_DC: ${CASSANDRA_DC?}
@@ -27,6 +28,8 @@ services:
       traefik.http.services.notification-service.loadbalancer.responseForwarding.flushInterval: "100ms"
     depends_on:
       notification-cassandra:
+        condition: service_healthy
+      notification-redis:
         condition: service_healthy
     networks:
       - api-gateway
@@ -78,6 +81,19 @@ services:
     networks:
       - notification-internal
 
+  notification-redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - notification-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - notification-internal
+
 networks:
   # Connects to Traefik
   api-gateway:
@@ -87,3 +103,4 @@ networks:
 
 volumes:
   notification-cassandra-data:
+  notification-redis-data:

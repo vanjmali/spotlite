@@ -9,9 +9,11 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
+	"github.com/vanjmali/spotlite/subscription-service/consumers"
 	"github.com/vanjmali/spotlite/subscription-service/handlers"
 	adapters "github.com/vanjmali/spotlite/subscription-service/infrastructure/grpc"
 	"github.com/vanjmali/spotlite/subscription-service/infrastructure/mongo"
@@ -43,7 +45,7 @@ var config = server.ServerRunConfiguration{
 		return nil
 	},
 	CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
-		dbc, gc, err := createClients()
+		dbc, gc, jsc, err := createClients()
 		if err != nil {
 			err = fmt.Errorf("failed to create clients: %w", err)
 			return h, shutdown, err
@@ -54,8 +56,10 @@ var config = server.ServerRunConfiguration{
 			if err == nil {
 				return
 			}
+
 			_ = gc.Close()
 			_ = dbc.Disconnect(ctx)
+			jsc.Close()
 		}()
 
 		err = initializeSubscriptionIndexes(ctx, dbc)
@@ -63,20 +67,65 @@ var config = server.ServerRunConfiguration{
 			return nil, nil, err
 		}
 
+		err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBSCRIPTIONS_STREAM})
+		if err != nil {
+			err = fmt.Errorf("failed to ensure NATS stream: %w", err)
+			return h, shutdown, err
+		}
+
 		gcc := createAdapters(gc)
 		sr := createRepositories(dbc)
-		ss := createServices(sr, gcc)
+		ss := createServices(sr, gcc, jsc)
 		h = createHandlers(v, ss)
+		c := createConsumers(ss)
+
+		consumerCtx, consumerCancel := context.WithCancel(ctx)
+		consumerDone := make(chan struct{})
+
+		var consumerErr error
+
+		go func() {
+			consumerErr = jsc.StartConsumer(
+				consumerCtx,
+				events.CONTENT_STREAM,
+				events.SUBJECT_ENTITY_CREATED,
+				events.ENTITY_DURABLE,
+				c.HandleEntityCreated,
+			)
+			close(consumerDone)
+		}()
+
+		go func() {
+			<-consumerDone
+			if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
+				log.Printf("subscription consumer stopped unexpectedly: %v", consumerErr)
+			}
+		}()
 
 		shutdown = func() error {
-			if err := dbc.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
-				return fmt.Errorf("failed to disconnect mongo client: %w", err)
+			var errs []error
+
+			consumerCancel()
+			<-consumerDone
+
+			if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
+				errs = append(errs, fmt.Errorf("subscription consumer error: %w", consumerErr))
 			}
 
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
 			if err := gc.Close(); err != nil {
-				return fmt.Errorf("failed to close grpc connection: %w", err)
+				errs = append(errs, fmt.Errorf("grpc close error: %w", err))
 			}
-			return nil
+
+			if err := dbc.Disconnect(shutdownCtx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
+				errs = append(errs, fmt.Errorf("mongo disconnect error: %w", err))
+			}
+
+			jsc.Close()
+
+			return errors.Join(errs...)
 		}
 
 		return h, shutdown, err
@@ -89,10 +138,10 @@ func main() {
 	}
 }
 
-func createClients() (*mongodriver.Client, *grpc.ClientConn, error) {
+func createClients() (*mongodriver.Client, *grpc.ClientConn, *events.JetStreamClient, error) {
 	dbc, err := mongo.InitMongoClient()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialize subscription service MongoDB client: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to initialize subscription service MongoDB client: %w", err)
 	}
 
 	grpcTarget := utils.MustGetEnv("CONTENT_GRPC_ADDRESS")
@@ -102,9 +151,15 @@ func createClients() (*mongodriver.Client, *grpc.ClientConn, error) {
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to establish a RPC connection with the content-service: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to establish a RPC connection with the content-service: %w", err)
 	}
-	return dbc, gc, nil
+
+	jsc, err := events.NewClient("nats://nats:4222")
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to initialized NATS jets teram client: %w", err)
+	}
+
+	return dbc, gc, jsc, nil
 }
 
 func initializeSubscriptionIndexes(ctx context.Context, c *mongodriver.Client) error {
@@ -155,8 +210,9 @@ func createRepositories(dbc *mongodriver.Client) *repositories.SubscriptionRepos
 func createServices(
 	sr *repositories.SubscriptionRepository,
 	gcc *adapters.GrpcContentEntityGetter,
+	jsc *events.JetStreamClient,
 ) *services.SubscriptionService {
-	ss := services.NewSubscriptionService(sr, gcc)
+	ss := services.NewSubscriptionService(sr, gcc, *jsc)
 
 	return ss
 }
@@ -166,6 +222,10 @@ func createHandlers(
 	ss *services.SubscriptionService,
 ) http.Handler {
 	sh := handlers.NewSubscriptionHandler(*ss, *v)
-
 	return routers.HandleRequests(sh)
+}
+
+func createConsumers(ss *services.SubscriptionService) *consumers.SubscriptionConsumer {
+	sc := consumers.NewConsumer(ss)
+	return sc
 }
