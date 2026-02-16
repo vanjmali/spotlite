@@ -6,6 +6,8 @@
 
   @if (isLoadingSg()) {
     <p class="album-details__loading">Loading album...</p>
+  } @else if (fetchErrorSg()) {
+    <app-message [message]="fetchErrorSg()" type="error" />
   } @else if (!albumSg()) {
     <p class="album-details__empty">Album not found</p>
   } @else {

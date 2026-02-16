@@ -11,6 +11,9 @@
       <div class="recommendations__section-header">
         <h2>Top artists for you</h2>
       </div>
+      @if (artistsErrorSg()) {
+        <app-message [message]="artistsErrorSg()" type="error" />
+      }
       <div class="recommendations__artists">
         @for (artist of recommendedArtistsSg(); track artist.id) {
           <a class="recommendations__artist-card" [routerLink]="['/artists', artist.id]">
@@ -30,6 +33,9 @@
       <div class="recommendations__section-header">
         <h2>Albums to play next</h2>
       </div>
+      @if (albumsErrorSg()) {
+        <app-message [message]="albumsErrorSg()" type="error" />
+      }
       <div class="recommendations__albums">
         @for (album of recommendedAlbumsSg(); track album.id) {
           <a class="recommendations__album-card" [routerLink]="['/albums', album.id]">
@@ -45,6 +51,9 @@
       <div class="recommendations__section-header">
         <h2>Check out new genres!</h2>
       </div>
+      @if (genresErrorSg()) {
+        <app-message [message]="genresErrorSg()" type="error" />
+      }
       <div class="recommendations__genres">
         @for (genre of recommendedGenresSg(); track genre.id) {
           <button type="button" class="recommendations__genre-chip" (click)="openGenre(genre)">
@@ -58,6 +67,9 @@
       <div class="recommendations__section-header">
         <h2>Quick play</h2>
       </div>
+      @if (songsErrorSg()) {
+        <app-message [message]="songsErrorSg()" type="error" />
+      }
       <div class="recommendations__songs">
         @for (song of recommendedSongsSg(); track song.id) {
           <button type="button" class="recommendations__song" (click)="playSong(song)">

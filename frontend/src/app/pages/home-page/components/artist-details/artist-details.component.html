@@ -6,6 +6,8 @@
 
   @if (isLoadingSg()) {
     <p class="artist-details__loading">Loading artist...</p>
+  } @else if (artistErrorSg()) {
+    <app-message [message]="artistErrorSg()" type="error" />
   } @else if (!artistSg()) {
     <p class="artist-details__empty">Artist not found</p>
   } @else {
@@ -33,7 +35,9 @@
     <!-- Albums Widget -->
     <app-widget title="Albums">
       <div content class="artist-details__albums">
-        @if (albumsSg().length === 0) {
+        @if (albumsErrorSg()) {
+          <app-message [message]="albumsErrorSg()" type="error" />
+        } @else if (albumsSg().length === 0) {
           <p class="artist-details__placeholder">No albums found for this artist</p>
         } @else {
           <div class="artist-details__albums-grid">

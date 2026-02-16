@@ -7,11 +7,12 @@ import { ArtistService, type Artist } from '../../../../services/artist.service'
 import { AlbumService, type Album } from '../../../../services/album.service';
 import { PlaybackService } from '@app/services/playback.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
+import { MessageComponent } from '@app/shared/components/message';
 
 @Component({
   selector: 'app-artist-details',
   standalone: true,
-  imports: [CommonModule, MatIconModule, WidgetComponent, CoverArtComponent],
+  imports: [CommonModule, MatIconModule, WidgetComponent, CoverArtComponent, MessageComponent],
   templateUrl: './artist-details.component.html',
   styleUrl: './artist-details.component.scss',
 })
@@ -26,6 +27,8 @@ export class ArtistDetailsComponent {
   readonly albumsSg = signal<Album[]>([]);
   readonly isLoadingSg = signal(false);
   readonly artistIdSg = signal<string>('');
+  readonly artistErrorSg = signal<string>('');
+  readonly albumsErrorSg = signal<string>('');
 
   constructor() {
     effect(() => {
@@ -40,23 +43,27 @@ export class ArtistDetailsComponent {
 
   private loadArtist(artistId: string): void {
     this.isLoadingSg.set(true);
+    this.artistErrorSg.set('');
     this.artistService.getArtistById(artistId).subscribe({
       next: (artist) => {
         this.artistSg.set(artist || null);
         this.isLoadingSg.set(false);
       },
       error: () => {
+        this.artistErrorSg.set('Failed to load artist details. Please try again.');
         this.isLoadingSg.set(false);
       },
     });
   }
 
   private loadAlbums(artistId: string): void {
+    this.albumsErrorSg.set('');
     this.albumService.getAlbums(1, 100, { artist_id: artistId }).subscribe({
       next: (response) => {
         this.albumsSg.set(response.items || []);
       },
       error: () => {
+        this.albumsErrorSg.set('Failed to load artist albums.');
         this.albumsSg.set([]);
       },
     });

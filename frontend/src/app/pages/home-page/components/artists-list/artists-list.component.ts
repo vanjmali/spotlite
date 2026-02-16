@@ -9,11 +9,12 @@ import { GenreService, type Genre } from '@app/services/genre.service';
 import { SongService, type Song } from '@app/services/song.service';
 import { PlaybackService } from '@app/services/playback.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
+import { MessageComponent } from '@app/shared/components/message';
 
 @Component({
   selector: 'app-artists-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, CoverArtComponent],
+  imports: [CommonModule, RouterLink, CoverArtComponent, MessageComponent],
   templateUrl: './artists-list.component.html',
   styleUrl: './artists-list.component.scss',
 })
@@ -30,6 +31,10 @@ export class ArtistsListComponent {
   readonly recommendedAlbumsSg = signal<Album[]>([]);
   readonly recommendedGenresSg = signal<Genre[]>([]);
   readonly recommendedSongsSg = signal<Song[]>([]);
+  readonly artistsErrorSg = signal<string>('');
+  readonly albumsErrorSg = signal<string>('');
+  readonly genresErrorSg = signal<string>('');
+  readonly songsErrorSg = signal<string>('');
 
   constructor() {
     this.loadRecommendations();
@@ -37,12 +42,36 @@ export class ArtistsListComponent {
 
   private loadRecommendations(): void {
     this.isLoadingSg.set(true);
+    this.artistsErrorSg.set('');
+    this.albumsErrorSg.set('');
+    this.genresErrorSg.set('');
+    this.songsErrorSg.set('');
 
     forkJoin({
-      artists: this.artistService.getArtists(1, 12).pipe(catchError(() => of({ items: [] }))),
-      albums: this.albumService.getAlbums(1, 12).pipe(catchError(() => of({ items: [] }))),
-      genres: this.genreService.getGenres(1, 12).pipe(catchError(() => of({ items: [] }))),
-      songs: this.songService.getSongs(1, 12).pipe(catchError(() => of({ items: [] }))),
+      artists: this.artistService.getArtists(1, 12).pipe(
+        catchError(() => {
+          this.artistsErrorSg.set('Failed to load artists.');
+          return of({ items: [] });
+        })
+      ),
+      albums: this.albumService.getAlbums(1, 12).pipe(
+        catchError(() => {
+          this.albumsErrorSg.set('Failed to load albums.');
+          return of({ items: [] });
+        })
+      ),
+      genres: this.genreService.getGenres(1, 12).pipe(
+        catchError(() => {
+          this.genresErrorSg.set('Failed to load genres.');
+          return of({ items: [] });
+        })
+      ),
+      songs: this.songService.getSongs(1, 12).pipe(
+        catchError(() => {
+          this.songsErrorSg.set('Failed to load songs.');
+          return of({ items: [] });
+        })
+      ),
     }).subscribe({
       next: (result) => {
         this.recommendedArtistsSg.set(result.artists.items ?? []);
@@ -52,6 +81,10 @@ export class ArtistsListComponent {
         this.isLoadingSg.set(false);
       },
       error: () => {
+        this.artistsErrorSg.set('Failed to load artists.');
+        this.albumsErrorSg.set('Failed to load albums.');
+        this.genresErrorSg.set('Failed to load genres.');
+        this.songsErrorSg.set('Failed to load songs.');
         this.isLoadingSg.set(false);
       },
     });
