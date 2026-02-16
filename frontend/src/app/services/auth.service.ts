@@ -63,6 +63,7 @@ export class AuthService {
 
   private readonly API_BASE = environment.apiBaseUrl;
   private readonly http = inject(HttpClient);
+  private refreshAccessTokenLock: Promise<boolean> | null = null;
 
   // Register new user with backend
   async register(
@@ -175,19 +176,29 @@ export class AuthService {
 
   // Refresh access token using httpOnly refresh cookie
   async refreshAccessToken(): Promise<boolean> {
-    try {
-      const response = await firstValueFrom(
-        this.http.post<VerifyOtpResponse>(
-          `${this.API_BASE}/users/refresh-token`,
-          {},
-          { withCredentials: true }
-        )
-      );
-      this.accessTokenSg.set(response.access_token);
-      return true;
-    } catch {
-      return false;
+    if (this.refreshAccessTokenLock) {
+      return this.refreshAccessTokenLock;
     }
+
+    this.refreshAccessTokenLock = (async () => {
+      try {
+        const response = await firstValueFrom(
+          this.http.post<VerifyOtpResponse>(
+            `${this.API_BASE}/users/refresh-token`,
+            {},
+            { withCredentials: true }
+          )
+        );
+        this.accessTokenSg.set(response.access_token);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        this.refreshAccessTokenLock = null;
+      }
+    })();
+
+    return this.refreshAccessTokenLock;
   }
 
   // Resend OTP code to email during login

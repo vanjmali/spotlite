@@ -13,7 +13,20 @@ import { LoginStore } from './pages/login/store';
 import { NotFoundPage } from './pages/not-found-page';
 import { AuthService } from './services/auth.service';
 
-const adminOnlyMatch: CanMatchFn = () => inject(AuthService).isAdminSg();
+const adminOnlyMatch: CanMatchFn = async () => {
+  const authService = inject(AuthService);
+
+  if (authService.isAdminSg()) {
+    return true;
+  }
+
+  const refreshed = await authService.refreshAccessToken();
+  if (!refreshed) {
+    return false;
+  }
+
+  return authService.isAdminSg();
+};
 
 export const routes: Routes = [
   {
