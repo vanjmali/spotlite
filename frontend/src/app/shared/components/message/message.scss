@@ -18,21 +18,25 @@
 
   // Success variant - Green
   &--success {
-    background-color: $color-success-300;
-    color: $color-success-900;
+    border: 1px solid rgba($color-success-500, 0.5);
+    background: rgba($color-success-900, 0.25);
+    color: $color-success-300;
+    border-radius: 10px;
 
     .message__text {
-      color: $color-success-900;
+      color: $color-success-300;
     }
   }
 
   // Error variant - Red/Danger
   &--error {
-    background-color: $color-danger-300;
-    color: $color-danger-900;
+    border: 1px solid rgba($color-danger-500, 0.5);
+    background: rgba($color-danger-900, 0.25);
+    color: $color-danger-300;
+    border-radius: 10px;
 
     .message__text {
-      color: $color-danger-900;
+      color: $color-danger-300;
     }
   }
 
