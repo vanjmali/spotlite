@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -35,8 +36,17 @@ var config = server.ServerRunConfiguration{
 			return h, shutdown, err
 		}
 
+		defer func() {
+			if err == nil {
+				return
+			}
+
+			jsc.Close()
+			_ = rc.Close()
+			cs.Close()
+		}()
+
 		b := infrastructure.NewBroker()
-		go b.Listen()
 
 		err = jsc.EnsureStream(ctx, events.SUBSCRIPTIONS_STREAM, []string{events.SUBJECT_SUBSCRIBER_BATCH})
 		if err != nil {
@@ -49,18 +59,48 @@ var config = server.ServerRunConfiguration{
 		h = createHandlers(ns, b)
 		c := createConsumers(ns)
 
-		go jsc.StartConsumer(ctx, events.SUBSCRIPTIONS_STREAM, events.SUBJECT_SUBSCRIBER_BATCH, events.SUB_DURABLE, c.HandleSubscribersBatch)
+		consumerCtx, consumerCancel := context.WithCancel(ctx)
+		consumerDone := make(chan struct{})
+		var consumerErr error
+
+		go func() {
+			consumerErr = jsc.StartConsumer(
+				consumerCtx,
+				events.SUBSCRIPTIONS_STREAM,
+				events.SUBJECT_SUBSCRIBER_BATCH,
+				events.SUB_DURABLE,
+				c.HandleSubscribersBatch,
+			)
+			close(consumerDone)
+		}()
+
+		go b.Listen(consumerCtx)
+
+		go func() {
+			<-consumerDone
+			if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
+				log.Printf("notification consumer stopped unexpectedly: %v", consumerErr)
+			}
+		}()
 
 		shutdown = func() error {
-			cs.Close()
+			var errs []error
 
-			jsc.Close()
+			consumerCancel()
+			<-consumerDone
 
-			if err := rc.Close(); err != nil {
-				return err
+			if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
+				errs = append(errs, fmt.Errorf("subscription consumer error: %w", consumerErr))
 			}
 
-			return nil
+			jsc.Close()
+			if err := rc.Close(); err != nil {
+				errs = append(errs, fmt.Errorf("redis error: %w", err))
+
+			}
+			cs.Close()
+
+			return errors.Join(errs...)
 		}
 
 		return h, shutdown, err
