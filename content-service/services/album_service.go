@@ -26,7 +26,6 @@ var ErrAlbumNotFound = errors.New("album not found")
 type AlbumService struct {
 	albumRepo      *repositories.AlbumRepository
 	artistService  *ArtistService
-	songRepo       *repositories.SongRepository
 	songRepository *repositories.SongRepository
 	genreService   *GenreService
 	jsc            *events.JetStreamClient
@@ -300,7 +299,7 @@ func (s *AlbumService) AddSongsToAlbum(ctx context.Context, idStr string, dto dt
 			return nil, ErrObjectIdCastFailed
 		}
 
-		song, err := s.songRepo.FindByID(ctx, songId)
+		song, err := s.songRepository.FindByID(ctx, songId)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				span.RecordError(err)
