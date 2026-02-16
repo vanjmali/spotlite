@@ -1,6 +1,9 @@
 package infrastructure
 
-import "log"
+import (
+	"context"
+	"log"
+)
 
 type ClientAction int
 
@@ -74,9 +77,12 @@ func NewNotification(targetUserID string, content []byte) *Notification {
 }
 
 // Constantly listens for new connections, closing connections and for notifications that have to be sent.
-func (b *Broker) Listen() {
+func (b *Broker) Listen(ctx context.Context) {
 	for {
 		select {
+		case <-ctx.Done():
+			log.Println("Broker: shutting down...")
+			return
 		case event := <-b.ConnectionEvents:
 			switch event.Action {
 			case ClientConnect:

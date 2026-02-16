@@ -1,17 +1,15 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/gocql/gocql"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/respond"
-	"github.com/vanjmali/spotlite/notifications/infrastructure"
-	"github.com/vanjmali/spotlite/notifications/services"
+	"github.com/vanjmali/spotlite/notification-service/infrastructure"
+	"github.com/vanjmali/spotlite/notification-service/services"
 )
 
 type NotificationHandler struct {
@@ -22,25 +20,6 @@ type NotificationHandler struct {
 func NewNotificationHandler(s *services.NotificationService, b *infrastructure.Broker) *NotificationHandler {
 	h := NotificationHandler{s: s, b: b}
 	return &h
-}
-
-func (h *NotificationHandler) CreateNotification(w http.ResponseWriter, r *http.Request) {
-	n, err := h.s.CreateNotification(r.Context())
-	if err != nil {
-		_ = respond.InternalServerError(w)
-		return
-	}
-
-	userID := middlewares.GetUserIdFromContext(r.Context())
-	np, err := json.Marshal(n)
-	if err != nil {
-		_ = respond.InternalServerError(w)
-		return
-	}
-
-	h.b.Broadcast <- infrastructure.NewNotification(userID, np)
-
-	respond.NoContent(w)
 }
 
 // HandleSubscribe function is used to handle client subscription requests and opens a one way connection
@@ -155,11 +134,4 @@ func setSSEHeaders(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no")
-}
-
-type NotificationEvent struct {
-	UserID         string     `json:"user_id"`
-	CreatedAt      time.Time  `json:"created_at"`
-	NotificationID gocql.UUID `json:"notification_id"`
-	Message        string     `json:"message"`
 }

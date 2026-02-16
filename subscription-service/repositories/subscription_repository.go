@@ -3,14 +3,21 @@ package repositories
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/vanjmali/spotlite/subscription-service/entities"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var ErrSubscriptionAlreadyExists = errors.New("user is already subscribed to the given content")
+var (
+	ErrSubscriptionAlreadyExists = errors.New("user is already subscribed to the given content")
+	ErrFindSubscriptions         = errors.New("error has occured while finding subscriptions for the given parameters")
+	ErrSubscriptionCursor        = errors.New("error has occured while loading subscription cursor")
+	ErrUUIDParse                 = errors.New("error has occurred while parsing target IDs")
+)
 
 type SubscriptionRepository struct {
 	DbName   string
@@ -56,4 +63,59 @@ func (r *SubscriptionRepository) Delete(entityID primitive.ObjectID, userID prim
 	}
 
 	return res.DeletedCount, nil
+}
+
+func (r *SubscriptionRepository) FindSubscriptionsByEntityID(
+	ctx context.Context,
+	targetIDStrs []string,
+	batchSize int,
+	lastID string,
+) ([]*entities.Subscription, string, error) {
+	c := r.getCollection()
+
+	targetIDs := make([]primitive.ObjectID, 0, len(targetIDStrs))
+	for _, t := range targetIDStrs {
+		ID, err := primitive.ObjectIDFromHex(t)
+		if err != nil {
+			return nil, "", ErrUUIDParse
+		}
+		targetIDs = append(targetIDs, ID)
+	}
+
+	filter := bson.M{
+		"entity_id": bson.M{
+			"$in": targetIDs,
+		},
+	}
+
+	if lastID != "" {
+		objID, err := primitive.ObjectIDFromHex(lastID)
+		if err != nil {
+			return nil, "", ErrUUIDParse
+		}
+		filter["_id"] = bson.M{"$gt": objID}
+	}
+
+	opts := options.Find().
+		SetSort(bson.D{{Key: "_id", Value: 1}}).
+		SetLimit(int64(batchSize))
+
+	cursor, err := c.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, "", fmt.Errorf("%w: %w", ErrFindSubscriptions, err)
+	}
+
+	defer cursor.Close(ctx)
+
+	var subs []*entities.Subscription
+	if err := cursor.All(ctx, &subs); err != nil {
+		return nil, "", fmt.Errorf("%w: %w", ErrSubscriptionCursor, err)
+	}
+
+	var nextID string
+	if len(subs) > 0 {
+		nextID = subs[len(subs)-1].ID.Hex()
+	}
+
+	return subs, nextID, nil
 }

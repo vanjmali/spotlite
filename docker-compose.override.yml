@@ -8,6 +8,28 @@ services:
     volumes:
       - ./api-gateway/traefik.dev.yml:/etc/traefik/traefik.yml:ro
 
+  nats:
+    command: "-js -m 8222"
+    ports:
+      - "${NATS_MONITOR_PORT?}:8222" # NATS performance monitoring
+      - "${NATS_CLIENT_PORT?}:4222" # exposed client port for cli testing
+
+  nui:
+    image: ghcr.io/nats-nui/nui:0.9.1
+    environment:
+      - NATS_URL=nats://nats:4222
+    labels:
+      traefik.enable: true
+      traefik.http.routers.nui.rule: PathPrefix(`/dev/nui`)
+      traefik.http.middlewares.nui-strip-prefix.stripprefix.prefixes: /dev/nui
+      traefik.http.middlewares.nui-strip-prefix.stripprefix.forceslash: false
+      traefik.http.routers.nui.middlewares: nui-strip-prefix
+      traefik.http.services.nui.loadbalancer.server.port: "31311"
+    networks:
+      - api-gateway
+    depends_on:
+      - nats
+
   # Override collector config for development
   otel-collector:
     volumes:
@@ -121,6 +143,10 @@ services:
       - api-gateway
       - user-internal
 
+  user-redis:
+    ports:
+      - "${USER_REDIS_PORT}:6379"
+
   # --- Content Service ---
   content-service:
     volumes:
@@ -177,6 +203,10 @@ services:
   notification-cassandra:
     ports:
       - "${CASSANDRA_PORT}:9042"
+
+  notification-redis:
+    ports:
+      - "${NOTIF_REDIS_PORT}:6379"
 
   # --- Subscription Service ---
   subscription-service:

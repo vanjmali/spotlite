@@ -5,7 +5,7 @@ import (
 	"errors"
 
 	"github.com/gocql/gocql"
-	"github.com/vanjmali/spotlite/notifications/entities"
+	"github.com/vanjmali/spotlite/notification-service/entities"
 )
 
 const (
@@ -26,21 +26,22 @@ func NewNotificationRepository(s *gocql.Session) *NotificationRepository {
 }
 
 func (r *NotificationRepository) InsertNotification(n *entities.Notification, ctx context.Context) error {
-	qText := "INSERT INTO notifications (user_id, created_at, notification_id, notification_type, message) VALUES (?, ?, ?, ?, ?)"
+	qText := "INSERT INTO notifications (user_id, created_at, notification_id, notification_type, entity_id, entity_name) VALUES (?, ?, ?, ?, ?, ?)"
 
 	err := r.s.Query(qText,
 		n.UserID,
 		n.CreatedAt,
 		n.NotificationID,
 		n.Type,
-		n.Message,
+		n.EntityID,
+		n.EntityName,
 	).WithContext(ctx).Exec()
 
 	return err
 }
 
 func (r *NotificationRepository) FindNotificationsByUserID(userID string, ctx context.Context) ([]*entities.Notification, error) {
-	qText := "SELECT user_id, created_at, notification_id, notification_type, message FROM notifications WHERE user_id = ? LIMIT 10"
+	qText := "SELECT user_id, created_at, notification_id, notification_type, entity_id, entity_name FROM notifications WHERE user_id = ? LIMIT 10"
 	iter := r.s.Query(qText, userID).WithContext(ctx).Iter()
 
 	// allocate a slice of size PAGE_SIZE
@@ -55,7 +56,8 @@ func (r *NotificationRepository) FindNotificationsByUserID(userID string, ctx co
 			&n.CreatedAt,
 			&n.NotificationID,
 			&n.Type,
-			&n.Message,
+			&n.EntityID,
+			&n.EntityName,
 		) {
 			break
 		}
