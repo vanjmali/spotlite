@@ -7,6 +7,12 @@
   height: 100vh;
   background-color: $color-bg-primary;
 
+  app-header,
+  app-site-footer {
+    display: block;
+    width: 100%;
+  }
+
   &__header {
     flex-shrink: 0;
     padding: 16px 32px;

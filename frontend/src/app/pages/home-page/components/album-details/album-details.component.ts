@@ -49,6 +49,6 @@ export class AlbumDetailsComponent {
 
   // TODO: implement to go page back instead of home
   // goBack(): void {
-  //   this.router.navigate(['/home']);
+  //   this.router.navigate(['/']);
   // }
 }

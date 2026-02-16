@@ -1,8 +1,14 @@
-import { Component, signal, computed, output, inject } from '@angular/core';
+import { Component, signal, output, inject, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { DialogComponent, PasswordInputComponent, MessageComponent } from '../../shared';
+import {
+  applyFieldErrors,
+  DialogComponent,
+  PasswordInputComponent,
+  MessageComponent,
+  VALIDATION_MESSAGES,
+} from '../../shared';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -25,42 +31,39 @@ export class ChangePasswordDialogComponent {
   readonly confirmPasswordSg = signal<string>('');
   readonly errorSg = signal<string>('');
   readonly loadingSg = signal<boolean>(false);
+  readonly currentPasswordInputSg = viewChild('currentPasswordInput', {
+    read: PasswordInputComponent,
+  });
+  readonly newPasswordInputSg = viewChild('newPasswordInput', { read: PasswordInputComponent });
+  readonly confirmPasswordInputSg = viewChild('confirmPasswordInput', {
+    read: PasswordInputComponent,
+  });
 
   // Output event
   readonly closed = output<void>();
+  readonly saved = output<void>();
 
   private readonly authService = inject(AuthService);
 
-  // Computed signal to check if passwords match
-  readonly passwordsMatchSg = computed(() => {
-    const newPassword = this.newPasswordSg();
-    const confirmPassword = this.confirmPasswordSg();
-    return newPassword && confirmPassword && newPassword === confirmPassword;
-  });
-
-  // Computed signal to show password mismatch error
-  readonly showPasswordMismatchSg = computed(() => {
-    const newPassword = this.newPasswordSg();
-    const confirmPassword = this.confirmPasswordSg();
-    return !this.passwordsMatchSg() && newPassword && confirmPassword;
-  });
-
-  // Computed signal to check if form is valid
-  readonly isValidSg = computed(() => {
-    const currentPassword = this.currentPasswordSg();
-    const newPassword = this.newPasswordSg();
-    const confirmPassword = this.confirmPasswordSg();
-    return (
-      currentPassword.length >= 10 &&
-      newPassword.length >= 10 &&
-      confirmPassword.length >= 10 &&
-      newPassword === confirmPassword
-    );
-  });
-
   submit(): void {
-    if (!this.isValidSg()) {
-      this.errorSg.set('Please check all fields and ensure passwords match');
+    const currentPasswordInput = this.currentPasswordInputSg();
+    const newPasswordInput = this.newPasswordInputSg();
+    const confirmPasswordInput = this.confirmPasswordInputSg();
+    if (!currentPasswordInput || !newPasswordInput || !confirmPasswordInput) return;
+
+    const currentPasswordValidation = currentPasswordInput.validate();
+    const newPasswordValidation = newPasswordInput.validate();
+    const confirmPasswordValidation = confirmPasswordInput.validate();
+    if (
+      !currentPasswordValidation.isValid ||
+      !newPasswordValidation.isValid ||
+      !confirmPasswordValidation.isValid
+    ) {
+      return;
+    }
+
+    if (this.newPasswordSg() !== this.confirmPasswordSg()) {
+      confirmPasswordInput.setExternalError(VALIDATION_MESSAGES.PASSWORDS_MISMATCH);
       return;
     }
 
@@ -73,10 +76,31 @@ export class ChangePasswordDialogComponent {
       .subscribe((result) => {
         this.loadingSg.set(false);
         if (result.success) {
+          this.saved.emit();
           // Close dialog on success
           this.cancel();
         } else {
-          // Show error message
+          if (result.code === 'invalid_current_password') {
+            currentPasswordInput.setExternalError(result.error || 'Invalid current password.');
+            return;
+          }
+
+          if (result.code === 'password_same_as_current') {
+            newPasswordInput.setExternalError(
+              result.error || 'New password must be different from current password.'
+            );
+            return;
+          }
+
+          if (result.fields) {
+            applyFieldErrors(result.fields, {
+              current_password: (msg) => currentPasswordInput.setExternalError(msg),
+              new_password: (msg) => newPasswordInput.setExternalError(msg),
+              confirm_password: (msg) => confirmPasswordInput.setExternalError(msg),
+            });
+            return;
+          }
+
           this.errorSg.set(result.error || 'Failed to change password');
         }
       });

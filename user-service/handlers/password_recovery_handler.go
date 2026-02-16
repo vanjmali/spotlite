@@ -58,13 +58,13 @@ func (h *PasswordRecoveryHandler) HandleValidateRecoveryToken(w http.ResponseWri
 
 	switch {
 	case errors.Is(err, services.ErrInvalidRecoveryToken):
-		_ = respond.Unauthorized(w, "Invalid recovery token")
+		_ = respond.Unauthorized(w, respond.ErrorMessage("Invalid recovery token"))
 		return
 	case errors.Is(err, services.ErrRecoveryTokenExpired):
-		_ = respond.Unauthorized(w, "Recovery token expired")
+		_ = respond.Unauthorized(w, respond.ErrorMessage("Recovery token expired"))
 		return
 	case errors.Is(err, services.ErrRecoveryTokenUsed):
-		_ = respond.Unauthorized(w, "Recovery token already used")
+		_ = respond.Unauthorized(w, respond.ErrorMessage("Recovery token already used"))
 		return
 	case err != nil:
 		log.Printf("trace_id=%s failed to validate recovery token: %v", telemetry.TraceID(r.Context()), err)
@@ -89,13 +89,13 @@ func (h *PasswordRecoveryHandler) HandleResetPassword(w http.ResponseWriter, r *
 
 	switch {
 	case errors.Is(err, services.ErrInvalidRecoveryToken):
-		_ = respond.Unauthorized(w, "Invalid recovery token")
+		_ = respond.Unauthorized(w, respond.ErrorMessage("Invalid recovery token"))
 		return
 	case errors.Is(err, services.ErrRecoveryTokenExpired):
-		_ = respond.Unauthorized(w, "Recovery token expired")
+		_ = respond.Unauthorized(w, respond.ErrorMessage("Recovery token expired"))
 		return
 	case errors.Is(err, services.ErrRecoveryTokenUsed):
-		_ = respond.Unauthorized(w, "Recovery token already used")
+		_ = respond.Unauthorized(w, respond.ErrorMessage("Recovery token already used"))
 		return
 	case errors.Is(err, services.ErrUserNotFound):
 		_ = respond.NotFound(w)

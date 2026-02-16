@@ -20,8 +20,8 @@ func (f *fakeMailClient) DialAndSend(messages ...*mail.Msg) error {
 func TestMailServiceSendAccountVerificationEmail(t *testing.T) {
 	client := &fakeMailClient{}
 	cfg := MailConfig{
-		VerificationEndpoint: "https://example.com/verify",
-		MailFromAddress:      "no-reply@example.com",
+		VerificationURL: "https://example.com/verify",
+		MailFromAddress: "no-reply@example.com",
 	}
 	ms := InitMailingService(client, cfg)
 

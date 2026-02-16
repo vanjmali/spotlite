@@ -17,6 +17,6 @@ export class HeaderComponent {
   readonly presentLogoSg = input<boolean>(false);
 
   navigateToHome(): void {
-    this.router.navigate(['/home']);
+    this.router.navigate(['/']);
   }
 }

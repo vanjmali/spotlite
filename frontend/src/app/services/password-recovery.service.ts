@@ -1,9 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, throwError } from 'rxjs';
+import { firstValueFrom, Observable, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
-import { VALIDATION_MESSAGES } from '@app/shared';
+import { getApiErrorInfo, VALIDATION_MESSAGES } from '@app/shared';
 
 @Injectable({ providedIn: 'root' })
 export class PasswordRecoveryService {
@@ -40,18 +40,26 @@ export class PasswordRecoveryService {
   /**
    * Reset password with token
    */
-  resetPassword(token: string, newPassword: string): Observable<void> {
-    return this.http
-      .post<{ message: string }>(`${this.API_BASE}/users/password-recovery/reset`, {
-        token,
-        new_password: newPassword,
-      })
-      .pipe(
-        map(() => undefined),
-        catchError((error) => {
-          const errorMsg = error?.error?.message || VALIDATION_MESSAGES.PASSWORD_RESET_FAILED;
-          return throwError(() => new Error(errorMsg));
+  async resetPassword(
+    token: string,
+    newPassword: string
+  ): Promise<{ success: boolean; error?: string; code?: string; fields?: Record<string, string> }> {
+    try {
+      await firstValueFrom(
+        this.http.post<{ message: string }>(`${this.API_BASE}/users/password-recovery/reset`, {
+          token,
+          new_password: newPassword,
         })
       );
+      return { success: true };
+    } catch (error: unknown) {
+      const info = getApiErrorInfo(error, VALIDATION_MESSAGES.PASSWORD_RESET_FAILED);
+      return {
+        success: false,
+        error: info.userMessage,
+        code: info.code,
+        fields: info.fields,
+      };
+    }
   }
 }

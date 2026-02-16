@@ -1,17 +1,20 @@
-import { Component, inject, signal, viewChild } from '@angular/core';
+import { Component, inject, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   TextInputComponent,
   PasswordInputComponent,
   MessageComponent,
+  USERNAME_PATTERN,
   VALIDATION_MESSAGES,
+  applyFieldErrors,
 } from '@app/shared';
 import { RegistrationStore } from '../../store';
+import { FormFooter } from '@app/shared';
 
 @Component({
   selector: 'app-registration-credentials-step',
   standalone: true,
-  imports: [CommonModule, TextInputComponent, PasswordInputComponent, MessageComponent],
+  imports: [CommonModule, TextInputComponent, PasswordInputComponent, MessageComponent, FormFooter],
   templateUrl: './credentials-step.html',
   styleUrls: ['./credentials-step.scss'],
 })
@@ -24,9 +27,12 @@ export class RegistrationCredentialsStep {
 
   public store = inject(RegistrationStore);
 
-  public usernameSg = signal<string>('');
-  public passwordSg = signal<string>('');
-  public confirmPasswordSg = signal<string>('');
+  public usernameSg = this.store.usernameSg;
+  public passwordSg = this.store.passwordSg;
+  public confirmPasswordSg = this.store.confirmPasswordSg;
+  public loadingSg = this.store.loadingSg;
+  public readonly usernamePattern = USERNAME_PATTERN;
+  public readonly validationMessages = VALIDATION_MESSAGES;
 
   public async submit(): Promise<void> {
     this.store.clearError();
@@ -40,13 +46,8 @@ export class RegistrationCredentialsStep {
     // Validate all inputs
     const usernameValidation = usernameInput.validate();
     const passwordValidation = passwordInput.validate();
-    const confirmPasswordValidation = confirmPasswordInput.validate();
 
-    if (
-      !usernameValidation.isValid ||
-      !passwordValidation.isValid ||
-      !confirmPasswordValidation.isValid
-    ) {
+    if (!usernameValidation.isValid || !passwordValidation.isValid) {
       return;
     }
 
@@ -55,12 +56,28 @@ export class RegistrationCredentialsStep {
     const confirmPassword = this.confirmPasswordSg();
 
     if (password !== confirmPassword) {
-      this.store.errorSg.set(VALIDATION_MESSAGES.PASSWORDS_MISMATCH);
+      confirmPasswordInput.setExternalError(VALIDATION_MESSAGES.PASSWORDS_MISMATCH);
       return;
     }
 
     // Save credentials and navigate
     const username = this.usernameSg();
-    this.store.saveCredentials(username, password);
+    const result = await this.store.saveCredentials(username, password);
+    if (!result.success) {
+      if (result.code === 'username_taken') {
+        usernameInput.setExternalError(result.error || VALIDATION_MESSAGES.USERNAME_IN_USE);
+        return;
+      }
+
+      if (result.fields) {
+        applyFieldErrors(result.fields, {
+          username: (msg) => usernameInput.setExternalError(msg),
+          password: (msg) => passwordInput.setExternalError(msg),
+        });
+        return;
+      }
+
+      this.store.errorSg.set(result.error || VALIDATION_MESSAGES.REGISTRATION_FAILED);
+    }
   }
 }

@@ -33,7 +33,7 @@ func (h *GenreHandler) HandleCreateGenre(w http.ResponseWriter, r *http.Request)
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
 			log.Printf("trace_id=%s failed to process create genre request: %v", telemetry.TraceID(r.Context()), err)
-			_ = respond.BadRequest(w, "invalid request body")
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
 	}
@@ -41,7 +41,7 @@ func (h *GenreHandler) HandleCreateGenre(w http.ResponseWriter, r *http.Request)
 	if err := h.s.Create(r.Context(), &req); err != nil {
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):
-			_ = respond.BadRequest(w, "Invalid ID format")
+			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid ID format"))
 			return
 		default:
 			log.Printf("trace_id=%s failed to create genre: %v", telemetry.TraceID(r.Context()), err)
@@ -77,7 +77,7 @@ func (h *GenreHandler) HandleGetGenreById(w http.ResponseWriter, r *http.Request
 
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):
-			_ = respond.BadRequest(w, "Invalid genre ID format")
+			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid genre ID format"))
 			return
 		case errors.Is(err, services.ErrGenreNotFound):
 			_ = respond.NotFound(w)
@@ -101,7 +101,7 @@ func (h *GenreHandler) HandleUpdateGenre(w http.ResponseWriter, r *http.Request)
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &dto); !ok {
 		if err != nil {
 			log.Printf("trace_id=%s failed to process update genre request: %v", telemetry.TraceID(r.Context()), err)
-			_ = respond.BadRequest(w, "invalid request body")
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
 	}
@@ -109,7 +109,7 @@ func (h *GenreHandler) HandleUpdateGenre(w http.ResponseWriter, r *http.Request)
 	updatedGenre, err := h.s.UpdateGenre(r.Context(), id, dto)
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
-		_ = respond.BadRequest(w, "Invalid genre ID format")
+		_ = respond.BadRequest(w, respond.ErrorMessage("Invalid genre ID format"))
 		return
 	case errors.Is(err, services.ErrGenreNotFound):
 		_ = respond.NotFound(w)

@@ -1,9 +1,23 @@
-import { Component, inject, input, output, signal, effect, computed } from '@angular/core';
+import {
+  Component,
+  inject,
+  input,
+  output,
+  signal,
+  computed,
+  ElementRef,
+  ViewChild,
+  HostListener,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { DialogComponent, MessageComponent, TextInputComponent } from '../../shared';
 import { GenreService, Genre } from '@app/services/genre.service';
+import { runOnOpen } from '@app/shared/utils/dialog';
+import { getHttpErrorMessage } from '@app/shared/utils/http-error';
+import { OptionsService } from '@app/shared/services/options.service';
+import { focusFirstFocusable } from '@app/shared/utils/focus';
 
 @Component({
   selector: 'app-genre-editor-dialog',
@@ -21,6 +35,7 @@ import { GenreService, Genre } from '@app/services/genre.service';
 })
 export class GenreEditorDialogComponent {
   private readonly genreService = inject(GenreService);
+  private readonly optionsService = inject(OptionsService);
 
   readonly genre = input<Genre | null>(null);
   readonly isOpen = input<boolean>(false);
@@ -30,6 +45,8 @@ export class GenreEditorDialogComponent {
 
   readonly nameSg = signal('');
   readonly isLoadingSg = signal(false);
+  @ViewChild('dialogContent')
+  private readonly dialogContentRef?: ElementRef<HTMLElement>;
   readonly errorSg = signal('');
 
   readonly isEdit = computed(() => !!this.genre());
@@ -38,7 +55,7 @@ export class GenreEditorDialogComponent {
   readonly isFormValid = computed(() => this.nameSg().trim().length >= 2);
 
   constructor() {
-    effect(() => {
+    runOnOpen(this.isOpen, () => {
       const genre = this.genre();
       if (genre) {
         this.nameSg.set(genre.name);
@@ -46,6 +63,7 @@ export class GenreEditorDialogComponent {
         this.nameSg.set('');
       }
       this.errorSg.set('');
+      setTimeout(() => focusFirstFocusable(this.dialogContentRef?.nativeElement ?? null), 0);
     });
   }
 
@@ -66,12 +84,13 @@ export class GenreEditorDialogComponent {
       this.genreService.updateGenre(this.genre()!.id, payload).subscribe({
         next: () => {
           this.isLoadingSg.set(false);
+          this.optionsService.invalidateGenres();
           this.saved.emit();
           this.cancel();
         },
         error: (error) => {
           console.error('Failed to update genre:', error);
-          this.errorSg.set('Failed to update genre. Please try again.');
+          this.errorSg.set(getHttpErrorMessage(error, 'Failed to update genre. Please try again.'));
           this.isLoadingSg.set(false);
         },
       });
@@ -81,12 +100,13 @@ export class GenreEditorDialogComponent {
     this.genreService.createGenre(payload).subscribe({
       next: () => {
         this.isLoadingSg.set(false);
+        this.optionsService.invalidateGenres();
         this.saved.emit();
         this.cancel();
       },
       error: (error) => {
         console.error('Failed to create genre:', error);
-        this.errorSg.set('Failed to create genre. Please try again.');
+        this.errorSg.set(getHttpErrorMessage(error, 'Failed to create genre. Please try again.'));
         this.isLoadingSg.set(false);
       },
     });
@@ -96,5 +116,12 @@ export class GenreEditorDialogComponent {
     this.nameSg.set('');
     this.errorSg.set('');
     this.closed.emit();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onDocumentKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Escape' || !this.isOpen()) return;
+    event.preventDefault();
+    this.cancel();
   }
 }

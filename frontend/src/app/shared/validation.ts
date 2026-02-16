@@ -10,6 +10,59 @@ export interface ValidationResult {
   error?: string;
 }
 
+export type FieldErrors = Record<string, string>;
+export type FieldErrorHandlers = Record<string, (message: string) => void>;
+
+export const applyFieldErrors = (
+  fields: FieldErrors | undefined,
+  handlers: FieldErrorHandlers
+): void => {
+  if (!fields) return;
+  Object.entries(fields).forEach(([field, message]) => {
+    const handler = handlers[field];
+    if (handler) {
+      handler(message);
+    }
+  });
+};
+
+export type ApiErrorInfo = {
+  status?: number;
+  message?: string;
+  code?: string;
+  fields?: Record<string, string>;
+  isRateLimited: boolean;
+  userMessage: string | undefined;
+};
+
+export const getApiErrorInfo = (error: unknown, fallbackMessage?: string): ApiErrorInfo => {
+  if (!error || typeof error !== 'object') {
+    return {
+      status: undefined,
+      message: undefined,
+      code: undefined,
+      fields: undefined,
+      isRateLimited: false,
+      userMessage: fallbackMessage,
+    };
+  }
+
+  const err = error as {
+    status?: number;
+    message?: string;
+    error?: { message?: string; code?: string; fields?: Record<string, string> };
+  };
+
+  const status = err.status;
+  const code = err.error?.code;
+  const message = err.error?.message ?? err.message;
+  const fields = err.error?.fields;
+  const isRateLimited = status === 429 || code === 'rate_limit_exceeded';
+  const userMessage = isRateLimited ? VALIDATION_MESSAGES.RATE_LIMITED : message || fallbackMessage;
+
+  return { status, message, code, fields, isRateLimited, userMessage };
+};
+
 // ============================================================================
 // REGEX PATTERNS
 // ============================================================================
@@ -42,11 +95,19 @@ export const PASSWORD_PATTERNS = {
 export const MIN_PASSWORD_LENGTH = 10;
 
 /**
+ * Name validation pattern
+ * Allows: letters (Unicode), spaces, hyphens, apostrophes
+ * Length: 2-20 characters
+ */
+export const NAME_PATTERN = /^[\p{L}\s\-']{2,20}$/u;
+
+/**
  * Username validation pattern
  * Allows: letters, numbers, dots, underscores
- * Length: 2+ characters (minimum enforced in TextInputComponent)
+ * Length: 4-20 characters
+ * Must include at least one letter or number
  */
-export const USERNAME_PATTERN = /^[a-zA-Z0-9._]{2,}$/;
+export const USERNAME_PATTERN = /^(?=.*[a-zA-Z0-9])[a-zA-Z0-9._]{4,20}$/;
 
 /**
  * OTP code pattern
@@ -63,12 +124,16 @@ export const VALIDATION_MESSAGES = {
   EMAIL_INVALID: 'Please enter a valid email address',
   PASSWORD_REQUIRED: 'Password is required',
   PASSWORD_CRITERIA:
-    'Password must contain uppercase, lowercase, number, special character, and be at least 10 characters',
+    'Password must contain uppercase, lowercase, number, special character, be at least 10 characters, and have no spaces',
   TEXT_REQUIRED: (label: string) => `${label} is required`,
+  NAME_INVALID: (label: string) =>
+    `${label} must be 2-20 characters long and can only contain letters, spaces, hyphens, and apostrophes.`,
   OTP_REQUIRED: 'OTP code is required',
   OTP_INVALID: 'Invalid OTP code.',
   PASSWORDS_MISMATCH: 'Passwords do not match.',
   USERNAME_REQUIRED: 'Username is required',
+  USERNAME_INVALID:
+    'Username must be 4-20 characters long, can contain letters, numbers, dots, and underscores, and must include at least one letter or number.',
   EMAIL_IN_USE: 'Email is already in use.',
   USERNAME_IN_USE: 'Username is already in use.',
   REGISTRATION_FAILED: 'Registration failed. Please try again.',
@@ -81,4 +146,6 @@ export const VALIDATION_MESSAGES = {
   MISSING_EMAIL: 'Missing email',
   PASSWORD_RESET_FAILED: 'Failed to reset password. Please try again.',
   INVALID_RECOVERY_LINK: 'Invalid or expired recovery link',
+  VERIFICATION_FAILED: 'Verification failed. Please try again.',
+  RATE_LIMITED: 'Too many requests. Please wait and retry.',
 } as const;

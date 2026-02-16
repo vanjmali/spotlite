@@ -1,0 +1,36 @@
+<div class="form-footer">
+  <div class="form-footer__actions" [class.form-footer__actions--stack]="stackActions">
+    <button
+      class="btn-primary"
+      [attr.type]="submit ? 'submit' : 'button'"
+      [attr.form]="formId || null"
+      (click)="onPrimaryClick()"
+      [disabled]="inProgress"
+      [attr.aria-busy]="inProgress ? 'true' : null"
+    >
+      @if (inProgress) {
+        <span class="btn-spinner" aria-hidden="true"></span>
+      }
+      {{ label }}
+    </button>
+    @if (secondaryLabel) {
+      <button
+        type="button"
+        class="btn-secondary"
+        [attr.form]="formId || null"
+        (click)="secondaryAction.emit()"
+        [disabled]="secondaryDisabled"
+        [attr.aria-busy]="secondaryDisabled && inProgress ? 'true' : null"
+      >
+        {{ secondaryLabel }}
+      </button>
+    }
+  </div>
+
+  @if (hintText && hintLinkText && hintLinkUrl) {
+    <div class="form-footer__login">
+      <div class="form-footer__login-text">{{ hintText }}</div>
+      <a [routerLink]="hintLinkUrl" class="link-primary">{{ hintLinkText }}</a>
+    </div>
+  }
+</div>

@@ -1,4 +1,14 @@
-import { Component, input, output, inject, signal, effect, computed } from '@angular/core';
+import {
+  Component,
+  input,
+  output,
+  inject,
+  signal,
+  computed,
+  ElementRef,
+  ViewChild,
+  HostListener,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,10 +19,12 @@ import {
   DateInputComponent,
   type SelectOption,
 } from '@app/shared/components/input';
+import { MessageComponent } from '@app/shared/components/message';
 import { AlbumService, Album, CreateAlbumDto, UpdateAlbumDto } from '@app/services/album.service';
-import { ArtistService } from '@app/services/artist.service';
-import { SongService, type Song } from '@app/services/song.service';
-import { GenreService } from '@app/services/genre.service';
+import { OptionsService } from '@app/shared/services/options.service';
+import { runOnOpen } from '@app/shared/utils/dialog';
+import { getHttpErrorMessage } from '@app/shared/utils/http-error';
+import { focusFirstFocusable } from '@app/shared/utils/focus';
 
 @Component({
   selector: 'app-album-editor-dialog',
@@ -22,6 +34,7 @@ import { GenreService } from '@app/services/genre.service';
     FormsModule,
     MatIconModule,
     DialogComponent,
+    MessageComponent,
     TextInputComponent,
     DateInputComponent,
     SelectInputComponent,
@@ -31,9 +44,7 @@ import { GenreService } from '@app/services/genre.service';
 })
 export class AlbumEditorDialogComponent {
   private readonly albumService = inject(AlbumService);
-  private readonly artistService = inject(ArtistService);
-  private readonly songService = inject(SongService);
-  private readonly genreService = inject(GenreService);
+  private readonly optionsService = inject(OptionsService);
 
   readonly album = input<Album | null>(null);
   readonly isOpen = input<boolean>(false);
@@ -41,24 +52,21 @@ export class AlbumEditorDialogComponent {
   readonly closed = output<void>();
 
   readonly isSavingSg = signal(false);
+  readonly errorSg = signal('');
   readonly titleSg = signal('');
   readonly releaseDateSg = signal('');
   readonly genreIdsSg = signal<string[]>([]);
   readonly selectedArtistIdsSg = signal<string[]>([]);
   readonly artistOptionsSg = signal<SelectOption[]>([]);
   readonly genreOptionsSg = signal<SelectOption[]>([]);
-  readonly availableSongsSg = signal<Song[]>([]);
-  readonly selectedSongIdsSg = signal<string[]>([]);
-  readonly isLoadingSongsSg = signal(false);
 
   // Computed
   readonly isCreateMode = computed(() => !this.album());
   readonly dialogTitle = computed(() => (this.isCreateMode() ? 'Create Album' : 'Edit Album'));
   readonly submitButtonText = computed(() => (this.isCreateMode() ? 'Create' : 'Save'));
   readonly isLoadingSg = signal(false);
-  readonly isSongsValid = computed(
-    () => !this.isCreateMode() || this.selectedSongIdsSg().length > 0
-  );
+  @ViewChild('dialogContent')
+  private readonly dialogContentRef?: ElementRef<HTMLElement>;
   readonly isFormValid = computed(() => {
     const title = this.titleSg().trim();
     const releaseDate = this.releaseDateSg().trim();
@@ -66,64 +74,41 @@ export class AlbumEditorDialogComponent {
     const artists = this.selectedArtistIdsSg();
 
     return (
-      title.length > 0 &&
-      releaseDate.length > 0 &&
-      genreIds.length >= 1 &&
-      artists.length > 0 &&
-      this.isSongsValid()
+      title.length >= 2 && releaseDate.length === 10 && genreIds.length >= 1 && artists.length > 0
     );
   });
 
   constructor() {
-    effect(() => {
-      if (this.isOpen()) {
-        this.loadArtists();
-        this.loadGenres();
-        if (this.album()) {
-          // Edit mode - populate form
-          const albumData = this.album();
-          if (albumData) {
-            this.titleSg.set(albumData.title);
-            this.releaseDateSg.set(albumData.releaseDate);
-            this.genreIdsSg.set(albumData.genres.map((genre) => genre.id));
-            // Set artists array
-            const artistIds = albumData.artists.map((a) => a.id);
-            this.selectedArtistIdsSg.set(artistIds);
-            this.selectedSongIdsSg.set(albumData.songs.map((song) => song.id));
-          }
-        } else {
-          // Create mode - clear form
-          this.titleSg.set('');
-          this.releaseDateSg.set('');
-          this.genreIdsSg.set([]);
-          this.selectedArtistIdsSg.set([]);
-          this.selectedSongIdsSg.set([]);
-          this.availableSongsSg.set([]);
+    runOnOpen(this.isOpen, () => {
+      this.loadArtists();
+      this.loadGenres();
+      if (this.album()) {
+        // Edit mode - populate form
+        const albumData = this.album();
+        if (albumData) {
+          this.titleSg.set(albumData.title);
+          this.releaseDateSg.set(albumData.releaseDate);
+          this.genreIdsSg.set(albumData.genres.map((genre) => genre.id));
+          // Set artists array
+          const artistIds = albumData.artists.map((a) => a.id);
+          this.selectedArtistIdsSg.set(artistIds);
         }
-      }
-    });
-
-    // Load songs when selected artists change
-    effect(() => {
-      const selectedArtistIds = this.selectedArtistIdsSg();
-      if (selectedArtistIds.length > 0) {
-        this.loadSongsForArtists(selectedArtistIds);
       } else {
-        this.availableSongsSg.set([]);
-        this.selectedSongIdsSg.set([]);
+        // Create mode - clear form
+        this.titleSg.set('');
+        this.releaseDateSg.set('');
+        this.genreIdsSg.set([]);
+        this.selectedArtistIdsSg.set([]);
       }
+      this.errorSg.set('');
+      setTimeout(() => focusFirstFocusable(this.dialogContentRef?.nativeElement ?? null), 0);
     });
   }
 
   private loadArtists(): void {
-    this.artistService.getArtists(1, 100).subscribe({
-      next: (response) => {
-        this.artistOptionsSg.set(
-          response.items.map((artist) => ({
-            label: artist.name,
-            value: artist.id,
-          }))
-        );
+    this.optionsService.loadArtists(100).subscribe({
+      next: (options) => {
+        this.artistOptionsSg.set(options);
       },
       error: (error) => {
         console.error('Failed to load artists:', error);
@@ -132,14 +117,9 @@ export class AlbumEditorDialogComponent {
   }
 
   private loadGenres(): void {
-    this.genreService.getGenres(1, 200).subscribe({
-      next: (response) => {
-        this.genreOptionsSg.set(
-          response.items.map((genre) => ({
-            label: genre.name,
-            value: genre.id,
-          }))
-        );
+    this.optionsService.loadGenres(200).subscribe({
+      next: (options) => {
+        this.genreOptionsSg.set(options);
       },
       error: (error) => {
         console.error('Failed to load genres:', error);
@@ -147,69 +127,27 @@ export class AlbumEditorDialogComponent {
     });
   }
 
-  private loadSongsForArtists(artistIds: string[]): void {
-    this.isLoadingSongsSg.set(true);
-    const allSongs: Song[] = [];
-    let loadedCount = 0;
-
-    artistIds.forEach((artistId) => {
-      this.songService.getSongs(1, 100, { artist_id: artistId }).subscribe({
-        next: (response) => {
-          allSongs.push(...response.items);
-          loadedCount++;
-          if (loadedCount === artistIds.length) {
-            // Remove duplicates by song id
-            const uniqueSongs = Array.from(
-              new Map(allSongs.map((song) => [song.id, song])).values()
-            );
-            this.availableSongsSg.set(uniqueSongs);
-            this.isLoadingSongsSg.set(false);
-          }
-        },
-        error: (error) => {
-          console.error('Failed to load songs for artist:', error);
-          loadedCount++;
-          if (loadedCount === artistIds.length) {
-            this.isLoadingSongsSg.set(false);
-          }
-        },
-      });
-    });
-  }
-
-  toggleSongSelection(songId: string): void {
-    this.selectedSongIdsSg.update((ids) => {
-      if (ids.includes(songId)) {
-        return ids.filter((id) => id !== songId);
-      } else {
-        return [...ids, songId];
-      }
-    });
-  }
-
-  isSongSelected(songId: string): boolean {
-    return this.selectedSongIdsSg().includes(songId);
-  }
-
   onSave(): void {
     this.isLoadingSg.set(true);
+    this.errorSg.set('');
     if (this.isCreateMode()) {
       const albumDto: CreateAlbumDto = {
-        title: this.titleSg(),
-        release_date: this.releaseDateSg(),
+        title: this.titleSg().trim(),
+        release_date: this.releaseDateSg().trim(),
         genre_ids: this.genreIdsSg(),
-        song_ids: this.selectedSongIdsSg(),
         artist_ids: this.selectedArtistIdsSg(),
       };
 
       this.albumService.createAlbum(albumDto).subscribe({
         next: () => {
           this.isLoadingSg.set(false);
+          this.optionsService.invalidateAlbums();
           this.saved.emit();
           this.cancel();
         },
         error: (error) => {
           console.error('Failed to save album:', error);
+          this.errorSg.set(getHttpErrorMessage(error, 'Failed to create album. Please try again.'));
           this.isLoadingSg.set(false);
         },
       });
@@ -223,8 +161,8 @@ export class AlbumEditorDialogComponent {
     }
 
     const updateDto: UpdateAlbumDto = {
-      title: this.titleSg(),
-      release_date: this.releaseDateSg(),
+      title: this.titleSg().trim(),
+      release_date: this.releaseDateSg().trim(),
       genre_ids: this.genreIdsSg(),
       artist_ids: this.selectedArtistIdsSg(),
     };
@@ -232,11 +170,13 @@ export class AlbumEditorDialogComponent {
     this.albumService.updateAlbum(album.id, updateDto).subscribe({
       next: () => {
         this.isLoadingSg.set(false);
+        this.optionsService.invalidateAlbums();
         this.saved.emit();
         this.cancel();
       },
       error: (error) => {
         console.error('Failed to save album:', error);
+        this.errorSg.set(getHttpErrorMessage(error, 'Failed to update album. Please try again.'));
         this.isLoadingSg.set(false);
       },
     });
@@ -251,6 +191,13 @@ export class AlbumEditorDialogComponent {
   }
 
   onClose(): void {
+    this.cancel();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onDocumentKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Escape' || !this.isOpen()) return;
+    event.preventDefault();
     this.cancel();
   }
 }

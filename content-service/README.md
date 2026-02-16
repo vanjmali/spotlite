@@ -14,6 +14,29 @@ Additional services are available for local development:
 
 - `localhost:3000/dev/content-service` - serves [mongo-express](https://github.com/mongo-express/mongo-express)
 - `localhost:3102` - direct connection to MongoDB
+- `localhost:9870` - HDFS NameNode web UI
+
+### E2E Test (Audio Flow)
+
+An end-to-end test is available for the content audio pipeline:
+
+- `content-service/e2e/audio_flow_e2e_test.go`
+
+Run with:
+
+```bash
+cd content-service
+go test -tags e2e ./e2e -run TestAudioFlowE2E -v
+```
+
+Optional base URL override (default is `http://localhost:3000/api/content`):
+
+```bash
+E2E_BASE_URL=http://localhost:3000/api/content go test -tags e2e ./e2e -run TestAudioFlowE2E -v
+```
+
+> [!NOTE]
+> `content-service` derives `length_seconds` with `ffprobe`, so runtime image/environment must have `ffprobe` available.
 
 ## Structure
 

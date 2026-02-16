@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,13 +18,6 @@ export class UserProfileDropdownComponent {
 
   private readonly router = inject(Router);
 
-  readonly isDropdownOpenSg = signal(false);
-
-  // Computed signal to get first letter of email
-  readonly firstLetterSg = computed((email = this.authService.currentEmailSg()) => {
-    return email ? email.charAt(0).toUpperCase() : '';
-  });
-
   constructor() {
     effect(() => {
       const isAuthenticated = this.authService.isAuthenticatedSg();
@@ -38,36 +31,27 @@ export class UserProfileDropdownComponent {
     });
   }
 
-  navigateToHome(): void {
-    this.router.navigate(['/home']);
-  }
-
-  toggleDropdown(): void {
-    this.isDropdownOpenSg.update((isOpen) => !isOpen);
-  }
-
-  closeDropdown(): void {
-    this.isDropdownOpenSg.set(false);
-  }
-
   navigateToProfile(): void {
-    this.closeDropdown();
     this.router.navigate(['/profile']);
   }
 
   navigateToInbox(): void {
-    this.closeDropdown();
     this.router.navigate(['/inbox']);
   }
 
   navigateToAdmin(): void {
-    this.closeDropdown();
     this.router.navigate(['/admin']);
   }
 
-  logout(): void {
-    this.closeDropdown();
-    this.authService.logout();
-    this.router.navigate(['/login']);
+  isInboxActive(): boolean {
+    return this.router.url.startsWith('/inbox');
+  }
+
+  isAdminActive(): boolean {
+    return this.router.url.startsWith('/admin');
+  }
+
+  isProfileActive(): boolean {
+    return this.router.url.startsWith('/profile');
   }
 }

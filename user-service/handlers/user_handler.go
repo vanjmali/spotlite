@@ -16,19 +16,13 @@ import (
 
 // UserHandler wires HTTP handlers to the user service and validators.
 type UserHandler struct {
-	s      *services.UserService
-	v      *validator.Validate
-	rts    *services.RefreshTokenService
-	config UserHandlerConfig
+	s   *services.UserService
+	v   *validator.Validate
+	rts *services.RefreshTokenService
 }
 
-type UserHandlerConfig struct {
-	VerificationSuccessUrl string
-	VerificationFailureUrl string
-}
-
-func NewUserHandler(s services.UserService, v validator.Validate, rts services.RefreshTokenService, c UserHandlerConfig) *UserHandler {
-	h := UserHandler{s: &s, v: &v, rts: &rts, config: c}
+func NewUserHandler(s services.UserService, v validator.Validate, rts services.RefreshTokenService) *UserHandler {
+	h := UserHandler{s: &s, v: &v, rts: &rts}
 	return &h
 }
 
@@ -45,11 +39,26 @@ func (h *UserHandler) HandleChangePassword(w http.ResponseWriter, r *http.Reques
 
 	switch {
 	case errors.Is(err, services.ErrInvalidCurrentPassword):
-		_ = respond.BadRequest(w, "Invalid current password.")
+		payload := respond.ErrorMessageWithCode(
+			"Invalid current password.",
+			"invalid_current_password",
+		)
+		_ = respond.BadRequest(w, payload)
+		return
+	case errors.Is(err, services.ErrNewPasswordMatchesCurrent):
+		payload := respond.ErrorMessageWithCode(
+			"New password must be different from current password.",
+			"password_same_as_current",
+		)
+		_ = respond.BadRequest(w, payload)
 		return
 
 	case errors.Is(err, services.ErrTooFrequentPasswordChange):
-		_ = respond.BadRequest(w, "Password can only be changed once every 24 hours.")
+		payload := respond.ErrorMessageWithCode(
+			"Password can only be changed once every 24 hours.",
+			"too_frequent_password_change",
+		)
+		_ = respond.BadRequest(w, payload)
 		return
 	case err != nil:
 		_ = respond.InternalServerError(w)
@@ -74,16 +83,22 @@ func (h *UserHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case errors.Is(err, services.ErrUserNotFound):
-		_ = respond.Unauthorized(w, "Invalid credentials.")
+		_ = respond.Unauthorized(w, respond.ErrorMessage("Invalid credentials."))
 		return
 	case errors.Is(err, services.ErrBadCredentials):
-		_ = respond.Unauthorized(w, "Invalid credentials.")
+		_ = respond.Unauthorized(w, respond.ErrorMessage("Invalid credentials."))
 		return
 	case errors.Is(err, services.ErrExpiredPassword):
-		_ = respond.Unauthorized(w, "Password expired.")
+		_ = respond.Unauthorized(w, respond.ErrorMessage("Password expired."))
 		return
-	case errors.Is(err, services.ErrUserInactive):
-		_ = respond.Unauthorized(w, "User is inactive.")
+	case errors.Is(err, services.ErrVerificationRequired):
+		_ = respond.Forbidden(
+			w,
+			respond.ErrorMessageWithCode(
+				"Verification email sent. Please check your inbox.",
+				"verification_required",
+			),
+		)
 		return
 	case err != nil:
 		log.Printf("trace_id=%s failed to login user: %v", telemetry.TraceID(r.Context()), err)
@@ -110,16 +125,20 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 	// initializes registration after decoding and validation went well
 	err := h.s.Register(r.Context(), &req)
 	if err != nil {
-		var msg string
+		var conflict respond.ErrorMessagePayload
+		hasConflict := false
+
 		switch {
 		case errors.Is(err, services.ErrUsernameTaken):
-			msg = "Username is already taken."
+			conflict = respond.ErrorMessageWithCode("Username is already taken.", "username_taken")
+			hasConflict = true
 		case errors.Is(err, services.ErrEmailTaken):
-			msg = "Email is already taken."
+			conflict = respond.ErrorMessageWithCode("Email is already taken.", "email_taken")
+			hasConflict = true
 		}
 
-		if msg != "" {
-			_ = respond.Conflict(w, msg)
+		if hasConflict {
+			_ = respond.Conflict(w, conflict)
 			return
 		}
 
@@ -134,20 +153,20 @@ func (h *UserHandler) HandleRegistration(w http.ResponseWriter, r *http.Request)
 // HandleAccountVerification func, handles user account verification requests and redirects to success/failure pages
 // depending on the result.
 func (h *UserHandler) HandleAccountVerification(w http.ResponseWriter, r *http.Request) {
-	// fetches token query parameter value
-	token := r.URL.Query().Get("token")
-
-	// handle if there is no token sent as query param
-	if token == "" {
-		http.Redirect(w, r, h.config.VerificationFailureUrl, http.StatusSeeOther)
+	var req dtos.VerifyAccountDto
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
+		if err != nil {
+			log.Printf("trace_id=%s failed to process verification request: %v", telemetry.TraceID(r.Context()), err)
+		}
 		return
 	}
 
 	// initialize account verification
-	err := h.s.VerifyAccount(r.Context(), token)
+	err := h.s.VerifyAccount(r.Context(), req.Token)
 	if err != nil {
 		if errors.Is(err, repositories.ErrTokenExpired) {
-			http.Redirect(w, r, h.config.VerificationFailureUrl, http.StatusSeeOther)
+			m := respond.ErrorMessageWithCode("Invalid or expired verification token.", "verification_failed")
+			_ = respond.BadRequest(w, m)
 			return
 		}
 
@@ -157,7 +176,9 @@ func (h *UserHandler) HandleAccountVerification(w http.ResponseWriter, r *http.R
 	}
 
 	// handle account verification success
-	http.Redirect(w, r, h.config.VerificationSuccessUrl, http.StatusSeeOther)
+	if err := respond.Ok(w, "Account verified."); err != nil {
+		log.Printf("trace_id=%s failed to write verify account response: %v", telemetry.TraceID(r.Context()), err)
+	}
 }
 
 // HandleVerifyLoginOtp validates the OTP and issues a JWT token on success.
@@ -173,7 +194,7 @@ func (h *UserHandler) HandleVerifyLoginOtp(w http.ResponseWriter, r *http.Reques
 	user, err := h.s.VerifyLoginOtp(r.Context(), &req)
 
 	if errors.Is(err, services.ErrOtpExpired) || errors.Is(err, services.ErrOtpInvalid) {
-		_ = respond.Unauthorized(w, "Invalid or expired OTP.")
+		_ = respond.Unauthorized(w, respond.ErrorMessage("Invalid or expired OTP."))
 		return
 	}
 
@@ -222,10 +243,10 @@ func (h *UserHandler) HandleResendOtp(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case errors.Is(err, services.ErrUserNotFound):
-		_ = respond.BadRequest(w, "Email not found.")
+		_ = respond.BadRequest(w, respond.ErrorMessage("Email not found."))
 		return
 	case errors.Is(err, services.ErrUserInactive):
-		_ = respond.Unauthorized(w, "User is inactive.")
+		_ = respond.Unauthorized(w, respond.ErrorMessage("User is inactive."))
 		return
 	case err != nil:
 		log.Printf("failed to resend otp: %v", err)
@@ -242,13 +263,13 @@ func (h *UserHandler) HandleResendOtp(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) HandleCheckEmail(w http.ResponseWriter, r *http.Request) {
 	email := r.URL.Query().Get("email")
 	if email == "" {
-		_ = respond.BadRequest(w, "Email is required")
+		_ = respond.BadRequest(w, respond.ErrorMessage("Email is required"))
 		return
 	}
 
 	// validate email format
 	if err := h.v.Var(email, "required,email"); err != nil {
-		_ = respond.BadRequest(w, "Invalid email")
+		_ = respond.BadRequest(w, respond.ErrorMessage("Invalid email"))
 		return
 	}
 

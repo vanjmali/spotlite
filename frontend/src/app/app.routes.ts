@@ -1,109 +1,67 @@
-import { Routes } from '@angular/router';
-import {
-  VerificationSuccessPage,
-  VerificationFailurePage,
-  CheckEmailPage,
-  LoginPage,
-  RegistrationPage,
-  ProfilePage,
-} from './pages';
+import { inject } from '@angular/core';
+import { CanMatchFn, Routes } from '@angular/router';
+import { CheckEmailPage, RegistrationPage, ProfilePage } from './pages';
 
 import { HomePage } from './pages/home-page';
-import { ForgotPasswordPage } from './pages/forgot-password-page/forgot-password-page';
 import { ResetPasswordPage } from './pages/reset-password-page/reset-password-page';
 import { AdminPage } from './pages/admin-page';
-import { CredentialsStep, OtpStep } from './pages/login-page/components';
-import {
-  PersonalInfoStep,
-  RegistrationCredentialsStep,
-} from './pages/registration-page/components';
+import { CredentialsPage } from './pages/login/credentials-page';
+import { OtpPage } from './pages/login/otp-page';
+import { VerifyPage } from './pages/register/verify-page';
 import { InboxPage } from './pages/inbox-page';
+import { LoginStore } from './pages/login/store';
+import { NotFoundPage } from './pages/not-found-page';
+import { AuthService } from './services/auth.service';
+
+const adminOnlyMatch: CanMatchFn = async () => {
+  const authService = inject(AuthService);
+
+  if (authService.isAdminSg()) {
+    return true;
+  }
+
+  const refreshed = await authService.refreshAccessToken();
+  if (!refreshed) {
+    return false;
+  }
+
+  return authService.isAdminSg();
+};
 
 export const routes: Routes = [
   {
     path: 'login',
-    component: LoginPage,
+    providers: [LoginStore],
     children: [
       {
-        path: 'credentials',
-        component: CredentialsStep,
+        path: '',
+        component: CredentialsPage,
+        data: { authTitle: 'Welcome back' },
       },
       {
         path: 'otp',
-        component: OtpStep,
+        component: OtpPage,
+        data: { authTitle: 'Verify your code' },
       },
       {
-        path: '',
-        redirectTo: 'credentials',
-        pathMatch: 'full',
+        path: 'reset',
+        component: ResetPasswordPage,
+        data: { authTitle: 'Reset your password' },
       },
     ],
+  },
+  {
+    path: 'register/verify',
+    component: VerifyPage,
+    data: { authTitle: 'Verify your email' },
   },
   {
     path: 'register',
     component: RegistrationPage,
-    children: [
-      {
-        path: 'personal-info',
-        component: PersonalInfoStep,
-      },
-      {
-        path: 'credentials',
-        component: RegistrationCredentialsStep,
-      },
-      {
-        path: '',
-        redirectTo: 'personal-info',
-        pathMatch: 'full',
-      },
-    ],
-  },
-  {
-    path: 'verification-success',
-    component: VerificationSuccessPage,
-  },
-  {
-    path: 'verification-failure',
-    component: VerificationFailurePage,
   },
   {
     path: 'check-email',
     component: CheckEmailPage,
-  },
-  {
-    path: 'forgot-password',
-    component: ForgotPasswordPage,
-  },
-  {
-    path: 'reset-password',
-    component: ResetPasswordPage,
-  },
-  {
-    path: 'home',
-    component: HomePage,
-    children: [
-      {
-        path: '',
-        loadComponent: () =>
-          import('./pages/home-page/components/artists-list/artists-list.component').then(
-            (m) => m.ArtistsListComponent
-          ),
-      },
-      {
-        path: 'artist/:id',
-        loadComponent: () =>
-          import('./pages/home-page/components/artist-details/artist-details.component').then(
-            (m) => m.ArtistDetailsComponent
-          ),
-      },
-      {
-        path: 'album/:id',
-        loadComponent: () =>
-          import('./pages/home-page/components/album-details/album-details.component').then(
-            (m) => m.AlbumDetailsComponent
-          ),
-      },
-    ],
   },
   {
     path: 'inbox',
@@ -116,6 +74,7 @@ export const routes: Routes = [
   {
     path: 'admin',
     component: AdminPage,
+    canMatch: [adminOnlyMatch],
     children: [
       {
         path: 'genres',
@@ -154,7 +113,33 @@ export const routes: Routes = [
   },
   {
     path: '',
-    redirectTo: 'home',
-    pathMatch: 'full',
+    component: HomePage,
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('./pages/home-page/components/artists-list/artists-list.component').then(
+            (m) => m.ArtistsListComponent
+          ),
+      },
+      {
+        path: 'artist/:id',
+        loadComponent: () =>
+          import('./pages/home-page/components/artist-details/artist-details.component').then(
+            (m) => m.ArtistDetailsComponent
+          ),
+      },
+      {
+        path: 'album/:id',
+        loadComponent: () =>
+          import('./pages/home-page/components/album-details/album-details.component').then(
+            (m) => m.AlbumDetailsComponent
+          ),
+      },
+    ],
+  },
+  {
+    path: '**',
+    component: NotFoundPage,
   },
 ];

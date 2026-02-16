@@ -12,6 +12,11 @@
     max-width: 800px;
   }
 
+  app-profile-success-callout {
+    width: 100%;
+    max-width: 800px;
+  }
+
   &__section-item {
     display: flex;
     align-items: center;
@@ -54,5 +59,17 @@
     color: $color-gray-400;
     font-size: 24px;
     flex-shrink: 0;
+  }
+
+  &__account-actions {
+    display: flex;
+    justify-content: flex-start;
+    padding: 8px 10px;
+  }
+
+  &__logout-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
   }
 }

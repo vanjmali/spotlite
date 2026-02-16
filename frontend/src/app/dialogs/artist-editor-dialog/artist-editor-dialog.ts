@@ -1,4 +1,14 @@
-import { Component, inject, input, output, signal, effect, computed } from '@angular/core';
+import {
+  Component,
+  inject,
+  input,
+  output,
+  signal,
+  computed,
+  ElementRef,
+  ViewChild,
+  HostListener,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -10,7 +20,10 @@ import {
 } from '../../shared';
 import { ArtistService, Artist } from '../../services/artist.service';
 import { SelectInputComponent, type SelectOption } from '@app/shared/components/input';
-import { GenreService } from '@app/services/genre.service';
+import { OptionsService } from '@app/shared/services/options.service';
+import { runOnOpen } from '@app/shared/utils/dialog';
+import { getHttpErrorMessage } from '@app/shared/utils/http-error';
+import { focusFirstFocusable } from '@app/shared/utils/focus';
 
 @Component({
   selector: 'app-artist-editor-dialog',
@@ -30,7 +43,7 @@ import { GenreService } from '@app/services/genre.service';
 })
 export class ArtistEditorDialogComponent {
   private readonly artistService = inject(ArtistService);
-  private readonly genreService = inject(GenreService);
+  private readonly optionsService = inject(OptionsService);
 
   // Inputs
   readonly artist = input<Artist | null>(null);
@@ -48,6 +61,8 @@ export class ArtistEditorDialogComponent {
 
   // UI State
   readonly isLoadingSg = signal(false);
+  @ViewChild('dialogContent')
+  private readonly dialogContentRef?: ElementRef<HTMLElement>;
   readonly errorSg = signal<string>('');
 
   // Computed
@@ -64,7 +79,7 @@ export class ArtistEditorDialogComponent {
 
   constructor() {
     // Populate form when artist input changes
-    effect(() => {
+    runOnOpen(this.isOpen, () => {
       const artist = this.artist();
       if (artist) {
         this.nameSg.set(artist.name);
@@ -77,18 +92,14 @@ export class ArtistEditorDialogComponent {
       }
       this.loadGenres();
       this.errorSg.set('');
+      setTimeout(() => focusFirstFocusable(this.dialogContentRef?.nativeElement ?? null), 0);
     });
   }
 
   private loadGenres(): void {
-    this.genreService.getGenres(1, 200).subscribe({
-      next: (response) => {
-        this.genreOptionsSg.set(
-          response.items.map((genre) => ({
-            label: genre.name,
-            value: genre.id,
-          }))
-        );
+    this.optionsService.loadGenres(200).subscribe({
+      next: (options) => {
+        this.genreOptionsSg.set(options);
       },
       error: (error) => {
         console.error('Failed to load genres:', error);
@@ -116,12 +127,15 @@ export class ArtistEditorDialogComponent {
       this.artistService.updateArtist(this.artist()!.id, payload).subscribe({
         next: () => {
           this.isLoadingSg.set(false);
+          this.optionsService.invalidateArtists();
           this.saved.emit();
           this.cancel();
         },
         error: (error) => {
           console.error('Failed to update artist:', error);
-          this.errorSg.set('Failed to update artist. Please try again.');
+          this.errorSg.set(
+            getHttpErrorMessage(error, 'Failed to update artist. Please try again.')
+          );
           this.isLoadingSg.set(false);
         },
       });
@@ -130,12 +144,15 @@ export class ArtistEditorDialogComponent {
       this.artistService.createArtist(payload).subscribe({
         next: () => {
           this.isLoadingSg.set(false);
+          this.optionsService.invalidateArtists();
           this.saved.emit();
           this.cancel();
         },
         error: (error) => {
           console.error('Failed to create artist:', error);
-          this.errorSg.set('Failed to create artist. Please try again.');
+          this.errorSg.set(
+            getHttpErrorMessage(error, 'Failed to create artist. Please try again.')
+          );
           this.isLoadingSg.set(false);
         },
       });
@@ -148,5 +165,12 @@ export class ArtistEditorDialogComponent {
     this.genreIdsSg.set([]);
     this.errorSg.set('');
     this.closed.emit();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  onDocumentKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Escape' || !this.isOpen()) return;
+    event.preventDefault();
+    this.cancel();
   }
 }

@@ -1,4 +1,10 @@
-<app-widget title="Manage Albums">
+<app-item-table
+  title="Manage Albums"
+  [isLoading]="isLoadingSg()"
+  [isEmpty]="!isLoadingSg() && albumsSg().length === 0"
+  emptyMessage="No albums found. Create one to get started!"
+  [showPagination]="!isLoadingSg() && totalSg() > 0"
+>
   <button
     actions
     class="albums-management__btn-add-circle"
@@ -10,91 +16,89 @@
     <mat-icon>add</mat-icon>
   </button>
 
-  <div content class="albums-management">
-    <!-- Loading State -->
-    @if (isLoadingSg()) {
-      <div class="albums-management__loading">
-        <p>Loading albums...</p>
-      </div>
-    }
-
-    <!-- Empty State -->
-    @if (!isLoadingSg() && albumsSg().length === 0) {
-      <div class="albums-management__empty">
-        <p>No albums found. Create one to get started!</p>
-      </div>
-    }
-
-    <!-- Albums Table -->
-    @if (!isLoadingSg() && albumsSg().length > 0) {
-      <div class="albums-management__table-wrapper">
-        <table class="albums-management__table">
-          <thead class="albums-management__table-head">
-            <tr>
-              <th class="albums-management__col-title">Title</th>
-              <th class="albums-management__col-release-date">Release Date</th>
-              <th class="albums-management__col-genres">Genres</th>
-              <th class="albums-management__col-artists">Artists</th>
-              <th class="albums-management__col-songs">Songs</th>
-              <th class="albums-management__col-actions">Actions</th>
-            </tr>
-          </thead>
-          <tbody class="albums-management__table-body">
-            @for (album of albumsSg(); track album.id) {
-              <tr class="albums-management__row">
-                <td class="albums-management__cell albums-management__cell--title">
-                  {{ album.title }}
-                </td>
-                <td class="albums-management__cell albums-management__cell--release-date">
-                  {{ formatDate(album.releaseDate) }}
-                </td>
-                <td class="albums-management__cell albums-management__cell--genres">
-                  <div class="albums-management__genre-list">
-                    @for (genre of album.genres; track genre.id) {
-                      <span class="albums-management__genre-tag">
-                        {{ genre.name }}
-                      </span>
-                    }
-                  </div>
-                </td>
-                <td class="albums-management__cell albums-management__cell--artists">
-                  <div class="albums-management__artist-list">
-                    @for (artist of album.artists; track artist.id) {
-                      <span class="albums-management__artist-tag">
-                        {{ artist.name }}
-                      </span>
-                    }
-                  </div>
-                </td>
-                <td class="albums-management__cell albums-management__cell--songs">
-                  <span class="albums-management__song-count">{{ album.songs.length }}</span>
-                </td>
-                <td class="albums-management__cell albums-management__cell--actions">
-                  <button
-                    class="albums-management__btn-action albums-management__btn-edit"
-                    (click)="onEdit(album)"
-                    title="Edit album"
-                    matTooltip="Edit album"
-                  >
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                  <button
-                    class="albums-management__btn-action albums-management__btn-songs"
-                    (click)="onManageSongs(album)"
-                    title="Manage songs"
-                    matTooltip="Manage songs"
-                  >
-                    <mat-icon>playlist_add</mat-icon>
-                  </button>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
+  <div table class="item-table__table-wrapper">
+    <table class="item-table__table albums-management__table">
+      <thead class="item-table__table-head">
+        <tr>
+          <th class="albums-management__col-title">Title</th>
+          <th class="albums-management__col-release-date">Release Date</th>
+          <th class="albums-management__col-genres">Genres</th>
+          <th class="albums-management__col-artists">Artists</th>
+          <th class="albums-management__col-songs">Songs</th>
+          <th class="albums-management__col-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody class="item-table__table-body">
+        @for (album of albumsSg(); track album.id) {
+          <tr class="item-table__row" (click)="onEdit(album)">
+            <td class="item-table__cell item-table__cell--title">
+              <button
+                class="item-table__title-link"
+                type="button"
+                (click)="$event.stopPropagation()"
+                title="Edit album"
+                matTooltip="Edit album"
+              >
+                {{ album.title }}
+              </button>
+            </td>
+            <td class="item-table__cell albums-management__cell--release-date">
+              {{ formatDate(album.releaseDate) }}
+            </td>
+            <td class="item-table__cell albums-management__cell--genres">
+              <div class="albums-management__genre-list">
+                @for (genre of album.genres; track genre.id) {
+                  <span class="albums-management__genre-tag">
+                    {{ genre.name }}
+                  </span>
+                }
+              </div>
+            </td>
+            <td class="item-table__cell albums-management__cell--artists">
+              <div class="albums-management__artist-list">
+                @for (artist of album.artists; track artist.id) {
+                  <span class="albums-management__artist-tag">
+                    {{ artist.name }}
+                  </span>
+                }
+              </div>
+            </td>
+            <td class="item-table__cell albums-management__cell--songs">
+              <span class="albums-management__song-count">{{ album.songs.length }}</span>
+            </td>
+            <td class="item-table__cell albums-management__cell--actions">
+              <button
+                class="item-table__btn-action item-table__btn-edit"
+                (click)="$event.stopPropagation(); onEdit(album)"
+                title="Edit album"
+                matTooltip="Edit album"
+              >
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button
+                class="item-table__btn-action item-table__btn-secondary"
+                (click)="$event.stopPropagation(); onManageSongs(album)"
+                title="Manage songs"
+                matTooltip="Manage songs"
+              >
+                <mat-icon>playlist_add</mat-icon>
+              </button>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
   </div>
-</app-widget>
+
+  <app-pagination
+    pagination
+    [page]="currentPageSg()"
+    [pageSize]="pageSizeSg()"
+    [total]="totalSg()"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPageSizeChange($event)"
+  />
+</app-item-table>
 
 <!-- Album Editor Dialog -->
 <app-album-editor-dialog

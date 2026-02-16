@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { WidgetComponent } from '@app/shared/components/widget';
+import { ItemTableComponent } from '@app/shared/components/item-table';
+import { PaginationComponent } from '@app/shared/components/pagination';
 import { GenreEditorDialogComponent } from '@app/dialogs/genre-editor-dialog';
 import { GenreService, Genre } from '@app/services/genre.service';
 
@@ -15,7 +16,8 @@ import { GenreService, Genre } from '@app/services/genre.service';
     MatIconModule,
     MatButtonModule,
     MatTooltipModule,
-    WidgetComponent,
+    ItemTableComponent,
+    PaginationComponent,
     GenreEditorDialogComponent,
   ],
   templateUrl: './genres-management.component.html',
@@ -28,6 +30,7 @@ export class GenresManagementComponent {
   readonly isLoadingSg = signal(false);
   readonly currentPageSg = signal(1);
   readonly pageSizeSg = signal(20);
+  readonly totalSg = signal(0);
   readonly isDialogOpenSg = signal(false);
   readonly selectedGenreSg = signal<Genre | null>(null);
 
@@ -42,6 +45,7 @@ export class GenresManagementComponent {
     this.genreService.getGenres(this.currentPageSg(), this.pageSizeSg()).subscribe({
       next: (response) => {
         this.genresSg.set(response.items || []);
+        this.totalSg.set(response.total ?? 0);
         this.isLoadingSg.set(false);
       },
       error: (error) => {
@@ -83,5 +87,14 @@ export class GenresManagementComponent {
     this.isDialogOpenSg.set(false);
     this.selectedGenreSg.set(null);
     this.loadGenres();
+  }
+
+  onPageChange(page: number): void {
+    this.currentPageSg.set(page);
+  }
+
+  onPageSizeChange(size: number): void {
+    this.pageSizeSg.set(size);
+    this.currentPageSg.set(1);
   }
 }

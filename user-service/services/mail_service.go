@@ -10,9 +10,9 @@ import (
 
 // MailConfig holds configuration needed by the mail service.
 type MailConfig struct {
-	VerificationEndpoint string
-	PasswordResetURL     string
-	MailFromAddress      string
+	VerificationURL  string
+	PasswordResetURL string
+	MailFromAddress  string
 }
 
 // MailSender defines the email operations required by UserService.
@@ -58,7 +58,7 @@ func (ms *MailService) SendAccountVerificationEmail(mailto string, token string)
 	}
 
 	// Render email template with verification URL
-	verificationURL := ms.config.VerificationEndpoint + "?token=" + url.QueryEscape(token)
+	verificationURL := ms.config.VerificationURL + "?token=" + url.QueryEscape(token)
 	emailBody, err := RenderVerificationEmail(verificationURL)
 	if err != nil {
 		log.Printf("failed to render verification email template: %v", err)

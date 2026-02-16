@@ -7,7 +7,15 @@
       }
     </label>
 
-    <div class="select-input__container" (click)="openDropdown()">
+    <div
+      class="select-input__container"
+      (click)="openDropdown()"
+      (keydown)="onContainerKeydown($event)"
+      tabindex="0"
+      role="combobox"
+      [attr.aria-expanded]="isOpenSg()"
+      #container
+    >
       <!-- Selected items or placeholder -->
       <div class="select-input__selected">
         @if (valueSg().length > 0) {
@@ -50,7 +58,13 @@
 
     <!-- Dropdown menu -->
     @if (isOpenSg()) {
-      <div class="select-input__dropdown">
+      <div
+        class="select-input__dropdown"
+        [ngStyle]="dropdownStyleSg()"
+        (keydown)="onDropdownKeydown($event)"
+        (keydown.escape)="closeDropdown(); $event.stopPropagation()"
+        #dropdown
+      >
         <div class="select-input__search-wrapper">
           <mat-icon class="select-input__search-icon">search</mat-icon>
           <input
@@ -59,7 +73,9 @@
             placeholder="Search"
             [(ngModel)]="searchQuerySg"
             (click)="$event.stopPropagation()"
+            (keydown.escape)="closeDropdown(); $event.stopPropagation()"
             autocomplete="off"
+            #searchInput
           />
         </div>
 
@@ -68,10 +84,14 @@
             <div class="select-input__no-options">No options available</div>
           } @else {
             @for (option of filteredOptionsSg(); track option.value) {
-              <label class="select-input__option">
+              <label
+                class="select-input__option"
+                [class.select-input__option--active]="$index === highlightedIndexSg()"
+              >
                 <input
-                  type="checkbox"
+                  [attr.type]="singleSg() ? 'radio' : 'checkbox'"
                   class="select-input__option-checkbox"
+                  [attr.name]="singleSg() ? groupId : null"
                   [checked]="isSelected(option.value)"
                   (change)="onOptionToggle(option.value)"
                 />

@@ -1,0 +1,11 @@
+<div class="profile-success-callout" role="status" aria-live="polite">
+  <p class="profile-success-callout__message">{{ messageSg() }}</p>
+  <button
+    class="profile-success-callout__close"
+    type="button"
+    aria-label="Dismiss message"
+    (click)="closed.emit()"
+  >
+    <mat-icon>close</mat-icon>
+  </button>
+</div>

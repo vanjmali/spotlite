@@ -1,12 +1,27 @@
-<div class="registration-page">
-  <img src="assets/images/spotlite-white.png" alt="Spotlite" class="registration-page__icon" />
-
-  <div class="registration-page__section">
-    <router-outlet />
-
-    <div class="registration-page__login">
-      <div class="registration-page__login-text">Already have account?</div>
-      <a routerLink="/login" class="link-primary">Login</a>
-    </div>
+<app-auth-layout
+  [title]="stepTitleSg()"
+  [showStepCount]="true"
+  [stepIndex]="stepIndexSg()"
+  [totalSteps]="totalSteps"
+  [back]="goBack.bind(this)"
+>
+  <div auth-body class="registration-page__body">
+    @if (step() === 'personal') {
+      <div class="registration-page__step" [@stepSlide]="animationParams()">
+        <app-registration-personal-info-step />
+      </div>
+    } @else if (step() === 'credentials') {
+      <div class="registration-page__step" [@stepSlide]="animationParams()">
+        <app-registration-credentials-step />
+      </div>
+    } @else if (step() === 'verify') {
+      <div class="registration-page__step" [@stepSlide]="animationParams()">
+        <app-auth-check-email />
+      </div>
+    } @else {
+      <div class="registration-page__step" [@stepSlide]="animationParams()">
+        <span>Unknown error occurred.</span>
+      </div>
+    }
   </div>
-</div>
+</app-auth-layout>

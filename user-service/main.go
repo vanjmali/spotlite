@@ -122,6 +122,10 @@ func createRepositories(ctx context.Context, mongo *mongodriver.Client) (
 	rtr := repositories.NewRefreshTokenRepository(name, "refresh_tokens", mongo)
 	prr := repositories.NewPasswordRecoveryRepository(name, "password_recovery_tokens", mongo)
 
+	if err := ur.EnsureUserIndexes(ctx); err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to ensure user indexes: %w", err)
+	}
+
 	if err := rtr.EnsureRefreshIndexes(ctx); err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to ensure refresh token indexes: %w", err)
 	}
@@ -140,9 +144,9 @@ func createServices(
 	*services.PasswordRecoveryService,
 ) {
 	mailCfg := services.MailConfig{
-		VerificationEndpoint: utils.MustGetEnv("SRV_USER_VERIFICATION_ENDPOINT"),
-		PasswordResetURL:     utils.MustGetEnv("SRV_USER_PASSWORD_RESET_URL"),
-		MailFromAddress:      utils.MustGetEnv("MAIL_FROM"),
+		VerificationURL:  utils.MustGetEnv("SRV_USER_VERIFY_URL"),
+		PasswordResetURL: utils.MustGetEnv("SRV_USER_PASSWORD_RESET_URL"),
+		MailFromAddress:  utils.MustGetEnv("MAIL_FROM"),
 	}
 
 	ms := services.InitMailingService(mail, mailCfg)
@@ -159,10 +163,7 @@ func createHandlers(
 	rts *services.RefreshTokenService,
 	prs *services.PasswordRecoveryService,
 ) http.Handler {
-	uh := handlers.NewUserHandler(*us, *v, *rts, handlers.UserHandlerConfig{
-		VerificationSuccessUrl: utils.MustGetEnv("SRV_USER_VERIFICATION_SUCCESS_URL"),
-		VerificationFailureUrl: utils.MustGetEnv("SRV_USER_VERIFICATION_FAILURE_URL"),
-	})
+	uh := handlers.NewUserHandler(*us, *v, *rts)
 
 	rth := handlers.NewRefreshTokenHandler(*rts, *us, *v)
 	prh := handlers.NewPasswordRecoveryHandler(*prs, *v)

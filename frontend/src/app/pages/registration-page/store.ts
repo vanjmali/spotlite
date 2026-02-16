@@ -1,15 +1,15 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { Router } from '@angular/router';
-import { AuthService } from '../../services/auth.service';
 import { VALIDATION_MESSAGES } from '@app/shared';
+import { AuthService } from '../../services/auth.service';
+import type { RegistrationStep } from './registration-page';
 
 @Injectable()
 export class RegistrationStore {
   private _auth = inject(AuthService);
-  private _router = inject(Router);
 
   public readonly loadingSg = signal(false);
   public readonly errorSg = signal<string | null>(null);
+  public readonly stepSg = signal<RegistrationStep>('personal');
 
   // Store personal info for use across steps
   public readonly firstNameSg = signal<string>('');
@@ -19,12 +19,26 @@ export class RegistrationStore {
   // Store credentials
   public readonly usernameSg = signal<string>('');
   public readonly passwordSg = signal<string>('');
+  public readonly confirmPasswordSg = signal<string>('');
 
   public clearError(): void {
     this.errorSg.set(null);
   }
 
-  public async savePersonalInfo(firstName: string, lastName: string, email: string): Promise<void> {
+  public setStep(step: RegistrationStep): void {
+    this.stepSg.set(step);
+  }
+
+  public async savePersonalInfo(
+    firstName: string,
+    lastName: string,
+    email: string
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    errorField?: 'email';
+    fields?: Record<string, string>;
+  }> {
     this.errorSg.set(null);
     this.loadingSg.set(true);
 
@@ -33,19 +47,26 @@ export class RegistrationStore {
     this.loadingSg.set(false);
 
     if (emailExists) {
-      this.errorSg.set(VALIDATION_MESSAGES.EMAIL_IN_USE);
-      return;
+      return {
+        success: false,
+        error: VALIDATION_MESSAGES.EMAIL_IN_USE,
+        errorField: 'email',
+      };
     }
 
     this.firstNameSg.set(firstName);
     this.lastNameSg.set(lastName);
     this.emailSg.set(email);
 
-    // Navigate to credentials step
-    this._router.navigate(['/register/credentials']);
+    this.stepSg.set('credentials');
+
+    return { success: true };
   }
 
-  public async saveCredentials(username: string, password: string): Promise<void> {
+  public async saveCredentials(
+    username: string,
+    password: string
+  ): Promise<{ success: boolean; error?: string; code?: string; fields?: Record<string, string> }> {
     this.errorSg.set(null);
     this.loadingSg.set(true);
 
@@ -60,14 +81,19 @@ export class RegistrationStore {
     this.loadingSg.set(false);
 
     if (!result.success) {
-      this.errorSg.set(result.error || VALIDATION_MESSAGES.REGISTRATION_FAILED);
-      return;
+      return {
+        success: false,
+        error: result.error || VALIDATION_MESSAGES.REGISTRATION_FAILED,
+        code: result.code,
+        fields: result.fields,
+      };
     }
 
     this.usernameSg.set(username);
     this.passwordSg.set(password);
+    this.confirmPasswordSg.set('');
+    this.stepSg.set('verify');
 
-    // Navigate to check-email page to complete registration via email confirmation
-    this._router.navigate(['/check-email']);
+    return { success: true };
   }
 }

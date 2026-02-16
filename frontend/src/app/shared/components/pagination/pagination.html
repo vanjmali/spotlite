@@ -1,0 +1,57 @@
+<div class="pagination" [class.pagination--disabled]="disabledSg()">
+  <div class="pagination__summary">
+    Showing {{ rangeStartSg() }}–{{ rangeEndSg() }} of {{ totalSg() }}
+  </div>
+
+  <div class="pagination__controls">
+    <button
+      type="button"
+      class="pagination__btn"
+      (click)="goPrev()"
+      [disabled]="disabledSg() || pageSg() <= 1"
+    >
+      Prev
+    </button>
+
+    <div class="pagination__pages">
+      @for (page of pagesSg(); track $index) {
+        @if (isEllipsis(page)) {
+          <span class="pagination__ellipsis">…</span>
+        } @else {
+          <button
+            type="button"
+            class="pagination__page"
+            [class.pagination__page--active]="page === pageSg()"
+            (click)="goToPage(page)"
+            [disabled]="disabledSg()"
+          >
+            {{ page }}
+          </button>
+        }
+      }
+    </div>
+
+    <button
+      type="button"
+      class="pagination__btn"
+      (click)="goNext()"
+      [disabled]="disabledSg() || pageSg() >= totalPagesSg()"
+    >
+      Next
+    </button>
+  </div>
+
+  <label class="pagination__size">
+    <span class="pagination__size-label">Rows</span>
+    <select
+      class="pagination__size-select"
+      [value]="pageSizeSg()"
+      (change)="onPageSizeChange($event)"
+      [disabled]="disabledSg()"
+    >
+      @for (size of pageSizeOptionsSg(); track size) {
+        <option [value]="size">{{ size }}</option>
+      }
+    </select>
+  </label>
+</div>

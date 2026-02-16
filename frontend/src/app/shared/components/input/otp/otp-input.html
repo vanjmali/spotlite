@@ -19,6 +19,7 @@
         [value]="digitsSg()[$index]"
         (input)="onDigitChange($index, $any($event.target).value)"
         (keydown)="onKeyDown($index, $event)"
+        (paste)="onPaste($index, $event)"
         (click)="onBoxClick($event)"
       />
     }
