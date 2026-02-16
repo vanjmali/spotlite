@@ -1,0 +1,70 @@
+@if (playback.currentTrackSg(); as track) {
+  <section class="playback-bar">
+    <div class="playback-bar__left">
+      <button type="button" class="playback-bar__control" (click)="playback.previous()">
+        <mat-icon>skip_previous</mat-icon>
+      </button>
+      <button type="button" class="playback-bar__control playback-bar__control--play" (click)="togglePlayPause()">
+        <mat-icon>{{ playback.isPlayingSg() ? 'pause' : 'play_arrow' }}</mat-icon>
+      </button>
+      <button type="button" class="playback-bar__control" (click)="playback.next()">
+        <mat-icon>skip_next</mat-icon>
+      </button>
+    </div>
+
+    <div class="playback-bar__center">
+      <div class="playback-bar__meta">
+        <a class="playback-bar__title" [routerLink]="['/albums', track.albumId]">{{ track.title }}</a>
+        <div class="playback-bar__subline">
+          @for (artist of track.artists; track artist.id) {
+            <a class="playback-bar__entity-link" [routerLink]="['/artists', artist.id]">{{ artist.name }}</a>
+          }
+          <span class="playback-bar__separator">•</span>
+          <a class="playback-bar__entity-link" [routerLink]="['/albums', track.albumId]">{{
+            track.albumTitle
+          }}</a>
+        </div>
+      </div>
+
+      <div class="playback-bar__timeline">
+        <span class="playback-bar__time">{{ formatTime(playback.currentTimeSg()) }}</span>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          [value]="playback.progressPercentSg()"
+          (input)="onSeek($event)"
+        />
+        <span class="playback-bar__time">{{ formatTime(playback.durationSg()) }}</span>
+      </div>
+    </div>
+
+    <div class="playback-bar__right">
+      <div class="playback-bar__rating">
+        @for (star of stars; track star) {
+          <button
+            type="button"
+            class="playback-bar__star"
+            [class.playback-bar__star--active]="star <= playback.currentRatingSg()"
+            (click)="rate(star)"
+            aria-label="Rate {{ star }} star"
+          >
+            ★
+          </button>
+        }
+      </div>
+
+      <div class="playback-bar__volume">
+        <mat-icon>volume_up</mat-icon>
+        <input
+          type="range"
+          min="0"
+          max="100"
+          [value]="playback.volumeSg() * 100"
+          (input)="onVolume($event)"
+        />
+      </div>
+    </div>
+  </section>
+}
+

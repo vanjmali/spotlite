@@ -1,0 +1,26 @@
+@if (playback.currentAlbumSg(); as album) {
+  <aside class="now-playing">
+    <app-cover-art class="now-playing__cover" [name]="album.title" [square]="true" />
+
+    <a class="now-playing__album-title" [routerLink]="['/albums', album.id]">{{ album.title }}</a>
+    @if (album.artists[0]) {
+      <a class="now-playing__album-artist" [routerLink]="['/artists', album.artists[0].id]">
+        {{ album.artists[0].name }}
+      </a>
+    }
+
+    <div class="now-playing__list">
+      @for (track of playback.queueSg(); track track.id) {
+        <article class="now-playing__song" [class.now-playing__song--active]="track.id === playback.currentTrackSg()?.id">
+          <span class="now-playing__song-index">{{ $index + 1 }}</span>
+          <button type="button" class="now-playing__song-play" (click)="playback.playFromQueue($index)">
+            ▶
+          </button>
+          <a class="now-playing__song-title" [routerLink]="['/albums', track.albumId]">
+            {{ track.title }}
+          </a>
+        </article>
+      }
+    </div>
+  </aside>
+}

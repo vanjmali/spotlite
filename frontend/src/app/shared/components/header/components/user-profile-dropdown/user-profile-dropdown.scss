@@ -49,38 +49,19 @@
   }
 
   &__avatar {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    position: relative;
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background-color: $color-gray-700;
-    border: 3px solid $color-gray-700;
+    background: transparent;
+    border: 2px solid $color-gray-700;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition:
+      transform 0.2s ease,
+      border-color 0.2s ease;
     padding: 0;
-
-    &::before {
-      content: '';
-      position: absolute;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background-color: $color-warning-dark;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    span {
-      position: relative;
-      z-index: 1;
-      color: $color-white;
-      font-weight: 600;
-      font-size: 14px;
-    }
 
     &:hover {
       transform: scale(1.08);
@@ -92,6 +73,10 @@
 
     &--active {
       border-color: $color-white;
+    }
+
+    app-cover-art {
+      border-radius: 50%;
     }
   }
 }

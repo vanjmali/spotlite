@@ -1,0 +1,126 @@
+@use 'variables/colors' as *;
+@use 'mixins' as m;
+
+.search-results {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 20px 12px 36px;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+
+  &__header {
+    p {
+      margin-top: 6px;
+    }
+  }
+
+  &__section {
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid $color-border-primary;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 14px;
+    padding: 14px;
+  }
+
+  &__artist-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
+  }
+
+  &__artist-card,
+  &__album-card {
+    border: 1px solid $color-border-primary;
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    text-decoration: none;
+
+    &:hover {
+      border-color: $color-primary;
+      background: $color-primary-transparent-10;
+    }
+  }
+
+  &__album-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+  }
+
+  &__album-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  &__avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: $color-white;
+    font-weight: 700;
+    flex-shrink: 0;
+
+    &--square {
+      width: 100%;
+      border-radius: 10px;
+      aspect-ratio: 1 / 1;
+      font-size: 28px;
+    }
+  }
+
+  &__artist-name,
+  &__album-title,
+  &__song-title {
+    color: $color-text-primary;
+    font-weight: 600;
+  }
+
+  &__album-subtitle,
+  &__song-meta {
+    color: $color-text-secondary;
+    font-size: 12px;
+  }
+
+  &__song-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__song-item {
+    border-bottom: 1px solid $color-border-primary;
+    padding-bottom: 8px;
+  }
+
+  &__genre-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  &__genre-chip {
+    border: 1px solid $color-border-primary;
+    border-radius: 999px;
+    padding: 6px 10px;
+    color: $color-text-secondary;
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  &__empty {
+    border: 1px dashed $color-border-primary;
+    border-radius: 12px;
+    padding: 22px;
+    text-align: center;
+    color: $color-text-secondary;
+  }
+}

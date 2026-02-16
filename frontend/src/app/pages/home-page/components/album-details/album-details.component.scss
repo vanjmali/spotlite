@@ -1,12 +1,22 @@
 @use 'variables/colors' as *;
 
+:host {
+  display: block;
+  width: 100%;
+}
+
 .album-details {
-  padding: 32px 24px;
+  padding: 40px 30px 56px;
   display: flex;
   flex-direction: column;
   gap: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+
+  app-widget {
+    display: block;
+    width: 100%;
+  }
 
   &__back-button {
     display: flex;
@@ -53,6 +63,19 @@
   &__header {
     display: flex;
     gap: 2rem;
+  }
+
+  &__cover {
+    width: 180px;
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: $color-white;
+    font-size: 48px;
+    font-weight: 700;
+    flex-shrink: 0;
   }
 
   &__info {
@@ -109,6 +132,25 @@
     border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 500;
+    text-decoration: none;
+
+    &:hover {
+      color: $color-primary-light;
+      text-decoration: underline;
+    }
+  }
+
+  &__play-all {
+    border: 1px solid rgba($color-primary, 0.5);
+    border-radius: 999px;
+    width: fit-content;
+    padding: 8px 14px;
+    color: $color-primary-light;
+    background: rgba($color-primary, 0.15);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
   }
 
   &__songs {
@@ -127,8 +169,12 @@
     gap: 1rem;
     padding: 1rem;
     border-radius: 0.375rem;
+    border: none;
+    width: 100%;
+    text-align: left;
     background-color: rgba($color-gray-900, 0.5);
     transition: background-color 0.2s ease;
+    cursor: pointer;
 
     &:hover {
       background-color: rgba($color-primary, 0.1);
@@ -182,5 +228,11 @@
     color: $color-primary;
     border-radius: 4px;
     font-weight: 500;
+  }
+}
+
+@media (max-width: 800px) {
+  .album-details {
+    padding: 26px 16px 40px;
   }
 }

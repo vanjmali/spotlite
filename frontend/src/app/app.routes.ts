@@ -110,18 +110,33 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'artist/:id',
+        path: 'artists/:id',
         loadComponent: () =>
           import('./pages/home-page/components/artist-details/artist-details.component').then(
             (m) => m.ArtistDetailsComponent
           ),
       },
       {
-        path: 'album/:id',
+        path: 'albums/:id',
         loadComponent: () =>
           import('./pages/home-page/components/album-details/album-details.component').then(
             (m) => m.AlbumDetailsComponent
           ),
+      },
+      {
+        path: 'search',
+        loadComponent: () =>
+          import('./pages/home-page/components/search-results/search-results.component').then(
+            (m) => m.SearchResultsComponent
+          ),
+      },
+      {
+        path: 'artist/:id',
+        redirectTo: 'artists/:id',
+      },
+      {
+        path: 'album/:id',
+        redirectTo: 'albums/:id',
       },
     ],
   },

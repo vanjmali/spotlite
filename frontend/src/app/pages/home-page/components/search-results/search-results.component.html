@@ -1,0 +1,71 @@
+<section class="search-results">
+  <header class="search-results__header">
+    <h1>Search</h1>
+    <p>Results for: <strong>{{ querySg() || '...' }}</strong></p>
+  </header>
+
+  @if (isLoadingSg()) {
+    <p class="search-results__empty">Searching...</p>
+  } @else if (
+    resultsSg().songs.length === 0 &&
+    resultsSg().artists.length === 0 &&
+    resultsSg().albums.length === 0 &&
+    resultsSg().genres.length === 0
+  ) {
+    <p class="search-results__empty">No content found.</p>
+  } @else {
+    @if (resultsSg().artists.length > 0) {
+      <section class="search-results__section">
+        <h2>Artists</h2>
+        <div class="search-results__artist-list">
+          @for (artist of resultsSg().artists; track artist.id) {
+            <a class="search-results__artist-card" [routerLink]="['/artists', artist.id]">
+              <app-cover-art class="search-results__avatar" [name]="artist.name" />
+              <span class="search-results__artist-name">{{ artist.name }}</span>
+            </a>
+          }
+        </div>
+      </section>
+    }
+
+    @if (resultsSg().albums.length > 0) {
+      <section class="search-results__section">
+        <h2>Albums</h2>
+        <div class="search-results__album-grid">
+          @for (album of resultsSg().albums; track album.id) {
+            <a class="search-results__album-card" [routerLink]="['/albums', album.id]">
+              <app-cover-art class="search-results__avatar search-results__avatar--square" [name]="album.title" [square]="true" />
+              <span class="search-results__album-title">{{ album.title }}</span>
+              <span class="search-results__album-subtitle">{{ artistNames(album.artists) }}</span>
+            </a>
+          }
+        </div>
+      </section>
+    }
+
+    @if (resultsSg().songs.length > 0) {
+      <section class="search-results__section">
+        <h2>Songs</h2>
+        <div class="search-results__song-list">
+          @for (song of resultsSg().songs; track song.id) {
+            <article class="search-results__song-item">
+              <span class="search-results__song-title">{{ song.title }}</span>
+              <span class="search-results__song-meta">{{ artistNames(song.artists) }}</span>
+            </article>
+          }
+        </div>
+      </section>
+    }
+
+    @if (resultsSg().genres.length > 0) {
+      <section class="search-results__section">
+        <h2>Genres</h2>
+        <div class="search-results__genre-list">
+          @for (genre of resultsSg().genres; track genre.id) {
+            <span class="search-results__genre-chip">{{ genre.name }}</span>
+          }
+        </div>
+      </section>
+    }
+  }
+</section>

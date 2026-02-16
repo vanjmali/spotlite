@@ -30,6 +30,6 @@
     [attr.aria-label]="'Profile settings for ' + (authService.currentEmailSg() || 'user')"
     type="button"
   >
-    <span>{{ authService.profileInitialSg() }}</span>
+    <app-cover-art [name]="profileCoverName()" [size]="34" [fontSize]="12" [pattern]="false" />
   </button>
 </div>

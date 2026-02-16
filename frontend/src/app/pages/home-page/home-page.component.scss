@@ -1,1 +1,21 @@
 @use 'variables/colors' as *;
+
+:host {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.home-page {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100%;
+  padding: 12px 0 18px;
+  box-sizing: border-box;
+
+  > * {
+    width: 100%;
+  }
+}

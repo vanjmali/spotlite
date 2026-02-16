@@ -13,11 +13,7 @@
     <app-widget [title]="artistSg()!.name">
       <div content class="artist-details__widget-content">
         <div class="artist-details__header">
-          <div class="artist-details__image">
-            <span class="artist-details__initial">{{
-              artistSg()!.name.charAt(0).toUpperCase()
-            }}</span>
-          </div>
+          <app-cover-art class="artist-details__image" [name]="artistSg()!.name" [size]="150" [fontSize]="62" />
           <div class="artist-details__info">
             @if (artistSg()!.genres && artistSg()!.genres.length > 0) {
               <div class="artist-details__genres">
@@ -45,6 +41,13 @@
               <div class="artist-details__album-card" (click)="onAlbumClick(album)">
                 <div class="artist-details__album-header">
                   <h3 class="artist-details__album-title">{{ album.title }}</h3>
+                  <button
+                    type="button"
+                    class="artist-details__album-play"
+                    (click)="$event.stopPropagation(); playAlbum(album)"
+                  >
+                    <mat-icon>play_arrow</mat-icon>
+                  </button>
                 </div>
                 <div class="artist-details__album-content">
                   <p class="artist-details__album-date">

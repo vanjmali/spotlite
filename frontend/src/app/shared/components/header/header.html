@@ -10,7 +10,35 @@
 
   <!-- Center section -->
   <div class="header__center">
-    <ng-content select="[center]"></ng-content>
+    <div class="header__search" (keydown.enter)="submitSearch()">
+      <mat-icon class="header__search-icon">search</mat-icon>
+      <input
+        type="text"
+        [formControl]="searchControl"
+        placeholder="Search songs, artists, albums, genres"
+        (focus)="onSearchFocus()"
+        (blur)="onSearchBlur()"
+      />
+
+      @if (suggestionsOpenSg()) {
+        <div class="header__search-dropdown">
+          @if (isSearchingSg()) {
+            <p class="header__search-empty">Searching...</p>
+          } @else if (suggestionsSg().length === 0) {
+            <p class="header__search-empty">No results</p>
+          } @else {
+            @for (suggestion of suggestionsSg(); track suggestion.type + ':' + suggestion.id) {
+              <button type="button" class="header__search-item" (mousedown)="openSuggestion(suggestion)">
+                <span class="header__search-item-title">{{ suggestion.label }}</span>
+                <span class="header__search-item-subtitle"
+                  >{{ labelForType(suggestion.type) }} · {{ suggestion.subtitle }}</span
+                >
+              </button>
+            }
+          }
+        </div>
+      }
+    </div>
   </div>
 
   <!-- Actions section (right) -->

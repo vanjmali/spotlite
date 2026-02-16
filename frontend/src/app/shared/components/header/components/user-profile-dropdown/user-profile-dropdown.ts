@@ -4,11 +4,12 @@ import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '@app/services/auth.service';
 import { NotificationService } from '@app/services/notification.service';
+import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 
 @Component({
   selector: 'app-user-profile-dropdown',
   standalone: true,
-  imports: [CommonModule, MatIconModule],
+  imports: [CommonModule, MatIconModule, CoverArtComponent],
   templateUrl: './user-profile-dropdown.html',
   styleUrls: ['./user-profile-dropdown.scss'],
 })
@@ -53,5 +54,9 @@ export class UserProfileDropdownComponent {
 
   isProfileActive(): boolean {
     return this.router.url.startsWith('/profile');
+  }
+
+  profileCoverName(): string {
+    return this.authService.currentEmailSg() || 'Spotlite User';
   }
 }

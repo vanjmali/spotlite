@@ -1,14 +1,22 @@
 @use 'mixins' as m;
 @use 'variables/colors' as *;
 
+:host {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
 .page {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
   background-color: $color-bg-primary;
 
   app-header,
-  app-site-footer {
+  app-site-footer,
+  app-playback-bar {
     display: block;
     width: 100%;
   }
@@ -21,15 +29,16 @@
   &__main {
     display: flex;
     flex: 1;
-    overflow: hidden;
+    width: 100%;
     min-height: 0;
     gap: 12px;
-    padding: 12px;
-    padding-bottom: 0;
+    padding: 0 12px;
+    position: relative;
   }
 
   &__aside,
-  &__content {
+  &__content,
+  &__right {
     overflow-y: auto;
     min-height: 0;
     box-sizing: border-box;
@@ -44,9 +53,34 @@
 
   &__content {
     flex: 1;
+    display: flex;
+    width: 100%;
+    min-width: 0;
+  }
+
+  &__right {
+    width: 280px;
+    position: absolute;
+    top: 0;
+    right: 12px;
+    bottom: 0;
+    z-index: 3;
+    pointer-events: auto;
+  }
+
+  &__player {
+    flex-shrink: 0;
   }
 
   &__footer {
     flex-shrink: 0;
+  }
+}
+
+@media (max-width: 1100px) {
+  .page {
+    &__right {
+      display: none;
+    }
   }
 }

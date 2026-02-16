@@ -9,7 +9,19 @@
     <main class="page__content">
       <ng-content select="[content]"></ng-content>
     </main>
+
+    @if (authService.isAuthenticatedSg()) {
+      <aside class="page__right">
+        <app-now-playing-sidebar />
+      </aside>
+    }
   </div>
+
+  @if (authService.isAuthenticatedSg()) {
+    <div class="page__player">
+      <app-playback-bar />
+    </div>
+  }
 
   <footer class="page__footer">
     <app-site-footer />

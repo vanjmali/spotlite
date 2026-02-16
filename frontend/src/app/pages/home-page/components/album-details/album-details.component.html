@@ -13,6 +13,7 @@
     <app-widget [title]="albumSg()!.title">
       <div content class="album-details__widget-content">
         <div class="album-details__header">
+          <app-cover-art class="album-details__cover" [name]="albumSg()!.title" [square]="true" />
           <div class="album-details__info">
             <p class="album-details__release-date">
               Released: {{ formatDate(albumSg()!.releaseDate) }}
@@ -26,10 +27,16 @@
               <strong>Artists:</strong>
               <div class="album-details__artist-list">
                 @for (artist of albumSg()!.artists; track artist.id) {
-                  <span class="album-details__artist-tag">{{ artist.name }}</span>
+                  <a class="album-details__artist-tag" [routerLink]="['/artists', artist.id]">
+                    {{ artist.name }}
+                  </a>
                 }
               </div>
             </div>
+            <button type="button" class="album-details__play-all" (click)="playAlbum()">
+              <mat-icon>play_arrow</mat-icon>
+              Play album
+            </button>
           </div>
         </div>
       </div>
@@ -43,7 +50,7 @@
         } @else {
           <div class="album-details__songs-list">
             @for (song of albumSg()!.songs; track song.id) {
-              <div class="album-details__song-item">
+              <button type="button" class="album-details__song-item" (click)="playSong($index)">
                 <div class="album-details__song-index">{{ $index + 1 }}</div>
                 <div class="album-details__song-info">
                   <p class="album-details__song-title">{{ song.title }}</p>
@@ -60,7 +67,7 @@
                     }
                   </div>
                 </div>
-              </div>
+              </button>
             }
           </div>
         }

@@ -1,21 +1,24 @@
 import { Component, inject, signal, effect } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { WidgetComponent } from '@app/shared/components/widget/widget.component';
 import { AlbumService, type Album } from '../../../../services/album.service';
+import { RouterLink } from '@angular/router';
+import { PlaybackService } from '@app/services/playback.service';
+import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 
 @Component({
   selector: 'app-album-details',
   standalone: true,
-  imports: [CommonModule, MatIconModule, WidgetComponent],
+  imports: [CommonModule, MatIconModule, WidgetComponent, RouterLink, CoverArtComponent],
   templateUrl: './album-details.component.html',
   styleUrl: './album-details.component.scss',
 })
 export class AlbumDetailsComponent {
   private readonly route = inject(ActivatedRoute);
-  private readonly router = inject(Router);
   private readonly albumService = inject(AlbumService);
+  private readonly playback = inject(PlaybackService);
 
   readonly albumSg = signal<Album | null>(null);
   readonly isLoadingSg = signal(false);
@@ -47,8 +50,21 @@ export class AlbumDetailsComponent {
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
-  // TODO: implement to go page back instead of home
-  // goBack(): void {
-  //   this.router.navigate(['/']);
-  // }
+  playAlbum(): void {
+    const album = this.albumSg();
+    if (!album) {
+      return;
+    }
+
+    this.playback.playAlbum(album);
+  }
+
+  playSong(index: number): void {
+    const album = this.albumSg();
+    if (!album || index < 0 || index >= (album.songs?.length ?? 0)) {
+      return;
+    }
+
+    this.playback.playAlbum(album, album.songs[index].id);
+  }
 }

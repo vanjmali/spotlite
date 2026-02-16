@@ -1,0 +1,69 @@
+@use 'variables/colors' as *;
+
+:host {
+  display: block;
+}
+
+.cover-art {
+  position: relative;
+  overflow: hidden;
+  width: var(--cover-size, 60px);
+  height: var(--cover-size, 60px);
+  container-type: size;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: $color-white;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+
+  &--square {
+    border-radius: 10px;
+    width: var(--cover-size, 100%);
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+
+  &__pattern {
+    position: absolute;
+    inset: -16%;
+    transform: rotate(var(--cover-angle, 0deg));
+    opacity: 0.2;
+    display: block;
+    pointer-events: none;
+
+    mat-icon {
+      position: absolute;
+      font-size: clamp(16px, 42cqi, 86px);
+      width: clamp(16px, 42cqi, 86px);
+      height: clamp(16px, 42cqi, 86px);
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    mat-icon:nth-child(1) {
+      top: 8%;
+      left: 10%;
+    }
+
+    mat-icon:nth-child(2) {
+      top: 34%;
+      right: 6%;
+    }
+
+    mat-icon:nth-child(3) {
+      bottom: 6%;
+      left: 24%;
+    }
+  }
+
+  &__initials {
+    position: relative;
+    z-index: 1;
+    font-weight: 700;
+    font-size: var(--cover-font-size, 20px);
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  }
+}

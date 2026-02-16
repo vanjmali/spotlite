@@ -1,22 +1,71 @@
-<app-widget title="Artists">
-  <div content class="artists-list">
-    @if (isLoadingSg()) {
-      <p class="artists-list__loading">Loading artists...</p>
-    } @else if (artistsSg().length === 0) {
-      <p class="artists-list__empty">No artists available</p>
-    } @else {
-      <div class="artists-list__grid">
-        @for (artist of artistsSg(); track artist.id) {
-          <div class="artists-list__artist-card" (click)="selectArtist(artist)">
-            <div class="artists-list__artist-image">
-              <span class="artists-list__artist-initial">{{
-                artist.name.charAt(0).toUpperCase()
+<section class="recommendations">
+  <header class="recommendations__hero">
+    <h1>Made for You</h1>
+    <p>Fresh picks based on your Spotlite activity.</p>
+  </header>
+
+  @if (isLoadingSg()) {
+    <p class="recommendations__empty">Loading recommendations...</p>
+  } @else {
+    <section class="recommendations__section">
+      <div class="recommendations__section-header">
+        <h2>Top artists for you</h2>
+      </div>
+      <div class="recommendations__artists">
+        @for (artist of recommendedArtistsSg(); track artist.id) {
+          <a class="recommendations__artist-card" [routerLink]="['/artists', artist.id]">
+            <app-cover-art class="recommendations__avatar" [name]="artist.name" />
+            <div class="recommendations__artist-meta">
+              <span class="recommendations__artist-name">{{ artist.name }}</span>
+              <span class="recommendations__artist-desc">{{
+                shortDescription(artist.description || 'No artist description available.', 120)
               }}</span>
             </div>
-            <h3 class="artists-list__artist-name">{{ artist.name }}</h3>
-          </div>
+          </a>
         }
       </div>
-    }
-  </div>
-</app-widget>
+    </section>
+
+    <section class="recommendations__section">
+      <div class="recommendations__section-header">
+        <h2>Albums to play next</h2>
+      </div>
+      <div class="recommendations__albums">
+        @for (album of recommendedAlbumsSg(); track album.id) {
+          <a class="recommendations__album-card" [routerLink]="['/albums', album.id]">
+            <app-cover-art class="recommendations__avatar recommendations__avatar--square" [name]="album.title" [square]="true" />
+            <span class="recommendations__album-title">{{ album.title }}</span>
+            <span class="recommendations__album-artists">{{ artistNames(album.artists) }}</span>
+          </a>
+        }
+      </div>
+    </section>
+
+    <section class="recommendations__section">
+      <div class="recommendations__section-header">
+        <h2>Check out new genres!</h2>
+      </div>
+      <div class="recommendations__genres">
+        @for (genre of recommendedGenresSg(); track genre.id) {
+          <button type="button" class="recommendations__genre-chip" (click)="openGenre(genre)">
+            {{ genre.name }}
+          </button>
+        }
+      </div>
+    </section>
+
+    <section class="recommendations__section">
+      <div class="recommendations__section-header">
+        <h2>Quick play</h2>
+      </div>
+      <div class="recommendations__songs">
+        @for (song of recommendedSongsSg(); track song.id) {
+          <button type="button" class="recommendations__song" (click)="playSong(song)">
+            <span class="recommendations__song-title">{{ song.title }}</span>
+            <span class="recommendations__song-artists">{{ artistNames(song.artists) }}</span>
+          </button>
+        }
+      </div>
+    </section>
+  }
+</section>
