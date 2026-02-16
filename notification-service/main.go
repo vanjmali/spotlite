@@ -38,7 +38,11 @@ var config = server.ServerRunConfiguration{
 		b := infrastructure.NewBroker()
 		go b.Listen()
 
-		_ = jsc.EnsureStream(ctx, events.SUBSCRIPTIONS_STREAM, []string{events.SUBJECT_SUBSCRIBER_BATCH})
+		err = jsc.EnsureStream(ctx, events.SUBSCRIPTIONS_STREAM, []string{events.SUBJECT_SUBSCRIBER_BATCH})
+		if err != nil {
+			err = fmt.Errorf("failed to ensure NATS stream: %w", err)
+			return h, shutdown, err
+		}
 
 		nr := createRepositories(cs)
 		ns := createServices(nr, rc, b)

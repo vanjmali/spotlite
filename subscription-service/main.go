@@ -65,7 +65,11 @@ var config = server.ServerRunConfiguration{
 			return nil, nil, err
 		}
 
-		_ = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBSCRIPTIONS_STREAM})
+		err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBSCRIPTIONS_STREAM})
+		if err != nil {
+			err = fmt.Errorf("failed to ensure NATS stream: %w", err)
+			return h, shutdown, err
+		}
 
 		gcc := createAdapters(gc)
 		sr := createRepositories(dbc)

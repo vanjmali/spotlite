@@ -57,7 +57,11 @@ var config = server.ServerRunConfiguration{
 		}()
 
 		// make sure stream is already initialized
-		_ = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED})
+		err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED})
+		if err != nil {
+			err = fmt.Errorf("failed to ensure NATS stream: %w", err)
+			return h, shutdown, err
+		}
 
 		ar, sr, alr, gr := createRepositories(dbc)
 		gs, as, ss, als, glss := createServices(ar, sr, alr, gr, jsc)
