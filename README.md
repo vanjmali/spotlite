@@ -66,6 +66,7 @@ Dashboards and tools:
 - http://localhost:3000/dev/user-service - [Mongo Express](https://github.com/mongo-express/mongo-express) to User Service
 - http://localhost:3000/dev/content-service - [Mongo Express](https://github.com/mongo-express/mongo-express) to Content Service
 - http://localhost:3000/dev/subscription-service - [Mongo Express](https://github.com/mongo-express/mongo-express) to Subscription Service
+- http://localhost:9870 - HDFS NameNode web UI (Content Service development storage)
 
 Database connections for services:
 
