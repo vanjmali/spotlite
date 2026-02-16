@@ -131,6 +131,12 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	// insert the user in the database,
 	err = s.r.Create(createCtx, *userEntity)
 	if err != nil {
+		switch {
+		case errors.Is(err, repositories.ErrUsernameAlreadyTaken):
+			err = ErrUsernameTaken
+		case errors.Is(err, repositories.ErrEmailAlreadyTaken):
+			err = ErrEmailTaken
+		}
 		createSpan.RecordError(err)
 		createSpan.End()
 		log.Printf("Error creating user in database: %v", err)

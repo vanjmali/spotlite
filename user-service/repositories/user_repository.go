@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/vanjmali/spotlite/common-lib/account"
@@ -17,8 +18,10 @@ import (
 
 // ErrTokenExpired signals that the verification token was not found or already used.
 var (
-	ErrTokenExpired = errors.New("invalid token")
-	ErrUserNotFound = errors.New("user not found")
+	ErrTokenExpired         = errors.New("invalid token")
+	ErrUserNotFound         = errors.New("user not found")
+	ErrUsernameAlreadyTaken = errors.New("username already taken")
+	ErrEmailAlreadyTaken    = errors.New("email already taken")
 )
 
 // UserRepository provides data access helpers for user documents.
@@ -38,12 +41,60 @@ func NewUserRepositoryMongo(dbName string, collName string, c *mongo.Client) *Us
 	return &r
 }
 
+// EnsureUserIndexes creates unique indexes that guard against duplicate users.
+func (r *UserRepositoryMongo) EnsureUserIndexes(ctx context.Context) error {
+	c := r.getCollection()
+	_, err := c.Indexes().CreateMany(ctx, []mongo.IndexModel{
+		{
+			Keys: bson.D{{Key: "username", Value: 1}},
+			Options: options.Index().
+				SetName("users_username_unique").
+				SetUnique(true),
+		},
+		{
+			Keys: bson.D{{Key: "email", Value: 1}},
+			Options: options.Index().
+				SetName("users_email_unique").
+				SetUnique(true),
+		},
+	})
+	return err
+}
+
 // Create func, inserts a new user into the database.
 func (r *UserRepositoryMongo) Create(ctx context.Context, user entities.User) error {
 	c := r.getCollection()
 
 	_, err := c.InsertOne(ctx, user)
 	if err != nil {
+		// Check for duplicate key error and determine if it's related to username or email to return specific errors.
+		var writeExc mongo.WriteException
+		if errors.As(err, &writeExc) {
+			for _, writeErr := range writeExc.WriteErrors {
+				if writeErr.Code != 11000 {
+					continue
+				}
+				msg := strings.ToLower(writeErr.Message)
+				if strings.Contains(msg, "username") {
+					return ErrUsernameAlreadyTaken
+				}
+				if strings.Contains(msg, "email") {
+					return ErrEmailAlreadyTaken
+				}
+			}
+		}
+
+		var cmdErr mongo.CommandError
+		if errors.As(err, &cmdErr) && cmdErr.Code == 11000 {
+			msg := strings.ToLower(cmdErr.Message)
+			if strings.Contains(msg, "username") {
+				return ErrUsernameAlreadyTaken
+			}
+			if strings.Contains(msg, "email") {
+				return ErrEmailAlreadyTaken
+			}
+		}
+
 		return err
 	}
 
