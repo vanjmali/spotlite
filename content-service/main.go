@@ -79,11 +79,7 @@ var config = server.ServerRunConfiguration{
 		}
 
 		ar, sr, alr, gr := createRepositories(dbc)
-<<<<<<< feature/content-notifications
-		gs, as, ss, als, glss := createServices(ar, sr, alr, gr, jsc)
-=======
-		gs, as, ss, als, glss := createServices(ar, sr, alr, gr, hdfsStore)
->>>>>>> develop
+		gs, as, ss, als, glss := createServices(ar, sr, alr, gr, jsc, hdfsStore)
 		h = createHandlers(v, as, ss, als, gs, glss)
 
 		// configures grpc server
@@ -165,11 +161,8 @@ func createServices(
 	sr *repositories.SongRepository,
 	alr *repositories.AlbumRepository,
 	gr *repositories.GenreRepository,
-<<<<<<< feature/content-notifications
 	jsc *events.JetStreamClient,
-=======
 	hdfsStore *storage.HDFSStorage,
->>>>>>> develop
 ) (
 	*services.GenreService,
 	*services.ArtistService,
@@ -178,15 +171,9 @@ func createServices(
 	*services.GlobalSearchService,
 ) {
 	gs := services.NewGenreService(*gr)
-<<<<<<< feature/content-notifications
 	as := services.NewArtistService(*ar, *gs, *jsc)
 	als := services.NewAlbumService(*alr, *as, *sr, *gs, *jsc)
-	ss := services.NewSongService(*sr, *as, *gs, als)
-=======
-	as := services.NewArtistService(*ar, *gs)
-	als := services.NewAlbumService(*alr, *sr, *as, *gs)
 	ss := services.NewSongService(*sr, *as, *gs, als, hdfsStore)
->>>>>>> develop
 	glss := services.NewGlobalSearchService(gs, ss, als, as)
 
 	return gs, as, ss, als, glss
