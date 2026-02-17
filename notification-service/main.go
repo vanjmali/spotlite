@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gocql/gocql"
@@ -104,6 +105,16 @@ var config = server.ServerRunConfiguration{
 		}
 
 		return h, shutdown, err
+	},
+	Server: struct {
+		ReadTimeout  time.Duration
+		WriteTimeout time.Duration
+		IdleTimeout  time.Duration
+		CertFilePath string
+		KeyFilePath  string
+	}{
+		CertFilePath: utils.MustGetEnv("CERT_PATH"),
+		KeyFilePath:  utils.MustGetEnv("KEY_PATH"),
 	},
 }
 

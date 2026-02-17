@@ -17,6 +17,7 @@ services:
       traefik.enable: true
       traefik.docker.network: spotlite-api-gateway
       traefik.http.routers.notification-service.rule: PathPrefix(`/api/notifications`)
+      traefik.http.services.notification-service.loadbalancer.server.scheme: https
       traefik.http.routers.notification-service.middlewares: notification-service-strip-prefix,notification-service-compress,rate-limit-global@file
       traefik.http.middlewares.notification-service-strip-prefix.stripprefix.prefixes: /api/notifications
       traefik.http.middlewares.notification-service-strip-prefix.stripprefix.forceslash: false
@@ -26,6 +27,8 @@ services:
       traefik.http.services.notification-service.loadbalancer.healthcheck.timeout: 2s
       traefik.http.middlewares.notification-service-compress.compress.excludedcontenttypes: text/event-stream
       traefik.http.services.notification-service.loadbalancer.responseForwarding.flushInterval: "100ms"
+      traefik.http.routers.notification-service.entrypoints: websecure
+      traefik.http.routers.notification-service.tls: true
     depends_on:
       notification-cassandra:
         condition: service_healthy

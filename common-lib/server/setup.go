@@ -32,6 +32,10 @@ type ServerRunConfiguration struct {
 		WriteTimeout time.Duration
 		// IdleTimeout is the maximum amount of time to wait for the next request when keep-alives are enabled. Default is 60 seconds.
 		IdleTimeout time.Duration
+		//
+		CertFilePath string
+		//
+		KeyFilePath string
 	}
 }
 
@@ -79,7 +83,7 @@ func Run(ctx context.Context, config ServerRunConfiguration) error {
 	srvErr := make(chan error, 1)
 	go func() {
 		// Send startup errors to the main goroutine so cleanup can run.
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srv.ListenAndServeTLS(config.Server.CertFilePath, config.Server.KeyFilePath); err != nil && err != http.ErrServerClosed {
 			srvErr <- err
 		}
 	}()

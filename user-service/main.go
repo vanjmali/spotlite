@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/hibiken/asynq"
@@ -51,7 +52,6 @@ var config = server.ServerRunConfiguration{
 			err = fmt.Errorf("failed to create clients: %w", err)
 			return h, shutdown, err
 		}
-
 		// Cleanup resources on error
 		var asynqShutdown func() error
 		defer func() {
@@ -93,6 +93,16 @@ var config = server.ServerRunConfiguration{
 		}
 
 		return h, shutdown, err
+	},
+	Server: struct {
+		ReadTimeout  time.Duration
+		WriteTimeout time.Duration
+		IdleTimeout  time.Duration
+		CertFilePath string
+		KeyFilePath  string
+	}{
+		CertFilePath: utils.MustGetEnv("CERT_PATH"),
+		KeyFilePath:  utils.MustGetEnv("KEY_PATH"),
 	},
 }
 
