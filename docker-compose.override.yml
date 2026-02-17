@@ -5,19 +5,33 @@ services:
   api-gateway:
     ports:
       - 8080:8080
+    depends_on:
+      cert-gen:
+        condition: service_completed_successfully
     volumes:
       - ./api-gateway/traefik.dev.yml:/etc/traefik/traefik.yml:ro
+      - certs:/etc/traefik/certs:ro
 
   nats:
-    command: "-js -m 8222"
+    command: >
+      -js -m 8222 
+      --tls
+      --tlscert=/certs/nats.crt
+      --tlskey=/certs/nats.key
     ports:
       - "${NATS_MONITOR_PORT?}:8222" # NATS performance monitoring
       - "${NATS_CLIENT_PORT?}:4222" # exposed client port for cli testing
+    volumes:
+      - nats-data:/data
+      - certs:/certs:ro
+    depends_on:
+      cert-gen:
+        condition: service_completed_successfully
 
   nui:
     image: ghcr.io/nats-nui/nui:0.9.1
     environment:
-      - NATS_URL=nats://nats:4222
+      - NATS_URL=tls://nats:4222
     labels:
       traefik.enable: true
       traefik.http.routers.nui.rule: PathPrefix(`/dev/nui`)
@@ -29,6 +43,8 @@ services:
       - api-gateway
     depends_on:
       - nats
+    volumes:
+      - certs:/certs:ro
 
   # Override collector config for development
   otel-collector:
@@ -81,6 +97,13 @@ services:
           echo 'Keys already exist, skipping generation.';
         fi"
 
+  cert-gen:
+    image: alpine/openssl
+    volumes:
+      - ./utilities/scripts/cert-gen.sh:/scripts/cert-gen.sh:ro
+      - certs:/certs
+    entrypoint: ["/bin/sh", "/scripts/cert-gen.sh"]
+
   # --- Frontend ---
   # For hot reload
 
@@ -90,6 +113,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     labels:
+      traefik.enable: true
+      traefik.http.routers.frontend.rule: PathPrefix(`/`)
+      traefik.http.routers.frontend.entrypoints: websecure
+      traefik.http.routers.frontend.tls: true
       traefik.http.services.frontend.loadbalancer.server.port: "3000"
     volumes:
       - ./frontend/:/app
@@ -109,10 +136,15 @@ services:
   user-service:
     volumes:
       - keys:/run/keys:ro
+      - certs:/certs
     environment:
       JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      CERT_PATH: /certs/user-service.crt
+      KEY_PATH: /certs/user-service.key
     depends_on:
+      cert-gen:
+        condition: service_completed_successfully
       key-gen:
         condition: service_completed_successfully
 
@@ -151,10 +183,15 @@ services:
   content-service:
     volumes:
       - keys:/run/keys:ro
+      - certs:/certs
     environment:
-      JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      ROOT_CERT_PATH: /certs/rootCA.crt
+      CERT_PATH: /certs/content-service.crt
+      KEY_PATH: /certs/content-service.key
     depends_on:
+      cert-gen:
+        condition: service_completed_successfully
       key-gen:
         condition: service_completed_successfully
 
@@ -193,10 +230,15 @@ services:
   notification-service:
     volumes:
       - keys:/run/keys:ro
+      - certs:/certs
     environment:
-      JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      ROOT_CERT_PATH: /certs/rootCA.crt
+      CERT_PATH: /certs/notification-service.crt
+      KEY_PATH: /certs/notification-service.key
     depends_on:
+      cert-gen:
+        condition: service_completed_successfully
       key-gen:
         condition: service_completed_successfully
 
@@ -212,9 +254,15 @@ services:
   subscription-service:
     volumes:
       - keys:/run/keys:ro
+      - certs:/certs
     environment:
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      ROOT_CERT_PATH: /certs/rootCA.crt
+      CERT_PATH: /certs/subscription-service.crt
+      KEY_PATH: /certs/subscription-service.key
     depends_on:
+      cert-gen:
+        condition: service_completed_successfully
       key-gen:
         condition: service_completed_successfully
 
@@ -248,6 +296,7 @@ services:
 volumes:
   frontend-node-modules:
   keys:
+  certs:
 
 networks:
   api-gateway:

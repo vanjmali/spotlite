@@ -22,10 +22,16 @@ services:
       traefik.enable: true
       traefik.docker.network: spotlite-api-gateway
       traefik.http.routers.content-service.rule: PathPrefix(`/api/content`)
+      traefik.http.services.content-service.loadbalancer.server.scheme: https
       traefik.http.routers.content-service.middlewares: content-service-strip-prefix,rate-limit-global@file
       traefik.http.middlewares.content-service-strip-prefix.stripprefix.prefixes: /api/content
       traefik.http.middlewares.content-service-strip-prefix.stripprefix.forceslash: false
       traefik.http.services.content-service.loadbalancer.server.port: "3000"
+      traefik.http.services.content-service.loadbalancer.healthcheck.path: /healthz
+      traefik.http.services.content-service.loadbalancer.healthcheck.interval: 5s
+      traefik.http.services.content-service.loadbalancer.healthcheck.timeout: 2s
+      traefik.http.routers.content-service.entrypoints: websecure
+      traefik.http.routers.content-service.tls: true
     depends_on:
       content-mongodb:
         condition: service_healthy
