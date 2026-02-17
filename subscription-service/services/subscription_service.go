@@ -3,11 +3,11 @@ package services
 import (
 	"context"
 	"errors"
-	"log"
 	"time"
 
 	"github.com/avast/retry-go"
 	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/subscription"
 	"github.com/vanjmali/spotlite/subscription-service/dtos"
@@ -144,7 +144,7 @@ func (s *SubscriptionService) NotifySubscribers(ctx context.Context, p events.En
 		}
 
 		if len(subscriptions) == 0 {
-			log.Printf("DEBUG: No subscriptions were found for specified target IDs")
+			logging.Infof(loopCtx, "no subscriptions were found for specified target IDs")
 			break
 		}
 
@@ -164,7 +164,6 @@ func (s *SubscriptionService) NotifySubscribers(ctx context.Context, p events.En
 
 		err = retry.Do(
 			func() error {
-
 				return s.jsc.Publish(loopCtx, events.SUBJECT_SUBSCRIBER_BATCH, sep)
 			},
 			retry.Attempts(3),
@@ -174,7 +173,7 @@ func (s *SubscriptionService) NotifySubscribers(ctx context.Context, p events.En
 		)
 		if err != nil {
 			loopSpan.RecordError(err)
-			log.Printf("Failed to publish batch: %v", err)
+			logging.Errorf(loopCtx, "failed to publish batch: %v", err)
 			return err
 		}
 

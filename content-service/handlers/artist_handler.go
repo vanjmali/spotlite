@@ -2,15 +2,14 @@ package handlers
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/services"
 )
@@ -32,7 +31,7 @@ func (h *ArtistHandler) HandleCreateArtist(w http.ResponseWriter, r *http.Reques
 	var req dtos.ArtistDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
-			log.Printf("trace_id=%s failed to process create artist request: %v", telemetry.TraceID(r.Context()), err)
+			logging.Errorf(r.Context(), "failed to process create artist request: %v", err)
 			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
@@ -41,7 +40,7 @@ func (h *ArtistHandler) HandleCreateArtist(w http.ResponseWriter, r *http.Reques
 	// Initializes artist creation after decoding went well
 	err := h.s.Create(r.Context(), &req)
 	if err != nil {
-		log.Printf("trace_id=%s failed to create artist: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to create artist: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -55,7 +54,7 @@ func (h *ArtistHandler) HandleGetArtistById(w http.ResponseWriter, r *http.Reque
 
 	artist, err := h.s.FindArtistByID(r.Context(), id)
 	if err != nil {
-		log.Printf("trace_id=%s failed to get artist: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to get artist: %v", err)
 
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):
@@ -71,7 +70,7 @@ func (h *ArtistHandler) HandleGetArtistById(w http.ResponseWriter, r *http.Reque
 	}
 
 	if err := respond.OkJson(w, artist); err != nil {
-		log.Printf("trace_id=%s failed to write get artist response: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to write get artist response: %v", err)
 	}
 }
 
@@ -83,7 +82,7 @@ func (h *ArtistHandler) HandleUpdateArtist(w http.ResponseWriter, r *http.Reques
 	var dto dtos.UpdateArtistDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &dto); !ok {
 		if err != nil {
-			log.Printf("trace_id=%s invalid request body: %v", telemetry.TraceID(r.Context()), err)
+			logging.Warnf(r.Context(), "invalid request body: %v", err)
 			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
@@ -92,21 +91,21 @@ func (h *ArtistHandler) HandleUpdateArtist(w http.ResponseWriter, r *http.Reques
 	updatedArtist, err := h.s.UpdateArtist(r.Context(), id, dto)
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
-		log.Printf("trace_id=%s invalid artist id: %v", telemetry.TraceID(r.Context()), err)
+		logging.Warnf(r.Context(), "invalid artist id: %v", err)
 		_ = respond.BadRequest(w, respond.ErrorMessage("invalid artist id"))
 		return
 	case errors.Is(err, services.ErrArtistNotFound):
-		log.Printf("trace_id=%s artist not found: %v", telemetry.TraceID(r.Context()), err)
+		logging.Warnf(r.Context(), "artist not found: %v", err)
 		_ = respond.NotFound(w)
 		return
 	case err != nil:
-		log.Printf("trace_id=%s failed to update artist: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to update artist: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
 
 	if err := respond.OkJson(w, updatedArtist); err != nil {
-		log.Printf("trace_id=%s failed to write update artist response: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to write update artist response: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -121,15 +120,15 @@ func (h *ArtistHandler) HandleDeleteArtist(w http.ResponseWriter, r *http.Reques
 
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
-		log.Printf("trace_id=%s invalid artist id: %v", telemetry.TraceID(r.Context()), err)
+		logging.Warnf(r.Context(), "invalid artist id: %v", err)
 		_ = respond.BadRequest(w, respond.ErrorMessage("invalid artist id"))
 		return
 	case errors.Is(err, services.ErrArtistNotFound):
-		log.Printf("trace_id=%s artist not found: %v", telemetry.TraceID(r.Context()), err)
+		logging.Warnf(r.Context(), "artist not found: %v", err)
 		_ = respond.NotFound(w)
 		return
 	case err != nil:
-		log.Printf("trace_id=%s failed to delete artist: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to delete artist: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -160,12 +159,12 @@ func (h *ArtistHandler) HandleGetArtists(w http.ResponseWriter, r *http.Request)
 
 	resp, err := h.s.GetArtists(r.Context(), dto)
 	if err != nil {
-		log.Printf("trace_id=%s failed to list artists: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to list artists: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
 
 	if err := respond.OkJson(w, resp); err != nil {
-		log.Printf("trace_id=%s failed to write list artists response: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to write list artists response: %v", err)
 	}
 }

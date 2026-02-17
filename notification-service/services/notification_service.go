@@ -10,6 +10,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/redis/go-redis/v9"
 	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/notification-service/entities"
 	"github.com/vanjmali/spotlite/notification-service/infrastructure"
@@ -50,6 +51,7 @@ func (s *NotificationService) CreateNotification(np events.SubscribersBatchEvent
 
 	validRecipients, err := filterDuplicateNotifications(s.rc, np.EventID, np.SubscriberIDs, ctx)
 	if err != nil {
+		logging.Errorf(ctx, "failed to filter duplicate notifications: %v", err)
 		return err
 	}
 
@@ -61,6 +63,7 @@ func (s *NotificationService) CreateNotification(np events.SubscribersBatchEvent
 		case events.ArtistType:
 			notifType = entities.NotificationNewArtist
 		default:
+			logging.Warnf(ctx, "invalid entity type for notification: %s", np.EntityType)
 			return ErrInvalidEntityType
 		}
 
@@ -78,11 +81,13 @@ func (s *NotificationService) CreateNotification(np events.SubscribersBatchEvent
 
 		if err := s.r.InsertNotification(&n, ctx); err != nil {
 			span.RecordError(err)
+			logging.Errorf(ctx, "failed to insert notification: %v", err)
 			return err
 		}
 
 		np, err := json.Marshal(n)
 		if err != nil {
+			logging.Errorf(ctx, "failed to marshal notification: %v", err)
 			return ErrJsonMarshal
 		}
 
@@ -100,11 +105,13 @@ func (s *NotificationService) FindInboxByUserID(ctx context.Context) ([]*entitie
 	userID := middlewares.GetUserIdFromContext(ctx)
 
 	if userID == "" {
+		logging.Warnf(ctx, "missing user id in context while reading inbox")
 		return []*entities.Notification{}, ErrMissingUserID
 	}
 
 	ns, err := s.r.FindNotificationsByUserID(userID, ctx)
 	if err != nil {
+		logging.Errorf(ctx, "failed to fetch notifications by user id: %v", err)
 		return []*entities.Notification{}, err
 	}
 
@@ -121,7 +128,8 @@ func filterDuplicateNotifications(rc *redis.Client, eventID string, userIDs []st
 	}
 
 	_, err := pipe.Exec(ctx)
-	if err != nil && err != redis.Nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
+		logging.Errorf(ctx, "redis pipeline exec failed while deduplicating notifications: %v", err)
 		return nil, err
 	}
 

@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
@@ -123,13 +123,13 @@ func (c *JetStreamClient) StartConsumer(
 	for {
 		select {
 		case <-ctx.Done():
-			log.Printf("Pull consumer for %s stopped.", durableName)
+			logging.Infof(ctx, "pull consumer for %s stopped", durableName)
 			return ctx.Err()
 		default:
 			msgs, err := consumer.Fetch(20, jetstream.FetchMaxWait(time.Second*2))
 
 			if err != nil && !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
-				log.Printf("Fetch error: %v", err)
+				logging.Errorf(ctx, "fetch error: %v", err)
 
 				// wait before retrying on critical error
 				time.Sleep(time.Second)
@@ -170,7 +170,7 @@ func (c *JetStreamClient) processMessage(msg jetstream.Msg, handler SubscribeHan
 	err := handler(spanCtx, msg)
 
 	if err != nil {
-		log.Printf("Error processing message: %v", err)
+		logging.Errorf(spanCtx, "error processing message: %v", err)
 		_ = msg.Nak() // tell NATS to resend later
 		span.RecordError(err)
 	} else {

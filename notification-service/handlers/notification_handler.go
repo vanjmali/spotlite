@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/notification-service/infrastructure"
@@ -30,12 +31,14 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 	rc := http.NewResponseController(w)
 	err := rc.SetWriteDeadline(time.Time{})
 	if err != nil {
+		logging.Errorf(r.Context(), "failed to disable write deadline for SSE: %v", err)
 		_ = respond.InternalServerError(w)
 	}
 
 	userID := middlewares.GetUserIdFromContext(r.Context())
 
 	if userID == "" {
+		logging.Warnf(r.Context(), "missing user id in context during SSE subscribe")
 		_ = respond.Unauthorized(w)
 		return
 	}
@@ -59,6 +62,7 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 			Action: infrastructure.ClientDisconnect,
 			Conn:   cc,
 		}
+		logging.Infof(r.Context(), "sse client disconnected user_id=%s", userID)
 	}()
 
 	// we need to check if the response writer implements the http Flusher interface,
@@ -67,6 +71,7 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 	// changes
 	flusher, ok := w.(http.Flusher)
 	if !ok {
+		logging.Errorf(r.Context(), "streaming unsupported: response writer does not implement http.Flusher")
 		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
 		return
 	}
@@ -79,6 +84,7 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 	// events can be sent :D
 	fmt.Fprintf(w, ":connected\n\n")
 	flusher.Flush()
+	logging.Infof(r.Context(), "sse client connected user_id=%s", userID)
 
 	// ticker will send signals every 25 seconds and will help us ping the client to keep
 	// the connection open
@@ -96,6 +102,7 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 			return
 		case <-ticker.C:
 			if _, err := fmt.Fprintf(w, ":ping\n\n"); err != nil {
+				logging.Warnf(r.Context(), "sse ping write failed user_id=%s: %v", userID, err)
 				// if the ping wasn't successful return which will call all defer calls
 				return
 			}
@@ -104,6 +111,7 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 			// the browser strips away data: %s\n\n
 			_, err := fmt.Fprintf(w, "data: %s\n\n", msg)
 			if err != nil {
+				logging.Warnf(r.Context(), "sse event write failed user_id=%s: %v", userID, err)
 				return
 			}
 			// if everything goes as planned
@@ -117,9 +125,11 @@ func (h *NotificationHandler) GetUserInbox(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrMissingUserID):
+			logging.Warnf(r.Context(), "missing user id in context while reading inbox")
 			_ = respond.BadRequest(w)
 			return
 		default:
+			logging.Errorf(r.Context(), "failed to fetch user inbox: %v", err)
 			_ = respond.InternalServerError(w)
 			return
 		}

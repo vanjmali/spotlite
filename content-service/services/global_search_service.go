@@ -2,11 +2,10 @@ package services
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
 
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"go.opentelemetry.io/otel"
@@ -77,7 +76,7 @@ func (s *GlobalSearchService) GetGlobalSearch(ctx context.Context, searchTerm st
 			Name: searchTerm,
 		})
 		if err != nil {
-			log.Printf("trace_id=%s genre search failed: %v", telemetry.TraceID(searchCtx), err)
+			logging.Errorf(searchCtx, "genre search failed: %v", err)
 			genreSpan.RecordError(err)
 			return nil
 		}
@@ -99,7 +98,7 @@ func (s *GlobalSearchService) GetGlobalSearch(ctx context.Context, searchTerm st
 			Title: searchTerm,
 		})
 		if err != nil {
-			log.Printf("trace_id=%s album search failed: %v", telemetry.TraceID(searchCtx), err)
+			logging.Errorf(searchCtx, "album search failed: %v", err)
 			albumSpan.RecordError(err)
 			return nil
 		}
@@ -121,7 +120,7 @@ func (s *GlobalSearchService) GetGlobalSearch(ctx context.Context, searchTerm st
 			Title: searchTerm,
 		})
 		if err != nil {
-			log.Printf("trace_id=%s song search failed: %v", telemetry.TraceID(searchCtx), err)
+			logging.Errorf(searchCtx, "song search failed: %v", err)
 			songSpan.RecordError(err)
 			return nil
 		}
@@ -143,7 +142,7 @@ func (s *GlobalSearchService) GetGlobalSearch(ctx context.Context, searchTerm st
 			Name: searchTerm,
 		})
 		if err != nil {
-			log.Printf("trace_id=%s artist search failed: %v", telemetry.TraceID(searchCtx), err)
+			logging.Errorf(searchCtx, "artist search failed: %v", err)
 			artistSpan.RecordError(err)
 			return nil
 		}
