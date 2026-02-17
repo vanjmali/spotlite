@@ -1,0 +1,10 @@
+{
+  "name": "brute-force-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Demonstrates a brute-force login attack and how Traefik rate-limiting mitigates it.",
+  "scripts": {
+    "start": "node brute-force.mjs"
+  }
+}

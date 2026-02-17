@@ -75,6 +75,18 @@ npm run test:e2e:headed
 npm run test:e2e:smoke
 ```
 
+Brute-force login attack demo (requires the Docker Compose stack to be running):
+
+```bash
+cd utilities/brute-force-demo
+npm start
+```
+
+This script fires ~25 login attempts with common dictionary passwords against a
+known email address and demonstrates how Traefik's rate limiter (`burst=10`,
+`2 tokens/10s`) blocks the attack with `429 Too Many Requests` after the initial
+burst. See [`utilities/brute-force-demo/README.md`](utilities/brute-force-demo/README.md) for details.
+
 ### Development Services
 
 There are additional services available for local development:
