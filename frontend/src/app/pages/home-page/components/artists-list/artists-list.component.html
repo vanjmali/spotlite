@@ -5,7 +5,62 @@
   </header>
 
   @if (isLoadingSg()) {
-    <p class="recommendations__empty">Loading recommendations...</p>
+    <section class="recommendations__section recommendations__section--skeleton">
+      <div class="recommendations__section-header">
+        <div class="recommendations__skeleton recommendations__skeleton--title"></div>
+      </div>
+      <div class="recommendations__artists">
+        @for (item of [0, 1, 2, 3]; track $index) {
+          <div class="recommendations__artist-card recommendations__artist-card--skeleton">
+            <div class="recommendations__skeleton recommendations__skeleton--avatar"></div>
+            <div class="recommendations__artist-meta">
+              <div class="recommendations__skeleton recommendations__skeleton--line-lg"></div>
+              <div class="recommendations__skeleton recommendations__skeleton--line"></div>
+            </div>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="recommendations__section recommendations__section--skeleton">
+      <div class="recommendations__section-header">
+        <div class="recommendations__skeleton recommendations__skeleton--title"></div>
+      </div>
+      <div class="recommendations__albums">
+        @for (item of [0, 1, 2, 3]; track $index) {
+          <div class="recommendations__album-card recommendations__album-card--skeleton">
+            <div class="recommendations__skeleton recommendations__skeleton--cover"></div>
+            <div class="recommendations__skeleton recommendations__skeleton--line-lg"></div>
+            <div class="recommendations__skeleton recommendations__skeleton--line"></div>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="recommendations__section recommendations__section--skeleton">
+      <div class="recommendations__section-header">
+        <div class="recommendations__skeleton recommendations__skeleton--title"></div>
+      </div>
+      <div class="recommendations__genres">
+        @for (item of [0, 1, 2, 3, 4, 5]; track $index) {
+          <div class="recommendations__skeleton recommendations__skeleton--chip"></div>
+        }
+      </div>
+    </section>
+
+    <section class="recommendations__section recommendations__section--skeleton">
+      <div class="recommendations__section-header">
+        <div class="recommendations__skeleton recommendations__skeleton--title"></div>
+      </div>
+      <div class="recommendations__songs">
+        @for (item of [0, 1, 2, 3]; track $index) {
+          <div class="recommendations__song recommendations__song--skeleton">
+            <div class="recommendations__skeleton recommendations__skeleton--line-lg"></div>
+            <div class="recommendations__skeleton recommendations__skeleton--line"></div>
+          </div>
+        }
+      </div>
+    </section>
   } @else {
     <section class="recommendations__section">
       <div class="recommendations__section-header">
