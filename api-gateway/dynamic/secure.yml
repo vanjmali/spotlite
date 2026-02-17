@@ -1,0 +1,18 @@
+tls:
+  certificates:
+    - certFile: /etc/traefik/certs/api-gateway.crt
+      keyFile: /etc/traefik/certs/api-gateway.key
+    - certFile: /etc/traefik/certs/user-service.crt
+      keyFile: /etc/traefik/certs/user-service.key
+    - certFile: /etc/traefik/certs/content-service.crt
+      keyFile: /etc/traefik/certs/content-service.key
+    - certFile: /etc/traefik/certs/subscription-service.crt
+      keyFile: /etc/traefik/certs/subscription-service.key
+    - certFile: /etc/traefik/certs/notification-service.crt
+      keyFile: /etc/traefik/certs/notification-service.key
+
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /etc/traefik/certs/api-gateway.crt
+        keyFile: /etc/traefik/certs/api-gateway.key

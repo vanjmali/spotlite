@@ -23,9 +23,9 @@ type JetStreamClient struct {
 	tracer trace.Tracer
 }
 
-func NewClient(url string) (*JetStreamClient, error) {
+func NewClient(url string, opts ...nats.Option) (*JetStreamClient, error) {
 	// initialize NATS connection
-	nc, err := nats.Connect(url)
+	nc, err := nats.Connect(url, opts...)
 	if err != nil {
 		return nil, err
 	}

@@ -2,12 +2,18 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/nats-io/nats.go"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/requests"
@@ -26,111 +32,126 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 )
 
-var config = server.ServerRunConfiguration{
-	TelemetryName: "subscription-service",
-	Port:          utils.GetEnv("APP_PORT", "3000"),
-	ConfigureValidation: func(v *validator.Validate) error {
-		requests.RegisterJSONTagNameFunc(v)
-		if err := requests.RegisterValidation(v, validation.CheckValidEntityID); err != nil {
-			return fmt.Errorf("failed to register entity ID validation: %w", err)
-		}
+var (
+	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
+	certFilePath       = utils.MustGetEnv("CERT_PATH")
+	keyFilePath        = utils.MustGetEnv("KEY_PATH")
+	config             = server.ServerRunConfiguration{
+		TelemetryName: "subscription-service",
+		Port:          utils.GetEnv("APP_PORT", "3000"),
+		ConfigureValidation: func(v *validator.Validate) error {
+			requests.RegisterJSONTagNameFunc(v)
+			if err := requests.RegisterValidation(v, validation.CheckValidEntityID); err != nil {
+				return fmt.Errorf("failed to register entity ID validation: %w", err)
+			}
 
-		if err := requests.RegisterValidation(v, validation.CheckValidSubscriptionType); err != nil {
-			return fmt.Errorf("failed to register subscription type validation: %w", err)
-		}
+			if err := requests.RegisterValidation(v, validation.CheckValidSubscriptionType); err != nil {
+				return fmt.Errorf("failed to register subscription type validation: %w", err)
+			}
 
-		return nil
-	},
-	CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
-		dbc, gc, jsc, err := createClients()
-		if err != nil {
-			err = fmt.Errorf("failed to create clients: %w", err)
+			return nil
+		},
+		CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
+			dbc, gc, jsc, err := createClients()
+			if err != nil {
+				err = fmt.Errorf("failed to create clients: %w", err)
+				return h, shutdown, err
+			}
+
+			// Cleanup resources on error
+			defer func() {
+				if err == nil {
+					return
+				}
+
+				_ = gc.Close()
+				_ = dbc.Disconnect(ctx)
+				jsc.Close()
+			}()
+
+			err = initializeSubscriptionIndexes(ctx, dbc)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBSCRIPTIONS_STREAM})
+			if err != nil {
+				err = fmt.Errorf("failed to ensure NATS stream: %w", err)
+				return h, shutdown, err
+			}
+
+			gcc := createAdapters(gc)
+			sr := createRepositories(dbc)
+			ss := createServices(sr, gcc, jsc)
+			h = createHandlers(v, ss)
+			c := createConsumers(ss)
+
+			consumerCtx, consumerCancel := context.WithCancel(ctx)
+			consumerDone := make(chan struct{})
+
+			var consumerErr error
+
+			go func() {
+				consumerErr = jsc.StartConsumer(
+					consumerCtx,
+					events.CONTENT_STREAM,
+					events.SUBJECT_ENTITY_CREATED,
+					events.ENTITY_DURABLE,
+					c.HandleEntityCreated,
+				)
+				close(consumerDone)
+			}()
+
+			go func() {
+				<-consumerDone
+				if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
+					logging.Errorf(context.Background(), "subscription consumer stopped unexpectedly: %v", consumerErr)
+				}
+			}()
+
+			shutdown = func() error {
+				var errs []error
+
+				consumerCancel()
+				<-consumerDone
+
+				if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
+					errs = append(errs, fmt.Errorf("subscription consumer error: %w", consumerErr))
+				}
+
+				shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+
+				if err := gc.Close(); err != nil {
+					errs = append(errs, fmt.Errorf("grpc close error: %w", err))
+				}
+
+				if err := dbc.Disconnect(shutdownCtx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
+					errs = append(errs, fmt.Errorf("mongo disconnect error: %w", err))
+				}
+
+				jsc.Close()
+
+				return errors.Join(errs...)
+			}
+
 			return h, shutdown, err
-		}
-
-		// Cleanup resources on error
-		defer func() {
-			if err == nil {
-				return
-			}
-
-			_ = gc.Close()
-			_ = dbc.Disconnect(ctx)
-			jsc.Close()
-		}()
-
-		err = initializeSubscriptionIndexes(ctx, dbc)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBSCRIPTIONS_STREAM})
-		if err != nil {
-			err = fmt.Errorf("failed to ensure NATS stream: %w", err)
-			return h, shutdown, err
-		}
-
-		gcc := createAdapters(gc)
-		sr := createRepositories(dbc)
-		ss := createServices(sr, gcc, jsc)
-		h = createHandlers(v, ss)
-		c := createConsumers(ss)
-
-		consumerCtx, consumerCancel := context.WithCancel(ctx)
-		consumerDone := make(chan struct{})
-
-		var consumerErr error
-
-		go func() {
-			consumerErr = jsc.StartConsumer(
-				consumerCtx,
-				events.CONTENT_STREAM,
-				events.SUBJECT_ENTITY_CREATED,
-				events.ENTITY_DURABLE,
-				c.HandleEntityCreated,
-			)
-			close(consumerDone)
-		}()
-
-		go func() {
-			<-consumerDone
-			if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
-				logging.Errorf(context.Background(), "subscription consumer stopped unexpectedly: %v", consumerErr)
-			}
-		}()
-
-		shutdown = func() error {
-			var errs []error
-
-			consumerCancel()
-			<-consumerDone
-
-			if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
-				errs = append(errs, fmt.Errorf("subscription consumer error: %w", consumerErr))
-			}
-
-			shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-			defer cancel()
-
-			if err := gc.Close(); err != nil {
-				errs = append(errs, fmt.Errorf("grpc close error: %w", err))
-			}
-
-			if err := dbc.Disconnect(shutdownCtx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
-				errs = append(errs, fmt.Errorf("mongo disconnect error: %w", err))
-			}
-
-			jsc.Close()
-
-			return errors.Join(errs...)
-		}
-
-		return h, shutdown, err
-	},
-}
+		},
+		Server: struct {
+			ReadTimeout  time.Duration
+			WriteTimeout time.Duration
+			IdleTimeout  time.Duration
+			CertFilePath string
+			KeyFilePath  string
+		}{
+			CertFilePath: certFilePath,
+			KeyFilePath:  keyFilePath,
+		},
+	}
+)
 
 func main() {
 	if err := server.Run(context.Background(), config); err != nil {
@@ -144,17 +165,23 @@ func createClients() (*mongodriver.Client, *grpc.ClientConn, *events.JetStreamCl
 		return nil, nil, nil, fmt.Errorf("failed to initialize subscription service MongoDB client: %w", err)
 	}
 
+	creds, err := generateCreds()
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
 	grpcTarget := utils.MustGetEnv("CONTENT_GRPC_ADDRESS")
+
 	gc, err := grpc.NewClient(
 		grpcTarget,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTransportCredentials(creds),
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to establish a RPC connection with the content-service: %w", err)
 	}
 
-	jsc, err := events.NewClient("nats://nats:4222")
+	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to initialized NATS jets teram client: %w", err)
 	}
@@ -228,4 +255,30 @@ func createHandlers(
 func createConsumers(ss *services.SubscriptionService) *consumers.SubscriptionConsumer {
 	sc := consumers.NewConsumer(ss)
 	return sc
+}
+
+func generateCreds() (credentials.TransportCredentials, error) {
+	cleanPath := filepath.Clean(rootCACertFilePath)
+
+	if !strings.HasPrefix(cleanPath, "/certs/") {
+		return nil, fmt.Errorf("invalid certificate path")
+	}
+
+	pemData, err := os.ReadFile(cleanPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read root cert file at %s: %w", rootCACertFilePath, err)
+	}
+
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(pemData) {
+		return nil, fmt.Errorf("failed to add CA to pool")
+	}
+
+	tlsConfig := &tls.Config{
+		RootCAs:    certPool,
+		ServerName: "content-service",
+		MinVersion: tls.VersionTLS13,
+	}
+	return credentials.NewTLS(tlsConfig), nil
+
 }
