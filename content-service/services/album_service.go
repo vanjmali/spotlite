@@ -128,7 +128,6 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 
 	err = retry.Do(
 		func() error {
-
 			return s.jsc.Publish(createAlCtx, events.SUBJECT_ENTITY_CREATED, aep)
 		},
 		retry.Attempts(3),
@@ -136,7 +135,6 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 		retry.DelayType(retry.BackOffDelay),
 		retry.Context(createCtx),
 	)
-
 	if err != nil {
 		logging.Errorf(createAlCtx, "failed to publish entity created event: %v", err)
 	}

@@ -121,7 +121,7 @@ func filterDuplicateNotifications(rc *redis.Client, eventID string, userIDs []st
 	}
 
 	_, err := pipe.Exec(ctx)
-	if err != nil && err != redis.Nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		return nil, err
 	}
 

@@ -97,7 +97,6 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 
 	err = retry.Do(
 		func() error {
-
 			return s.jsc.Publish(createCtx, events.SUBJECT_ENTITY_CREATED, aep)
 		},
 		retry.Attempts(3),

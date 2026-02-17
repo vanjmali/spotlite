@@ -17,6 +17,8 @@ require (
 	google.golang.org/grpc v1.78.0
 )
 
+require gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
+
 require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect

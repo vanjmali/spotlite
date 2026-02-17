@@ -164,7 +164,6 @@ func (s *SubscriptionService) NotifySubscribers(ctx context.Context, p events.En
 
 		err = retry.Do(
 			func() error {
-
 				return s.jsc.Publish(loopCtx, events.SUBJECT_SUBSCRIBER_BATCH, sep)
 			},
 			retry.Attempts(3),

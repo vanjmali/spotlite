@@ -14,9 +14,7 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-var (
-	initOnce sync.Once
-)
+var initOnce sync.Once
 
 // Init configures process-wide logging.
 // Output is written to both stdout and a rotated file.
@@ -36,7 +34,7 @@ func Init(serviceName string) error {
 		maxAgeDays := utils.GetPositiveIntEnv("LOG_ROTATE_MAX_AGE_DAYS", 14)
 		compress := utils.GetBoolEnv("LOG_ROTATE_COMPRESS", true)
 
-		logFilePath := filepath.Join(logDir, fmt.Sprintf("%s.log", serviceName))
+		logFilePath := filepath.Join(logDir, serviceName+".log")
 		if err := ensureLogFilePermissions(logFilePath); err != nil {
 			initErr = fmt.Errorf("failed to prepare log file: %w", err)
 			return
@@ -99,6 +97,7 @@ func withContextFields(ctx context.Context, format string) string {
 }
 
 func ensureLogFilePermissions(path string) error {
+	// #nosec G304 -- path is derived from service-controlled LOG_DIR/service name, not user request input.
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE, 0o640)
 	if err != nil {
 		return err

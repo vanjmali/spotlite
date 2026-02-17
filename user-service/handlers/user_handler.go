@@ -2,8 +2,9 @@ package handlers
 
 import (
 	"errors"
-	"github.com/vanjmali/spotlite/common-lib/logging"
 	"net/http"
+
+	"github.com/vanjmali/spotlite/common-lib/logging"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/vanjmali/spotlite/common-lib/requests"

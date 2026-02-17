@@ -96,7 +96,6 @@ var config = server.ServerRunConfiguration{
 			jsc.Close()
 			if err := rc.Close(); err != nil {
 				errs = append(errs, fmt.Errorf("redis error: %w", err))
-
 			}
 			cs.Close()
 
