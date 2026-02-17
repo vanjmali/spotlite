@@ -9,6 +9,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -256,7 +258,13 @@ func createConsumers(ss *services.SubscriptionService) *consumers.SubscriptionCo
 }
 
 func generateCreds() (credentials.TransportCredentials, error) {
-	pemData, err := os.ReadFile(rootCACertFilePath)
+	cleanPath := filepath.Clean(rootCACertFilePath)
+
+	if !strings.HasPrefix(cleanPath, "/certs/") {
+		return nil, fmt.Errorf("invalid certificate path")
+	}
+
+	pemData, err := os.ReadFile(cleanPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read root cert file at %s: %w", rootCACertFilePath, err)
 	}
@@ -269,6 +277,7 @@ func generateCreds() (credentials.TransportCredentials, error) {
 	tlsConfig := &tls.Config{
 		RootCAs:    certPool,
 		ServerName: "content-service",
+		MinVersion: tls.VersionTLS13,
 	}
 	return credentials.NewTLS(tlsConfig), nil
 
