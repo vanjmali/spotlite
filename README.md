@@ -87,6 +87,18 @@ known email address and demonstrates how Traefik's rate limiter (`burst=10`,
 `2 tokens/10s`) blocks the attack with `429 Too Many Requests` after the initial
 burst. See [`utilities/brute-force-demo/README.md`](utilities/brute-force-demo/README.md) for details.
 
+DoS (Denial-of-Service) attack demo (requires the Docker Compose stack to be running):
+
+```bash
+cd utilities/dos-demo
+npm start
+```
+
+Floods the healthcheck endpoint with 100 concurrent requests across 5 waves,
+then sends one "legitimate" request to show it is also blocked — demonstrating
+that a DoS attack causes collateral damage to real users sharing the same
+rate-limit bucket. See [`utilities/dos-demo/README.md`](utilities/dos-demo/README.md) for details.
+
 ### Development Services
 
 There are additional services available for local development:

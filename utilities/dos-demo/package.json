@@ -1,0 +1,10 @@
+{
+  "name": "dos-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Demonstrates a Denial-of-Service (DoS) attack and its collateral damage, showing why rate limiting alone is not enough.",
+  "scripts": {
+    "start": "node dos-demo.mjs"
+  }
+}
