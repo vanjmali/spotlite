@@ -7,10 +7,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"sync"
 
+	"github.com/vanjmali/spotlite/common-lib/utils"
 	"go.opentelemetry.io/otel/trace"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -25,20 +24,17 @@ func Init(serviceName string) error {
 	var initErr error
 
 	initOnce.Do(func() {
-		logDir := strings.TrimSpace(os.Getenv("LOG_DIR"))
-		if logDir == "" {
-			logDir = "logs"
-		}
+		logDir := utils.GetEnv("LOG_DIR", "logs")
 
 		if err := os.MkdirAll(logDir, 0o750); err != nil {
 			initErr = fmt.Errorf("failed to create log directory: %w", err)
 			return
 		}
 
-		maxSizeMB := getenvInt("LOG_ROTATE_MAX_SIZE_MB", 20)
-		maxBackups := getenvInt("LOG_ROTATE_MAX_BACKUPS", 5)
-		maxAgeDays := getenvInt("LOG_ROTATE_MAX_AGE_DAYS", 14)
-		compress := getenvBool("LOG_ROTATE_COMPRESS", true)
+		maxSizeMB := utils.GetPositiveIntEnv("LOG_ROTATE_MAX_SIZE_MB", 20)
+		maxBackups := utils.GetPositiveIntEnv("LOG_ROTATE_MAX_BACKUPS", 5)
+		maxAgeDays := utils.GetPositiveIntEnv("LOG_ROTATE_MAX_AGE_DAYS", 14)
+		compress := utils.GetBoolEnv("LOG_ROTATE_COMPRESS", true)
 
 		logFilePath := filepath.Join(logDir, fmt.Sprintf("%s.log", serviceName))
 		if err := ensureLogFilePermissions(logFilePath); err != nil {
@@ -100,36 +96,6 @@ func withContextFields(ctx context.Context, format string) string {
 	}
 
 	return format
-}
-
-func getenvInt(key string, fallback int) int {
-	raw := strings.TrimSpace(os.Getenv(key))
-	if raw == "" {
-		return fallback
-	}
-
-	v, err := strconv.Atoi(raw)
-	if err != nil || v <= 0 {
-		return fallback
-	}
-
-	return v
-}
-
-func getenvBool(key string, fallback bool) bool {
-	raw := strings.TrimSpace(strings.ToLower(os.Getenv(key)))
-	if raw == "" {
-		return fallback
-	}
-
-	switch raw {
-	case "1", "true", "yes", "y", "on":
-		return true
-	case "0", "false", "no", "n", "off":
-		return false
-	default:
-		return fallback
-	}
 }
 
 func ensureLogFilePermissions(path string) error {
