@@ -2,6 +2,8 @@
 # This file is automatically merged into `docker-compose.yml` by Docker when no `-f` flag is provided.
 
 services:
+  # Per-service logs are bind-mounted to ./logs/<service> for easy demo access.
+  # If needed, ensure host log directories are writable for container runtime user.
   api-gateway:
     ports:
       - 8080:8080
@@ -109,6 +111,7 @@ services:
   user-service:
     volumes:
       - keys:/run/keys:ro
+      - ./logs/user-service:/app/logs
     environment:
       JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
@@ -151,6 +154,7 @@ services:
   content-service:
     volumes:
       - keys:/run/keys:ro
+      - ./logs/content-service:/app/logs
     environment:
       JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
@@ -193,6 +197,7 @@ services:
   notification-service:
     volumes:
       - keys:/run/keys:ro
+      - ./logs/notification-service:/app/logs
     environment:
       JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
@@ -212,6 +217,7 @@ services:
   subscription-service:
     volumes:
       - keys:/run/keys:ro
+      - ./logs/subscription-service:/app/logs
     environment:
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
     depends_on:

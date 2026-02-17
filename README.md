@@ -90,6 +90,22 @@ You can install [`mongosh`](https://www.mongodb.com/docs/mongodb-shell/) command
 
 - `mongosh mongodb://localhost:3101/user-service --username mongo --password 123456` - connect to User Service's database
 
+## Logging
+
+Services now log to both console and rotating files through `common-lib`.
+
+- Default log directory: `logs/`
+- Default file naming: `<service-name>.log` (for example `logs/user-service.log`)
+- Rotation defaults: `20MB` per file, `5` backups, `14` days retention, compression enabled
+
+Optional environment variables:
+
+- `LOG_DIR`
+- `LOG_ROTATE_MAX_SIZE_MB`
+- `LOG_ROTATE_MAX_BACKUPS`
+- `LOG_ROTATE_MAX_AGE_DAYS`
+- `LOG_ROTATE_COMPRESS` (`true`/`false`)
+
 ## Contributing
 
 Create a feature branch, make changes, and submit a pull request.

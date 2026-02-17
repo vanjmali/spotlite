@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"golang.org/x/sync/errgroup"
@@ -38,6 +39,10 @@ type ServerRunConfiguration struct {
 // Run starts the HTTP server based on the provided configuration.
 // It handles graceful shutdown on receiving termination signals.
 func Run(ctx context.Context, config ServerRunConfiguration) error {
+	if err := logging.Init(config.TelemetryName); err != nil {
+		return fmt.Errorf("failed to initialize logging: %w", err)
+	}
+
 	requests.RegisterCommonValidationMessages()
 	shutdownTimeout := config.GracefulShutdownTimeout
 	if shutdownTimeout == 0 {
