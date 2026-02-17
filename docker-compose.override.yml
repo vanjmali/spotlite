@@ -243,6 +243,7 @@ services:
       - certs:/certs
     environment:
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      ROOT_CERT_PATH: /certs/rootCA.crt
       CERT_PATH: /certs/subscription-service.crt
       KEY_PATH: /certs/subscription-service.key
     depends_on:
