@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	pb "github.com/vanjmali/spotlite/common-lib/proto/content_service"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/server"
@@ -94,9 +94,9 @@ var config = server.ServerRunConfiguration{
 
 		// starts the server in a separate go routine to avoid blocking the http server
 		go func() {
-			log.Printf("gRPC server listening on port %s", grpcPort)
+			logging.Infof(context.Background(), "gRPC server listening on port %s", grpcPort)
 			if err := s.Serve(lis); err != nil {
-				log.Fatalf("failed to serve grpc: %v", err)
+				logging.Errorf(context.Background(), "failed to serve grpc: %v", err)
 			}
 		}()
 
@@ -123,7 +123,7 @@ var config = server.ServerRunConfiguration{
 
 func main() {
 	if err := server.Run(context.Background(), config); err != nil {
-		log.Fatalf("failed to start content service: %v", err)
+		logging.Errorf(context.Background(), "failed to start content service: %v", err)
 	}
 }
 

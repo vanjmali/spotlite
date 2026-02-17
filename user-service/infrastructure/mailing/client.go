@@ -1,9 +1,9 @@
 package mailing
 
 import (
-	"log"
 	"strconv"
 
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	mail "github.com/wneessen/go-mail"
 )
@@ -23,10 +23,10 @@ func InitClient(host string, port int, username string, password string) (*mail.
 		mail.WithUsername(username),
 		mail.WithPassword(password))
 	if err != nil {
-		log.Fatalf("failed to create mail client: %s", err)
+		logging.Errorf(nil, "failed to create mail client: %s", err)
 		return nil, err
 	}
-	log.Println("Mail client initialized successfully.")
+	logging.Infof(nil, "mail client initialized successfully")
 
 	return c, nil
 }

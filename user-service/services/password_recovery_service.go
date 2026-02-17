@@ -6,10 +6,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
-	"log"
 	"time"
 
 	"github.com/vanjmali/spotlite/common-lib/clock"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -58,13 +58,13 @@ func (s *PasswordRecoveryService) RequestPasswordReset(ctx context.Context, emai
 	user, err := s.r.FindUserByEmail(ctx, email)
 	if err != nil {
 		// Don't leak if email exists - return generic success
-		log.Printf("password recovery request for non-existent email: %s", email)
+		logging.Auditf(ctx, "password recovery request for non-existent email")
 		return nil
 	}
 
 	// 2. Invalidate any existing recovery tokens for this user
 	if err := s.pr.InvalidateAllTokensForUser(ctx, user.ID); err != nil {
-		log.Printf("failed to invalidate previous recovery tokens: %v", err)
+		logging.Warnf(ctx, "failed to invalidate previous recovery tokens: %v", err)
 		// Continue anyway, not a critical failure
 	}
 
@@ -72,7 +72,7 @@ func (s *PasswordRecoveryService) RequestPasswordReset(ctx context.Context, emai
 	plainToken, err := s.generateSecureToken()
 	if err != nil {
 		span.RecordError(err)
-		log.Printf("failed to generate recovery token: %v", err)
+		logging.Errorf(ctx, "failed to generate recovery token: %v", err)
 		return err
 	}
 
@@ -82,7 +82,7 @@ func (s *PasswordRecoveryService) RequestPasswordReset(ctx context.Context, emai
 	tokenHashBcrypt, err := bcrypt.GenerateFromPassword([]byte(plainToken), bcrypt.DefaultCost)
 	if err != nil {
 		span.RecordError(err)
-		log.Printf("failed to hash recovery token: %v", err)
+		logging.Errorf(ctx, "failed to hash recovery token: %v", err)
 		return err
 	}
 
@@ -100,14 +100,14 @@ func (s *PasswordRecoveryService) RequestPasswordReset(ctx context.Context, emai
 
 	if err := s.pr.SaveRecoveryToken(ctx, recoveryToken); err != nil {
 		span.RecordError(err)
-		log.Printf("failed to save recovery token: %v", err)
+		logging.Errorf(ctx, "failed to save recovery token: %v", err)
 		return err
 	}
 
 	// 6. Send email with magic link (send plaintext token, not hashed)
 	if err := s.ms.SendPasswordResetEmail(email, plainToken); err != nil {
 		span.RecordError(err)
-		log.Printf("failed to send password reset email: %v", err)
+		logging.Errorf(ctx, "failed to send password reset email: %v", err)
 		return err
 	}
 
@@ -141,7 +141,7 @@ func (s *PasswordRecoveryService) ValidateRecoveryToken(ctx context.Context, tok
 	// Verify bcrypt hash matches (additional security)
 	if err := bcrypt.CompareHashAndPassword([]byte(recoveryToken.TokenHash), []byte(token)); err != nil {
 		span.RecordError(err)
-		log.Printf("recovery token hash mismatch: %v", err)
+		logging.Warnf(ctx, "recovery token hash mismatch: %v", err)
 		return nil, ErrInvalidRecoveryToken
 	}
 
@@ -164,7 +164,7 @@ func (s *PasswordRecoveryService) ResetPassword(ctx context.Context, reqDto *dto
 	user, err := s.r.FindUserByEmail(ctx, recoveryToken.Email)
 	if err != nil {
 		span.RecordError(err)
-		log.Printf("user not found for recovery: %v", err)
+		logging.Errorf(ctx, "user not found for recovery: %v", err)
 		return ErrUserNotFound
 	}
 
@@ -172,7 +172,7 @@ func (s *PasswordRecoveryService) ResetPassword(ctx context.Context, reqDto *dto
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(reqDto.NewPassword), bcrypt.DefaultCost)
 	if err != nil {
 		span.RecordError(err)
-		log.Printf("failed to hash new password: %v", err)
+		logging.Errorf(ctx, "failed to hash new password: %v", err)
 		return err
 	}
 
@@ -181,13 +181,13 @@ func (s *PasswordRecoveryService) ResetPassword(ctx context.Context, reqDto *dto
 	expiresAt := now.AddDate(0, 3, 0) // Password expires in 3 months
 	if err := s.r.SetHashPassowrd(ctx, user.ID, string(passwordHash), now, expiresAt); err != nil {
 		span.RecordError(err)
-		log.Printf("failed to update user password: %v", err)
+		logging.Errorf(ctx, "failed to update user password: %v", err)
 		return err
 	}
 
 	// 5. Mark token as used
 	if err := s.pr.MarkTokenAsUsed(ctx, recoveryToken.ID); err != nil {
-		log.Printf("failed to mark recovery token as used: %v", err)
+		logging.Warnf(ctx, "failed to mark recovery token as used: %v", err)
 		// Not critical, continue
 	}
 

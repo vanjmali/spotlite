@@ -3,13 +3,12 @@ package services
 import (
 	"context"
 	"errors"
-	"log"
 	"time"
 
 	"github.com/avast/retry-go"
 	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
@@ -82,7 +81,7 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 	artistEntity, err := mappers.ToArtistEntity(reqDto, embeddedGenre)
 	if err != nil {
 		createSpan.RecordError(err)
-		log.Printf("trace_id=%s error converting to artist entity: %v", telemetry.TraceID(ctx), err)
+		logging.Errorf(ctx, "error converting to artist entity: %v", err)
 		return err
 	}
 
@@ -90,7 +89,7 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 	err = s.r.Create(createCtx, *artistEntity)
 	if err != nil {
 		createSpan.RecordError(err)
-		log.Printf("trace_id=%s error creating artist in database: %v", telemetry.TraceID(ctx), err)
+		logging.Errorf(ctx, "error creating artist in database: %v", err)
 		return err
 	}
 
@@ -107,7 +106,7 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 		retry.Context(createCtx),
 	)
 	if err != nil {
-		log.Printf("Failed to publish entity created event: %v", err)
+		logging.Errorf(createCtx, "failed to publish entity created event: %v", err)
 	}
 
 	return nil

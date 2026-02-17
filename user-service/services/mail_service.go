@@ -2,9 +2,9 @@ package services
 
 import (
 	"fmt"
-	"log"
 	"net/url"
 
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/wneessen/go-mail"
 )
 
@@ -61,7 +61,7 @@ func (ms *MailService) SendAccountVerificationEmail(mailto string, token string)
 	verificationURL := ms.config.VerificationURL + "?token=" + url.QueryEscape(token)
 	emailBody, err := RenderVerificationEmail(verificationURL)
 	if err != nil {
-		log.Printf("failed to render verification email template: %v", err)
+		logging.Errorf(nil, "failed to render verification email template: %v", err)
 		return err
 	}
 
@@ -70,7 +70,7 @@ func (ms *MailService) SendAccountVerificationEmail(mailto string, token string)
 
 	err = ms.c.DialAndSend(m)
 	if err != nil {
-		log.Printf("failed to send verification email: %v", err)
+		logging.Errorf(nil, "failed to send verification email: %v", err)
 	}
 	return err
 }
@@ -85,7 +85,7 @@ func (ms *MailService) SendLoginOtp(mailto string, otp string) error {
 	// Render email template with OTP
 	emailBody, err := RenderLoginOtpEmail(otp)
 	if err != nil {
-		log.Printf("failed to render OTP email template: %v", err)
+		logging.Errorf(nil, "failed to render OTP email template: %v", err)
 		return err
 	}
 
@@ -94,7 +94,7 @@ func (ms *MailService) SendLoginOtp(mailto string, otp string) error {
 
 	err = ms.c.DialAndSend(m)
 	if err != nil {
-		log.Printf("failed to send OTP email: %v", err)
+		logging.Errorf(nil, "failed to send OTP email: %v", err)
 	}
 	return err
 }
@@ -120,7 +120,7 @@ func (ms *MailService) SendPasswordResetEmail(mailto string, token string) error
 }
 
 func (ms *MailService) SendExpiryMail(mailto string) error {
-	log.Printf("sending email")
+	logging.Infof(nil, "sending email")
 	m := mail.NewMsg()
 
 	if err := m.From("mail@spotlite.com"); err != nil {

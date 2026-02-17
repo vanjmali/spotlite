@@ -3,10 +3,10 @@ package worker
 import (
 	"context"
 	"encoding/json"
-	"log"
 	"sync"
 
 	"github.com/hibiken/asynq"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/internal/payload"
 	"github.com/vanjmali/spotlite/user-service/internal/tasks"
@@ -35,7 +35,7 @@ func NewUserWorker(client *asynq.Client, us *services.UserService, ms *services.
 }
 
 func (w *UserWorker) HandleExpiryCheck(ctx context.Context, t *asynq.Task) error {
-	log.Printf("DEBUG: HandleExpiryCheck worker started")
+	logging.Infof(ctx, "handle_expiry_check worker started")
 	var lastID string
 
 	// We are defining a semaphore channel which can handle a maximum of 20 goroutines at once,
@@ -55,7 +55,7 @@ func (w *UserWorker) HandleExpiryCheck(ctx context.Context, t *asynq.Task) error
 
 		// if there are no users that have to be handled stop,
 		if len(users) == 0 {
-			log.Printf("DEBUG: No users with expiring password have been found!")
+			logging.Infof(ctx, "no users with expiring password found")
 			break
 		}
 
@@ -84,7 +84,7 @@ func (w *UserWorker) HandleExpiryCheck(ctx context.Context, t *asynq.Task) error
 				// enqueues the task,
 				_, err := w.ac.EnqueueContext(ctx, emailTask)
 				if err != nil {
-					log.Printf("Failed to enqueue: %v", err)
+					logging.Errorf(ctx, "failed to enqueue expiry email task: %v", err)
 					return
 				}
 
@@ -109,13 +109,13 @@ func (w *UserWorker) HandleExpiryCheck(ctx context.Context, t *asynq.Task) error
 }
 
 func (w *UserWorker) HandleSendExpiryEmail(ctx context.Context, t *asynq.Task) error {
-	log.Printf("DEBUG: HandleSendExpiryEmail worker started")
+	logging.Infof(ctx, "handle_send_expiry_email worker started")
 	var p payload.SendExpiryEmailPayload
 	if err := json.Unmarshal(t.Payload(), &p); err != nil {
 		return err
 	}
 
-	log.Printf("DEBUG: Sending expiry email to %s for user %s\n", p.Email, p.UserID)
+	logging.Infof(ctx, "sending expiry email to %s for user %s", p.Email, p.UserID)
 	err := w.ms.SendExpiryMail(p.Email)
 	if err != nil {
 		return err

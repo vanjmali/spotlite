@@ -2,7 +2,8 @@ package infrastructure
 
 import (
 	"context"
-	"log"
+
+	"github.com/vanjmali/spotlite/common-lib/logging"
 )
 
 type ClientAction int
@@ -81,7 +82,7 @@ func (b *Broker) Listen(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("Broker: shutting down...")
+			logging.Infof(ctx, "broker shutting down")
 			return
 		case event := <-b.ConnectionEvents:
 			switch event.Action {
@@ -111,7 +112,7 @@ func (b *Broker) Listen(ctx context.Context) {
 					}
 				}
 			} else {
-				log.Print("[DEBUG]: The notification can't be sent because the user doesn't have an active connection!")
+				logging.Warnf(ctx, "notification cannot be sent because the user doesn't have an active connection")
 			}
 		}
 	}

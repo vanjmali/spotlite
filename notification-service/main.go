@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gocql/gocql"
 	"github.com/redis/go-redis/v9"
 	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/notification-service/consumers"
@@ -79,7 +79,7 @@ var config = server.ServerRunConfiguration{
 		go func() {
 			<-consumerDone
 			if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
-				log.Printf("notification consumer stopped unexpectedly: %v", consumerErr)
+				logging.Errorf(context.Background(), "notification consumer stopped unexpectedly: %v", consumerErr)
 			}
 		}()
 
@@ -109,7 +109,7 @@ var config = server.ServerRunConfiguration{
 
 func main() {
 	if err := server.Run(context.Background(), config); err != nil {
-		log.Fatalf("failed to start notification service: %v", err)
+		logging.Errorf(context.Background(), "failed to start notification service: %v", err)
 	}
 }
 

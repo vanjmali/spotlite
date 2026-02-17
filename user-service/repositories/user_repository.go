@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
 	"github.com/vanjmali/spotlite/common-lib/account"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -286,7 +286,7 @@ func (r *UserRepositoryMongo) FindUsersForExpiryNotification(
 // UpdateExpiryNotificationSentDate function is used to update the "last_expiry_notification_sent" field for
 // a user that is processed.
 func (r *UserRepositoryMongo) UpdateExpiryNotificationSentDate(ctx context.Context, userID primitive.ObjectID) error {
-	log.Printf("DEBUG: UpdateExpiryNotificationSentDate repository function has been called!")
+	logging.Infof(ctx, "update_expiry_notification_sent repository called")
 	c := r.getCollection()
 
 	filter := bson.M{"_id": userID}

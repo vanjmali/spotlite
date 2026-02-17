@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -80,7 +79,7 @@ func Run(ctx context.Context, config ServerRunConfiguration) error {
 	srv := getHttpServerConfig(config)
 	srv.Handler = handler
 
-	log.Printf("Starting server on port %s...\n", config.Port)
+	logging.Infof(context.Background(), "starting server on port %s", config.Port)
 	srvErr := make(chan error, 1)
 	go func() {
 		// Send startup errors to the main goroutine so cleanup can run.
@@ -102,7 +101,7 @@ func Run(ctx context.Context, config ServerRunConfiguration) error {
 	}
 
 	if serverErr == nil {
-		log.Println("Shutting down server...")
+		logging.Infof(context.Background(), "shutting down server")
 	}
 
 	ctxShutDown, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
@@ -139,7 +138,7 @@ func Run(ctx context.Context, config ServerRunConfiguration) error {
 		return serverErr
 	}
 
-	log.Println("Server closed successfully")
+	logging.Infof(context.Background(), "server closed successfully")
 	return nil
 }
 
@@ -151,7 +150,7 @@ func configureTelemetry(ctx context.Context, config ServerRunConfiguration) (fun
 
 	return func(shutdownCtx context.Context) {
 		if err := tr.Shutdown(shutdownCtx); err != nil {
-			log.Printf("failed to shut down %s tracer provider: %v", config.TelemetryName, err)
+			logging.Errorf(shutdownCtx, "failed to shut down %s tracer provider: %v", config.TelemetryName, err)
 		}
 	}, nil
 }

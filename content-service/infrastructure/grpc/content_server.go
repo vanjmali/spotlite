@@ -3,10 +3,9 @@ package grpc
 import (
 	"context"
 	"errors"
-	"log"
 
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	pb "github.com/vanjmali/spotlite/common-lib/proto/content_service"
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/content/services"
 
 	"google.golang.org/grpc/codes"
@@ -30,7 +29,7 @@ func NewContentServer(gs *services.GenreService, as *services.ArtistService) *Co
 func (s *ContentServer) GetArtist(ctx context.Context, req *pb.EntityIDRequest) (*pb.GetContentEntityResponse, error) {
 	a, err := s.as.FindArtistByID(ctx, req.GetEntityId())
 	if err != nil {
-		log.Printf("trace_id=%s failed while fetching artist: %v", telemetry.TraceID(ctx), err)
+		logging.Errorf(ctx, "failed while fetching artist: %v", err)
 
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):
@@ -48,7 +47,7 @@ func (s *ContentServer) GetArtist(ctx context.Context, req *pb.EntityIDRequest) 
 func (s *ContentServer) GetGenre(ctx context.Context, req *pb.EntityIDRequest) (*pb.GetContentEntityResponse, error) {
 	g, err := s.gs.FindGenreByID(ctx, req.GetEntityId())
 	if err != nil {
-		log.Printf("trace_id=%s failed while fetching genre: %v", telemetry.TraceID(ctx), err)
+		logging.Errorf(ctx, "failed while fetching genre: %v", err)
 
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):

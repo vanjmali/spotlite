@@ -1,9 +1,8 @@
 package asynqinfra
 
 import (
-	"log"
-
 	"github.com/hibiken/asynq"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/user-service/internal/tasks"
 )
 
@@ -43,13 +42,13 @@ func (s *AsynqService) Client() *asynq.Client {
 func (s *AsynqService) Start(mux *asynq.ServeMux) {
 	go func() {
 		if err := s.server.Run(mux); err != nil {
-			log.Fatal(err)
+			logging.Errorf(nil, "asynq server run failed: %v", err)
 		}
 	}()
 
 	go func() {
 		if err := s.scheduler.Run(); err != nil {
-			log.Fatal(err)
+			logging.Errorf(nil, "asynq scheduler run failed: %v", err)
 		}
 	}()
 }
@@ -58,18 +57,18 @@ func (s *AsynqService) Start(mux *asynq.ServeMux) {
 // the order of execution is very important.
 func (s *AsynqService) Stop() error {
 	s.scheduler.Shutdown()
-	log.Print("INFO: scheduler has been shutdown")
+	logging.Infof(nil, "scheduler has been shutdown")
 
 	s.server.Shutdown()
-	log.Print("INFO: server has been shutdown")
+	logging.Infof(nil, "server has been shutdown")
 
 	err := s.client.Close()
 	if err != nil {
-		log.Print("ERROR: An error has occurred while closing Asynq client")
+		logging.Errorf(nil, "an error has occurred while closing asynq client")
 		return err
 	}
 
-	log.Print("INFO: client has been closed")
+	logging.Infof(nil, "client has been closed")
 
 	return nil
 }
@@ -80,6 +79,6 @@ func (s *AsynqService) RegisterSchedule(cronSpec string) {
 		cronSpec,
 		tasks.NewPasswordExpiryCheckTask(),
 	); err != nil {
-		log.Fatal(err)
+		logging.Errorf(nil, "failed to register scheduler task: %v", err)
 	}
 }
