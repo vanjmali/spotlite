@@ -22,25 +22,33 @@ generate_service_cert() {
     local NAME=$1
     echo "Generating certificate for: $NAME"
 
-    # generate private key
     openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:3072 -out "$CERT_DIR/$NAME.key"
 
-    # create CSR with SANs (Subject Alternative Names) using -addext
-    openssl req -new -key "$CERT_DIR/$NAME.key" -out "$CERT_DIR/$NAME.csr" \
-        -subj "/CN=$NAME" \
-        -addext "subjectAltName=DNS:$NAME,DNS:localhost" \
-        -addext "keyUsage=critical,digitalSignature,keyEncipherment" \
-        -addext "extendedKeyUsage=serverAuth,clientAuth"
+    openssl req -new \
+        -key "$CERT_DIR/$NAME.key" \
+        -out "$CERT_DIR/$NAME.csr" \
+        -subj "/CN=$NAME"
 
-    # certificate signing
-    openssl x509 -req -in "$CERT_DIR/$NAME.csr" \
-        -CA "$CERT_DIR/rootCA.crt" -CAkey "$CERT_DIR/rootCA.key" \
-        -CAcreateserial -out "$CERT_DIR/$NAME.crt" \
-        -days 365 -sha256 -copy_extensions copy
+    cat > "$CERT_DIR/$NAME.ext" <<EOF
+       basicConstraints=CA:FALSE
+       keyUsage=critical,digitalSignature,keyEncipherment
+       extendedKeyUsage=serverAuth,clientAuth
+       subjectAltName=DNS:$NAME,DNS:localhost,IP:127.0.0.1
+EOF
 
-    # clean up CSR 
-    rm "$CERT_DIR/$NAME.csr"
+    openssl x509 -req \
+        -in "$CERT_DIR/$NAME.csr" \
+        -CA "$CERT_DIR/rootCA.crt" \
+        -CAkey "$CERT_DIR/rootCA.key" \
+        -CAcreateserial \
+        -out "$CERT_DIR/$NAME.crt" \
+        -days 365 \
+        -sha256 \
+        -extfile "$CERT_DIR/$NAME.ext"
+
+    rm "$CERT_DIR/$NAME.csr" "$CERT_DIR/$NAME.ext"
 }
+
 
 # generate certs for all services
 SERVICES="api-gateway user-service notification-service subscription-service content-service frontend"
