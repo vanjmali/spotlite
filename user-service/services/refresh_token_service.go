@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"github.com/vanjmali/spotlite/user-service/utils/auth"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -41,6 +42,7 @@ func (s *RefreshTokenService) IssueRefreshToken(ctx context.Context, userID prim
 	raw, err := auth.GenerateRefreshToken()
 	if err != nil {
 		span.RecordError(err)
+		logging.Errorf(ctx, "failed to generate refresh token: %v", err)
 		return "", time.Time{}, err
 	}
 	now := time.Now()
@@ -54,6 +56,7 @@ func (s *RefreshTokenService) IssueRefreshToken(ctx context.Context, userID prim
 	_, err = s.r.InsertToken(ctx, doc)
 	if err != nil {
 		span.RecordError(err)
+		logging.Errorf(ctx, "failed to insert refresh token: %v", err)
 		return "", time.Time{}, err
 	}
 
@@ -70,11 +73,14 @@ func (s *RefreshTokenService) GetRefreshTokenId(ctx context.Context, refreshToke
 	if err != nil || old == nil {
 		if err != nil {
 			span.RecordError(err)
+			logging.Errorf(ctx, "failed to find refresh token by hash: %v", err)
 		}
+		logging.Warnf(ctx, "invalid refresh token provided")
 		return primitive.NilObjectID, ErrRefreshInvalid
 	}
 
 	if time.Now().After(old.ExpiresAt) {
+		logging.Warnf(ctx, "refresh token expired")
 		return primitive.NilObjectID, ErrRefreshInvalid
 	}
 
@@ -90,13 +96,16 @@ func (s *RefreshTokenService) RevokeRefreshToken(ctx context.Context, refreshTok
 	if err != nil || old == nil {
 		if err != nil {
 			span.RecordError(err)
+			logging.Errorf(ctx, "failed to find refresh token for revoke: %v", err)
 		}
+		logging.Warnf(ctx, "invalid refresh token revoke attempt")
 		return ErrRefreshInvalid
 	}
 
 	now := time.Now()
 	if err := s.r.RevokeByID(ctx, old.ID, now, primitive.NilObjectID); err != nil {
 		span.RecordError(err)
+		logging.Errorf(ctx, "failed to revoke refresh token: %v", err)
 		return err
 	}
 

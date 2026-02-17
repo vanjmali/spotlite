@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -38,4 +39,5 @@ func TraceHeaderMiddleware(next http.Handler) http.Handler {
 func AttachMuxTracing(r *mux.Router, serviceName string) {
 	r.Use(otelmux.Middleware(serviceName))
 	r.Use(TraceHeaderMiddleware)
+	r.Use(logging.HTTPMiddleware)
 }

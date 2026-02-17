@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,6 +15,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/nats-io/nats.go"
 	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
@@ -108,7 +108,7 @@ var (
 			go func() {
 				<-consumerDone
 				if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
-					log.Printf("subscription consumer stopped unexpectedly: %v", consumerErr)
+					logging.Errorf(context.Background(), "subscription consumer stopped unexpectedly: %v", consumerErr)
 				}
 			}()
 
@@ -155,7 +155,7 @@ var (
 
 func main() {
 	if err := server.Run(context.Background(), config); err != nil {
-		log.Fatalf("failed to start subscription service: %v", err)
+		logging.Errorf(context.Background(), "failed to start subscription service: %v", err)
 	}
 }
 

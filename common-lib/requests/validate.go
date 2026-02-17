@@ -1,6 +1,7 @@
 package requests
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 )
 
@@ -99,11 +101,13 @@ func ReadAndValidateJson(w http.ResponseWriter, v *validator.Validate, rBody io.
 
 	if err := json.NewDecoder(rBody).Decode(&dto); err != nil {
 		if err == io.EOF {
+			logging.Warnf(context.Background(), "input_validation_failed reason=empty_request_body")
 			return false, respond.BadRequest(w, respond.ErrorMessage("Request body can't be empty."))
 		}
 
 		syntaxError := &json.SyntaxError{}
 		if errors.As(err, &syntaxError) {
+			logging.Warnf(context.Background(), "input_validation_failed reason=invalid_json")
 			return false, respond.BadRequest(w, respond.ErrorMessage("Invalid JSON format: "+err.Error()+"."))
 		}
 
@@ -126,6 +130,8 @@ func ReadAndValidateJson(w http.ResponseWriter, v *validator.Validate, rBody io.
 		for _, verr := range validationErrs {
 			fieldErrors[verr.Field()] = getErrorMsg(verr)
 		}
+
+		logging.Warnf(context.Background(), "input_validation_failed reason=field_validation_error fields=%d", len(fieldErrors))
 
 		return false, respond.ValidationError(w, fieldErrors)
 	}

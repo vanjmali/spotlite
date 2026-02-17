@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"mime/multipart"
 	"net/http"
@@ -21,6 +20,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/h2non/filetype"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
@@ -71,7 +71,7 @@ func (h *SongHandler) HandleCreateSong(w http.ResponseWriter, r *http.Request) {
 
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
-			log.Printf("trace_id=%s invalid request body: %v", telemetry.TraceID(r.Context()), err)
+			logging.Warnf(r.Context(), "invalid request body: %v", err)
 			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
@@ -92,7 +92,7 @@ func (h *SongHandler) HandleCreateSong(w http.ResponseWriter, r *http.Request) {
 			_ = respond.NotFound(w)
 			return
 		default:
-			log.Printf("trace_id=%s failed to create song: %v", telemetry.TraceID(r.Context()), err)
+			logging.Errorf(r.Context(), "failed to create song: %v", err)
 			_ = respond.InternalServerError(w)
 			return
 		}
@@ -108,7 +108,7 @@ func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) 
 
 	song, err := h.s.FindSongById(r.Context(), id)
 	if err != nil {
-		log.Printf("trace_id=%s failed to get song: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to get song: %v", err)
 
 		switch {
 		case errors.Is(err, services.ErrSongNotFound):
@@ -124,7 +124,7 @@ func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := respond.OkJson(w, song); err != nil {
-		log.Printf("trace_id=%s failed to write get song response: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to write get song response: %v", err)
 	}
 }
 
@@ -136,7 +136,7 @@ func (h *SongHandler) HandleUpdateSong(w http.ResponseWriter, r *http.Request) {
 	var dto dtos.UpdateSongDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &dto); !ok {
 		if err != nil {
-			log.Printf("trace_id=%s invalid request body: %v", telemetry.TraceID(r.Context()), err)
+			logging.Warnf(r.Context(), "invalid request body: %v", err)
 			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
@@ -145,25 +145,25 @@ func (h *SongHandler) HandleUpdateSong(w http.ResponseWriter, r *http.Request) {
 	updatedSong, err := h.s.UpdateSong(r.Context(), id, dto)
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
-		log.Printf("trace_id=%s invalid song id: %v", telemetry.TraceID(r.Context()), err)
+		logging.Warnf(r.Context(), "invalid song id: %v", err)
 		_ = respond.BadRequest(w, respond.ErrorMessage("invalid song id"))
 		return
 	case errors.Is(err, services.ErrSongNotFound):
-		log.Printf("trace_id=%s song not found: %v", telemetry.TraceID(r.Context()), err)
+		logging.Warnf(r.Context(), "song not found: %v", err)
 		_ = respond.NotFound(w)
 		return
 	case errors.Is(err, services.ErrArtistNotFound):
-		log.Printf("trace_id=%s artist not found: %v", telemetry.TraceID(r.Context()), err)
+		logging.Warnf(r.Context(), "artist not found: %v", err)
 		_ = respond.NotFound(w)
 		return
 	case err != nil:
-		log.Printf("trace_id=%s failed to update song: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to update song: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
 
 	if err := respond.OkJson(w, updatedSong); err != nil {
-		log.Printf("trace_id=%s failed to write update song response: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to write update song response: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -177,15 +177,15 @@ func (h *SongHandler) HandleDeleteSong(w http.ResponseWriter, r *http.Request) {
 	err := h.s.DeleteSong(r.Context(), id)
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
-		log.Printf("trace_id=%s invalid song id: %v", telemetry.TraceID(r.Context()), err)
+		logging.Warnf(r.Context(), "invalid song id: %v", err)
 		_ = respond.BadRequest(w, respond.ErrorMessage("invalid song id"))
 		return
 	case errors.Is(err, services.ErrSongNotFound):
-		log.Printf("trace_id=%s song not found: %v", telemetry.TraceID(r.Context()), err)
+		logging.Warnf(r.Context(), "song not found: %v", err)
 		_ = respond.NotFound(w)
 		return
 	case err != nil:
-		log.Printf("trace_id=%s failed to delete song: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to delete song: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -238,19 +238,19 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrSongNotFound):
-			log.Printf("trace_id=%s song not found: %s", telemetry.TraceID(r.Context()), id)
+			logging.Warnf(r.Context(), "song not found: %s", id)
 			_ = respond.NotFound(w)
 			return
 		case errors.Is(err, services.ErrAudioUploadFailed):
-			log.Printf("trace_id=%s audio upload failed for song: %s, error: %v", telemetry.TraceID(r.Context()), id, err)
+			logging.Errorf(r.Context(), "audio upload failed for song: %s, error: %v", id, err)
 			_ = respond.InternalServerError(w)
 			return
 		case errors.Is(err, services.ErrObjectIdCastFailed):
-			log.Printf("trace_id=%s invalid id format: %s", telemetry.TraceID(r.Context()), id)
+			logging.Warnf(r.Context(), "invalid id format: %s", id)
 			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid ID format"))
 			return
 		default:
-			log.Printf("trace_id=%s unexpected error during audio upload for song %s: %v", telemetry.TraceID(r.Context()), id, err)
+			logging.Errorf(r.Context(), "unexpected error during audio upload for song %s: %v", id, err)
 			_ = respond.InternalServerError(w)
 			return
 		}
@@ -264,7 +264,7 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 
 	song, err := h.s.FindSongById(r.Context(), id)
 	if err != nil {
-		log.Printf("trace_id=%s failed to get song: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to get song: %v", err)
 
 		switch {
 		case errors.Is(err, services.ErrSongNotFound):
@@ -286,7 +286,7 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 
 	rc, err := h.s.OpenAudio(r.Context(), song.AudioPath)
 	if err != nil {
-		log.Printf("trace_id=%s failed to open audio file at path %s: %v", telemetry.TraceID(r.Context()), song.AudioPath, err)
+		logging.Errorf(r.Context(), "failed to open audio file at path %s: %v", song.AudioPath, err)
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -300,7 +300,7 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 
 	streamReader, err := h.s.OpenAudio(r.Context(), song.AudioPath)
 	if err != nil {
-		log.Printf("trace_id=%s failed to reopen audio file at path %s: %v", telemetry.TraceID(r.Context()), song.AudioPath, err)
+		logging.Errorf(r.Context(), "failed to reopen audio file at path %s: %v", song.AudioPath, err)
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -454,8 +454,8 @@ func getSingleValidatedAudioUpload(w http.ResponseWriter, r *http.Request) (mult
 		return nil, nil, "", "", nil, false
 	}
 
-	log.Printf("trace_id=%s uploaded file: name=%q, size=%d, mime=%s, extension=%s",
-		telemetry.TraceID(r.Context()), header.Filename, header.Size, mime, ext)
+	logging.Infof(r.Context(), "uploaded file: name=%q, size=%d, mime=%s, extension=%s",
+		header.Filename, header.Size, mime, ext)
 
 	// file.Read already consumed sniff bytes; prepend them so upload reads the entire original file.
 	reader := io.MultiReader(bytes.NewReader(sniff), file)
@@ -586,5 +586,5 @@ func setSongAudioResponseHeaders(w http.ResponseWriter, size int64, mime string)
 }
 
 func logSecurityEvent(ctx context.Context, event string, details string) {
-	log.Printf("trace_id=%s security_event=%s %s", telemetry.TraceID(ctx), event, details)
+	logging.Securityf(ctx, "security_event=%s %s", event, details)
 }

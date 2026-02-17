@@ -22,6 +22,10 @@ profile.cov
 
 # env file
 .env
+/logs/
+**/logs/
+*.log
+*.log.*
 
 # Editor/IDE
 # .idea/

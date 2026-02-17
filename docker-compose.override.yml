@@ -2,6 +2,18 @@
 # This file is automatically merged into `docker-compose.yml` by Docker when no `-f` flag is provided.
 
 services:
+  # Per-service logs are bind-mounted to ./logs/<service> for easy demo access.
+  # logs-init ensures host log directories are writable on fresh setup.
+  logs-init:
+    image: alpine:3.23
+    command: >
+      sh -c "
+        mkdir -p /logs/user-service /logs/content-service /logs/notification-service /logs/subscription-service &&
+        chmod -R 0777 /logs
+      "
+    volumes:
+      - ./logs:/logs
+
   api-gateway:
     ports:
       - 8080:8080
@@ -136,6 +148,7 @@ services:
   user-service:
     volumes:
       - keys:/run/keys:ro
+      - ./logs/user-service:/app/logs
       - certs:/certs
     environment:
       JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
@@ -143,6 +156,8 @@ services:
       CERT_PATH: /certs/user-service.crt
       KEY_PATH: /certs/user-service.key
     depends_on:
+      logs-init:
+        condition: service_completed_successfully
       cert-gen:
         condition: service_completed_successfully
       key-gen:
@@ -183,6 +198,7 @@ services:
   content-service:
     volumes:
       - keys:/run/keys:ro
+      - ./logs/content-service:/app/logs
       - certs:/certs
     environment:
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
@@ -190,6 +206,8 @@ services:
       CERT_PATH: /certs/content-service.crt
       KEY_PATH: /certs/content-service.key
     depends_on:
+      logs-init:
+        condition: service_completed_successfully
       cert-gen:
         condition: service_completed_successfully
       key-gen:
@@ -230,6 +248,7 @@ services:
   notification-service:
     volumes:
       - keys:/run/keys:ro
+      - ./logs/notification-service:/app/logs
       - certs:/certs
     environment:
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
@@ -237,6 +256,8 @@ services:
       CERT_PATH: /certs/notification-service.crt
       KEY_PATH: /certs/notification-service.key
     depends_on:
+      logs-init:
+        condition: service_completed_successfully
       cert-gen:
         condition: service_completed_successfully
       key-gen:
@@ -254,6 +275,7 @@ services:
   subscription-service:
     volumes:
       - keys:/run/keys:ro
+      - ./logs/subscription-service:/app/logs
       - certs:/certs
     environment:
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
@@ -261,6 +283,8 @@ services:
       CERT_PATH: /certs/subscription-service.crt
       KEY_PATH: /certs/subscription-service.key
     depends_on:
+      logs-init:
+        condition: service_completed_successfully
       cert-gen:
         condition: service_completed_successfully
       key-gen:
