@@ -17,17 +17,17 @@
  *
  * Usage:
  *   node brute-force.mjs
- *   BASE_URL=http://myhost npm start
+ *   BASE_URL=http://localhost:3000 npm start
  */
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
-const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
+const BASE_URL = "http://localhost:3000";
 const LOGIN_ENDPOINT = `${BASE_URL}/api/users/login`;
-const TARGET_EMAIL = process.env.TARGET_EMAIL || "teodora.nedic123@gmail.com";
+const TARGET_EMAIL = "teodora.nedic123@gmail.com";
 
 /** Delay (ms) between consecutive attempts — keeps it realistic, not a DoS. */
-const DELAY_MS = Number(process.env.DELAY_MS) || 80;
+const DELAY_MS = 80;
 
 // ─── Dictionary of common passwords ─────────────────────────────────────────
 
