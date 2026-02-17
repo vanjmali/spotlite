@@ -29,6 +29,40 @@ export const XSS_PAYLOADS = {
 };
 
 /**
+ * Common NoSQL/SQL Injection payloads for testing
+ * These target MongoDB's query operators and regex patterns
+ */
+export const SQL_INJECTION_PAYLOADS = {
+  // NoSQL operator injection - attempts to bypass authentication/filters
+  operatorInjection: '{"$ne": null}',
+  operatorInjectionAlt: '{"$gt": ""}',
+
+  // MongoDB $where injection - attempts code execution
+  whereInjection: "'; return true; var foo = '",
+  whereInjectionAlt: '"; return true; var foo = "',
+
+  // Regex injection - attempts to cause ReDoS or bypass filters
+  regexInjection: '.*',
+  regexInjectionDos: '(a+)+$',
+  regexSpecialChars: '$^.*+?()[]{}|\\',
+
+  // JSON injection in query strings
+  jsonPayload: '{"$regex": ".*"}',
+  jsonArrayPayload: '["admin", {"$gt": ""}]',
+
+  // Traditional SQL injection patterns (for testing sanitization)
+  sqlOr: "' OR '1'='1",
+  sqlUnion: "' UNION SELECT * FROM users--",
+  sqlComment: "admin'--",
+  sqlStacked: "'; DROP TABLE users;--",
+
+  // Special MongoDB operators
+  existsOperator: '{"$exists": true}',
+  typeOperator: '{"$type": "string"}',
+  sizeOperator: '{"$size": 0}',
+};
+
+/**
  * Fetch the latest OTP code from MailHog for a given email address
  */
 async function fetchOtpFromMailHog(email: string): Promise<string> {
@@ -369,4 +403,248 @@ export function generateTestName(prefix: string = 'Test'): string {
  */
 export async function shortWait(page: Page, ms: number = 500) {
   await page.waitForTimeout(ms);
+}
+
+/**
+ * Navigate to admin artists page using SPA click navigation (preserves in-memory auth token)
+ */
+export async function navigateToArtistsManagement(page: Page) {
+  // Step 1: Click the Admin button in the header (navigates to /admin via Angular router)
+  await page.click('button[aria-label="Admin"]', { timeout: 10000 });
+  await page.waitForURL('**/admin/**', { timeout: 10000 });
+  await page.waitForLoadState('networkidle');
+
+  // Step 2: Click the "Manage Artists" link in the sidebar
+  await page.click('a[href="/admin/artists"]', { timeout: 10000 });
+  await page.waitForURL('**/admin/artists', { timeout: 10000 });
+  await page.waitForLoadState('networkidle');
+
+  // Step 3: Wait for artists page content to render
+  await page.waitForSelector(
+    'app-artists-management, .artists-management__btn-add-circle, .item-table__table, .item-table__empty',
+    { timeout: 15000 }
+  );
+
+  // Step 4: If there's a rows-per-page dropdown, set it to 50 so all artists are visible
+  const rowsDropdown = page.locator('select.pagination__size-select');
+  if ((await rowsDropdown.count()) > 0) {
+    try {
+      await rowsDropdown.selectOption('50');
+      await page.waitForLoadState('networkidle');
+    } catch {
+      // Dropdown might not be present or have different options — continue
+    }
+  }
+}
+
+/**
+ * Open artist creation dialog
+ */
+export async function openCreateArtistDialog(page: Page) {
+  await page.click('button.artists-management__btn-add-circle', { timeout: 10000 });
+  // Wait for the dialog overlay to appear
+  await page.waitForSelector('app-artist-editor-dialog app-dialog .dialog__overlay', {
+    state: 'visible',
+    timeout: 5000,
+  });
+}
+
+/**
+ * Result of an artist form submission
+ */
+export type ArtistSubmitResult = {
+  /** Whether the artist was successfully created (dialog closed) */
+  success: boolean;
+  /** Whether the server rejected the payload (dialog stayed open with error) */
+  rejected: boolean;
+  /** Error message if rejected */
+  errorMessage?: string;
+};
+
+/**
+ * Fill and submit artist form.
+ * The artist form requires: name (≥2 chars), description (≥2 chars), and at least one genre.
+ * Returns whether submission succeeded or was rejected.
+ */
+export async function submitArtistForm(
+  page: Page,
+  artistName: string,
+  description: string = 'Test artist description'
+): Promise<ArtistSubmitResult> {
+  // Wait for genre options to load (they load async when dialog opens)
+  await page.waitForTimeout(1500);
+
+  // Fill the name input inside the custom TextInputComponent
+  const nameInput = page.locator('app-artist-editor-dialog app-text-input input.text-input__input');
+  await nameInput.fill(artistName);
+
+  // Fill description (required, min 2 chars) — class is textarea-input__input
+  const descInput = page.locator(
+    'app-artist-editor-dialog app-textarea-input textarea.textarea-input__input'
+  );
+  await descInput.fill(description);
+
+  // Select at least one genre (required):
+  // 1. Open the custom select dropdown
+  const genreCombobox = page.locator('app-artist-editor-dialog app-select-input [role="combobox"]');
+  await genreCombobox.click();
+
+  // 2. Wait for dropdown options to be visible (retry if "No options available")
+  const firstOption = page
+    .locator('app-artist-editor-dialog app-select-input .select-input__option')
+    .first();
+
+  try {
+    await firstOption.waitFor({ state: 'visible', timeout: 5000 });
+  } catch {
+    // Genre options may not have loaded yet — close dropdown, wait, and retry
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(2000);
+    await genreCombobox.click();
+    await firstOption.waitFor({ state: 'visible', timeout: 5000 });
+  }
+
+  // 3. Click the first genre checkbox/option
+  await firstOption.click();
+
+  // 4. Close the dropdown by pressing Escape (the component handles keydown.escape)
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+
+  // Click the "Create" (or "Update") button
+  await page.click('app-artist-editor-dialog button.btn-primary');
+
+  // Wait for either: dialog closes (success) or error appears (rejection)
+  const dialogOverlay = page.locator('app-artist-editor-dialog app-dialog .dialog__overlay');
+
+  try {
+    // First check if dialog closes quickly (successful creation)
+    await dialogOverlay.waitFor({ state: 'hidden', timeout: 5000 });
+    await page.waitForLoadState('networkidle');
+    // Brief wait for backend to commit and table to refresh
+    await page.waitForTimeout(1000);
+    return { success: true, rejected: false };
+  } catch {
+    // Dialog is still open — check for error message
+    const errorMessage = await page.locator('app-artist-editor-dialog').textContent();
+    const hasError = errorMessage?.includes('Failed') || errorMessage?.includes('error');
+
+    if (hasError) {
+      // Close the dialog manually
+      await page.click('app-artist-editor-dialog button.btn-secondary');
+      await dialogOverlay.waitFor({ state: 'hidden', timeout: 5000 });
+      return { success: false, rejected: true, errorMessage: errorMessage?.trim() };
+    }
+
+    // Unknown state — still a failure
+    throw new Error('Artist form submission timed out without success or clear error');
+  }
+}
+
+/**
+ * Create an artist with given name (opens dialog, fills, submits).
+ * Returns the submission result.
+ */
+export async function createArtist(
+  page: Page,
+  artistName: string,
+  description?: string
+): Promise<ArtistSubmitResult> {
+  await openCreateArtistDialog(page);
+  return await submitArtistForm(page, artistName, description);
+}
+
+/**
+ * Verify an artist exists via the API (not limited by UI pagination).
+ * Uses the GET /api/content/artists?name= filter.
+ */
+export async function verifyArtistExistsViaApi(partialName: string): Promise<boolean> {
+  const api = await request.newContext();
+  const baseUrl = 'http://localhost:3000';
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      const res = await api.get(
+        `${baseUrl}/api/content/artists?name=${encodeURIComponent(partialName)}&page_size=50`
+      );
+      const data = await res.json();
+
+      if (data.items && data.items.length > 0) {
+        await api.dispose();
+        return true;
+      }
+    } catch {
+      // Retry on failure
+    }
+
+    // Wait before retry to handle backend write latency
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+
+  await api.dispose();
+  return false;
+}
+
+/**
+ * Find an artist row in the UI table by partial name match.
+ * If not found initially, reloads the artist list by clicking the sidebar link.
+ */
+export async function findArtistRow(page: Page, partialName: string, retries = 3) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const rows = await page.locator('.item-table__row').all();
+
+    for (const row of rows) {
+      const text = await row.textContent();
+      if (text && text.includes(partialName)) {
+        return row;
+      }
+    }
+
+    // Not found yet — force a fresh data load by re-clicking the artists sidebar link
+    if (attempt < retries - 1) {
+      await page.waitForTimeout(2000);
+      // Click the "Manage Artists" link to trigger a fresh loadArtists()
+      await page.click('a[href="/admin/artists"]');
+      await page.waitForLoadState('networkidle');
+      await page.waitForTimeout(500);
+
+      // Re-select 50 rows per page if pagination dropdown exists
+      const rowsDropdown = page.locator('select, [role="combobox"]').last();
+      if ((await rowsDropdown.count()) > 0) {
+        try {
+          await rowsDropdown.selectOption('50');
+          await page.waitForLoadState('networkidle');
+        } catch {
+          // Ignore
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Test search functionality with a given query parameter
+ * Returns the API response for validation
+ */
+export async function testSearchQuery(
+  endpoint: string,
+  queryParam: string,
+  queryValue: string
+): Promise<any> {
+  const api = await request.newContext();
+  const baseUrl = 'http://localhost:3000';
+
+  try {
+    const res = await api.get(
+      `${baseUrl}${endpoint}?${queryParam}=${encodeURIComponent(queryValue)}`
+    );
+    const data = await res.json();
+    await api.dispose();
+    return { status: res.status(), data };
+  } catch (error) {
+    await api.dispose();
+    return { status: 500, error };
+  }
 }
