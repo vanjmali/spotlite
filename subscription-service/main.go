@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/nats-io/nats.go"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/server"
@@ -33,10 +34,10 @@ import (
 )
 
 var (
-	rootCACert   = utils.MustGetEnv("ROOT_CERT_PATH")
-	certFilePath = utils.MustGetEnv("CERT_PATH")
-	keyFilePath  = utils.MustGetEnv("KEY_PATH")
-	config       = server.ServerRunConfiguration{
+	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
+	certFilePath       = utils.MustGetEnv("CERT_PATH")
+	keyFilePath        = utils.MustGetEnv("KEY_PATH")
+	config             = server.ServerRunConfiguration{
 		TelemetryName: "subscription-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
 		ConfigureValidation: func(v *validator.Validate) error {
@@ -178,7 +179,7 @@ func createClients() (*mongodriver.Client, *grpc.ClientConn, *events.JetStreamCl
 		return nil, nil, nil, fmt.Errorf("failed to establish a RPC connection with the content-service: %w", err)
 	}
 
-	jsc, err := events.NewClient("nats://nats:4222")
+	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to initialized NATS jets teram client: %w", err)
 	}
@@ -255,9 +256,9 @@ func createConsumers(ss *services.SubscriptionService) *consumers.SubscriptionCo
 }
 
 func generateCreds() (credentials.TransportCredentials, error) {
-	pemData, err := os.ReadFile(rootCACert)
+	pemData, err := os.ReadFile(rootCACertFilePath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read root cert file at %s: %w", rootCACert, err)
+		return nil, fmt.Errorf("failed to read root cert file at %s: %w", rootCACertFilePath, err)
 	}
 
 	certPool := x509.NewCertPool()

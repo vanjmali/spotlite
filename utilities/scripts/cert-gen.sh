@@ -51,7 +51,7 @@ EOF
 
 
 # generate certs for all services
-SERVICES="api-gateway user-service notification-service subscription-service content-service frontend"
+SERVICES="api-gateway user-service notification-service subscription-service content-service frontend nats"
 
 # repeat for every service
 for SERVICE in $SERVICES; do

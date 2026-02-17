@@ -13,15 +13,25 @@ services:
       - certs:/etc/traefik/certs:ro
 
   nats:
-    command: "-js -m 8222"
+    command: >
+      -js -m 8222 
+      --tls
+      --tlscert=/certs/nats.crt
+      --tlskey=/certs/nats.key
     ports:
       - "${NATS_MONITOR_PORT?}:8222" # NATS performance monitoring
       - "${NATS_CLIENT_PORT?}:4222" # exposed client port for cli testing
+    volumes:
+      - nats-data:/data
+      - certs:/certs:ro
+    depends_on:
+      cert-gen:
+        condition: service_completed_successfully
 
   nui:
     image: ghcr.io/nats-nui/nui:0.9.1
     environment:
-      - NATS_URL=nats://nats:4222
+      - NATS_URL=tls://nats:4222
     labels:
       traefik.enable: true
       traefik.http.routers.nui.rule: PathPrefix(`/dev/nui`)
@@ -33,6 +43,8 @@ services:
       - api-gateway
     depends_on:
       - nats
+    volumes:
+      - certs:/certs:ro
 
   # Override collector config for development
   otel-collector:
@@ -174,6 +186,7 @@ services:
       - certs:/certs
     environment:
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      ROOT_CERT_PATH: /certs/rootCA.crt
       CERT_PATH: /certs/content-service.crt
       KEY_PATH: /certs/content-service.key
     depends_on:
@@ -220,6 +233,7 @@ services:
       - certs:/certs
     environment:
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      ROOT_CERT_PATH: /certs/rootCA.crt
       CERT_PATH: /certs/notification-service.crt
       KEY_PATH: /certs/notification-service.key
     depends_on:

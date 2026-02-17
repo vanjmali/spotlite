@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gocql/gocql"
+	"github.com/nats-io/nats.go"
 	"github.com/redis/go-redis/v9"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/server"
@@ -23,11 +24,12 @@ import (
 )
 
 var (
-	cassHost     = utils.GetEnv("CASSANDRA_HOST", "127.0.0.1")
-	ks           = utils.GetEnv("CASSANDRA_KEYSPACE", "notification_service")
-	certFilePath = utils.MustGetEnv("CERT_PATH")
-	keyFilePath  = utils.MustGetEnv("KEY_PATH")
-	config       = server.ServerRunConfiguration{
+	cassHost           = utils.GetEnv("CASSANDRA_HOST", "127.0.0.1")
+	ks                 = utils.GetEnv("CASSANDRA_KEYSPACE", "notification_service")
+	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
+	certFilePath       = utils.MustGetEnv("CERT_PATH")
+	keyFilePath        = utils.MustGetEnv("KEY_PATH")
+	config             = server.ServerRunConfiguration{
 		TelemetryName: "notification-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
 		CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
@@ -143,7 +145,7 @@ func createClients(ctx context.Context) (*gocql.Session, *events.JetStreamClient
 		return nil, nil, nil, fmt.Errorf("failed to initialize redis: %w", err)
 	}
 
-	jsc, err := events.NewClient("nats://nats:4222")
+	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to initialized NATS jet stream client: %w", err)
 	}

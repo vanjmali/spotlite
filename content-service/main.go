@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/nats-io/nats.go"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	pb "github.com/vanjmali/spotlite/common-lib/proto/content_service"
 	"github.com/vanjmali/spotlite/common-lib/requests"
@@ -31,9 +32,10 @@ import (
 )
 
 var (
-	certFilePath = utils.MustGetEnv("CERT_PATH")
-	keyFilePath  = utils.MustGetEnv("KEY_PATH")
-	config       = server.ServerRunConfiguration{
+	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
+	certFilePath       = utils.MustGetEnv("CERT_PATH")
+	keyFilePath        = utils.MustGetEnv("KEY_PATH")
+	config             = server.ServerRunConfiguration{
 		TelemetryName: "content-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
 		ConfigureValidation: func(v *validator.Validate) error {
@@ -152,7 +154,7 @@ func createClients() (*mongodriver.Client, *events.JetStreamClient, error) {
 		return nil, nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
 	}
 
-	jsc, err := events.NewClient("nats://nats:4222")
+	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to initialized NATS jets teram client: %w", err)
 	}
