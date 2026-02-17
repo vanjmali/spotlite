@@ -3,7 +3,17 @@
 
 services:
   # Per-service logs are bind-mounted to ./logs/<service> for easy demo access.
-  # If needed, ensure host log directories are writable for container runtime user.
+  # logs-init ensures host log directories are writable on fresh setup.
+  logs-init:
+    image: alpine:3.23
+    command: >
+      sh -c "
+        mkdir -p /logs/user-service /logs/content-service /logs/notification-service /logs/subscription-service &&
+        chmod -R 0777 /logs
+      "
+    volumes:
+      - ./logs:/logs
+
   api-gateway:
     ports:
       - 8080:8080
@@ -116,6 +126,8 @@ services:
       JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
     depends_on:
+      logs-init:
+        condition: service_completed_successfully
       key-gen:
         condition: service_completed_successfully
 
@@ -159,6 +171,8 @@ services:
       JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
     depends_on:
+      logs-init:
+        condition: service_completed_successfully
       key-gen:
         condition: service_completed_successfully
 
@@ -202,6 +216,8 @@ services:
       JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
     depends_on:
+      logs-init:
+        condition: service_completed_successfully
       key-gen:
         condition: service_completed_successfully
 
@@ -221,6 +237,8 @@ services:
     environment:
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
     depends_on:
+      logs-init:
+        condition: service_completed_successfully
       key-gen:
         condition: service_completed_successfully
 
