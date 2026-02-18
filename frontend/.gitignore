@@ -44,3 +44,6 @@ __screenshots__/
 # System files
 .DS_Store
 Thumbs.db
+
+# Playwright testing
+/playwright-report

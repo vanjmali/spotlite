@@ -2,11 +2,61 @@
 # This file is automatically merged into `docker-compose.yml` by Docker when no `-f` flag is provided.
 
 services:
+  # Per-service logs are bind-mounted to ./logs/<service> for easy demo access.
+  # logs-init ensures host log directories are writable on fresh setup.
+  logs-init:
+    image: alpine:3.23
+    command: >
+      sh -c "
+        mkdir -p /logs/user-service /logs/content-service /logs/notification-service /logs/subscription-service &&
+        chmod -R 0777 /logs
+      "
+    volumes:
+      - ./logs:/logs
+
   api-gateway:
     ports:
       - 8080:8080
+    depends_on:
+      cert-gen:
+        condition: service_completed_successfully
     volumes:
       - ./api-gateway/traefik.dev.yml:/etc/traefik/traefik.yml:ro
+      - certs:/etc/traefik/certs:ro
+
+  nats:
+    command: >
+      -js -m 8222 
+      --tls
+      --tlscert=/certs/nats.crt
+      --tlskey=/certs/nats.key
+    ports:
+      - "${NATS_MONITOR_PORT?}:8222" # NATS performance monitoring
+      - "${NATS_CLIENT_PORT?}:4222" # exposed client port for cli testing
+    volumes:
+      - nats-data:/data
+      - certs:/certs:ro
+    depends_on:
+      cert-gen:
+        condition: service_completed_successfully
+
+  nui:
+    image: ghcr.io/nats-nui/nui:0.9.1
+    environment:
+      - NATS_URL=tls://nats:4222
+    labels:
+      traefik.enable: true
+      traefik.http.routers.nui.rule: PathPrefix(`/dev/nui`)
+      traefik.http.middlewares.nui-strip-prefix.stripprefix.prefixes: /dev/nui
+      traefik.http.middlewares.nui-strip-prefix.stripprefix.forceslash: false
+      traefik.http.routers.nui.middlewares: nui-strip-prefix
+      traefik.http.services.nui.loadbalancer.server.port: "31311"
+    networks:
+      - api-gateway
+    depends_on:
+      - nats
+    volumes:
+      - certs:/certs:ro
 
   # Override collector config for development
   otel-collector:
@@ -59,6 +109,13 @@ services:
           echo 'Keys already exist, skipping generation.';
         fi"
 
+  cert-gen:
+    image: alpine/openssl
+    volumes:
+      - ./utilities/scripts/cert-gen.sh:/scripts/cert-gen.sh:ro
+      - certs:/certs
+    entrypoint: ["/bin/sh", "/scripts/cert-gen.sh"]
+
   # --- Frontend ---
   # For hot reload
 
@@ -68,6 +125,10 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     labels:
+      traefik.enable: true
+      traefik.http.routers.frontend.rule: PathPrefix(`/`)
+      traefik.http.routers.frontend.entrypoints: websecure
+      traefik.http.routers.frontend.tls: true
       traefik.http.services.frontend.loadbalancer.server.port: "3000"
     volumes:
       - ./frontend/:/app
@@ -87,10 +148,18 @@ services:
   user-service:
     volumes:
       - keys:/run/keys:ro
+      - ./logs/user-service:/app/logs
+      - certs:/certs
     environment:
       JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      CERT_PATH: /certs/user-service.crt
+      KEY_PATH: /certs/user-service.key
     depends_on:
+      logs-init:
+        condition: service_completed_successfully
+      cert-gen:
+        condition: service_completed_successfully
       key-gen:
         condition: service_completed_successfully
 
@@ -121,14 +190,26 @@ services:
       - api-gateway
       - user-internal
 
+  user-redis:
+    ports:
+      - "${USER_REDIS_PORT}:6379"
+
   # --- Content Service ---
   content-service:
     volumes:
       - keys:/run/keys:ro
+      - ./logs/content-service:/app/logs
+      - certs:/certs
     environment:
-      JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      ROOT_CERT_PATH: /certs/rootCA.crt
+      CERT_PATH: /certs/content-service.crt
+      KEY_PATH: /certs/content-service.key
     depends_on:
+      logs-init:
+        condition: service_completed_successfully
+      cert-gen:
+        condition: service_completed_successfully
       key-gen:
         condition: service_completed_successfully
 
@@ -167,10 +248,18 @@ services:
   notification-service:
     volumes:
       - keys:/run/keys:ro
+      - ./logs/notification-service:/app/logs
+      - certs:/certs
     environment:
-      JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      ROOT_CERT_PATH: /certs/rootCA.crt
+      CERT_PATH: /certs/notification-service.crt
+      KEY_PATH: /certs/notification-service.key
     depends_on:
+      logs-init:
+        condition: service_completed_successfully
+      cert-gen:
+        condition: service_completed_successfully
       key-gen:
         condition: service_completed_successfully
 
@@ -178,13 +267,26 @@ services:
     ports:
       - "${CASSANDRA_PORT}:9042"
 
+  notification-redis:
+    ports:
+      - "${NOTIF_REDIS_PORT}:6379"
+
   # --- Subscription Service ---
   subscription-service:
     volumes:
       - keys:/run/keys:ro
+      - ./logs/subscription-service:/app/logs
+      - certs:/certs
     environment:
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      ROOT_CERT_PATH: /certs/rootCA.crt
+      CERT_PATH: /certs/subscription-service.crt
+      KEY_PATH: /certs/subscription-service.key
     depends_on:
+      logs-init:
+        condition: service_completed_successfully
+      cert-gen:
+        condition: service_completed_successfully
       key-gen:
         condition: service_completed_successfully
 
@@ -218,6 +320,7 @@ services:
 volumes:
   frontend-node-modules:
   keys:
+  certs:
 
 networks:
   api-gateway:

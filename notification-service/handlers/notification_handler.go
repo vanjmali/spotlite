@@ -1,17 +1,16 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/gocql/gocql"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/respond"
-	"github.com/vanjmali/spotlite/notifications/infrastructure"
-	"github.com/vanjmali/spotlite/notifications/services"
+	"github.com/vanjmali/spotlite/notification-service/infrastructure"
+	"github.com/vanjmali/spotlite/notification-service/services"
 )
 
 type NotificationHandler struct {
@@ -24,25 +23,6 @@ func NewNotificationHandler(s *services.NotificationService, b *infrastructure.B
 	return &h
 }
 
-func (h *NotificationHandler) CreateNotification(w http.ResponseWriter, r *http.Request) {
-	n, err := h.s.CreateNotification(r.Context())
-	if err != nil {
-		_ = respond.InternalServerError(w)
-		return
-	}
-
-	userID := middlewares.GetUserIdFromContext(r.Context())
-	np, err := json.Marshal(n)
-	if err != nil {
-		_ = respond.InternalServerError(w)
-		return
-	}
-
-	h.b.Broadcast <- infrastructure.NewNotification(userID, np)
-
-	respond.NoContent(w)
-}
-
 // HandleSubscribe function is used to handle client subscription requests and opens a one way connection
 // from server to client.
 func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
@@ -51,12 +31,14 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 	rc := http.NewResponseController(w)
 	err := rc.SetWriteDeadline(time.Time{})
 	if err != nil {
+		logging.Errorf(r.Context(), "failed to disable write deadline for SSE: %v", err)
 		_ = respond.InternalServerError(w)
 	}
 
 	userID := middlewares.GetUserIdFromContext(r.Context())
 
 	if userID == "" {
+		logging.Warnf(r.Context(), "missing user id in context during SSE subscribe")
 		_ = respond.Unauthorized(w)
 		return
 	}
@@ -80,6 +62,7 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 			Action: infrastructure.ClientDisconnect,
 			Conn:   cc,
 		}
+		logging.Infof(r.Context(), "sse client disconnected user_id=%s", userID)
 	}()
 
 	// we need to check if the response writer implements the http Flusher interface,
@@ -88,6 +71,7 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 	// changes
 	flusher, ok := w.(http.Flusher)
 	if !ok {
+		logging.Errorf(r.Context(), "streaming unsupported: response writer does not implement http.Flusher")
 		http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
 		return
 	}
@@ -100,6 +84,7 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 	// events can be sent :D
 	fmt.Fprintf(w, ":connected\n\n")
 	flusher.Flush()
+	logging.Infof(r.Context(), "sse client connected user_id=%s", userID)
 
 	// ticker will send signals every 25 seconds and will help us ping the client to keep
 	// the connection open
@@ -117,6 +102,7 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 			return
 		case <-ticker.C:
 			if _, err := fmt.Fprintf(w, ":ping\n\n"); err != nil {
+				logging.Warnf(r.Context(), "sse ping write failed user_id=%s: %v", userID, err)
 				// if the ping wasn't successful return which will call all defer calls
 				return
 			}
@@ -125,6 +111,7 @@ func (h *NotificationHandler) Subscribe(w http.ResponseWriter, r *http.Request) 
 			// the browser strips away data: %s\n\n
 			_, err := fmt.Fprintf(w, "data: %s\n\n", msg)
 			if err != nil {
+				logging.Warnf(r.Context(), "sse event write failed user_id=%s: %v", userID, err)
 				return
 			}
 			// if everything goes as planned
@@ -138,9 +125,11 @@ func (h *NotificationHandler) GetUserInbox(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrMissingUserID):
+			logging.Warnf(r.Context(), "missing user id in context while reading inbox")
 			_ = respond.BadRequest(w)
 			return
 		default:
+			logging.Errorf(r.Context(), "failed to fetch user inbox: %v", err)
 			_ = respond.InternalServerError(w)
 			return
 		}
@@ -155,11 +144,4 @@ func setSSEHeaders(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("X-Accel-Buffering", "no")
-}
-
-type NotificationEvent struct {
-	UserID         string     `json:"user_id"`
-	CreatedAt      time.Time  `json:"created_at"`
-	NotificationID gocql.UUID `json:"notification_id"`
-	Message        string     `json:"message"`
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -16,6 +17,7 @@ func listWithPagination[T any](
 ) (*commondtos.ItemCollectionResponse[T], error) {
 	items, total, err := find(ctx, filter, p.Skip(), p.Limit())
 	if err != nil {
+		logging.Errorf(ctx, "list query failed: %v", err)
 		return nil, err
 	}
 

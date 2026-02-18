@@ -6,10 +6,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
-	"log"
 
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
@@ -172,7 +171,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (primit
 	if err != nil {
 		mapSpan.RecordError(err)
 		mapSpan.End()
-		log.Printf("trace_id=%s error converting to song entity: %v", telemetry.TraceID(ctx), err)
+		logging.Errorf(ctx, "error converting to song entity: %v", err)
 		return primitive.NilObjectID, err
 	}
 	mapSpan.End()
@@ -182,7 +181,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (primit
 	if err != nil {
 		createSpan.RecordError(err)
 		createSpan.End()
-		log.Printf("trace_id=%s error creating song in database: %v", telemetry.TraceID(ctx), err)
+		logging.Errorf(ctx, "error creating song in database: %v", err)
 		return primitive.NilObjectID, err
 	}
 	createSpan.End()
@@ -192,12 +191,12 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (primit
 	if err != nil {
 		addToAlbumSpan.RecordError(err)
 		addToAlbumSpan.End()
-		log.Printf("trace_id=%s error embedding song into album: %v", telemetry.TraceID(ctx), err)
+		logging.Errorf(ctx, "error embedding song into album: %v", err)
 
 		rollbackCtx, rollbackSpan := s.tr.Start(ctx, "song.create.rollback")
 		if deleteErr := s.DeleteSong(rollbackCtx, id.Hex()); deleteErr != nil {
 			rollbackSpan.RecordError(deleteErr)
-			log.Printf("trace_id=%s CRITICAL: failed to rollback song creation for song_id=%s: %v", telemetry.TraceID(ctx), id.Hex(), deleteErr)
+			logging.Errorf(ctx, "critical: failed to rollback song creation for song_id=%s: %v", id.Hex(), deleteErr)
 		}
 		rollbackSpan.End()
 		return primitive.NilObjectID, err
@@ -379,7 +378,7 @@ func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
 		cleanupCtx, cleanupSpan := s.tr.Start(ctx, "song.delete_song.remove_audio")
 		if err := s.hdfs.Remove(song.AudioPath); err != nil {
 			cleanupSpan.RecordError(err)
-			log.Printf("trace_id=%s failed to delete audio file at path %s: %v", telemetry.TraceID(cleanupCtx), song.AudioPath, err)
+			logging.Errorf(cleanupCtx, "failed to delete audio file at path %s: %v", song.AudioPath, err)
 		}
 		cleanupSpan.End()
 	}
@@ -498,8 +497,7 @@ func (s *SongService) UploadAudio(ctx context.Context, idStr string, r io.Reader
 
 	if song.AudioPath != "" && song.AudioPath != audioPath {
 		if err := s.hdfs.Remove(song.AudioPath); err != nil {
-			log.Printf("trace_id=%s failed to delete old audio at path %s: %v",
-				telemetry.TraceID(ctx), song.AudioPath, err)
+			logging.Errorf(ctx, "failed to delete old audio at path %s: %v", song.AudioPath, err)
 		}
 	}
 	return updated, nil

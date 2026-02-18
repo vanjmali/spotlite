@@ -1,12 +1,11 @@
 package handlers
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/respond"
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/services"
 )
@@ -44,7 +43,7 @@ func (h *RefreshTokenHandler) HandleRefreshToken(w http.ResponseWriter, r *http.
 
 	access, err := h.us.CreateNewToken(r.Context(), user)
 	if err != nil {
-		log.Printf("trace_id=%s failed to create new access token: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to create new access token: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -54,6 +53,6 @@ func (h *RefreshTokenHandler) HandleRefreshToken(w http.ResponseWriter, r *http.
 	}
 
 	if err := respond.OkJson(w, b); err != nil {
-		log.Printf("trace_id=%s failed to write refresh token response: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to write refresh token response: %v", err)
 	}
 }

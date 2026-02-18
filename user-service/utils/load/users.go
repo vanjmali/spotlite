@@ -3,9 +3,9 @@ package load
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/user-service/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -25,7 +25,7 @@ func TestLoadSeed(mc *mongo.Client, dbName string) {
 	lastSent := now.AddDate(0, 0, -2)
 	passwordHash := ""
 
-	log.Printf("Starting insertion of %d users...\n", totalUsers)
+	logging.Infof(ctx, "starting insertion of %d users", totalUsers)
 
 	for i := 0; i < totalUsers; i += insertBatch {
 		var batch []any
@@ -57,7 +57,7 @@ func TestLoadSeed(mc *mongo.Client, dbName string) {
 		// Execute InsertMany for the batch
 		_, err := c.InsertMany(ctx, batch)
 		if err != nil {
-			log.Printf("ERROR: Failed to insert batch at index %d: %v", i, err)
+			logging.Errorf(ctx, "failed to insert batch at index %d: %v", i, err)
 		}
 	}
 }

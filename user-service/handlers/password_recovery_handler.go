@@ -2,13 +2,12 @@ package handlers
 
 import (
 	"errors"
-	"log"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/services"
 )
@@ -28,14 +27,14 @@ func (h *PasswordRecoveryHandler) HandleRequestPasswordReset(w http.ResponseWrit
 	var req dtos.RequestPasswordResetDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
-			log.Printf("trace_id=%s failed to process password reset request: %v", telemetry.TraceID(r.Context()), err)
+			logging.Warnf(r.Context(), "failed to process password reset request: %v", err)
 		}
 		return
 	}
 
 	err := h.prs.RequestPasswordReset(r.Context(), req.Email)
 	if err != nil {
-		log.Printf("trace_id=%s failed to request password reset: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to request password reset: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -49,7 +48,7 @@ func (h *PasswordRecoveryHandler) HandleValidateRecoveryToken(w http.ResponseWri
 	var req dtos.ValidateRecoveryTokenDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
-			log.Printf("trace_id=%s failed to process token validation request: %v", telemetry.TraceID(r.Context()), err)
+			logging.Warnf(r.Context(), "failed to process token validation request: %v", err)
 		}
 		return
 	}
@@ -67,7 +66,7 @@ func (h *PasswordRecoveryHandler) HandleValidateRecoveryToken(w http.ResponseWri
 		_ = respond.Unauthorized(w, respond.ErrorMessage("Recovery token already used"))
 		return
 	case err != nil:
-		log.Printf("trace_id=%s failed to validate recovery token: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to validate recovery token: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
@@ -80,7 +79,7 @@ func (h *PasswordRecoveryHandler) HandleResetPassword(w http.ResponseWriter, r *
 	var req dtos.ResetPasswordDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
-			log.Printf("trace_id=%s failed to process reset password request: %v", telemetry.TraceID(r.Context()), err)
+			logging.Warnf(r.Context(), "failed to process reset password request: %v", err)
 		}
 		return
 	}
@@ -101,7 +100,7 @@ func (h *PasswordRecoveryHandler) HandleResetPassword(w http.ResponseWriter, r *
 		_ = respond.NotFound(w)
 		return
 	case err != nil:
-		log.Printf("trace_id=%s failed to reset password: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to reset password: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}

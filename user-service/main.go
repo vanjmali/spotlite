@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/hibiken/asynq"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
@@ -26,75 +27,88 @@ import (
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 )
 
-var config = server.ServerRunConfiguration{
-	TelemetryName: "user-service",
-	Port:          utils.GetEnv("APP_PORT", "3000"),
-	ConfigureValidation: func(v *validator.Validate) error {
-		requests.RegisterJSONTagNameFunc(v)
-		if err := requests.RegisterValidation(v, validation.CheckStrongPassword); err != nil {
-			return fmt.Errorf("failed to register strong password validation: %w", err)
-		}
-
-		if err := requests.RegisterValidation(v, validation.CheckValidUsername); err != nil {
-			return fmt.Errorf("failed to register username validation: %w", err)
-		}
-
-		if err := requests.RegisterValidation(v, validations.CheckValidName); err != nil {
-			return fmt.Errorf("failed to register name validation: %w", err)
-		}
-
-		return nil
-	},
-	CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
-		mongo, mail, err := createClients(ctx)
-		if err != nil {
-			err = fmt.Errorf("failed to create clients: %w", err)
-			return h, shutdown, err
-		}
-
-		// Cleanup resources on error
-		var asynqShutdown func() error
-		defer func() {
-			if err == nil {
-				// No error, do nothing when function exits
-				return
-			}
-			_ = mongo.Disconnect(ctx)
-			_ = mail.Close()
-			if asynqShutdown != nil {
-				_ = asynqShutdown()
-			}
-		}()
-
-		ur, rtr, prr, err := createRepositories(ctx, mongo)
-		if err != nil {
-			err = fmt.Errorf("failed to create repositories: %w", err)
-			return h, shutdown, err
-		}
-
-		ms, us, rts, prs := createServices(mail, ur, rtr, prr)
-		h = createHandlers(v, us, rts, prs)
-
-		asynqShutdown = setupAsynq(us, ms)
-		shutdown = func() error {
-			if err := mongo.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
-				return fmt.Errorf("failed to disconnect mongo client: %w", err)
+var (
+	certFilePath = utils.MustGetEnv("CERT_PATH")
+	keyFilePath  = utils.MustGetEnv("KEY_PATH")
+	config       = server.ServerRunConfiguration{
+		TelemetryName: "user-service",
+		Port:          utils.GetEnv("APP_PORT", "3000"),
+		ConfigureValidation: func(v *validator.Validate) error {
+			requests.RegisterJSONTagNameFunc(v)
+			if err := requests.RegisterValidation(v, validation.CheckStrongPassword); err != nil {
+				return fmt.Errorf("failed to register strong password validation: %w", err)
 			}
 
-			if err := mail.Close(); err != nil {
-				return fmt.Errorf("failed to close mail client: %w", err)
+			if err := requests.RegisterValidation(v, validation.CheckValidUsername); err != nil {
+				return fmt.Errorf("failed to register username validation: %w", err)
 			}
 
-			if err := asynqShutdown(); err != nil {
-				return fmt.Errorf("failed to shutdown asynq: %w", err)
+			if err := requests.RegisterValidation(v, validations.CheckValidName); err != nil {
+				return fmt.Errorf("failed to register name validation: %w", err)
 			}
 
 			return nil
-		}
+		},
+		CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
+			mc, mail, err := createClients(ctx)
+			if err != nil {
+				err = fmt.Errorf("failed to create clients: %w", err)
+				return h, shutdown, err
+			}
+			// Cleanup resources on error
+			var asynqShutdown func() error
+			defer func() {
+				if err == nil {
+					// No error, do nothing when function exits
+					return
+				}
+				_ = mc.Disconnect(ctx)
+				_ = mail.Close()
+				if asynqShutdown != nil {
+					_ = asynqShutdown()
+				}
+			}()
 
-		return h, shutdown, err
-	},
-}
+			ur, rtr, prr, err := createRepositories(ctx, mc)
+			if err != nil {
+				err = fmt.Errorf("failed to create repositories: %w", err)
+				return h, shutdown, err
+			}
+
+			ms, us, rts, prs := createServices(mail, ur, rtr, prr)
+			h = createHandlers(v, us, rts, prs)
+
+			asynqShutdown = setupAsynq(us, ms)
+			shutdown = func() error {
+				if err := mc.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
+					return fmt.Errorf("failed to disconnect mongo client: %w", err)
+				}
+
+				if err := mail.Close(); err != nil {
+					return fmt.Errorf("failed to close mail client: %w", err)
+				}
+
+				if err := asynqShutdown(); err != nil {
+					return fmt.Errorf("failed to shutdown asynq: %w", err)
+				}
+
+				return nil
+			}
+
+			return h, shutdown, err
+		},
+		Server: struct {
+			ReadTimeout  time.Duration
+			WriteTimeout time.Duration
+			IdleTimeout  time.Duration
+			CertFilePath string
+			KeyFilePath  string
+		}{
+			CertFilePath: certFilePath,
+			KeyFilePath:  keyFilePath,
+		},
+	}
+)
 
 func createClients(ctx context.Context) (*mongodriver.Client, *mail.Client, error) {
 	mongo, err := mongo.InitMongoClient()
@@ -192,7 +206,7 @@ func setupAsynq(us *services.UserService, ms *services.MailService) func() error
 
 	// Initialize a scheduler
 	//    minutes *    hours *    day of month *     month *    day of week *
-	as.RegisterSchedule("03 11 * * *")
+	as.RegisterSchedule("01 19 * * *")
 
 	// Starts task router and scheduler in separate go routines
 	as.Start(mux)
@@ -202,6 +216,6 @@ func setupAsynq(us *services.UserService, ms *services.MailService) func() error
 
 func main() {
 	if err := server.Run(context.Background(), config); err != nil {
-		log.Fatalf("failed to start user service: %v", err)
+		logging.Errorf(context.Background(), "failed to start user service: %v", err)
 	}
 }

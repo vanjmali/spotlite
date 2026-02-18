@@ -2,14 +2,13 @@ package handlers
 
 import (
 	"errors"
-	"log"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/subscription-service/dtos"
 	"github.com/vanjmali/spotlite/subscription-service/mappers"
 	"github.com/vanjmali/spotlite/subscription-service/repositories"
@@ -33,7 +32,7 @@ func (h *SubscriptionHandler) HandleSubscribe(w http.ResponseWriter, r *http.Req
 
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
-			log.Printf("trace_id=%s failed to process subscribe request: %v", telemetry.TraceID(r.Context()), err)
+			logging.Warnf(r.Context(), "failed to process subscribe request: %v", err)
 			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
@@ -42,19 +41,19 @@ func (h *SubscriptionHandler) HandleSubscribe(w http.ResponseWriter, r *http.Req
 	if err := h.s.Subscribe(&req, r.Context()); err != nil {
 		switch {
 		case errors.Is(err, mappers.ErrSubscriptionMapping):
-			log.Printf("trace_id=%s failed to process subscribe request: %v", telemetry.TraceID(r.Context()), err)
+			logging.Warnf(r.Context(), "failed to process subscribe request: %v", err)
 			_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))
 			return
 		case errors.Is(err, services.ErrEntityNotFound):
-			log.Printf("trace_id=%s failed to process subscribe request: %v", telemetry.TraceID(r.Context()), err)
+			logging.Warnf(r.Context(), "failed to process subscribe request: %v", err)
 			_ = respond.NotFound(w)
 			return
 		case errors.Is(err, repositories.ErrSubscriptionAlreadyExists):
-			log.Printf("trace_id=%s failed to process subscribe request: %v", telemetry.TraceID(r.Context()), err)
+			logging.Warnf(r.Context(), "failed to process subscribe request: %v", err)
 			_ = respond.Conflict(w, respond.ErrorMessageWithCode("Subscription already exists for this entity.", "subscription_exists"))
 			return
 		default:
-			log.Printf("trace_id=%s failed to create subscription: %v", telemetry.TraceID(r.Context()), err)
+			logging.Errorf(r.Context(), "failed to create subscription: %v", err)
 			_ = respond.InternalServerError(w)
 			return
 		}
@@ -69,7 +68,7 @@ func (h *SubscriptionHandler) HandleUnsubscribe(w http.ResponseWriter, r *http.R
 
 	entityId, err := primitive.ObjectIDFromHex(entityIdStr)
 	if err != nil {
-		log.Printf("trace_id=%s failed to process unsubscribe request: %v", telemetry.TraceID(r.Context()), err)
+		logging.Warnf(r.Context(), "failed to process unsubscribe request: %v", err)
 		_ = respond.BadRequest(w, respond.ErrorMessage("Invalid entity ID."))
 		return
 	}
@@ -78,10 +77,10 @@ func (h *SubscriptionHandler) HandleUnsubscribe(w http.ResponseWriter, r *http.R
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrSubscriptionNotFound):
-			log.Printf("trace_id=%s failed to process unsubscribe request: %v", telemetry.TraceID(r.Context()), err)
+			logging.Warnf(r.Context(), "failed to process unsubscribe request: %v", err)
 			_ = respond.NotFound(w)
 		default:
-			log.Printf("trace_id=%s failed to process unsubscribe request: %v", telemetry.TraceID(r.Context()), err)
+			logging.Errorf(r.Context(), "failed to process unsubscribe request: %v", err)
 			_ = respond.InternalServerError(w)
 		}
 		return
