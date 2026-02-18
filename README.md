@@ -54,6 +54,27 @@ Install [`golangci-lint`](https://golangci-lint.run/docs/welcome/install/local/)
 
 See [`frontend/README.md`](frontend/README.md).
 
+### Security Testing
+
+XSS prevention tests using Playwright:
+
+```bash
+cd frontend
+npm run test:e2e:xss
+
+#Run tests in UI
+npm run test:e2e:ui
+
+#Run tests with debug
+npm run test:e2e:debug
+
+#Run tests with headed mode
+npm run test:e2e:headed
+
+#Run smoke tests
+npm run test:e2e:smoke
+```
+
 ### Development Services
 
 There are additional services available for local development:
