@@ -28,6 +28,16 @@ const adminOnlyMatch: CanMatchFn = async () => {
   return authService.isAdminSg();
 };
 
+const authenticatedMatch: CanMatchFn = async () => {
+  const authService = inject(AuthService);
+
+  if (authService.isAuthenticatedSg()) {
+    return true;
+  }
+
+  return authService.refreshAccessToken();
+};
+
 export const routes: Routes = [
   {
     path: 'login',
@@ -66,10 +76,12 @@ export const routes: Routes = [
   {
     path: 'inbox',
     component: InboxPage,
+    canMatch: [authenticatedMatch],
   },
   {
     path: 'profile',
     component: ProfilePage,
+    canMatch: [authenticatedMatch],
   },
   {
     path: 'admin',

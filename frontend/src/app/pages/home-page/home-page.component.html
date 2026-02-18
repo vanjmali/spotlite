@@ -1,5 +1,18 @@
 <app-page>
-  <div content class="home-page">
-    <router-outlet></router-outlet>
+  <div content class="home-page" [class.home-page--guest]="!authService.isAuthenticatedSg()">
+    @if (authService.isAuthenticatedSg()) {
+      <router-outlet></router-outlet>
+    } @else {
+      <section class="home-page__guest" aria-label="Guest landing">
+        <div class="home-page__guest-card">
+          <p class="home-page__guest-text">Welcome to Spotlite</p>
+          <p class="home-page__guest-subtext">Sign in to browse artists, albums and songs.</p>
+          <div class="home-page__guest-actions">
+            <a routerLink="/register" class="link-primary">Register</a>
+            <a routerLink="/login" class="btn-light">Login</a>
+          </div>
+        </div>
+      </section>
+    }
   </div>
 </app-page>
