@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const resolvedBaseURL =
+  process.env['PLAYWRIGHT_BASE_URL'] || process.env['BASE_URL'] || 'https://localhost:4443';
+
 /**
  * Playwright E2E test configuration.
  *
@@ -8,13 +11,14 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
+  timeout: 60_000,
   /* Run tests sequentially — all XSS tests share one login email/MailHog */
   fullyParallel: false,
   /* Single worker to avoid OTP race conditions (shared MailHog + email) */
   workers: 1,
   reporter: 'html',
   use: {
-    baseURL: 'https://localhost:4443',
+    baseURL: resolvedBaseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     ignoreHTTPSErrors: true,

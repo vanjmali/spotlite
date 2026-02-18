@@ -13,6 +13,8 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:smoke": "playwright test e2e/smoke.spec.ts",
     "test:e2e:xss": "playwright test e2e/xss-stored.spec.ts e2e/xss-stored-simple.spec.ts",
+    "test:e2e:sqli": "playwright test e2e/sql-injection-stored.spec.ts e2e/sql-injection-simple.spec.ts",
+    "test:e2e:security": "playwright test e2e/xss-stored.spec.ts e2e/xss-stored-simple.spec.ts e2e/sql-injection-stored.spec.ts e2e/sql-injection-simple.spec.ts",
     "lint": "eslint \"src/**/*.{ts,html}\" --max-warnings=0",
     "lint:fix": "eslint \"src/**/*.{ts,html}\" --fix",
     "format": "prettier --write \"src/**/*.{ts,html,scss,json,md}\"",

@@ -54,25 +54,43 @@ Install [`golangci-lint`](https://golangci-lint.run/docs/welcome/install/local/)
 
 See [`frontend/README.md`](frontend/README.md).
 
-### Security Testing
+### Security Checks
 
-XSS prevention tests using Playwright:
+#### XSS Injection
+
+1. Create user `admin@example.com` with any name.
+2. Set password to `SuperAdmin123!` and verify the account.
+3. In User Service Mongo Express (`http://localhost:3000/dev/user-service`), set that account's role to `ADMIN`.
+4. Run:
 
 ```bash
 cd frontend
 npm run test:e2e:xss
+```
 
-#Run tests in UI
-npm run test:e2e:ui
+The script goes through different XSS injection methods, controls the app, and verifies attacks are invalidated by passing tests.
 
-#Run tests with debug
-npm run test:e2e:debug
+#### Other Security Test Commands
 
-#Run tests with headed mode
-npm run test:e2e:headed
+```bash
+# Run tests in UI
+cd frontend && npm run test:e2e:ui
 
-#Run smoke tests
-npm run test:e2e:smoke
+# Run tests with debug
+cd frontend && npm run test:e2e:debug
+
+# Run tests with headed mode
+cd frontend && npm run test:e2e:headed
+
+# Run smoke tests
+cd frontend && npm run test:e2e:smoke
+```
+
+If your stack is not reachable on `https://localhost:4443`, override the Playwright base URL:
+
+```bash
+cd frontend
+PLAYWRIGHT_BASE_URL=http://localhost:3000 npm run test:e2e
 ```
 
 ### Development Services
@@ -110,22 +128,6 @@ Database connections for services:
 You can install [`mongosh`](https://www.mongodb.com/docs/mongodb-shell/) command line tool to communicate with the database via a shell.
 
 - `mongosh mongodb://localhost:3101/user-service --username mongo --password 123456` - connect to User Service's database
-
-## Logging
-
-Services now log to both console and rotating files through `common-lib`.
-
-- Default log directory: `logs/`
-- Default file naming: `<service-name>.log` (for example `logs/user-service.log`)
-- Rotation defaults: `20MB` per file, `5` backups, `14` days retention, compression enabled
-
-Optional environment variables:
-
-- `LOG_DIR`
-- `LOG_ROTATE_MAX_SIZE_MB`
-- `LOG_ROTATE_MAX_BACKUPS`
-- `LOG_ROTATE_MAX_AGE_DAYS`
-- `LOG_ROTATE_COMPRESS` (`true`/`false`)
 
 ## Contributing
 
