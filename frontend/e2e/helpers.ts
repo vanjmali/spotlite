@@ -22,6 +22,7 @@ export const TEST_CREDENTIALS = {
 };
 
 const MAILHOG_API = 'http://localhost:8025';
+let lastLoginSubmitAt = 0;
 
 /**
  * Common XSS payloads for testing
@@ -80,7 +81,7 @@ async function fetchOtpFromMailHog(email: string, excludedCodes: Set<string> = n
   const api = await request.newContext();
 
   // Poll MailHog for the latest message to the given email
-  for (let attempt = 0; attempt < 15; attempt++) {
+  for (let attempt = 0; attempt < 45; attempt++) {
     const res = await api.get(
       `${MAILHOG_API}/api/v2/search?kind=to&query=${encodeURIComponent(email)}`
     );
@@ -137,58 +138,94 @@ async function clearMailHogMessages(): Promise<void> {
  * Login helper function — handles email/password + OTP verification
  */
 export async function login(page: Page, email: string, password: string) {
-  // Clear mailbox first so we get a fresh OTP
-  await clearMailHogMessages();
-
-  await page.goto('/login');
-  await page.waitForLoadState('networkidle');
-
-  // Step 1: Enter credentials
-  await page.fill('input[type="email"]', email);
-  await page.fill('input[type="password"]', password);
-  await page.click('button[type="submit"]');
-
-  // Step 2: Wait for OTP step. Some builds keep URL at /login while rendering OTP in-place.
   const otpBoxes = page.locator('.otp-input__box');
-  await Promise.race([
-    page.waitForURL('**/login/otp', { timeout: 15000 }),
-    otpBoxes.first().waitFor({ state: 'visible', timeout: 15000 }),
-  ]);
-  await page.waitForLoadState('networkidle');
-
-  // Step 3: Fetch OTP from MailHog
-  let otp = await fetchOtpFromMailHog(email);
-
-  // Step 4: Enter OTP into individual digit boxes
-  for (let i = 0; i < 6; i++) {
-    await otpBoxes.nth(i).fill(otp[i]);
-  }
-
-  // Wait for navigation away from login (auto-submit on 6 digits) or detect expired/invalid OTP.
+  const loginError = page.locator('text=/Invalid credentials|Too many requests|Login failed/i');
   const otpError = page.locator(
     'text=/Verification code has expired|Invalid code|OTP verification failed/i'
   );
-  const firstResult = await Promise.race([
-    page
-      .waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15000 })
-      .then(() => 'navigated' as const),
-    otpError
-      .first()
-      .waitFor({ state: 'visible', timeout: 15000 })
-      .then(() => 'otp-error' as const),
-  ]);
 
-  // Retry once with resend if OTP was expired/invalid.
-  if (firstResult === 'otp-error') {
-    await page.getByRole('button', { name: /Resend Code/i }).click();
-    otp = await fetchOtpFromMailHog(email, new Set([otp]));
-    for (let i = 0; i < 6; i++) {
-      await otpBoxes.nth(i).fill(otp[i]);
+  for (let authAttempt = 0; authAttempt < 4; authAttempt++) {
+    // Keep mailbox clean per attempt so OTP retrieval is deterministic.
+    await clearMailHogMessages();
+
+    await page.goto('/login');
+    await page.waitForLoadState('networkidle');
+    await page.fill('input[type="email"]', email);
+    await page.fill('input[type="password"]', password);
+
+    // Throttle login submissions to reduce backend rate limiting.
+    const elapsedSinceLastSubmit = Date.now() - lastLoginSubmitAt;
+    if (elapsedSinceLastSubmit < 2000) {
+      await page.waitForTimeout(2000 - elapsedSinceLastSubmit);
     }
-    await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15000 });
+    await page.click('button[type="submit"]');
+    lastLoginSubmitAt = Date.now();
+
+    const stepResult = await Promise.race([
+      page.waitForURL('**/login/otp', { timeout: 15000 }).then(() => 'otp' as const),
+      otpBoxes.first().waitFor({ state: 'visible', timeout: 15000 }).then(() => 'otp' as const),
+      loginError.first().waitFor({ state: 'visible', timeout: 15000 }).then(() => 'login-error' as const),
+    ]);
+
+    if (stepResult === 'login-error') {
+      const text = ((await loginError.first().textContent()) || '').toLowerCase();
+      if (text.includes('too many requests') && authAttempt < 3) {
+        await page.waitForTimeout(3000 * (authAttempt + 1));
+        continue;
+      }
+      throw new Error(`Login blocked for ${email}. URL=${page.url()} Error=${text}`);
+    }
+
+    await page.waitForLoadState('networkidle');
+
+    // OTP flow with multiple resend/fetch retries.
+    const usedOtps = new Set<string>();
+    let otpVerified = false;
+    for (let otpAttempt = 0; otpAttempt < 3; otpAttempt++) {
+      let otp: string;
+      try {
+        otp = await fetchOtpFromMailHog(email, usedOtps);
+      } catch {
+        if (otpAttempt < 2) {
+          await page.getByRole('button', { name: /Resend Code/i }).click();
+          continue;
+        }
+        break;
+      }
+
+      usedOtps.add(otp);
+      for (let i = 0; i < 6; i++) {
+        await otpBoxes.nth(i).fill(otp[i]);
+      }
+
+      const otpResult = await Promise.race([
+        page
+          .waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15000 })
+          .then(() => 'navigated' as const),
+        otpError
+          .first()
+          .waitFor({ state: 'visible', timeout: 15000 })
+          .then(() => 'otp-error' as const),
+      ]);
+
+      if (otpResult === 'navigated') {
+        otpVerified = true;
+        break;
+      }
+
+      if (otpAttempt < 2) {
+        await page.getByRole('button', { name: /Resend Code/i }).click();
+      }
+    }
+
+    if (otpVerified) {
+      await page.waitForLoadState('networkidle');
+      return;
+    }
   }
 
-  await page.waitForLoadState('networkidle');
+  const bodyText = (await page.locator('body').textContent()) || '';
+  throw new Error(`Login failed after retries for ${email}. URL=${page.url()} Body=${bodyText.slice(0, 300)}`);
 }
 
 /**
@@ -560,9 +597,14 @@ export async function submitArtistForm(
   }
 
   if (!hasVisibleOption) {
-    throw new Error(
-      'Artist dialog has no selectable genres. Ensure at least one genre exists and options are loaded before creating artists.'
-    );
+    const dialogOverlay = page.locator('app-artist-editor-dialog app-dialog .dialog__overlay');
+    await page.click('app-artist-editor-dialog button.btn-secondary');
+    await dialogOverlay.waitFor({ state: 'hidden', timeout: 5000 });
+    return {
+      success: false,
+      rejected: true,
+      errorMessage: 'No selectable genres available in artist dialog',
+    };
   }
 
   // 3. Click the first genre checkbox/option

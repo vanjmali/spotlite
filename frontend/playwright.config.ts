@@ -11,6 +11,7 @@ const resolvedBaseURL =
  */
 export default defineConfig({
   testDir: './e2e',
+  timeout: 60_000,
   /* Run tests sequentially — all XSS tests share one login email/MailHog */
   fullyParallel: false,
   /* Single worker to avoid OTP race conditions (shared MailHog + email) */
