@@ -5,8 +5,8 @@ import { Page, expect, request } from '@playwright/test';
  */
 export const TEST_CREDENTIALS = {
   admin: {
-    email: 'teodora.nedic123@gmail.com',
-    password: 'Teodora123@',
+    email: 'vukasin@gmail.com',
+    password: 'Lozinka123.',
   },
 };
 
@@ -293,7 +293,7 @@ export async function createGenre(page: Page, genreName: string): Promise<GenreS
  */
 export async function verifyGenreExistsViaApi(partialName: string): Promise<boolean> {
   const api = await request.newContext();
-  const baseUrl = 'http://localhost:3000';
+  const baseUrl = 'https://localhost:4443';
 
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
