@@ -5,8 +5,8 @@ import { Page, expect, request } from '@playwright/test';
  */
 export const TEST_CREDENTIALS = {
   admin: {
-    email: 'teodora.nedic123@gmail.com',
-    password: 'Teodora123@',
+    email: 'vukasin@gmail.com',
+    password: 'Lozinka123.',
   },
 };
 
