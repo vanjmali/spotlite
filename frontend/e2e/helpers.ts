@@ -1,5 +1,16 @@
 import { Page, expect, request } from '@playwright/test';
 
+const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process
+  ?.env;
+const E2E_BASE_URL = env?.['PLAYWRIGHT_BASE_URL'] || env?.['BASE_URL'] || 'https://localhost:4443';
+
+async function createApiContext() {
+  return request.newContext({
+    baseURL: E2E_BASE_URL,
+    ignoreHTTPSErrors: true,
+  });
+}
+
 /**
  * Test credentials for different user roles
  */
@@ -65,7 +76,7 @@ export const SQL_INJECTION_PAYLOADS = {
 /**
  * Fetch the latest OTP code from MailHog for a given email address
  */
-async function fetchOtpFromMailHog(email: string): Promise<string> {
+async function fetchOtpFromMailHog(email: string, excludedCodes: Set<string> = new Set()): Promise<string> {
   const api = await request.newContext();
 
   // Poll MailHog for the latest message to the given email
@@ -83,7 +94,7 @@ async function fetchOtpFromMailHog(email: string): Promise<string> {
       // Extract the OTP from the .otp-code element in the HTML email
       // The email body uses quoted-printable encoding, so look near the "otp-code" class
       const otpCodeMatch = body.match(/otp-code[^>]*>(\d{6})</);
-      if (otpCodeMatch) {
+      if (otpCodeMatch && !excludedCodes.has(otpCodeMatch[1])) {
         await api.dispose();
         return otpCodeMatch[1];
       }
@@ -94,7 +105,11 @@ async function fetchOtpFromMailHog(email: string): Promise<string> {
       for (const m of allDigits) {
         const code = m[1];
         // Skip common CSS color-like patterns (e.g., 121212, 000000, 333333, etc.)
-        if (!/^(.)\1{5}$/.test(code) && !/^(.{2})\1{2}$/.test(code)) {
+        if (
+          !excludedCodes.has(code) &&
+          !/^(.)\1{5}$/.test(code) &&
+          !/^(.{2})\1{2}$/.test(code)
+        ) {
           await api.dispose();
           return code;
         }
@@ -133,21 +148,46 @@ export async function login(page: Page, email: string, password: string) {
   await page.fill('input[type="password"]', password);
   await page.click('button[type="submit"]');
 
-  // Step 2: Wait for OTP page
-  await page.waitForURL('**/login/otp', { timeout: 15000 });
+  // Step 2: Wait for OTP step. Some builds keep URL at /login while rendering OTP in-place.
+  const otpBoxes = page.locator('.otp-input__box');
+  await Promise.race([
+    page.waitForURL('**/login/otp', { timeout: 15000 }),
+    otpBoxes.first().waitFor({ state: 'visible', timeout: 15000 }),
+  ]);
   await page.waitForLoadState('networkidle');
 
   // Step 3: Fetch OTP from MailHog
-  const otp = await fetchOtpFromMailHog(email);
+  let otp = await fetchOtpFromMailHog(email);
 
   // Step 4: Enter OTP into individual digit boxes
-  const otpBoxes = page.locator('.otp-input__box');
   for (let i = 0; i < 6; i++) {
     await otpBoxes.nth(i).fill(otp[i]);
   }
 
-  // Wait for navigation away from OTP page (auto-submit on 6 digits)
-  await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15000 });
+  // Wait for navigation away from login (auto-submit on 6 digits) or detect expired/invalid OTP.
+  const otpError = page.locator(
+    'text=/Verification code has expired|Invalid code|OTP verification failed/i'
+  );
+  const firstResult = await Promise.race([
+    page
+      .waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15000 })
+      .then(() => 'navigated' as const),
+    otpError
+      .first()
+      .waitFor({ state: 'visible', timeout: 15000 })
+      .then(() => 'otp-error' as const),
+  ]);
+
+  // Retry once with resend if OTP was expired/invalid.
+  if (firstResult === 'otp-error') {
+    await page.getByRole('button', { name: /Resend Code/i }).click();
+    otp = await fetchOtpFromMailHog(email, new Set([otp]));
+    for (let i = 0; i < 6; i++) {
+      await otpBoxes.nth(i).fill(otp[i]);
+    }
+    await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 15000 });
+  }
+
   await page.waitForLoadState('networkidle');
 }
 
@@ -326,14 +366,16 @@ export async function createGenre(page: Page, genreName: string): Promise<GenreS
  * Uses the GET /api/content/genres?name= filter.
  */
 export async function verifyGenreExistsViaApi(partialName: string): Promise<boolean> {
-  const api = await request.newContext();
-  const baseUrl = 'http://localhost:3000';
+  const api = await createApiContext();
 
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const res = await api.get(
-        `${baseUrl}/api/content/genres?name=${encodeURIComponent(partialName)}&page_size=50`
+        `/api/content/genres?name=${encodeURIComponent(partialName)}&page_size=50`
       );
+      if (!res.ok()) {
+        throw new Error(`Genre API returned ${res.status()}`);
+      }
       const data = await res.json();
 
       if (data.items && data.items.length > 0) {
@@ -485,23 +527,42 @@ export async function submitArtistForm(
   await descInput.fill(description);
 
   // Select at least one genre (required):
-  // 1. Open the custom select dropdown
-  const genreCombobox = page.locator('app-artist-editor-dialog app-select-input [role="combobox"]');
-  await genreCombobox.click();
+  // 1. Open and wait for options with retries.
+  const genreCombobox = page.locator(
+    'app-artist-editor-dialog app-select-input [role="combobox"]'
+  );
+  const firstOption = page.locator('app-artist-editor-dialog app-select-input .select-input__option').first();
+  const noOptionsLabel = page.locator('app-artist-editor-dialog app-select-input .select-input__no-options');
+  const searchInput = page.locator('app-artist-editor-dialog app-select-input .select-input__search');
 
-  // 2. Wait for dropdown options to be visible (retry if "No options available")
-  const firstOption = page
-    .locator('app-artist-editor-dialog app-select-input .select-input__option')
-    .first();
-
-  try {
-    await firstOption.waitFor({ state: 'visible', timeout: 5000 });
-  } catch {
-    // Genre options may not have loaded yet — close dropdown, wait, and retry
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(2000);
+  let hasVisibleOption = false;
+  for (let attempt = 0; attempt < 4; attempt++) {
     await genreCombobox.click();
-    await firstOption.waitFor({ state: 'visible', timeout: 5000 });
+    await page.waitForTimeout(400);
+
+    const optionCount = await page
+      .locator('app-artist-editor-dialog app-select-input .select-input__option')
+      .count();
+    if (optionCount > 0 && (await firstOption.isVisible())) {
+      hasVisibleOption = true;
+      break;
+    }
+
+    if ((await noOptionsLabel.count()) > 0 && (await noOptionsLabel.first().isVisible())) {
+      if ((await searchInput.count()) > 0) {
+        await searchInput.fill('');
+      }
+      await page.waitForTimeout(1500);
+    }
+
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(600);
+  }
+
+  if (!hasVisibleOption) {
+    throw new Error(
+      'Artist dialog has no selectable genres. Ensure at least one genre exists and options are loaded before creating artists.'
+    );
   }
 
   // 3. Click the first genre checkbox/option
@@ -559,14 +620,16 @@ export async function createArtist(
  * Uses the GET /api/content/artists?name= filter.
  */
 export async function verifyArtistExistsViaApi(partialName: string): Promise<boolean> {
-  const api = await request.newContext();
-  const baseUrl = 'http://localhost:3000';
+  const api = await createApiContext();
 
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const res = await api.get(
-        `${baseUrl}/api/content/artists?name=${encodeURIComponent(partialName)}&page_size=50`
+        `/api/content/artists?name=${encodeURIComponent(partialName)}&page_size=50`
       );
+      if (!res.ok()) {
+        throw new Error(`Artist API returned ${res.status()}`);
+      }
       const data = await res.json();
 
       if (data.items && data.items.length > 0) {
@@ -633,13 +696,10 @@ export async function testSearchQuery(
   queryParam: string,
   queryValue: string
 ): Promise<any> {
-  const api = await request.newContext();
-  const baseUrl = 'http://localhost:3000';
+  const api = await createApiContext();
 
   try {
-    const res = await api.get(
-      `${baseUrl}${endpoint}?${queryParam}=${encodeURIComponent(queryValue)}`
-    );
+    const res = await api.get(`${endpoint}?${queryParam}=${encodeURIComponent(queryValue)}`);
     const data = await res.json();
     await api.dispose();
     return { status: res.status(), data };

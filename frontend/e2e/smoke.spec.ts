@@ -61,8 +61,12 @@ test.describe('Smoke Test - XSS Testing Infrastructure', () => {
   });
 
   test('environment check - verify test configuration', async ({ page }) => {
+    const configuredBaseUrl =
+      (test.info().project.use as { baseURL?: string | undefined }).baseURL ||
+      'not configured';
+
     console.log('Test Configuration:');
-    console.log('  Base URL:', 'http://localhost:3000');
+    console.log('  Base URL:', configuredBaseUrl);
     console.log('  Browser:', await page.context().browser()?.version());
     console.log('  Viewport:', await page.viewportSize());
 

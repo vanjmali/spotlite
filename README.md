@@ -86,6 +86,13 @@ cd frontend && npm run test:e2e:headed
 cd frontend && npm run test:e2e:smoke
 ```
 
+If your stack is not reachable on `https://localhost:4443`, override the Playwright base URL:
+
+```bash
+cd frontend
+PLAYWRIGHT_BASE_URL=http://localhost:3000 npm run test:e2e
+```
+
 ### Development Services
 
 There are additional services available for local development:

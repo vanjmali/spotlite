@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const resolvedBaseURL =
+  process.env['PLAYWRIGHT_BASE_URL'] || process.env['BASE_URL'] || 'https://localhost:4443';
+
 /**
  * Playwright E2E test configuration.
  *
@@ -14,7 +17,7 @@ export default defineConfig({
   workers: 1,
   reporter: 'html',
   use: {
-    baseURL: 'https://localhost:4443',
+    baseURL: resolvedBaseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     ignoreHTTPSErrors: true,
