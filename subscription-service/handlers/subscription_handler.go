@@ -35,7 +35,7 @@ func (h *SubscriptionHandler) HandleIsSubscribed(w http.ResponseWriter, r *http.
 
 	entityID, err := primitive.ObjectIDFromHex(qEntityIDstr)
 	if err != nil {
-		respond.BadRequest(w)
+		_ = respond.BadRequest(w)
 		return
 	}
 
@@ -43,15 +43,15 @@ func (h *SubscriptionHandler) HandleIsSubscribed(w http.ResponseWriter, r *http.
 	if err != nil {
 		switch {
 		case errors.Is(err, repositories.ErrSubscriptionNotFound):
-			respond.NotFound(w)
+			_ = respond.NotFound(w)
 			return
 		default:
-			respond.InternalServerError(w)
+			_ = respond.InternalServerError(w)
 			return
 		}
 	}
 
-	respond.Ok(w, "subscription exists")
+	_ = respond.Ok(w, "subscription exists")
 }
 
 func (h *SubscriptionHandler) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
