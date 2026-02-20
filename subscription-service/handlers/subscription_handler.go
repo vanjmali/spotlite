@@ -1,12 +1,15 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
+	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
 	"github.com/vanjmali/spotlite/common-lib/logging"
+	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/subscription-service/dtos"
@@ -87,4 +90,18 @@ func (h *SubscriptionHandler) HandleUnsubscribe(w http.ResponseWriter, r *http.R
 	}
 
 	respond.NoContent(w)
+}
+
+func (h *SubscriptionHandler) HandleUserSubscriptionsList(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	p := pagination.ParsePagination(q)
+
+	query := services.SubsQuery{
+		Page: p.Page,
+		Size: p.Size,
+	}
+
+	commondtos.HandleListResponse(w, r, "subscriptions", func(ctx context.Context) (any, error) {
+		return h.s.ListUserSubscriptions(ctx, query)
+	})
 }

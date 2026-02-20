@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,6 +14,7 @@ import (
 	"github.com/vanjmali/spotlite/subscription-service/entities"
 	"github.com/vanjmali/spotlite/subscription-service/mappers"
 	"github.com/vanjmali/spotlite/subscription-service/repositories"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -31,6 +33,7 @@ type fakeSubscriptionRepo struct {
 	subscriptionIDs []string
 	lastID          string
 	batchSize       int
+	store           []entities.Subscription
 }
 
 // FindSubscriptionsByEntityID implements [SubscriptionRepository].
@@ -41,6 +44,36 @@ func (f *fakeSubscriptionRepo) FindSubscriptionsByEntityID(
 	lastID string,
 ) ([]*entities.Subscription, string, error) {
 	return make([]*entities.Subscription, 0), "", nil
+}
+
+func (f *fakeSubscriptionRepo) FindSubscriptionsByUserID(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Subscription, int64, error) {
+	targetUserID, ok := filter["subscriber_id"].(primitive.ObjectID)
+	if !ok {
+		return []entities.Subscription{}, 0, nil
+	}
+
+	// 2. Filter data
+	var filtered []entities.Subscription
+	for _, sub := range f.store {
+		if sub.SubscriberID == targetUserID {
+			filtered = append(filtered, sub)
+		}
+	}
+
+	totalCount := int64(len(filtered))
+
+	// 3. Apply Skip
+	if skip > int64(len(filtered)) {
+		return []entities.Subscription{}, totalCount, nil
+	}
+	filtered = filtered[skip:]
+
+	// 4. Apply Limit
+	if limit > 0 && int64(len(filtered)) > limit {
+		filtered = filtered[:limit]
+	}
+
+	return filtered, totalCount, nil
 }
 
 func (f *fakeSubscriptionRepo) Create(s *entities.Subscription, ctx context.Context) error {
@@ -87,6 +120,107 @@ func (f *fakeContentGetter) GetEntity(
 
 func contextWithUserID(ctx context.Context, id primitive.ObjectID) context.Context {
 	return middlewares.ContextWithUserID(ctx, id.Hex())
+}
+
+func TestFakeSubscriptionRepo_FindSubscriptionsByUserID(t *testing.T) {
+	// Setup dummy data
+	userA := primitive.NewObjectID()
+	userB := primitive.NewObjectID()
+
+	item1ID := primitive.NewObjectID()
+	item2ID := primitive.NewObjectID()
+	item3ID := primitive.NewObjectID()
+	item4ID := primitive.NewObjectID()
+
+	// Pre-fill the fake repo
+	repo := &fakeSubscriptionRepo{
+		store: []entities.Subscription{
+			{ID: item1ID, SubscriberID: userA},
+			{ID: item2ID, SubscriberID: userA},
+			{ID: item3ID, SubscriberID: userA},
+			{ID: item4ID, SubscriberID: userB},
+		},
+	}
+
+	tests := []struct {
+		name          string
+		filter        bson.M
+		skip          int64
+		limit         int64
+		wantCount     int64 // Total count before pagination
+		wantResultIDs []primitive.ObjectID
+	}{
+		{
+			name:          "Find all for User A",
+			filter:        bson.M{"subscriber_id": userA},
+			skip:          0,
+			limit:         10,
+			wantCount:     3,
+			wantResultIDs: []primitive.ObjectID{item1ID, item2ID, item3ID},
+		},
+		{
+			name:          "Pagination: Skip first 2 for User A",
+			filter:        bson.M{"subscriber_id": userA},
+			skip:          2,
+			limit:         10,
+			wantCount:     3,
+			wantResultIDs: []primitive.ObjectID{item3ID},
+		},
+		{
+			name:          "Pagination: Limit 1 for User A",
+			filter:        bson.M{"subscriber_id": userA},
+			skip:          0,
+			limit:         1,
+			wantCount:     3,
+			wantResultIDs: []primitive.ObjectID{item1ID},
+		},
+		{
+			name:          "Find User B (Filtering check)",
+			filter:        bson.M{"subscriber_id": userB},
+			skip:          0,
+			limit:         10,
+			wantCount:     1,
+			wantResultIDs: []primitive.ObjectID{item4ID},
+		},
+		{
+			name:          "Unknown User",
+			filter:        bson.M{"subscriber_id": "ghost"},
+			skip:          0,
+			limit:         10,
+			wantCount:     0,
+			wantResultIDs: []primitive.ObjectID{}, // Expect empty slice, not nil
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotSubs, gotCount, err := repo.FindSubscriptionsByUserID(context.Background(), tt.filter, tt.skip, tt.limit)
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			// Verify Total Count matches (ignoring pagination)
+			if gotCount != tt.wantCount {
+				t.Errorf("expected count %d, got %d", tt.wantCount, gotCount)
+			}
+
+			// Map results to IDs for easier comparison
+			var gotIDs []primitive.ObjectID
+			for _, sub := range gotSubs {
+				gotIDs = append(gotIDs, sub.ID)
+			}
+
+			// Initialize empty slice if nil to ensure DeepEqual works
+			if gotIDs == nil {
+				gotIDs = []primitive.ObjectID{}
+			}
+
+			if !reflect.DeepEqual(gotIDs, tt.wantResultIDs) {
+				t.Errorf("expected IDs %v, got %v", tt.wantResultIDs, gotIDs)
+			}
+		})
+	}
 }
 
 func TestSubscribeSuccess(t *testing.T) {

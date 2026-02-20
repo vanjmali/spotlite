@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/avast/retry-go"
+	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
+
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
@@ -519,7 +521,7 @@ func (s *AlbumService) GetAlbums(ctx context.Context, q AlbumsQuery) (*dtos.Albu
 	}
 
 	p := pagination.NewPagination(q.Page, q.Size)
-	resp, err := listWithPagination(ctx, p, filter, s.albumRepo.FindAll)
+	resp, err := commondtos.ListWithPagination(ctx, p, filter, s.albumRepo.FindAll)
 	if err != nil {
 		span.RecordError(err)
 		return nil, err
