@@ -119,3 +119,26 @@ func (r *SubscriptionRepository) FindSubscriptionsByEntityID(
 
 	return subs, nextID, nil
 }
+
+func (r *SubscriptionRepository) FindSubscriptionsByUserID(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Subscription, int64, error) {
+	c := r.getCollection()
+
+	tc, err := c.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	opts := options.Find().SetSkip(skip).SetLimit(limit)
+	cur, err := c.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cur.Close(ctx)
+
+	subscriptions := make([]entities.Subscription, 0)
+	if err := cur.All(ctx, &subscriptions); err != nil {
+		return nil, 0, err
+	}
+
+	return subscriptions, tc, nil
+}
