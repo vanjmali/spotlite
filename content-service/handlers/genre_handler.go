@@ -7,10 +7,12 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
+	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
+
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/services"
 )
@@ -61,7 +63,7 @@ func (h *GenreHandler) HandleGetGenres(w http.ResponseWriter, r *http.Request) {
 		Name: q.Get("name"),
 	}
 
-	handleListResponse(w, r, "genres", func(ctx context.Context) (any, error) {
+	commondtos.HandleListResponse(w, r, "genres", func(ctx context.Context) (any, error) {
 		return h.s.GetGenres(ctx, query)
 	})
 }
