@@ -16,6 +16,7 @@ func HandleRequests(sh *handlers.SubscriptionHandler) http.Handler {
 	api := r.PathPrefix("/").Subrouter()
 	telemetry.AttachMuxTracing(api, "subscription-service")
 
+	api.Handle("/{entityID}", middlewares.RequireAuthenticated(sh.HandleIsSubscribed)).Methods("GET")
 	api.Handle("/", middlewares.RequireAuthenticated(sh.HandleSubscribe)).Methods("POST")
 	api.Handle("/{entityID}", middlewares.RequireAuthenticated(sh.HandleUnsubscribe)).Methods("DELETE")
 

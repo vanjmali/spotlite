@@ -22,7 +22,7 @@ import (
 
 var (
 	ErrEntityNotFound       = errors.New("genre/artist couldn't be found")
-	ErrSubscriptionNotFound = errors.New("subscription not found")
+	ErrSubscriptionNotFound = errors.New("subscription couldn't found")
 	ErrInvalidEntityID      = errors.New("error has ocurred while parsing genre/artist id")
 	ErrUpstreamFailure      = errors.New("error has ocurred while fetching artist/genre")
 	ErrPublish              = errors.New("error has occured while publishing subscriber batch event")
@@ -34,6 +34,7 @@ type SubscriptionRepository interface {
 	Create(s *entities.Subscription, ctx context.Context) error
 	Delete(entityID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) (int64, error)
 	FindSubscriptionsByEntityID(ctx context.Context, targetIDStrs []string, batchSize int, lastID string) ([]*entities.Subscription, string, error)
+	IsSubscribed(subscriberID, entityID primitive.ObjectID, ctx context.Context) error
 }
 
 type ContentEntityGetter interface {
@@ -52,6 +53,27 @@ func NewSubscriptionService(sr SubscriptionRepository, gcc ContentEntityGetter, 
 	s := SubscriptionService{sr: sr, gcc: gcc, jsc: jsc, tr: tr}
 
 	return &s
+}
+
+func (s *SubscriptionService) IsSubscribed(entityID primitive.ObjectID, ctx context.Context) error {
+	existsCtx, existsSpan := s.tr.Start(ctx, "subscription.exists")
+	defer existsSpan.End()
+
+	userIDstr := middlewares.GetUserIdFromContext(ctx)
+
+	subscriberID, err := primitive.ObjectIDFromHex(userIDstr)
+	if err != nil {
+		existsSpan.RecordError(err)
+		return err
+	}
+
+	err = s.sr.IsSubscribed(subscriberID, entityID, existsCtx)
+	if err != nil {
+		existsSpan.RecordError(err)
+		return err
+	}
+
+	return nil
 }
 
 func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx context.Context) error {

@@ -89,6 +89,10 @@ func contextWithUserID(ctx context.Context, id primitive.ObjectID) context.Conte
 	return middlewares.ContextWithUserID(ctx, id.Hex())
 }
 
+func (f *fakeSubscriptionRepo) IsSubscribed(subscriberID, entityID primitive.ObjectID, ctx context.Context) error {
+	return nil
+}
+
 func TestSubscribeSuccess(t *testing.T) {
 	repo := &fakeSubscriptionRepo{}
 	getter := &fakeContentGetter{

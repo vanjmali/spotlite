@@ -27,6 +27,30 @@ func NewSubscriptionHandler(s services.SubscriptionService, v validator.Validate
 	return &h
 }
 
+func (h *SubscriptionHandler) HandleIsSubscribed(w http.ResponseWriter, r *http.Request) {
+	qEntityIDstr := mux.Vars(r)["entityID"]
+
+	entityID, err := primitive.ObjectIDFromHex(qEntityIDstr)
+	if err != nil {
+		respond.BadRequest(w)
+		return
+	}
+
+	err = h.s.IsSubscribed(entityID, r.Context())
+	if err != nil {
+		switch {
+		case errors.Is(err, repositories.ErrSubscriptionNotFound):
+			respond.NotFound(w)
+			return
+		default:
+			respond.InternalServerError(w)
+			return
+		}
+	}
+
+	respond.Ok(w, "subscription exists")
+}
+
 func (h *SubscriptionHandler) HandleSubscribe(w http.ResponseWriter, r *http.Request) {
 	var req dtos.CreateSubscriptionDto
 
