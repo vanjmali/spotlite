@@ -6,13 +6,16 @@ import (
 	"time"
 
 	"github.com/avast/retry-go"
+	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
+	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/common-lib/subscription"
 	"github.com/vanjmali/spotlite/subscription-service/dtos"
 	"github.com/vanjmali/spotlite/subscription-service/entities"
 	"github.com/vanjmali/spotlite/subscription-service/mappers"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -26,6 +29,7 @@ var (
 	ErrInvalidEntityID      = errors.New("error has ocurred while parsing genre/artist id")
 	ErrUpstreamFailure      = errors.New("error has ocurred while fetching artist/genre")
 	ErrPublish              = errors.New("error has occured while publishing subscriber batch event")
+	ErrObjectIdCastFailed   = errors.New("failed to convert hex to objectId")
 )
 
 const BATCH_SIZE = 500
@@ -35,6 +39,7 @@ type SubscriptionRepository interface {
 	Delete(entityID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) (int64, error)
 	FindSubscriptionsByEntityID(ctx context.Context, targetIDStrs []string, batchSize int, lastID string) ([]*entities.Subscription, string, error)
 	IsSubscribed(subscriberID, entityID primitive.ObjectID, ctx context.Context) error
+	FindSubscriptionsByUserID(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Subscription, int64, error)
 }
 
 type ContentEntityGetter interface {
@@ -203,4 +208,30 @@ func (s *SubscriptionService) NotifySubscribers(ctx context.Context, p events.En
 	}
 
 	return nil
+}
+
+type SubsQuery struct {
+	Page int
+	Size int
+}
+
+func (s *SubscriptionService) ListUserSubscriptions(ctx context.Context, q SubsQuery) (*dtos.SubsListResponseDto, error) {
+	listCtx, listSpan := s.tr.Start(ctx, "subscription.list")
+	defer listSpan.End()
+
+	userIDstr := middlewares.GetUserIdFromContext(ctx)
+
+	subscriberID, err := primitive.ObjectIDFromHex(userIDstr)
+	if err != nil {
+		listSpan.RecordError(err)
+		return nil, err
+	}
+
+	findCtx, findSpan := s.tr.Start(listCtx, "subscription.list.find")
+	defer findSpan.End()
+
+	filter := bson.M{"subscriber_id": subscriberID}
+	p := pagination.NewPagination(q.Page, q.Size)
+
+	return commondtos.ListWithPagination(findCtx, p, filter, s.sr.FindSubscriptionsByUserID)
 }

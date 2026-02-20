@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
+	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/common-lib/requests"
@@ -252,7 +253,7 @@ func (h *AlbumHandler) HandleGetAlbums(w http.ResponseWriter, r *http.Request) {
 		ArtistId: q.Get("artist_id"),
 	}
 
-	handleListResponse(w, r, "albums", func(ctx context.Context) (any, error) {
+	commondtos.HandleListResponse(w, r, "albums", func(ctx context.Context) (any, error) {
 		return h.s.GetAlbums(ctx, query)
 	})
 }

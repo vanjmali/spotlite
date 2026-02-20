@@ -20,6 +20,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/h2non/filetype"
+	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/common-lib/requests"
@@ -207,7 +208,7 @@ func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 		ArtistId: q.Get("artist_id"),
 	}
 
-	handleListResponse(w, r, "songs", func(ctx context.Context) (any, error) {
+	commondtos.HandleListResponse(w, r, "songs", func(ctx context.Context) (any, error) {
 		return h.s.GetSongs(ctx, query)
 	})
 }

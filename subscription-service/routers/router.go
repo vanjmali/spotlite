@@ -19,6 +19,7 @@ func HandleRequests(sh *handlers.SubscriptionHandler) http.Handler {
 	api.Handle("/{entityID}", middlewares.RequireAuthenticated(sh.HandleIsSubscribed)).Methods("GET")
 	api.Handle("/", middlewares.RequireAuthenticated(sh.HandleSubscribe)).Methods("POST")
 	api.Handle("/{entityID}", middlewares.RequireAuthenticated(sh.HandleUnsubscribe)).Methods("DELETE")
+	api.Handle("/", middlewares.RequireAuthenticated(sh.HandleUserSubscriptionsList)).Methods("GET")
 
 	return r
 }
