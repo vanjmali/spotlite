@@ -8,11 +8,8 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
-	commonvalid "github.com/vanjmali/spotlite/common-lib/validations"
-	contentvalid "github.com/vanjmali/spotlite/content/validations"
 	"github.com/vanjmali/spotlite/ratings/infrastructure/mongo"
 	mongodriver "go.mongodb.org/mongo-driver/mongo"
 )
@@ -21,13 +18,8 @@ var config = server.ServerRunConfiguration{
 	TelemetryName: "rating-service",
 	Port:          utils.GetEnv("APP_PORT", "3000"),
 	ConfigureValidation: func(v *validator.Validate) error {
-		requests.RegisterJSONTagNameFunc(v)
-		if err := requests.RegisterValidation(v, commonvalid.CheckValidName); err != nil {
-			return fmt.Errorf("failed to register name validation: %w", err)
-		}
-		if err := requests.RegisterValidation(v, contentvalid.CheckValidDateOnly); err != nil {
-			return fmt.Errorf("failed to register date-only validation: %w", err)
-		}
+		
+		
 
 		return nil
 	},
