@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -20,6 +21,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+var ErrNotSubscribed = errors.New("subscription not found")
+
 //nolint:unused
 type fakeSubscriptionRepo struct {
 	createFn func(*entities.Subscription, context.Context) error
@@ -34,6 +37,7 @@ type fakeSubscriptionRepo struct {
 	lastID          string
 	batchSize       int
 	store           []entities.Subscription
+	data            map[primitive.ObjectID][]primitive.ObjectID
 }
 
 // FindSubscriptionsByEntityID implements [SubscriptionRepository].
@@ -52,7 +56,6 @@ func (f *fakeSubscriptionRepo) FindSubscriptionsByUserID(ctx context.Context, fi
 		return []entities.Subscription{}, 0, nil
 	}
 
-	// 2. Filter data
 	var filtered []entities.Subscription
 	for _, sub := range f.store {
 		if sub.SubscriberID == targetUserID {
@@ -62,13 +65,11 @@ func (f *fakeSubscriptionRepo) FindSubscriptionsByUserID(ctx context.Context, fi
 
 	totalCount := int64(len(filtered))
 
-	// 3. Apply Skip
 	if skip > int64(len(filtered)) {
 		return []entities.Subscription{}, totalCount, nil
 	}
 	filtered = filtered[skip:]
 
-	// 4. Apply Limit
 	if limit > 0 && int64(len(filtered)) > limit {
 		filtered = filtered[:limit]
 	}
@@ -122,8 +123,24 @@ func contextWithUserID(ctx context.Context, id primitive.ObjectID) context.Conte
 	return middlewares.ContextWithUserID(ctx, id.Hex())
 }
 
+func (f *fakeSubscriptionRepo) AddSubscription(subID, entID primitive.ObjectID) {
+	if f.data == nil {
+		f.data = make(map[primitive.ObjectID][]primitive.ObjectID)
+	}
+	f.data[subID] = append(f.data[subID], entID)
+}
+
 func (f *fakeSubscriptionRepo) IsSubscribed(subscriberID, entityID primitive.ObjectID, ctx context.Context) error {
-	return nil
+	subscriptions, ok := f.data[subscriberID]
+	if !ok {
+		return ErrNotSubscribed
+	}
+
+	if slices.Contains(subscriptions, entityID) {
+		return nil
+	}
+
+	return ErrNotSubscribed
 }
 
 func TestFakeSubscriptionRepo_FindSubscriptionsByUserID(t *testing.T) {
@@ -222,6 +239,70 @@ func TestFakeSubscriptionRepo_FindSubscriptionsByUserID(t *testing.T) {
 
 			if !reflect.DeepEqual(gotIDs, tt.wantResultIDs) {
 				t.Errorf("expected IDs %v, got %v", tt.wantResultIDs, gotIDs)
+			}
+		})
+	}
+}
+
+func TestFakeSubscriptionRepo_IsSubscribed(t *testing.T) {
+	userA := primitive.NewObjectID()
+	userB := primitive.NewObjectID()
+	entityID1 := primitive.NewObjectID()
+	entityID2 := primitive.NewObjectID()
+
+	tests := []struct {
+		name         string
+		setup        func(*fakeSubscriptionRepo)
+		subscriberID primitive.ObjectID
+		entityID     primitive.ObjectID
+		expectError  bool
+	}{
+		{
+			name: "Success: User is subscribed",
+			setup: func(f *fakeSubscriptionRepo) {
+				f.AddSubscription(userA, entityID1)
+			},
+			subscriberID: userA,
+			entityID:     entityID1,
+			expectError:  false,
+		},
+		{
+			name: "Failure: User exists but subscribed to different entity",
+			setup: func(f *fakeSubscriptionRepo) {
+				f.AddSubscription(userA, entityID1)
+			},
+			subscriberID: userA,
+			entityID:     entityID2,
+			expectError:  true,
+		},
+		{
+			name: "Failure: User has no subscriptions",
+			setup: func(f *fakeSubscriptionRepo) {
+			},
+			subscriberID: userB,
+			entityID:     entityID1,
+			expectError:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &fakeSubscriptionRepo{}
+
+			if tt.setup != nil {
+				tt.setup(repo)
+			}
+
+			err := repo.IsSubscribed(tt.subscriberID, tt.entityID, context.Background())
+
+			if tt.expectError {
+				if err == nil {
+					t.Error("expected an error, but got nil")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("expected nil, but got error: %v", err)
+				}
 			}
 		})
 	}
