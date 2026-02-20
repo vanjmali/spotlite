@@ -124,5 +124,5 @@ func (h *SubscriptionHandler) HandleSubscriberCount(w http.ResponseWriter, r *ht
 		return
 	}
 
-	respond.OkJson(w, resp)
+	_ = respond.OkJson(w, resp)
 }
