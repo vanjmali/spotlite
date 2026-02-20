@@ -2,10 +2,10 @@ package infrastructure
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 )
 
@@ -24,10 +24,10 @@ func InitRedis(ctx context.Context) (*redis.Client, error) {
 
 	_, err := rdb.Ping(ctx).Result()
 	if err != nil {
-		log.Print("could not connect to redis at: ", redisAddr)
+		logging.Errorf(ctx, "could not connect to redis at: %s", redisAddr)
 		return nil, err
 	}
 
-	log.Print("connected to redis at: ", redisAddr)
+	logging.Infof(ctx, "connected to redis at: %s", redisAddr)
 	return rdb, nil
 }

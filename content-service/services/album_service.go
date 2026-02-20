@@ -3,13 +3,12 @@ package services
 import (
 	"context"
 	"errors"
-	"log"
 	"time"
 
 	"github.com/avast/retry-go"
 	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
@@ -114,14 +113,14 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 	albumEntity, err := mappers.ToAlbumEntity(albumDto, embeddedArtist, embeddedGenre)
 	if err != nil {
 		createAlSpan.RecordError(err)
-		log.Printf("trace_id=%s error converting to album entity: %v", telemetry.TraceID(ctx), err)
+		logging.Errorf(ctx, "error converting to album entity: %v", err)
 		return err
 	}
 
 	err = s.albumRepo.Create(createAlCtx, *albumEntity)
 	if err != nil {
 		createAlSpan.RecordError(err)
-		log.Printf("trace_id=%s error creating album in database: %v", telemetry.TraceID(ctx), err)
+		logging.Errorf(ctx, "error creating album in database: %v", err)
 		return err
 	}
 
@@ -129,7 +128,6 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 
 	err = retry.Do(
 		func() error {
-
 			return s.jsc.Publish(createAlCtx, events.SUBJECT_ENTITY_CREATED, aep)
 		},
 		retry.Attempts(3),
@@ -137,9 +135,8 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 		retry.DelayType(retry.BackOffDelay),
 		retry.Context(createCtx),
 	)
-
 	if err != nil {
-		log.Printf("Failed to publish entity created event: %v", err)
+		logging.Errorf(createAlCtx, "failed to publish entity created event: %v", err)
 	}
 
 	return nil

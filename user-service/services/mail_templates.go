@@ -1,11 +1,14 @@
 package services
 
 import (
+	"context"
 	"embed"
 	"html/template"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/vanjmali/spotlite/common-lib/logging"
 )
 
 const (
@@ -38,6 +41,7 @@ func defaultEmailTemplateData() EmailTemplateData {
 func renderEmailTemplate(path string, data EmailTemplateData) (string, error) {
 	styles, err := mailTemplateFS.ReadFile(commonEmailStylesPath)
 	if err != nil {
+		logging.Errorf(context.Background(), "failed to read email styles template: %v", err)
 		return "", err
 	}
 
@@ -46,11 +50,13 @@ func renderEmailTemplate(path string, data EmailTemplateData) (string, error) {
 
 	tmpl, err := template.ParseFS(mailTemplateFS, path)
 	if err != nil {
+		logging.Errorf(context.Background(), "failed to parse email template %s: %v", path, err)
 		return "", err
 	}
 
 	var buf strings.Builder
 	if err := tmpl.Execute(&buf, data); err != nil {
+		logging.Errorf(context.Background(), "failed to execute email template %s: %v", path, err)
 		return "", err
 	}
 

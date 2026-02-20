@@ -1,1 +1,64 @@
 @use 'variables/colors' as *;
+
+.home-page {
+  min-height: 100%;
+}
+
+.home-page--guest {
+  height: 100%;
+  display: flex;
+}
+
+.home-page__guest {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+}
+
+.home-page__guest-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: center;
+  width: min(560px, 100%);
+  padding: 32px 28px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(168, 85, 247, 0.14) 0%, rgba(10, 10, 10, 0.85) 100%);
+  border: 1px solid rgba(216, 180, 254, 0.25);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.35);
+}
+
+.home-page__guest-text {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: $color-white;
+  letter-spacing: 0.02em;
+}
+
+.home-page__guest-subtext {
+  margin: 0;
+  color: $color-gray-200;
+  font-size: 1rem;
+}
+
+.home-page__guest-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+@media (max-width: 640px) {
+  .home-page__guest-card {
+    padding: 26px 20px;
+    border-radius: 16px;
+  }
+
+  .home-page__guest-text {
+    font-size: 1.6rem;
+  }
+}

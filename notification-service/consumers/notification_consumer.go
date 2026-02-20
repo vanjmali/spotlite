@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/notification-service/services"
 )
 
@@ -24,7 +24,7 @@ func NewConsumer(ns *services.NotificationService) *NotificationConsumer {
 func (h *NotificationConsumer) HandleSubscribersBatch(ctx context.Context, msg jetstream.Msg) error {
 	var p events.SubscribersBatchEventPayload
 	if err := json.Unmarshal(msg.Data(), &p); err != nil {
-		log.Printf("CRITICAL: Failed to unmarshal SubscribersBatchEventPayload: %v", err)
+		logging.Errorf(ctx, "critical: failed to unmarshal SubscribersBatchEventPayload: %v", err)
 		return nil
 	}
 

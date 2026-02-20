@@ -3,11 +3,10 @@ package handlers
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
 
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/respond"
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/content/services"
 )
 
@@ -19,13 +18,13 @@ func handleListResponse(w http.ResponseWriter, r *http.Request, logLabel string,
 		case errors.Is(err, services.ErrObjectIdCastFailed):
 			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid ID format"))
 		default:
-			log.Printf("trace_id=%s failed to list %s: %v", telemetry.TraceID(r.Context()), logLabel, err)
+			logging.Errorf(r.Context(), "failed to list %s: %v", logLabel, err)
 			_ = respond.InternalServerError(w)
 		}
 		return
 	}
 
 	if err := respond.OkJson(w, resp); err != nil {
-		log.Printf("trace_id=%s failed to write list %s response: %v", telemetry.TraceID(r.Context()), logLabel, err)
+		logging.Errorf(r.Context(), "failed to write list %s response: %v", logLabel, err)
 	}
 }

@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"log"
 
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/subscription-service/repositories"
 	"github.com/vanjmali/spotlite/subscription-service/services"
 )
@@ -25,7 +25,7 @@ func NewConsumer(ss *services.SubscriptionService) *SubscriptionConsumer {
 func (h *SubscriptionConsumer) HandleEntityCreated(ctx context.Context, msg jetstream.Msg) error {
 	var p events.EntityCreatedEventPayload
 	if err := json.Unmarshal(msg.Data(), &p); err != nil {
-		log.Printf("CRITICAL: Failed to unmarshal EntityCreatedPayload: %v", err)
+		logging.Errorf(ctx, "critical: failed to unmarshal EntityCreatedPayload: %v", err)
 		return nil
 	}
 

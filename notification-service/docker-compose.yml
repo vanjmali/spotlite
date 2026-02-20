@@ -12,11 +12,17 @@ services:
       CASSANDRA_PORT: ${CASSANDRA_PORT?}
       CASSANDRA_DC: ${CASSANDRA_DC?}
       CASSANDRA_KEYSPACE: ${CASSANDRA_KEYSPACE?}
+      LOG_DIR: ${LOG_DIR?}
+      LOG_ROTATE_MAX_SIZE_MB: ${LOG_ROTATE_MAX_SIZE_MB?}
+      LOG_ROTATE_MAX_BACKUPS: ${LOG_ROTATE_MAX_BACKUPS?}
+      LOG_ROTATE_MAX_AGE_DAYS: ${LOG_ROTATE_MAX_AGE_DAYS?}
+      LOG_ROTATE_COMPRESS: ${LOG_ROTATE_COMPRESS?}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true
       traefik.docker.network: spotlite-api-gateway
       traefik.http.routers.notification-service.rule: PathPrefix(`/api/notifications`)
+      traefik.http.services.notification-service.loadbalancer.server.scheme: https
       traefik.http.routers.notification-service.middlewares: notification-service-strip-prefix,notification-service-compress,rate-limit-global@file
       traefik.http.middlewares.notification-service-strip-prefix.stripprefix.prefixes: /api/notifications
       traefik.http.middlewares.notification-service-strip-prefix.stripprefix.forceslash: false
@@ -26,6 +32,8 @@ services:
       traefik.http.services.notification-service.loadbalancer.healthcheck.timeout: 2s
       traefik.http.middlewares.notification-service-compress.compress.excludedcontenttypes: text/event-stream
       traefik.http.services.notification-service.loadbalancer.responseForwarding.flushInterval: "100ms"
+      traefik.http.routers.notification-service.entrypoints: websecure
+      traefik.http.routers.notification-service.tls: true
     depends_on:
       notification-cassandra:
         condition: service_healthy

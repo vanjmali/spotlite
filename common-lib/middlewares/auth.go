@@ -7,6 +7,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/vanjmali/spotlite/common-lib/account"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 )
@@ -26,6 +27,12 @@ func ValidateJWT(next http.Handler) http.HandlerFunc {
 		pubKey, _ := utils.GetPublicKey()
 
 		tStr := extractToken(r.Header.Get("Authorization"))
+		if tStr == "" {
+			logging.Securityf(r.Context(), "auth_missing_token method=%s path=%s remote_addr=%s", r.Method, r.URL.Path, r.RemoteAddr)
+			_ = respond.Unauthorized(w)
+			return
+		}
+
 		t, err := jwt.Parse(tStr, func(token *jwt.Token) (interface{}, error) {
 			// final check to avoid "JWT Algorithm Confusion Attack"
 			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
@@ -35,18 +42,21 @@ func ValidateJWT(next http.Handler) http.HandlerFunc {
 		})
 
 		if err != nil || !t.Valid {
+			logging.Securityf(r.Context(), "auth_invalid_or_expired_token method=%s path=%s remote_addr=%s", r.Method, r.URL.Path, r.RemoteAddr)
 			_ = respond.Unauthorized(w)
 			return
 		}
 
 		claims, ok := t.Claims.(jwt.MapClaims)
 		if !ok {
+			logging.Securityf(r.Context(), "auth_invalid_token_claims method=%s path=%s remote_addr=%s", r.Method, r.URL.Path, r.RemoteAddr)
 			_ = respond.Unauthorized(w)
 			return
 		}
 
 		status, ok := claims["status"].(string)
 		if !ok {
+			logging.Securityf(r.Context(), "auth_missing_status_claim method=%s path=%s remote_addr=%s", r.Method, r.URL.Path, r.RemoteAddr)
 			_ = respond.Unauthorized(w)
 			return
 		}
@@ -54,6 +64,7 @@ func ValidateJWT(next http.Handler) http.HandlerFunc {
 
 		userId, ok := claims["sub"].(string)
 		if !ok {
+			logging.Securityf(r.Context(), "auth_missing_subject_claim method=%s path=%s remote_addr=%s", r.Method, r.URL.Path, r.RemoteAddr)
 			_ = respond.Unauthorized(w)
 			return
 		}
@@ -61,12 +72,14 @@ func ValidateJWT(next http.Handler) http.HandlerFunc {
 
 		roleStr, ok := claims["role"].(string)
 		if !ok {
+			logging.Securityf(r.Context(), "auth_missing_role_claim method=%s path=%s remote_addr=%s", r.Method, r.URL.Path, r.RemoteAddr)
 			_ = respond.Unauthorized(w)
 			return
 		}
 		userRole := account.Role(roleStr)
 		ctx = context.WithValue(ctx, roleIdKey, userRole)
 		r = r.WithContext(ctx)
+		logging.Auditf(r.Context(), "auth_token_validated method=%s path=%s user_id=%s role=%s", r.Method, r.URL.Path, userId, userRole)
 
 		next.ServeHTTP(w, r)
 	}

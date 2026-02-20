@@ -7,6 +7,14 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:smoke": "playwright test e2e/smoke.spec.ts",
+    "test:e2e:xss": "playwright test e2e/xss-stored.spec.ts e2e/xss-stored-simple.spec.ts",
+    "test:e2e:sqli": "playwright test e2e/sql-injection-stored.spec.ts e2e/sql-injection-simple.spec.ts",
+    "test:e2e:security": "playwright test e2e/xss-stored.spec.ts e2e/xss-stored-simple.spec.ts e2e/sql-injection-stored.spec.ts e2e/sql-injection-simple.spec.ts",
     "lint": "eslint \"src/**/*.{ts,html}\" --max-warnings=0",
     "lint:fix": "eslint \"src/**/*.{ts,html}\" --fix",
     "format": "prettier --write \"src/**/*.{ts,html,scss,json,md}\"",
@@ -36,6 +44,7 @@
     "@angular/build": "^21.1.3",
     "@angular/cli": "^21.1.3",
     "@angular/compiler-cli": "^21.1.3",
+    "@playwright/test": "^1.58.2",
     "@types/event-source-polyfill": "^1.0.5",
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
@@ -45,6 +54,7 @@
     "jsdom": "^28.0.0",
     "prettier": "^3.8.1",
     "typescript": "~5.9.3",
+    "typescript-eslint": "^8.56.0",
     "vitest": "^4.0.18"
   }
 }

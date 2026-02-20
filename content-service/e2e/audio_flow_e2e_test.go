@@ -53,7 +53,7 @@ type songResponse struct {
 func TestAudioFlowE2E(t *testing.T) {
 	baseURL := os.Getenv("E2E_BASE_URL")
 	if baseURL == "" {
-		baseURL = "http://localhost:3000/api/content"
+		baseURL = "https://localhost:4443/api/content"
 	}
 	baseURL = strings.TrimRight(baseURL, "/")
 
