@@ -43,6 +43,6 @@ include:
   - content-service/docker-compose.yml
   - notification-service/docker-compose.yml
   - subscription-service/docker-compose.yml
-  # - rating-service/docker-compose.yml
+  - rating-service/docker-compose.yml
   # - recommendation-service/docker-compose.yml
   # - analytic-service/docker-compose.yml
