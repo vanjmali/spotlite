@@ -11,4 +11,8 @@ type CreateSubscriptionDto struct {
 	Type     subscription.SubscriptionType `json:"sub_type" validate:"required,validsubtype"`
 }
 
+type EntitySubscriberCountDTO struct {
+	SubscriberCount int64 `json:"sub_count"`
+}
+
 type SubsListResponseDto = commondtos.ItemCollectionResponse[entities.Subscription]

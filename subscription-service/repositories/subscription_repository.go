@@ -142,3 +142,18 @@ func (r *SubscriptionRepository) FindSubscriptionsByUserID(ctx context.Context, 
 
 	return subscriptions, tc, nil
 }
+
+func (r *SubscriptionRepository) FindEntitySubscriberCount(ctx context.Context, entityID primitive.ObjectID) (int64, error) {
+	c := r.getCollection()
+
+	filter := bson.M{
+		"entity_id": entityID,
+	}
+
+	count, err := c.CountDocuments(ctx, filter)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}

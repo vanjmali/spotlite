@@ -99,6 +99,10 @@ func (f *fakeSubscriptionRepo) Delete(
 	return 1, nil
 }
 
+func (f *fakeSubscriptionRepo) FindEntitySubscriberCount(ctx context.Context, entityID primitive.ObjectID) (int64, error) {
+	return 0, errors.New("")
+}
+
 type fakeContentGetter struct {
 	getEntityFn func(context.Context, string, subscription.SubscriptionType) (string, error)
 	lastType    subscription.SubscriptionType

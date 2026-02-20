@@ -105,3 +105,24 @@ func (h *SubscriptionHandler) HandleUserSubscriptionsList(w http.ResponseWriter,
 		return h.s.ListUserSubscriptions(ctx, query)
 	})
 }
+
+func (h *SubscriptionHandler) HandleSubscriberCount(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	entityIdStr := vars["entityID"]
+
+	entityId, err := primitive.ObjectIDFromHex(entityIdStr)
+	if err != nil {
+		logging.Errorf(r.Context(), "failed to process subscriber count request: %v", err)
+		_ = respond.BadRequest(w, respond.ErrorMessage("Invalid entity ID."))
+		return
+	}
+
+	resp, err := h.s.FindEntitySubscriberCount(r.Context(), entityId)
+	if err != nil {
+		logging.Errorf(r.Context(), "failed to process subscriber count request: %v", err)
+		_ = respond.BadRequest(w, respond.ErrorMessage("An error has occurred while fetching subscriber count."))
+		return
+	}
+
+	respond.OkJson(w, resp)
+}
