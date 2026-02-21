@@ -17,6 +17,7 @@ var (
 	ErrFindSubscriptions         = errors.New("error has occured while finding subscriptions for the given parameters")
 	ErrSubscriptionCursor        = errors.New("error has occured while loading subscription cursor")
 	ErrUUIDParse                 = errors.New("error has occurred while parsing target IDs")
+	ErrSubscriptionNotFound      = errors.New("subscription not found")
 )
 
 type SubscriptionRepository struct {
@@ -33,6 +34,23 @@ func NewSubscriptionRepository(dbName string, collName string, c *mongo.Client) 
 	r := SubscriptionRepository{Client: c, DbName: dbName, CollName: collName}
 
 	return &r
+}
+
+func (r *SubscriptionRepository) IsSubscribed(subscriberID, entityID primitive.ObjectID, ctx context.Context) error {
+	c := r.getCollection()
+
+	filter := bson.M{"subscriber_id": subscriberID, "entity_id": entityID}
+	err := c.FindOne(ctx, filter).Err()
+	if err != nil {
+		switch {
+		case errors.Is(err, mongo.ErrNoDocuments):
+			return ErrSubscriptionNotFound
+		default:
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (r *SubscriptionRepository) Create(s *entities.Subscription, ctx context.Context) error {
