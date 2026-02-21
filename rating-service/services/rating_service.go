@@ -67,7 +67,6 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 		default:
 			return ErrUpstreamFailure
 		}
-
 	}
 
 	userIDstr := middlewares.GetUserIdFromContext(songExistsCtx)

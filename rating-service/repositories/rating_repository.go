@@ -10,9 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var (
-	ErrRatingAlreadyExists = errors.New("user has already rated the given content")
-)
+var ErrRatingAlreadyExists = errors.New("user has already rated the given content")
 
 type RatingRepository struct {
 	DbName   string

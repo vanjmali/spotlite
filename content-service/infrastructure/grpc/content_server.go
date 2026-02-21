@@ -65,7 +65,7 @@ func (s *ContentServer) GetGenre(ctx context.Context, req *pb.EntityIDRequest) (
 }
 
 func (s *ContentServer) GetSong(ctx context.Context, req *pb.EntityIDRequest) (*pb.GetContentEntityResponse, error) {
-	song, err := s.ss.FindSongById(ctx, req.EntityId)
+	song, err := s.ss.FindSongById(ctx, req.GetEntityId())
 	if err != nil {
 		logging.Errorf(ctx, "failed while fetching song: %v", err)
 

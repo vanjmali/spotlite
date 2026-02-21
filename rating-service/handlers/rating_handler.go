@@ -55,7 +55,6 @@ func (h *RatingHandler) HandleCreateRating(w http.ResponseWriter, r *http.Reques
 			_ = respond.InternalServerError(w)
 			return
 		}
-
 	}
 	respond.NoContent(w)
 }

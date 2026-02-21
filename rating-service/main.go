@@ -38,7 +38,6 @@ var (
 		TelemetryName: "rating-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
 		ConfigureValidation: func(v *validator.Validate) error {
-
 			return nil
 		},
 		CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
@@ -159,6 +158,7 @@ func initializeRatingIndexes(ctx context.Context, c *mongodriver.Client) error {
 
 	return err
 }
+
 func createAdapters(gc *grpc.ClientConn) *adapters.GrpcContentEntityGetter {
 	return adapters.NewGrpcContentEntityGetter(gc)
 }
@@ -191,7 +191,7 @@ func generateCreds() (credentials.TransportCredentials, error) {
 	cleanPath := filepath.Clean(rootCACertFilePath)
 
 	if !strings.HasPrefix(cleanPath, "/certs/") {
-		return nil, fmt.Errorf("invalid certificate path")
+		return nil, errors.New("invalid certificate path")
 	}
 
 	pemData, err := os.ReadFile(cleanPath)
@@ -201,7 +201,7 @@ func generateCreds() (credentials.TransportCredentials, error) {
 
 	certPool := x509.NewCertPool()
 	if !certPool.AppendCertsFromPEM(pemData) {
-		return nil, fmt.Errorf("failed to add CA to pool")
+		return nil, errors.New("failed to add CA to pool")
 	}
 
 	tlsConfig := &tls.Config{
@@ -210,5 +210,4 @@ func generateCreds() (credentials.TransportCredentials, error) {
 		MinVersion: tls.VersionTLS13,
 	}
 	return credentials.NewTLS(tlsConfig), nil
-
 }

@@ -80,7 +80,7 @@ func ValidateJWT(next http.Handler) http.HandlerFunc {
 		}
 		userRole := account.Role(roleStr)
 		ctx = context.WithValue(ctx, roleIdKey, userRole)
-		
+
 		username, ok := claims["username"].(string)
 		if !ok {
 			logging.Securityf(r.Context(), "auth_missing_username_claim method=%s path=%s remote_addr=%s", r.Method, r.URL.Path, r.RemoteAddr)
