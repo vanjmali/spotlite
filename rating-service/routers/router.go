@@ -17,6 +17,7 @@ func HandleRequests(rh *handlers.RatingHandler) http.Handler {
 	telemetry.AttachMuxTracing(api, "rating-service")
 
 	api.Handle("/", middlewares.RequireAuthenticated(rh.HandleCreateRating)).Methods("POST")
+	api.Handle("/{ratingID}", middlewares.RequireAuthenticated(rh.HandleDeleteRating)).Methods("DELETE")
 
 	return r
 }

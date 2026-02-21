@@ -19,11 +19,12 @@ var (
 	ErrSongNotFound    = errors.New("song couldn't be found")
 	ErrInvalidSongID   = errors.New("error has ocurred while parsing song id")
 	ErrUpstreamFailure = errors.New("error has ocurred while fetching song")
+	ErrRatingNotFound  = errors.New("rating not found")
 )
 
 type RatingRepository interface {
 	Create(rating *entities.Rating, ctx context.Context) error
-	Delete(entityID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) (int64, error)
+	Delete(ratingID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) (int64, error)
 }
 
 type ContentEntityGetter interface {
@@ -84,6 +85,34 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 	if err != nil {
 		createSpan.RecordError(err)
 		return err
+	}
+
+	return nil
+}
+
+func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Context) error {
+	ctx, span := s.tr.Start(ctx, "rating.delete_rating")
+	defer span.End()
+
+	userIDStr := middlewares.GetUserIdFromContext(ctx)
+
+	userID, err := primitive.ObjectIDFromHex(userIDStr)
+	if err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	deleteCtx, deleteSpan := s.tr.Start(ctx, "rating.delete_rating.delete")
+	defer deleteSpan.End()
+
+	deletedCount, err := s.rr.Delete(ratingID, userID, deleteCtx)
+	if err != nil {
+		deleteSpan.RecordError(err)
+		return err
+	}
+
+	if deletedCount != 1 {
+		return ErrRatingNotFound
 	}
 
 	return nil

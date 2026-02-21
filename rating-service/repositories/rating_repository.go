@@ -44,12 +44,12 @@ func (r *RatingRepository) Create(rating *entities.Rating, ctx context.Context) 
 	return nil
 }
 
-func (r *RatingRepository) Delete(entityID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) (int64, error) {
+func (r *RatingRepository) Delete(ratingID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) (int64, error) {
 	c := r.getCollection()
 
 	res, err := c.DeleteOne(ctx, bson.M{
-		"user_id":   userID,
-		"entity_id": entityID,
+		"_id":     ratingID,
+		"user_id": userID,
 	})
 	if err != nil {
 		return 0, err

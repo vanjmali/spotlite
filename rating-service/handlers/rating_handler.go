@@ -2,9 +2,11 @@ package handlers
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/gorilla/mux"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
@@ -12,6 +14,7 @@ import (
 	"github.com/vanjmali/spotlite/rating-service/mappers"
 	"github.com/vanjmali/spotlite/rating-service/repositories"
 	"github.com/vanjmali/spotlite/rating-service/services"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type RatingHandler struct {
@@ -56,5 +59,33 @@ func (h *RatingHandler) HandleCreateRating(w http.ResponseWriter, r *http.Reques
 			return
 		}
 	}
+	respond.NoContent(w)
+}
+
+func (h *RatingHandler) HandleDeleteRating(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	ratingIDStr := vars["ratingID"]
+	log.Println(ratingIDStr)
+
+	ratingID, err := primitive.ObjectIDFromHex(ratingIDStr)
+	if err != nil {
+		logging.Warnf(r.Context(), "failed to process delete rating request: %v", err)
+		_ = respond.BadRequest(w, respond.ErrorMessage("Invalid rating ID."))
+		return
+	}
+
+	err = h.s.DeleteRating(ratingID, r.Context())
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrRatingNotFound):
+			logging.Warnf(r.Context(), "failed to process delete rating request: %v", err)
+			_ = respond.NotFound(w)
+		default:
+			logging.Errorf(r.Context(), "failed to process delete rating request: %v", err)
+			_ = respond.InternalServerError(w)
+		}
+		return
+	}
+
 	respond.NoContent(w)
 }
