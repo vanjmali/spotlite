@@ -25,6 +25,7 @@ var (
 type RatingRepository interface {
 	Create(rating *entities.Rating, ctx context.Context) error
 	Delete(ratingID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) (int64, error)
+	FindRatingsBySongID(ctx context.Context, songID primitive.ObjectID, batchSize int, lastID *primitive.ObjectID) ([]*entities.Rating, string, error)
 }
 
 type ContentEntityGetter interface {
@@ -116,4 +117,33 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 	}
 
 	return nil
+}
+
+func (s *RatingService) GetRatingBySong(ctx context.Context, songIDStr string, batchSize int, cursor string) ([]*entities.Rating, string, error) {
+	getCtx, getSpan := s.tr.Start(ctx, "rating.get_by_song")
+	defer getSpan.End()
+
+	findCtx, findSpan := s.tr.Start(getCtx, "rating.get_by_song.find")
+	defer findSpan.End()
+
+	songID, err := primitive.ObjectIDFromHex(songIDStr)
+	if err != nil {
+		return nil, "", ErrInvalidSongID
+	}
+
+	var lastID *primitive.ObjectID
+	if cursor != "" {
+		objID, err := primitive.ObjectIDFromHex(cursor)
+		if err != nil {
+			return nil, "", ErrInvalidSongID
+		}
+		lastID = &objID
+	}
+
+	ratings, nextCursor, err := s.rr.FindRatingsBySongID(findCtx, songID, batchSize, lastID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return ratings, nextCursor, nil
 }

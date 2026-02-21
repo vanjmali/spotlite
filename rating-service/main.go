@@ -133,12 +133,12 @@ func initializeRatingIndexes(ctx context.Context, c *mongodriver.Client) error {
 
 	models := []mongodriver.IndexModel{
 		{
-			Keys:    bson.D{{Key: "song_id", Value: 1}},
-			Options: options.Index().SetName("idx_song_id"),
+			Keys:    bson.D{{Key: "song_id", Value: 1}, {Key: "_id", Value: -1}},
+			Options: options.Index().SetName("idx_song_id_newest"),
 		},
 		{
-			Keys:    bson.D{{Key: "user_id", Value: 1}},
-			Options: options.Index().SetName("idx_user_id"),
+			Keys:    bson.D{{Key: "user_id", Value: 1}, {Key: "_id", Value: -1}},
+			Options: options.Index().SetName("idx_user_id_newest"),
 		},
 		{
 			Keys: bson.D{

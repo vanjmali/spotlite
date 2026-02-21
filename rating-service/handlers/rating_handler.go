@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
@@ -80,6 +81,7 @@ func (h *RatingHandler) HandleDeleteRating(w http.ResponseWriter, r *http.Reques
 		case errors.Is(err, services.ErrRatingNotFound):
 			logging.Warnf(r.Context(), "failed to process delete rating request: %v", err)
 			_ = respond.NotFound(w)
+			return
 		default:
 			logging.Errorf(r.Context(), "failed to process delete rating request: %v", err)
 			_ = respond.InternalServerError(w)
@@ -88,4 +90,48 @@ func (h *RatingHandler) HandleDeleteRating(w http.ResponseWriter, r *http.Reques
 	}
 
 	respond.NoContent(w)
+}
+
+func (h *RatingHandler) HandleGetRatingsBySongID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	songIDStr := vars["songID"]
+
+	limit := 10
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil {
+			if parsed < 1 {
+				limit = 1
+			} else if parsed > 200 {
+				limit = 200
+			} else {
+				limit = parsed
+			}
+		}
+	}
+
+	cursor := r.URL.Query().Get("cursor")
+
+	ratings, nextCursor, err := h.s.GetRatingBySong(r.Context(), songIDStr, limit, cursor)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrInvalidSongID):
+			logging.Warnf(r.Context(), "failed to process get ratings request: %v", err)
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid song ID."))
+			return
+		default:
+			logging.Errorf(r.Context(), "failed to process get ratings request: %v", err)
+			_ = respond.InternalServerError(w)
+			return
+		}
+	}
+
+	response := map[string]interface{}{
+		"items": ratings,
+	}
+
+	if nextCursor != "" {
+		response["nextCursor"] = nextCursor
+	}
+
+	_ = respond.OkJson(w, response)
 }
