@@ -113,6 +113,7 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 			return err
 		}
 
+		//nolint:exhaustive
 		switch st.Code() {
 		case codes.NotFound:
 			return ErrEntityNotFound
