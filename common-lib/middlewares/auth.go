@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"strings"
 
@@ -17,9 +18,10 @@ import (
 type ctxKey string
 
 const (
-	statusKey ctxKey = "status"
-	userIdKey ctxKey = "userId"
-	roleIdKey ctxKey = "role"
+	statusKey   ctxKey = "status"
+	userIdKey   ctxKey = "userId"
+	roleIdKey   ctxKey = "role"
+	usernameKey ctxKey = "username"
 )
 
 func ValidateJWT(next http.Handler) http.HandlerFunc {
@@ -78,8 +80,17 @@ func ValidateJWT(next http.Handler) http.HandlerFunc {
 		}
 		userRole := account.Role(roleStr)
 		ctx = context.WithValue(ctx, roleIdKey, userRole)
+		
+		username, ok := claims["username"].(string)
+		if !ok {
+			logging.Securityf(r.Context(), "auth_missing_username_claim method=%s path=%s remote_addr=%s", r.Method, r.URL.Path, r.RemoteAddr)
+			_ = respond.Unauthorized(w)
+			return
+		}
+		ctx = context.WithValue(ctx, usernameKey, username)
+
 		r = r.WithContext(ctx)
-		logging.Auditf(r.Context(), "auth_token_validated method=%s path=%s user_id=%s role=%s", r.Method, r.URL.Path, userId, userRole)
+		logging.Auditf(r.Context(), "auth_token_validated method=%s path=%s user_id=%s role=%s username=%s", r.Method, r.URL.Path, userId, userRole, username)
 
 		next.ServeHTTP(w, r)
 	}
@@ -93,6 +104,13 @@ func extractToken(authorizationHeader string) string {
 	}
 
 	return ""
+}
+
+// GetUsernameFromContext retrieves the user ID from the request context.
+func GetUsernameFromContext(ctx context.Context) string {
+	username, _ := ctx.Value(usernameKey).(string)
+	log.Println(username, "!@#!@#!@#!@#!@#!@#!@#!@#!@#")
+	return username
 }
 
 // GetUserIdFromContext retrieves the user ID from the request context.

@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.36.11
 // 	protoc        v3.21.12
-// source: proto/content_service/get_content_entity.proto
+// source: get_content_entity.proto
 
 package content_service_pb
 
@@ -30,7 +30,7 @@ type EntityIDRequest struct {
 
 func (x *EntityIDRequest) Reset() {
 	*x = EntityIDRequest{}
-	mi := &file_proto_content_service_get_content_entity_proto_msgTypes[0]
+	mi := &file_get_content_entity_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -42,7 +42,7 @@ func (x *EntityIDRequest) String() string {
 func (*EntityIDRequest) ProtoMessage() {}
 
 func (x *EntityIDRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_content_service_get_content_entity_proto_msgTypes[0]
+	mi := &file_get_content_entity_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -55,7 +55,7 @@ func (x *EntityIDRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EntityIDRequest.ProtoReflect.Descriptor instead.
 func (*EntityIDRequest) Descriptor() ([]byte, []int) {
-	return file_proto_content_service_get_content_entity_proto_rawDescGZIP(), []int{0}
+	return file_get_content_entity_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *EntityIDRequest) GetEntityId() string {
@@ -74,7 +74,7 @@ type GetContentEntityResponse struct {
 
 func (x *GetContentEntityResponse) Reset() {
 	*x = GetContentEntityResponse{}
-	mi := &file_proto_content_service_get_content_entity_proto_msgTypes[1]
+	mi := &file_get_content_entity_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -86,7 +86,7 @@ func (x *GetContentEntityResponse) String() string {
 func (*GetContentEntityResponse) ProtoMessage() {}
 
 func (x *GetContentEntityResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_content_service_get_content_entity_proto_msgTypes[1]
+	mi := &file_get_content_entity_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -99,7 +99,7 @@ func (x *GetContentEntityResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetContentEntityResponse.ProtoReflect.Descriptor instead.
 func (*GetContentEntityResponse) Descriptor() ([]byte, []int) {
-	return file_proto_content_service_get_content_entity_proto_rawDescGZIP(), []int{1}
+	return file_get_content_entity_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *GetContentEntityResponse) GetName() string {
@@ -109,68 +109,71 @@ func (x *GetContentEntityResponse) GetName() string {
 	return ""
 }
 
-var File_proto_content_service_get_content_entity_proto protoreflect.FileDescriptor
+var File_get_content_entity_proto protoreflect.FileDescriptor
 
-const file_proto_content_service_get_content_entity_proto_rawDesc = "" +
+const file_get_content_entity_proto_rawDesc = "" +
 	"\n" +
-	".proto/content_service/get_content_entity.proto\x12\x0fcontent_service\".\n" +
+	"\x18get_content_entity.proto\x12\x0fcontent_service\".\n" +
 	"\x0fEntityIDRequest\x12\x1b\n" +
 	"\tentity_id\x18\x01 \x01(\tR\bentityId\".\n" +
 	"\x18GetContentEntityResponse\x12\x12\n" +
-	"\x04name\x18\x01 \x01(\tR\x04name2\xc5\x01\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name2\x9d\x02\n" +
 	"\x10GetContentEntity\x12X\n" +
 	"\tGetArtist\x12 .content_service.EntityIDRequest\x1a).content_service.GetContentEntityResponse\x12W\n" +
-	"\bGetGenre\x12 .content_service.EntityIDRequest\x1a).content_service.GetContentEntityResponseBRZPgithub.com/vanjmali/spotlite/common-lib/proto/content_service;content_service_pbb\x06proto3"
+	"\bGetGenre\x12 .content_service.EntityIDRequest\x1a).content_service.GetContentEntityResponse\x12V\n" +
+	"\aGetSong\x12 .content_service.EntityIDRequest\x1a).content_service.GetContentEntityResponseBRZPgithub.com/vanjmali/spotlite/common-lib/proto/content_service;content_service_pbb\x06proto3"
 
 var (
-	file_proto_content_service_get_content_entity_proto_rawDescOnce sync.Once
-	file_proto_content_service_get_content_entity_proto_rawDescData []byte
+	file_get_content_entity_proto_rawDescOnce sync.Once
+	file_get_content_entity_proto_rawDescData []byte
 )
 
-func file_proto_content_service_get_content_entity_proto_rawDescGZIP() []byte {
-	file_proto_content_service_get_content_entity_proto_rawDescOnce.Do(func() {
-		file_proto_content_service_get_content_entity_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_content_service_get_content_entity_proto_rawDesc), len(file_proto_content_service_get_content_entity_proto_rawDesc)))
+func file_get_content_entity_proto_rawDescGZIP() []byte {
+	file_get_content_entity_proto_rawDescOnce.Do(func() {
+		file_get_content_entity_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_get_content_entity_proto_rawDesc), len(file_get_content_entity_proto_rawDesc)))
 	})
-	return file_proto_content_service_get_content_entity_proto_rawDescData
+	return file_get_content_entity_proto_rawDescData
 }
 
-var file_proto_content_service_get_content_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
-var file_proto_content_service_get_content_entity_proto_goTypes = []any{
+var file_get_content_entity_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_get_content_entity_proto_goTypes = []any{
 	(*EntityIDRequest)(nil),          // 0: content_service.EntityIDRequest
 	(*GetContentEntityResponse)(nil), // 1: content_service.GetContentEntityResponse
 }
-var file_proto_content_service_get_content_entity_proto_depIdxs = []int32{
+var file_get_content_entity_proto_depIdxs = []int32{
 	0, // 0: content_service.GetContentEntity.GetArtist:input_type -> content_service.EntityIDRequest
 	0, // 1: content_service.GetContentEntity.GetGenre:input_type -> content_service.EntityIDRequest
-	1, // 2: content_service.GetContentEntity.GetArtist:output_type -> content_service.GetContentEntityResponse
-	1, // 3: content_service.GetContentEntity.GetGenre:output_type -> content_service.GetContentEntityResponse
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
+	0, // 2: content_service.GetContentEntity.GetSong:input_type -> content_service.EntityIDRequest
+	1, // 3: content_service.GetContentEntity.GetArtist:output_type -> content_service.GetContentEntityResponse
+	1, // 4: content_service.GetContentEntity.GetGenre:output_type -> content_service.GetContentEntityResponse
+	1, // 5: content_service.GetContentEntity.GetSong:output_type -> content_service.GetContentEntityResponse
+	3, // [3:6] is the sub-list for method output_type
+	0, // [0:3] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_proto_content_service_get_content_entity_proto_init() }
-func file_proto_content_service_get_content_entity_proto_init() {
-	if File_proto_content_service_get_content_entity_proto != nil {
+func init() { file_get_content_entity_proto_init() }
+func file_get_content_entity_proto_init() {
+	if File_get_content_entity_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_content_service_get_content_entity_proto_rawDesc), len(file_proto_content_service_get_content_entity_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_get_content_entity_proto_rawDesc), len(file_get_content_entity_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   2,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_proto_content_service_get_content_entity_proto_goTypes,
-		DependencyIndexes: file_proto_content_service_get_content_entity_proto_depIdxs,
-		MessageInfos:      file_proto_content_service_get_content_entity_proto_msgTypes,
+		GoTypes:           file_get_content_entity_proto_goTypes,
+		DependencyIndexes: file_get_content_entity_proto_depIdxs,
+		MessageInfos:      file_get_content_entity_proto_msgTypes,
 	}.Build()
-	File_proto_content_service_get_content_entity_proto = out.File
-	file_proto_content_service_get_content_entity_proto_goTypes = nil
-	file_proto_content_service_get_content_entity_proto_depIdxs = nil
+	File_get_content_entity_proto = out.File
+	file_get_content_entity_proto_goTypes = nil
+	file_get_content_entity_proto_depIdxs = nil
 }

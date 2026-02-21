@@ -1,0 +1,91 @@
+package services
+
+import (
+	"context"
+	"errors"
+
+	"github.com/vanjmali/spotlite/common-lib/middlewares"
+	"github.com/vanjmali/spotlite/rating-service/dtos"
+	"github.com/vanjmali/spotlite/rating-service/entities"
+	"github.com/vanjmali/spotlite/rating-service/mappers"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/trace"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+var (
+	ErrSongNotFound    = errors.New("song couldn't be found")
+	ErrInvalidSongID   = errors.New("error has ocurred while parsing song id")
+	ErrUpstreamFailure = errors.New("error has ocurred while fetching song")
+)
+
+type RatingRepository interface {
+	Create(rating *entities.Rating, ctx context.Context) error
+	Delete(entityID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) (int64, error)
+}
+
+type ContentEntityGetter interface {
+	GetSong(ctx context.Context, songID string) (string, error)
+}
+type RatingService struct {
+	rr  RatingRepository
+	gcc ContentEntityGetter
+	tr  trace.Tracer
+}
+
+func NewRatingService(rr RatingRepository, gcc ContentEntityGetter) *RatingService {
+	tr := otel.Tracer("rating-service/rating-service")
+	s := RatingService{rr: rr, gcc: gcc, tr: tr}
+
+	return &s
+}
+
+func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Context) error {
+	ratingCtx, ratingSpan := s.tr.Start(ctx, "rating.create_rating")
+	defer ratingSpan.End()
+
+	songExistsCtx, songExistsSpan := s.tr.Start(ratingCtx, "rating.create_rating.song_exists")
+	defer songExistsSpan.End()
+
+	_, err := s.gcc.GetSong(songExistsCtx, req.SongID)
+	if err != nil {
+		songExistsSpan.RecordError(err)
+
+		st, ok := status.FromError(err)
+		if !ok {
+			return err
+		}
+		// TODO: Handle different types of errors with resiliency mechanisms
+		//nolint:exhaustive
+		switch st.Code() {
+		case codes.NotFound:
+			return ErrSongNotFound
+		case codes.InvalidArgument:
+			return ErrInvalidSongID
+		default:
+			return ErrUpstreamFailure
+		}
+
+	}
+
+	userIDstr := middlewares.GetUserIdFromContext(songExistsCtx)
+	username := middlewares.GetUsernameFromContext(songExistsCtx)
+
+	ratingEntity, err := mappers.ToRatingEntity(req.SongID, userIDstr, req.Value, username)
+	if err != nil {
+		songExistsSpan.RecordError(err)
+		return err
+	}
+
+	createCtx, createSpan := s.tr.Start(ratingCtx, "rating.create_rating.create")
+	defer createSpan.End()
+	err = s.rr.Create(ratingEntity, createCtx)
+	if err != nil {
+		createSpan.RecordError(err)
+		return err
+	}
+
+	return nil
+}

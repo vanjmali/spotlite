@@ -17,12 +17,14 @@ type ContentServer struct {
 
 	gs *services.GenreService
 	as *services.ArtistService
+	ss *services.SongService
 }
 
-func NewContentServer(gs *services.GenreService, as *services.ArtistService) *ContentServer {
+func NewContentServer(gs *services.GenreService, as *services.ArtistService, ss *services.SongService) *ContentServer {
 	return &ContentServer{
 		gs: gs,
 		as: as,
+		ss: ss,
 	}
 }
 
@@ -60,4 +62,22 @@ func (s *ContentServer) GetGenre(ctx context.Context, req *pb.EntityIDRequest) (
 	}
 
 	return &pb.GetContentEntityResponse{Name: g.Name}, nil
+}
+
+func (s *ContentServer) GetSong(ctx context.Context, req *pb.EntityIDRequest) (*pb.GetContentEntityResponse, error) {
+	song, err := s.ss.FindSongById(ctx, req.EntityId)
+	if err != nil {
+		logging.Errorf(ctx, "failed while fetching song: %v", err)
+
+		switch {
+		case errors.Is(err, services.ErrObjectIdCastFailed):
+			return nil, status.Error(codes.InvalidArgument, "invalid song ID format")
+		case errors.Is(err, services.ErrSongNotFound):
+			return nil, status.Error(codes.NotFound, "song not found")
+		default:
+			return nil, status.Error(codes.Internal, "an unexpected error has occurred while fetching song")
+		}
+	}
+
+	return &pb.GetContentEntityResponse{Name: song.Title}, nil
 }

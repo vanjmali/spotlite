@@ -12,13 +12,20 @@ services:
       DB_USER: ${SRV_RATING_MONGO_USERNAME?}
       DB_PASS: ${SRV_RATING_MONGO_PASSWORD?}
       DB_NAME: ${SRV_RATING_MONGO_DATABASE?}
+      CONTENT_GRPC_ADDRESS: ${SRV_SUB_CONTENT_GRPC_ADDRESS?}
+      LOG_DIR: ${LOG_DIR?}
+      LOG_ROTATE_MAX_SIZE_MB: ${LOG_ROTATE_MAX_SIZE_MB?}
+      LOG_ROTATE_MAX_BACKUPS: ${LOG_ROTATE_MAX_BACKUPS?}
+      LOG_ROTATE_MAX_AGE_DAYS: ${LOG_ROTATE_MAX_AGE_DAYS?}
+      LOG_ROTATE_COMPRESS: ${LOG_ROTATE_COMPRESS?}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true
       traefik.docker.network: spotlite-api-gateway
-      traefik.http.routers.rating-service.rule: PathPrefix(`/api/rating`)
+      traefik.http.routers.rating-service.rule: PathPrefix(`/api/ratings`)
       traefik.http.services.rating-service.loadbalancer.server.scheme: https
       traefik.http.routers.rating-service.middlewares: rating-service-strip-prefix,rate-limit-global@file
-      traefik.http.middlewares.rating-service-strip-prefix.stripprefix.prefixes: /api/rating
+      traefik.http.middlewares.rating-service-strip-prefix.stripprefix.prefixes: /api/ratings
       traefik.http.middlewares.rating-service-strip-prefix.stripprefix.forceslash: false
       traefik.http.services.rating-service.loadbalancer.server.port: "3000"
       traefik.http.services.rating-service.loadbalancer.healthcheck.path: /healthz
@@ -26,6 +33,7 @@ services:
       traefik.http.services.rating-service.loadbalancer.healthcheck.timeout: 2s
       traefik.http.routers.rating-service.entrypoints: websecure
       traefik.http.routers.rating-service.tls: true
+
     depends_on:
       rating-mongodb:
         condition: service_healthy
