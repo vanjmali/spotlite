@@ -40,6 +40,7 @@ type SubscriptionRepository interface {
 	FindSubscriptionsByEntityID(ctx context.Context, targetIDStrs []string, batchSize int, lastID string) ([]*entities.Subscription, string, error)
 	IsSubscribed(subscriberID, entityID primitive.ObjectID, ctx context.Context) error
 	FindSubscriptionsByUserID(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Subscription, int64, error)
+	FindEntitySubscriberCount(ctx context.Context, entityID primitive.ObjectID) (int64, error)
 }
 
 type ContentEntityGetter interface {
@@ -234,4 +235,17 @@ func (s *SubscriptionService) ListUserSubscriptions(ctx context.Context, q SubsQ
 	p := pagination.NewPagination(q.Page, q.Size)
 
 	return commondtos.ListWithPagination(findCtx, p, filter, s.sr.FindSubscriptionsByUserID)
+}
+
+func (s *SubscriptionService) FindEntitySubscriberCount(ctx context.Context, entityID primitive.ObjectID) (*dtos.EntitySubscriberCountDTO, error) {
+	countCtx, countSpan := s.tr.Start(ctx, "subscription.count")
+	defer countSpan.End()
+
+	c, err := s.sr.FindEntitySubscriberCount(countCtx, entityID)
+	if err != nil {
+		countSpan.RecordError(err)
+		return nil, err
+	}
+
+	return &dtos.EntitySubscriberCountDTO{SubscriberCount: c}, nil
 }

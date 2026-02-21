@@ -35,6 +35,7 @@ type fakeSubscriptionRepo struct {
 	deleteEntity    primitive.ObjectID
 	subscriptionIDs []string
 	lastID          string
+	dataSubCount    map[primitive.ObjectID][]primitive.ObjectID
 	batchSize       int
 	store           []entities.Subscription
 	data            map[primitive.ObjectID][]primitive.ObjectID
@@ -98,6 +99,21 @@ func (f *fakeSubscriptionRepo) Delete(
 		return f.deleteFn(entityID, userID, ctx)
 	}
 	return 1, nil
+}
+
+func (f *fakeSubscriptionRepo) FindEntitySubscriberCount(ctx context.Context, entityID primitive.ObjectID) (int64, error) {
+	var count int64 = 0
+
+	for _, subscribedEntities := range f.dataSubCount {
+		for _, id := range subscribedEntities {
+			if id == entityID {
+				count++
+				break // Found it for this user, stop checking this user's list (prevent double counting)
+			}
+		}
+	}
+
+	return count, nil
 }
 
 type fakeContentGetter struct {
@@ -308,6 +324,103 @@ func TestFakeSubscriptionRepo_IsSubscribed(t *testing.T) {
 	}
 }
 
+func TestFakeSubscriptionRepo_FindEntitySubscriberCount(t *testing.T) {
+	// Generate IDs for use in tests
+	userA := primitive.NewObjectID()
+	userB := primitive.NewObjectID()
+	userC := primitive.NewObjectID()
+
+	targetEntity := primitive.NewObjectID()
+	otherEntity := primitive.NewObjectID()
+
+	tests := []struct {
+		name          string
+		setup         func(*fakeSubscriptionRepo)
+		queryEntityID primitive.ObjectID
+		expectedCount int64
+		expectError   bool
+	}{
+		{
+			name: "Zero count: Repo is empty",
+			setup: func(f *fakeSubscriptionRepo) {
+				// No data
+			},
+			queryEntityID: targetEntity,
+			expectedCount: 0,
+			expectError:   false,
+		},
+		{
+			name: "Count 1: One user subscribed to target",
+			setup: func(f *fakeSubscriptionRepo) {
+				f.AddSubscriptionSC(userA, targetEntity)
+			},
+			queryEntityID: targetEntity,
+			expectedCount: 1,
+			expectError:   false,
+		},
+		{
+			name: "Count 2: Two users subscribed to target",
+			setup: func(f *fakeSubscriptionRepo) {
+				f.AddSubscriptionSC(userA, targetEntity)
+				f.AddSubscriptionSC(userB, targetEntity)
+			},
+			queryEntityID: targetEntity,
+			expectedCount: 2,
+			expectError:   false,
+		},
+		{
+			name: "Mixed Data: Users subscribed to different entities",
+			setup: func(f *fakeSubscriptionRepo) {
+				f.AddSubscriptionSC(userA, targetEntity) // Should count
+				f.AddSubscriptionSC(userB, otherEntity)  // Should NOT count
+				f.AddSubscriptionSC(userC, targetEntity) // Should count
+			},
+			queryEntityID: targetEntity,
+			expectedCount: 2,
+			expectError:   false,
+		},
+		{
+			name: "Zero count: Users exist but subscribed to other entities",
+			setup: func(f *fakeSubscriptionRepo) {
+				f.AddSubscriptionSC(userA, otherEntity)
+			},
+			queryEntityID: targetEntity,
+			expectedCount: 0,
+			expectError:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// 1. Initialize Repo
+			repo := &fakeSubscriptionRepo{}
+
+			// 2. Setup Data
+			if tt.setup != nil {
+				tt.setup(repo)
+			}
+
+			// 3. Execute
+			count, err := repo.FindEntitySubscriberCount(context.Background(), tt.queryEntityID)
+
+			// 4. Verify Error
+			if tt.expectError {
+				if err == nil {
+					t.Error("expected error, got nil")
+				}
+				return
+			} else if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			// 5. Verify Count
+			if count != tt.expectedCount {
+				t.Errorf("expected count %d, got %d", tt.expectedCount, count)
+			}
+		})
+	}
+}
+
 func TestSubscribeSuccess(t *testing.T) {
 	repo := &fakeSubscriptionRepo{}
 	getter := &fakeContentGetter{
@@ -371,6 +484,13 @@ func TestSubscribeInvalidEntityID(t *testing.T) {
 
 	require.ErrorIs(t, err, ErrInvalidEntityID)
 	require.False(t, repo.createCalled)
+}
+
+func (f *fakeSubscriptionRepo) AddSubscriptionSC(subID, entID primitive.ObjectID) {
+	if f.dataSubCount == nil {
+		f.dataSubCount = make(map[primitive.ObjectID][]primitive.ObjectID)
+	}
+	f.dataSubCount[subID] = append(f.dataSubCount[subID], entID)
 }
 
 func TestSubscribeUpstreamFailure(t *testing.T) {
