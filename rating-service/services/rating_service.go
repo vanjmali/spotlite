@@ -11,6 +11,7 @@ import (
 	"github.com/vanjmali/spotlite/rating-service/mappers"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
@@ -30,6 +31,7 @@ type RatingRepository interface {
 	Delete(ratingID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) (int64, error)
 	FindRatingsBySongID(ctx context.Context, songID primitive.ObjectID, batchSize int, lastID *primitive.ObjectID) ([]*entities.Rating, string, error)
 	FindRatingsByUserID(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Rating, int64, error)
+	UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]any) (*entities.Rating, error)
 }
 
 type ContentEntityGetter interface {
@@ -185,4 +187,39 @@ func (s *RatingService) GetRatingByUser(ctx context.Context, q RatingsQuery) (*d
 		Size:  p.Size,
 		Total: total,
 	}, nil
+}
+
+func (s *RatingService) UpdateRating(ctx context.Context, idStr string, dto dtos.UpdateRatingDto) (*entities.Rating, error) {
+	ctx, span := s.tr.Start(ctx, "rating.update")
+	defer span.End()
+
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		span.RecordError(err)
+		return nil, ErrObjectIdCastFailed
+	}
+
+	update := make(map[string]any)
+	if dto.Value != nil {
+		update["value"] = *dto.Value
+		update["is_edited"] = true
+	}
+
+	if len(update) == 0 {
+		err := errors.New("no fields to update")
+		span.RecordError(err)
+		return nil, err
+	}
+
+	rating, err := s.rr.UpdateByID(ctx, id, update)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			span.RecordError(err)
+			return nil, ErrRatingNotFound
+		}
+		span.RecordError(err)
+		return nil, err
+	}
+
+	return rating, nil
 }

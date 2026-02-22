@@ -152,3 +152,36 @@ func (h *RatingHandler) HandleGetRatingsByUserID(w http.ResponseWriter, r *http.
 		return h.s.GetRatingByUser(ctx, query)
 	})
 }
+
+func (h *RatingHandler) HandleUpdateRating(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id := vars["id"]
+
+	var dto dtos.UpdateRatingDto
+
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &dto); !ok {
+		if err != nil {
+			logging.Errorf(r.Context(), "failed to process update rating request: %v", err)
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
+		}
+		return
+	}
+
+	updatedRating, err := h.s.UpdateRating(r.Context(), id, dto)
+	switch {
+	case errors.Is(err, services.ErrObjectIdCastFailed):
+		_ = respond.BadRequest(w, respond.ErrorMessage("Invalid rating ID format"))
+		return
+	case errors.Is(err, services.ErrRatingNotFound):
+		_ = respond.NotFound(w)
+		return
+	case err != nil:
+		logging.Errorf(r.Context(), "failed to update rating: %v", err)
+		_ = respond.InternalServerError(w)
+		return
+	}
+
+	if err := respond.OkJson(w, updatedRating); err != nil {
+		logging.Errorf(r.Context(), "failed to write update rating response: %v", err)
+	}
+}

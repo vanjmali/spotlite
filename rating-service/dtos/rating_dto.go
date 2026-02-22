@@ -10,6 +10,10 @@ type CreateRatingDto struct {
 	Value  int    `json:"value" validate:"required,min=1,max=5"`
 }
 
+type UpdateRatingDto struct {
+	Value *int `json:"value" validate:"required,min=1,max=5"`
+}
+
 type RatingResponseDto struct {
 	Items      []*entities.Rating `json:"items"`
 	NextCursor string             `json:"nextCursor,omitempty"`

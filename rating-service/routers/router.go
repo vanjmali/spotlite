@@ -18,6 +18,9 @@ func HandleRequests(rh *handlers.RatingHandler) http.Handler {
 
 	api.Handle("/song/{song_id}", middlewares.RequireAuthenticated(rh.HandleGetRatingsBySongID)).Methods("GET")
 	api.Handle("/user/{user_id}", middlewares.RequireAuthenticated(rh.HandleGetRatingsByUserID)).Methods("GET")
+
+	api.Handle("/{id}", middlewares.RequireAuthenticated(rh.HandleUpdateRating)).Methods("PATCH")
+
 	api.Handle("/", middlewares.RequireAuthenticated(rh.HandleCreateRating)).Methods("POST")
 	api.Handle("/{ratingID}", middlewares.RequireAuthenticated(rh.HandleDeleteRating)).Methods("DELETE")
 

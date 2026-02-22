@@ -124,3 +124,20 @@ func (r *RatingRepository) FindRatingsByUserID(ctx context.Context, filter bson.
 	}
 	return ratings, total, nil
 }
+
+func (r *RatingRepository) UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]any) (*entities.Rating, error) {
+	c := r.getCollection()
+
+	filter := bson.M{"_id": id}
+	updateDoc := bson.M{"$set": update}
+
+	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
+
+	var updatedRating entities.Rating
+
+	if err := c.FindOneAndUpdate(ctx, filter, updateDoc, opts).Decode(&updatedRating); err != nil {
+		return nil, err
+	}
+
+	return &updatedRating, nil
+}
