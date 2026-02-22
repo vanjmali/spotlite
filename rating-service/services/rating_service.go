@@ -24,7 +24,6 @@ import (
 var (
 	ErrEntityNotFound      = errors.New("song couldn't be found")
 	ErrSongNotFound        = errors.New("song couldn't be found")
-	ErrInvalidSongID       = errors.New("error has ocurred while parsing song ID")
 	ErrInvalidEntityID     = errors.New("error has ocurred while parsing song ID")
 	ErrRatingNotFound      = errors.New("rating not found")
 	ErrRatingForbidden     = errors.New("rating does not belong to user")
