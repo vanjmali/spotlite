@@ -44,3 +44,7 @@ func (h *SubscriptionConsumer) HandleEntityCreated(ctx context.Context, msg jets
 
 	return nil
 }
+
+func (h *SubscriptionConsumer) HandleEntityUpdated(ctx context.Context, msg jetstream.Msg) error {
+	return nil
+}

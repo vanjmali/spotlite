@@ -101,6 +101,13 @@ func (c *JetStreamClient) Publish(ctx context.Context, subject string, payload i
 // SubscriberHandler function signature.
 type SubscribeHandler func(ctx context.Context, msg jetstream.Msg) error
 
+type ConsumerConfig struct {
+	Stream  string
+	Subject string
+	Durable string
+	Handler SubscribeHandler
+}
+
 func (c *JetStreamClient) StartConsumer(
 	ctx context.Context,
 	streamName string,
