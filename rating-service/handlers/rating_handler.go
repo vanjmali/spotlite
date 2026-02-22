@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/vanjmali/spotlite/common-lib/logging"
+	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/rating-service/dtos"
@@ -94,7 +96,7 @@ func (h *RatingHandler) HandleDeleteRating(w http.ResponseWriter, r *http.Reques
 
 func (h *RatingHandler) HandleGetRatingsBySongID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	songIDStr := vars["songID"]
+	songIDStr := vars["song_id"]
 
 	limit := 10
 	if l := r.URL.Query().Get("limit"); l != "" {
@@ -134,4 +136,19 @@ func (h *RatingHandler) HandleGetRatingsBySongID(w http.ResponseWriter, r *http.
 	}
 
 	_ = respond.OkJson(w, response)
+}
+
+func (h *RatingHandler) HandleGetRatingsByUserID(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+
+	p := pagination.ParsePagination(q)
+	query := services.RatingsQuery{
+		Page:   p.Page,
+		Size:   p.Size,
+		UserID: q.Get("user_id"),
+	}
+
+	handleListResponse(w, r, "ratings", func(ctx context.Context) (any, error) {
+		return h.s.GetRatingByUser(ctx, query)
+	})
 }

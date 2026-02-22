@@ -16,9 +16,10 @@ func HandleRequests(rh *handlers.RatingHandler) http.Handler {
 	api := r.PathPrefix("/").Subrouter()
 	telemetry.AttachMuxTracing(api, "rating-service")
 
+	api.Handle("/song/{song_id}", middlewares.RequireAuthenticated(rh.HandleGetRatingsBySongID)).Methods("GET")
+	api.Handle("/user/{user_id}", middlewares.RequireAuthenticated(rh.HandleGetRatingsByUserID)).Methods("GET")
 	api.Handle("/", middlewares.RequireAuthenticated(rh.HandleCreateRating)).Methods("POST")
 	api.Handle("/{ratingID}", middlewares.RequireAuthenticated(rh.HandleDeleteRating)).Methods("DELETE")
-	api.Handle("/song/{songID}", middlewares.RequireAuthenticated(rh.HandleGetRatingsBySongID)).Methods("GET")
 
 	return r
 }

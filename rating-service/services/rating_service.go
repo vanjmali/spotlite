@@ -5,9 +5,11 @@ import (
 	"errors"
 
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
+	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/rating-service/dtos"
 	"github.com/vanjmali/spotlite/rating-service/entities"
 	"github.com/vanjmali/spotlite/rating-service/mappers"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -16,16 +18,18 @@ import (
 )
 
 var (
-	ErrSongNotFound    = errors.New("song couldn't be found")
-	ErrInvalidSongID   = errors.New("error has ocurred while parsing song id")
-	ErrUpstreamFailure = errors.New("error has ocurred while fetching song")
-	ErrRatingNotFound  = errors.New("rating not found")
+	ErrSongNotFound       = errors.New("song couldn't be found")
+	ErrInvalidSongID      = errors.New("error has ocurred while parsing song id")
+	ErrUpstreamFailure    = errors.New("error has ocurred while fetching song")
+	ErrRatingNotFound     = errors.New("rating not found")
+	ErrObjectIdCastFailed = errors.New("failed to convert hex to objectId")
 )
 
 type RatingRepository interface {
 	Create(rating *entities.Rating, ctx context.Context) error
 	Delete(ratingID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) (int64, error)
 	FindRatingsBySongID(ctx context.Context, songID primitive.ObjectID, batchSize int, lastID *primitive.ObjectID) ([]*entities.Rating, string, error)
+	FindRatingsByUserID(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Rating, int64, error)
 }
 
 type ContentEntityGetter interface {
@@ -100,7 +104,7 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 	userID, err := primitive.ObjectIDFromHex(userIDStr)
 	if err != nil {
 		span.RecordError(err)
-		return err
+		return ErrObjectIdCastFailed
 	}
 
 	deleteCtx, deleteSpan := s.tr.Start(ctx, "rating.delete_rating.delete")
@@ -128,14 +132,14 @@ func (s *RatingService) GetRatingBySong(ctx context.Context, songIDStr string, b
 
 	songID, err := primitive.ObjectIDFromHex(songIDStr)
 	if err != nil {
-		return nil, "", ErrInvalidSongID
+		return nil, "", ErrObjectIdCastFailed
 	}
 
 	var lastID *primitive.ObjectID
 	if cursor != "" {
 		objID, err := primitive.ObjectIDFromHex(cursor)
 		if err != nil {
-			return nil, "", ErrInvalidSongID
+			return nil, "", ErrObjectIdCastFailed
 		}
 		lastID = &objID
 	}
@@ -146,4 +150,39 @@ func (s *RatingService) GetRatingBySong(ctx context.Context, songIDStr string, b
 	}
 
 	return ratings, nextCursor, nil
+}
+
+type RatingsQuery struct {
+	Page   int
+	Size   int
+	UserID string
+}
+
+func (s *RatingService) GetRatingByUser(ctx context.Context, q RatingsQuery) (*dtos.RatingListResponseDto, error) {
+	ctx, span := s.tr.Start(ctx, "rating.get_by_user")
+	defer span.End()
+
+	filter := bson.M{}
+
+	if q.UserID != "" {
+		userID, err := primitive.ObjectIDFromHex(q.UserID)
+		if err != nil {
+			return nil, ErrObjectIdCastFailed
+		}
+		filter["user_id"] = userID
+	}
+
+	p := pagination.NewPagination(q.Page, q.Size)
+	items, total, err := s.rr.FindRatingsByUserID(ctx, filter, p.Skip(), p.Limit())
+	if err != nil {
+		span.RecordError(err)
+		return nil, err
+	}
+
+	return &dtos.RatingListResponseDto{
+		Items: items,
+		Page:  p.Page,
+		Size:  p.Size,
+		Total: total,
+	}, nil
 }

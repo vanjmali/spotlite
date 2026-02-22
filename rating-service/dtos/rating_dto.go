@@ -1,6 +1,9 @@
 package dtos
 
-import "github.com/vanjmali/spotlite/rating-service/entities"
+import (
+	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
+	"github.com/vanjmali/spotlite/rating-service/entities"
+)
 
 type CreateRatingDto struct {
 	SongID string `json:"song_id" validate:"required"`
@@ -11,3 +14,5 @@ type RatingResponseDto struct {
 	Items      []*entities.Rating `json:"items"`
 	NextCursor string             `json:"nextCursor,omitempty"`
 }
+
+type RatingListResponseDto = commondtos.ItemCollectionResponse[entities.Rating]

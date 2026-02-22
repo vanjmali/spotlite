@@ -101,3 +101,26 @@ func (r *RatingRepository) FindRatingsBySongID(
 
 	return ratings, nextID, nil
 }
+
+func (r *RatingRepository) FindRatingsByUserID(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Rating, int64, error) {
+	c := r.getCollection()
+
+	total, err := c.CountDocuments(ctx, filter)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	opts := options.Find().SetSkip(skip).SetLimit(limit).SetSort(bson.D{{Key: "created_at", Value: -1}, {Key: "_id", Value: -1}})
+
+	cur, err := c.Find(ctx, filter, opts)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer cur.Close(ctx)
+
+	ratings := make([]entities.Rating, 0)
+	if err = cur.All(ctx, &ratings); err != nil {
+		return nil, 0, err
+	}
+	return ratings, total, nil
+}
