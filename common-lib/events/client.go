@@ -120,7 +120,15 @@ func (c *JetStreamClient) StartConsumer(
 		Durable:       durableName,
 		FilterSubject: subject,
 		AckPolicy:     jetstream.AckExplicitPolicy,
-		MaxDeliver:    5,
+		MaxDeliver:    -1,
+		BackOff: []time.Duration{
+			1 * time.Second,
+			5 * time.Second,
+			30 * time.Second,
+			2 * time.Minute,
+			5 * time.Minute,
+			10 * time.Minute,
+		},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create consumer: %w", err)
