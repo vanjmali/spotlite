@@ -132,19 +132,18 @@ func (s *ArtistService) FindArtistByID(ctx context.Context, idStr string) (*enti
 
 // UpdateArtist updates an existing artist with the provided partial data.
 func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos.UpdateArtistDto) (*entities.Artist, error) {
-	ctx, span := s.tr.Start(ctx, "artist.update_artist")
-	defer span.End()
+	updateCtx, updateSpan := s.tr.Start(ctx, "artist.update_artist")
+	defer updateSpan.End()
 
-	_, parseSpan := s.tr.Start(ctx, "artist.update_artist.parse_id")
+	_, parseSpan := s.tr.Start(updateCtx, "artist.update_artist.parse_id")
+	defer parseSpan.End()
 	id, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
 		parseSpan.RecordError(err)
-		parseSpan.End()
 		return nil, ErrObjectIdCastFailed
 	}
-	parseSpan.End()
-
 	_, buildSpan := s.tr.Start(ctx, "artist.update.build_update_doc")
+	defer buildSpan.End()
 
 	update := make(map[string]any)
 
@@ -157,8 +156,6 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 			genre, err := s.genreService.FindGenreByID(ctx, genreIdStr)
 			if err != nil {
 				buildSpan.RecordError(err)
-				buildSpan.End()
-
 				switch {
 				case errors.Is(err, ErrObjectIdCastFailed):
 					return nil, ErrObjectIdCastFailed
@@ -183,25 +180,40 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 	if len(update) == 0 {
 		err := errors.New("no fields to update")
 		buildSpan.RecordError(err)
-		buildSpan.End()
 		return nil, err
 	}
-	buildSpan.End()
-
 	repoCtx, repoSpan := s.tr.Start(ctx, "artist.update.repository_update")
+	defer repoSpan.End()
 
 	updatedArtist, err := s.r.UpdateByID(repoCtx, id, update)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			repoSpan.RecordError(err)
-			repoSpan.End()
 			return nil, ErrArtistNotFound
 		}
 		repoSpan.RecordError(err)
-		repoSpan.End()
 		return nil, err
 	}
-	repoSpan.End()
+
+	eventCtx, eventSpan := s.tr.Start(ctx, "artist.update.update_event")
+	defer eventSpan.End()
+
+	aep := toArtistUpdatedEvent(updatedArtist.ID.Hex(), updatedArtist.Name)
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_ENTITY_UPDATED, aep)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+	if err != nil {
+		logging.Errorf(eventCtx, "failed to publish entity updated event: %v", err)
+		eventSpan.RecordError(err)
+		return nil, err
+	}
 
 	return updatedArtist, nil
 }
@@ -312,5 +324,12 @@ func toArtistCreatedEvent(genreIDs []string, artistID string, artistName string)
 		CreatedAt:  time.Now(),
 		EntityType: events.ArtistType,
 		EventID:    primitive.NewObjectID().Hex(),
+	}
+}
+
+func toArtistUpdatedEvent(artistID string, artistName string) *events.EntityUpdatedEventPayload {
+	return &events.EntityUpdatedEventPayload{
+		EntityID:   artistID,
+		EntityName: artistName,
 	}
 }

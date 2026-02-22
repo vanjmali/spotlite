@@ -41,6 +41,7 @@ type SubscriptionRepository interface {
 	IsSubscribed(subscriberID, entityID primitive.ObjectID, ctx context.Context) error
 	FindSubscriptionsByUserID(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Subscription, int64, error)
 	FindEntitySubscriberCount(ctx context.Context, entityID primitive.ObjectID) (int64, error)
+	UpdateSubscriptionsByEntityID(ctx context.Context, entityID primitive.ObjectID, entityName string) error
 }
 
 type ContentEntityGetter interface {
@@ -248,4 +249,26 @@ func (s *SubscriptionService) FindEntitySubscriberCount(ctx context.Context, ent
 	}
 
 	return &dtos.EntitySubscriberCountDTO{SubscriberCount: c}, nil
+}
+
+func (s *SubscriptionService) UpdateSubscriptions(ctx context.Context, p events.EntityUpdatedEventPayload) error {
+	updateCtx, updateSpan := s.tr.Start(ctx, "subscriptions.update")
+	defer updateSpan.End()
+
+	entityID, err := primitive.ObjectIDFromHex(p.EntityID)
+	if err != nil {
+		updateSpan.RecordError(err)
+		return ErrInvalidEntityID
+	}
+
+	repoCtx, repoSpan := s.tr.Start(updateCtx, "subscriptions.update.repo_update")
+	defer repoSpan.End()
+
+	err = s.sr.UpdateSubscriptionsByEntityID(repoCtx, entityID, p.EntityName)
+	if err != nil {
+		repoSpan.RecordError(err)
+		return err
+	}
+
+	return nil
 }
