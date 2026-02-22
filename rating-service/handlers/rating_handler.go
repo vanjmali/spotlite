@@ -84,6 +84,10 @@ func (h *RatingHandler) HandleDeleteRating(w http.ResponseWriter, r *http.Reques
 			logging.Warnf(r.Context(), "failed to process delete rating request: %v", err)
 			_ = respond.NotFound(w)
 			return
+		case errors.Is(err, services.ErrRatingForbidden):
+			logging.Warnf(r.Context(), "failed to process delete rating request: %v", err)
+			_ = respond.Forbidden(w, respond.ErrorMessage("You can only delete your own rating."))
+			return
 		default:
 			logging.Errorf(r.Context(), "failed to process delete rating request: %v", err)
 			_ = respond.InternalServerError(w)
@@ -96,7 +100,7 @@ func (h *RatingHandler) HandleDeleteRating(w http.ResponseWriter, r *http.Reques
 
 func (h *RatingHandler) HandleGetRatingsBySongID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	songIDStr := vars["song_id"]
+	songIDStr := vars["songID"]
 
 	limit := 10
 	if l := r.URL.Query().Get("limit"); l != "" {
@@ -145,7 +149,7 @@ func (h *RatingHandler) HandleGetRatingsByUserID(w http.ResponseWriter, r *http.
 	query := services.RatingsQuery{
 		Page:   p.Page,
 		Size:   p.Size,
-		UserID: q.Get("user_id"),
+		UserID: mux.Vars(r)["userID"],
 	}
 
 	handleListResponse(w, r, "ratings", func(ctx context.Context) (any, error) {
@@ -198,7 +202,7 @@ func (h *RatingHandler) HandleUpdateRating(w http.ResponseWriter, r *http.Reques
 
 func (h *RatingHandler) HandleGetAverageRatingBySongID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	songIDStr := vars["song_id"]
+	songIDStr := vars["songID"]
 
 	summary, err := h.s.GetAverageRatingBySongID(r.Context(), songIDStr)
 	if err != nil {

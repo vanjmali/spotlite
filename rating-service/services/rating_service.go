@@ -114,6 +114,20 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 		return ErrObjectIdCastFailed
 	}
 
+	existing, err := s.rr.FindByID(ctx, ratingID)
+	if err != nil {
+		span.RecordError(err)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return ErrRatingNotFound
+		}
+		return err
+	}
+
+	if existing.UserID != userID {
+		span.RecordError(ErrRatingForbidden)
+		return ErrRatingForbidden
+	}
+
 	deleteCtx, deleteSpan := s.tr.Start(ctx, "rating.delete_rating.delete")
 	defer deleteSpan.End()
 
@@ -222,26 +236,25 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 		return nil, ErrNoFieldsToUpdate
 	}
 
+	existing, err := s.rr.FindByID(ctx, ratingID)
+	if err != nil {
+		span.RecordError(err)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrRatingNotFound
+		}
+		return nil, err
+	}
+
+	if existing.UserID != userID {
+		span.RecordError(ErrRatingForbidden)
+		return nil, ErrRatingForbidden
+	}
+
 	rating, err := s.rr.UpdateByID(ctx, ratingID, userID, update)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			span.RecordError(err)
-			foundRating, findErr := s.rr.FindByID(ctx, ratingID)
-			if findErr != nil {
-				if errors.Is(findErr, mongo.ErrNoDocuments) {
-					return nil, ErrRatingNotFound
-				}
-				span.RecordError(findErr)
-				return nil, findErr
-			}
-
-			if foundRating.UserID != userID {
-				return nil, ErrRatingForbidden
-			}
-
 			return nil, ErrRatingNotFound
 		}
-		span.RecordError(err)
 		return nil, err
 	}
 

@@ -2,7 +2,6 @@ package middlewares
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"strings"
 
@@ -109,7 +108,6 @@ func extractToken(authorizationHeader string) string {
 // GetUsernameFromContext retrieves the user ID from the request context.
 func GetUsernameFromContext(ctx context.Context) string {
 	username, _ := ctx.Value(usernameKey).(string)
-	log.Println(username, "!@#!@#!@#!@#!@#!@#!@#!@#!@#")
 	return username
 }
 
