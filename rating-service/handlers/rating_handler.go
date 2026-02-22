@@ -195,3 +195,24 @@ func (h *RatingHandler) HandleUpdateRating(w http.ResponseWriter, r *http.Reques
 		logging.Errorf(r.Context(), "failed to write update rating response: %v", err)
 	}
 }
+
+func (h *RatingHandler) HandleGetAverageRatingBySongID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	songIDStr := vars["song_id"]
+
+	summary, err := h.s.GetAverageRatingBySongID(r.Context(), songIDStr)
+	if err != nil {
+		switch {
+		case errors.Is(err, services.ErrObjectIdCastFailed):
+			logging.Warnf(r.Context(), "failed to process get average rating request: %v", err)
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid song ID format."))
+			return
+		default:
+			logging.Errorf(r.Context(), "failed to process get average rating request: %v", err)
+			_ = respond.InternalServerError(w)
+			return
+		}
+	}
+
+	_ = respond.OkJson(w, summary)
+}

@@ -136,7 +136,12 @@ func (r *RatingRepository) FindRatingsByUserID(ctx context.Context, filter bson.
 	return ratings, total, nil
 }
 
-func (r *RatingRepository) UpdateByID(ctx context.Context, ratingID primitive.ObjectID, userID primitive.ObjectID, update map[string]any) (*entities.Rating, error) {
+func (r *RatingRepository) UpdateByID(
+	ctx context.Context,
+	ratingID primitive.ObjectID,
+	userID primitive.ObjectID,
+	update map[string]any,
+) (*entities.Rating, error) {
 	c := r.getCollection()
 
 	filter := bson.M{"_id": ratingID, "user_id": userID}
@@ -151,4 +156,39 @@ func (r *RatingRepository) UpdateByID(ctx context.Context, ratingID primitive.Ob
 	}
 
 	return &updatedRating, nil
+}
+
+type SongRatingSummary struct {
+	Avg   float64 `bson:"avg" json:"avg"`
+	Count int64   `bson:"count" json:"count"`
+}
+
+func (r *RatingRepository) GetAverageRatingBySongID(ctx context.Context, songID primitive.ObjectID) (*SongRatingSummary, error) {
+	c := r.getCollection()
+
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: bson.M{"song_id": songID}}},
+		{{Key: "$group", Value: bson.M{
+			"_id":   "$song_id",
+			"avg":   bson.M{"$avg": "$value"},
+			"count": bson.M{"$sum": 1},
+		}}},
+	}
+
+	cur, err := c.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	var rows []SongRatingSummary
+	if err := cur.All(ctx, &rows); err != nil {
+		return nil, err
+	}
+
+	if len(rows) == 0 {
+		return &SongRatingSummary{Avg: 0, Count: 0}, nil
+	}
+
+	return &rows[0], nil
 }
