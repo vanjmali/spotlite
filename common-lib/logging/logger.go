@@ -102,7 +102,5 @@ func ensureLogFilePermissions(path string) error {
 	if err != nil {
 		return err
 	}
-	_ = f.Close()
-
-	return os.Chmod(path, 0o640)
+	return f.Close()
 }

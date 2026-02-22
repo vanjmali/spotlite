@@ -261,7 +261,7 @@ func generateCreds() (credentials.TransportCredentials, error) {
 	cleanPath := filepath.Clean(rootCACertFilePath)
 
 	if !strings.HasPrefix(cleanPath, "/certs/") {
-		return nil, fmt.Errorf("invalid certificate path")
+		return nil, errors.New("invalid certificate path")
 	}
 
 	pemData, err := os.ReadFile(cleanPath)
@@ -271,7 +271,7 @@ func generateCreds() (credentials.TransportCredentials, error) {
 
 	certPool := x509.NewCertPool()
 	if !certPool.AppendCertsFromPEM(pemData) {
-		return nil, fmt.Errorf("failed to add CA to pool")
+		return nil, errors.New("failed to add CA to pool")
 	}
 
 	tlsConfig := &tls.Config{

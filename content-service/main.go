@@ -91,7 +91,7 @@ var (
 
 			// configures grpc server
 			grpcPort := utils.GetEnv("GRPC_PORT", "50051")
-			s, err := createGrpcServer(gs, as, certFilePath, keyFilePath)
+			s, err := createGrpcServer(gs, as, ss, certFilePath, keyFilePath)
 			if err != nil {
 				return h, shutdown, fmt.Errorf("failed to create grpc server: %w", err)
 			}
@@ -217,9 +217,9 @@ func createHandlers(
 	return routers.HandleRequests(ah, sh, alh, gh, gsh)
 }
 
-func createGrpcServer(gs *services.GenreService, as *services.ArtistService, cfp, kfp string) (*grpc.Server, error) {
+func createGrpcServer(gs *services.GenreService, as *services.ArtistService, ss *services.SongService, cfp, kfp string) (*grpc.Server, error) {
 	// define content grpc server
-	contentGrpcServer := infragrpc.NewContentServer(gs, as)
+	contentGrpcServer := infragrpc.NewContentServer(gs, as, ss)
 
 	creds, err := credentials.NewServerTLSFromFile(cfp, kfp)
 	if err != nil {
