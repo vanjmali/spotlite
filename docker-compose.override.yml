@@ -317,6 +317,52 @@ services:
       - api-gateway
       - subscription-internal
 
+  # --- Rating Service ---
+  rating-service:
+    volumes:
+      - keys:/run/keys:ro
+      - ./logs/rating-service:/app/logs
+      - certs:/certs
+    environment:
+      JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      ROOT_CERT_PATH: /certs/rootCA.crt
+      CERT_PATH: /certs/rating-service.crt
+      KEY_PATH: /certs/rating-service.key
+    depends_on:
+      logs-init:
+        condition: service_completed_successfully
+      cert-gen:
+        condition: service_completed_successfully
+      key-gen:
+        condition: service_completed_successfully
+
+  rating-mongodb:
+    ports:
+      - 3104:27017 # expose MongoDB port
+
+  rating-mongo-express: # MongoDB GUI
+    image: mongo-express:1
+    labels:
+      traefik.enable: true
+      traefik.docker.network: spotlite-api-gateway
+      traefik.http.routers.rating-mongo-express.rule: PathPrefix(`/dev/rating-service`)
+      traefik.http.routers.rating-mongo-express.middlewares: rating-mongo-express-strip-prefix
+      traefik.http.middlewares.rating-mongo-express-strip-prefix.stripprefix.forceslash: false
+      traefik.http.services.rating-mongo-express.loadbalancer.server.port: "8081"
+      traefik.http.services.rating-mongo-express.loadbalancer.healthcheck.path: /dev/rating-service
+      traefik.http.services.rating-mongo-express.loadbalancer.healthcheck.interval: 5s
+      traefik.http.services.rating-mongo-express.loadbalancer.healthcheck.timeout: 2s
+    environment:
+      ME_CONFIG_BASICAUTH: "false"
+      ME_CONFIG_SITE_BASEURL: /dev/rating-service
+      ME_CONFIG_MONGODB_URL: mongodb://${SRV_RATING_MONGO_ROOT_USERNAME}:${SRV_RATING_MONGO_ROOT_PASSWORD}@rating-mongodb:27017/?authSource=admin
+    depends_on:
+      rating-mongodb:
+        condition: service_healthy
+    networks:
+      - api-gateway
+      - rating-internal
+
 volumes:
   frontend-node-modules:
   keys:
