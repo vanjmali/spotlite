@@ -170,13 +170,23 @@ func (h *RatingHandler) HandleUpdateRating(w http.ResponseWriter, r *http.Reques
 	updatedRating, err := h.s.UpdateRating(r.Context(), id, dto)
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
+		logging.Warnf(r.Context(), "failed to process update rating request: %v", err)
 		_ = respond.BadRequest(w, respond.ErrorMessage("Invalid rating ID format"))
 		return
+	case errors.Is(err, services.ErrNoFieldsToUpdate):
+		logging.Warnf(r.Context(), "failed to process update rating request: %v", err)
+		_ = respond.BadRequest(w, respond.ErrorMessage("No fields to update"))
+		return
+	case errors.Is(err, services.ErrRatingForbidden):
+		logging.Warnf(r.Context(), "failed to process update rating request: %v", err)
+		_ = respond.Forbidden(w, respond.ErrorMessage("You can only edit your own rating."))
+		return
 	case errors.Is(err, services.ErrRatingNotFound):
+		logging.Warnf(r.Context(), "failed to process update rating request: %v", err)
 		_ = respond.NotFound(w)
 		return
 	case err != nil:
-		logging.Errorf(r.Context(), "failed to update rating: %v", err)
+		logging.Errorf(r.Context(), "failed to process update rating request: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}

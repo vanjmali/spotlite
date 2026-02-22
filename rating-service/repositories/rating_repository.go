@@ -65,6 +65,17 @@ func (r *RatingRepository) Delete(ratingID primitive.ObjectID, userID primitive.
 	return res.DeletedCount, nil
 }
 
+func (r *RatingRepository) FindByID(ctx context.Context, ratingID primitive.ObjectID) (*entities.Rating, error) {
+	c := r.getCollection()
+
+	var rating entities.Rating
+	if err := c.FindOne(ctx, bson.M{"_id": ratingID}).Decode(&rating); err != nil {
+		return nil, err
+	}
+
+	return &rating, nil
+}
+
 func (r *RatingRepository) FindRatingsBySongID(
 	ctx context.Context,
 	songID primitive.ObjectID,
@@ -125,10 +136,10 @@ func (r *RatingRepository) FindRatingsByUserID(ctx context.Context, filter bson.
 	return ratings, total, nil
 }
 
-func (r *RatingRepository) UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]any) (*entities.Rating, error) {
+func (r *RatingRepository) UpdateByID(ctx context.Context, ratingID primitive.ObjectID, userID primitive.ObjectID, update map[string]any) (*entities.Rating, error) {
 	c := r.getCollection()
 
-	filter := bson.M{"_id": id}
+	filter := bson.M{"_id": ratingID, "user_id": userID}
 	updateDoc := bson.M{"$set": update}
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)

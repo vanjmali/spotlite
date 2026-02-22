@@ -23,15 +23,18 @@ var (
 	ErrInvalidSongID      = errors.New("error has ocurred while parsing song id")
 	ErrUpstreamFailure    = errors.New("error has ocurred while fetching song")
 	ErrRatingNotFound     = errors.New("rating not found")
+	ErrRatingForbidden    = errors.New("rating does not belong to user")
+	ErrNoFieldsToUpdate   = errors.New("no fields to update")
 	ErrObjectIdCastFailed = errors.New("failed to convert hex to objectId")
 )
 
 type RatingRepository interface {
 	Create(rating *entities.Rating, ctx context.Context) error
 	Delete(ratingID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) (int64, error)
+	FindByID(ctx context.Context, ratingID primitive.ObjectID) (*entities.Rating, error)
 	FindRatingsBySongID(ctx context.Context, songID primitive.ObjectID, batchSize int, lastID *primitive.ObjectID) ([]*entities.Rating, string, error)
 	FindRatingsByUserID(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Rating, int64, error)
-	UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]any) (*entities.Rating, error)
+	UpdateByID(ctx context.Context, ratingID primitive.ObjectID, userID primitive.ObjectID, update map[string]any) (*entities.Rating, error)
 }
 
 type ContentEntityGetter interface {
@@ -189,11 +192,18 @@ func (s *RatingService) GetRatingByUser(ctx context.Context, q RatingsQuery) (*d
 	}, nil
 }
 
-func (s *RatingService) UpdateRating(ctx context.Context, idStr string, dto dtos.UpdateRatingDto) (*entities.Rating, error) {
+func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dto dtos.UpdateRatingDto) (*entities.Rating, error) {
 	ctx, span := s.tr.Start(ctx, "rating.update")
 	defer span.End()
 
-	id, err := primitive.ObjectIDFromHex(idStr)
+	ratingID, err := primitive.ObjectIDFromHex(ratingIdStr)
+	if err != nil {
+		span.RecordError(err)
+		return nil, ErrObjectIdCastFailed
+	}
+
+	userIDStr := middlewares.GetUserIdFromContext(ctx)
+	userID, err := primitive.ObjectIDFromHex(userIDStr)
 	if err != nil {
 		span.RecordError(err)
 		return nil, ErrObjectIdCastFailed
@@ -206,15 +216,27 @@ func (s *RatingService) UpdateRating(ctx context.Context, idStr string, dto dtos
 	}
 
 	if len(update) == 0 {
-		err := errors.New("no fields to update")
-		span.RecordError(err)
-		return nil, err
+		span.RecordError(ErrNoFieldsToUpdate)
+		return nil, ErrNoFieldsToUpdate
 	}
 
-	rating, err := s.rr.UpdateByID(ctx, id, update)
+	rating, err := s.rr.UpdateByID(ctx, ratingID, userID, update)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			span.RecordError(err)
+			foundRating, findErr := s.rr.FindByID(ctx, ratingID)
+			if findErr != nil {
+				if errors.Is(findErr, mongo.ErrNoDocuments) {
+					return nil, ErrRatingNotFound
+				}
+				span.RecordError(findErr)
+				return nil, findErr
+			}
+
+			if foundRating.UserID != userID {
+				return nil, ErrRatingForbidden
+			}
+
 			return nil, ErrRatingNotFound
 		}
 		span.RecordError(err)
