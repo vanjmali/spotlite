@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
+	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/common-lib/requests"
@@ -150,7 +151,7 @@ func (h *RatingHandler) HandleGetRatingsByUserID(w http.ResponseWriter, r *http.
 		UserID: mux.Vars(r)["userID"],
 	}
 
-	handleListResponse(w, r, "ratings", func(ctx context.Context) (any, error) {
+	commondtos.HandleListResponse(w, r, "ratings", func(ctx context.Context) (any, error) {
 		return h.s.GetRatingByUser(ctx, query)
 	})
 }
