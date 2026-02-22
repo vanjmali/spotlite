@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// Rating represents a user's rating for a song stored in MongoDB
 type Rating struct {
 	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	SongID    primitive.ObjectID `bson:"song_id" json:"songId"`

@@ -10,6 +10,7 @@ import (
 
 var ErrRatingMapping = errors.New("an error has occurred while processing rating request")
 
+// ToRatingEntity converts songID, userID, ratingValue, and username into a Rating entity.
 func ToRatingEntity(songIDStr string, userIDStr string, ratingValue int, username string) (*entities.Rating, error) {
 	now := time.Now()
 

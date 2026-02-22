@@ -9,10 +9,13 @@ import (
 	"github.com/vanjmali/spotlite/rating-service/handlers"
 )
 
+// HandleRequests wires HTTP routes to user handlers.
 func HandleRequests(rh *handlers.RatingHandler) http.Handler {
 	r := mux.NewRouter()
 	middlewares.HandleHealthz(r)
 
+	// Create a subrouter for API routes to attach telemetry
+	// and other middlewares if needed.
 	api := r.PathPrefix("/").Subrouter()
 	telemetry.AttachMuxTracing(api, "rating-service")
 
@@ -23,6 +26,7 @@ func HandleRequests(rh *handlers.RatingHandler) http.Handler {
 	api.Handle("/{id}", middlewares.RequireAuthenticated(rh.HandleUpdateRating)).Methods("PATCH")
 
 	api.Handle("/", middlewares.RequireAuthenticated(rh.HandleCreateRating)).Methods("POST")
+
 	api.Handle("/{ratingID}", middlewares.RequireAuthenticated(rh.HandleDeleteRating)).Methods("DELETE")
 
 	return r

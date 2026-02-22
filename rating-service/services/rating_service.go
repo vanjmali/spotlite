@@ -47,6 +47,7 @@ type RatingService struct {
 	tr  trace.Tracer
 }
 
+// NewRatingService creates and returns a new RatingService with the provided repository and content entity getter.
 func NewRatingService(rr RatingRepository, gcc ContentEntityGetter) *RatingService {
 	tr := otel.Tracer("rating-service/rating-service")
 	s := RatingService{rr: rr, gcc: gcc, tr: tr}
@@ -54,6 +55,7 @@ func NewRatingService(rr RatingRepository, gcc ContentEntityGetter) *RatingServi
 	return &s
 }
 
+// CreateRating creates a new rating for a song. It first checks if the song exists by calling the content entity getter.
 func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Context) error {
 	ratingCtx, ratingSpan := s.tr.Start(ctx, "rating.create_rating")
 	defer ratingSpan.End()
@@ -101,6 +103,7 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 	return nil
 }
 
+// DeleteRating deletes a rating by its ID. It first checks if the rating exists and belongs to the user making the request before deleting it.
 func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Context) error {
 	ctx, span := s.tr.Start(ctx, "rating.delete_rating")
 	defer span.End()
@@ -143,6 +146,7 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 	return nil
 }
 
+// GetRatingBySong retrieves ratings for a specific song with pagination support. It accepts the song ID, batch size, and an optional cursor for pagination.
 func (s *RatingService) GetRatingBySong(ctx context.Context, songIDStr string, batchSize int, cursor string) ([]*entities.Rating, string, error) {
 	getCtx, getSpan := s.tr.Start(ctx, "rating.get_by_song")
 	defer getSpan.End()
@@ -172,12 +176,14 @@ func (s *RatingService) GetRatingBySong(ctx context.Context, songIDStr string, b
 	return ratings, nextCursor, nil
 }
 
+// RatingsQuery represents the query parameters for retrieving ratings by user.
 type RatingsQuery struct {
 	Page   int
 	Size   int
 	UserID string
 }
 
+// GetRatingByUser retrieves ratings made by a specific user with pagination support.
 func (s *RatingService) GetRatingByUser(ctx context.Context, q RatingsQuery) (*dtos.RatingListResponseDto, error) {
 	ctx, span := s.tr.Start(ctx, "rating.get_by_user")
 	defer span.End()
@@ -207,6 +213,7 @@ func (s *RatingService) GetRatingByUser(ctx context.Context, q RatingsQuery) (*d
 	}, nil
 }
 
+// UpdateRating updates an existing rating. It first checks if the rating exists and belongs to the user making the request before applying the updates.
 func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dto dtos.UpdateRatingDto) (*entities.Rating, error) {
 	ctx, span := s.tr.Start(ctx, "rating.update")
 	defer span.End()
@@ -260,6 +267,7 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 	return rating, nil
 }
 
+// GetAverageRatingBySongID retrieves the average rating for a specific song.
 func (s *RatingService) GetAverageRatingBySongID(ctx context.Context, songIDStr string) (*dtos.SongRatingSummary, error) {
 	ctx, span := s.tr.Start(ctx, "rating.get_average")
 	defer span.End()

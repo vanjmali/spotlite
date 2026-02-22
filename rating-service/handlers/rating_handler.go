@@ -20,23 +20,26 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// RatingHandler wires HTTP handlers to the rating service and validators.
 type RatingHandler struct {
 	s *services.RatingService
 	v *validator.Validate
 }
 
+// NewRatingHandler creates and returns a new RatingHandler with the provided service and validator.
 func NewRatingHandler(s services.RatingService, v validator.Validate) *RatingHandler {
 	h := RatingHandler{s: &s, v: &v}
 
 	return &h
 }
 
+// HandleCreateRating handles HTTP POST requests to create a new rating.
 func (h *RatingHandler) HandleCreateRating(w http.ResponseWriter, r *http.Request) {
 	var req dtos.CreateRatingDto
 
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
-			logging.Warnf(r.Context(), "failed to process subscribe request: %v", err)
+			logging.Warnf(r.Context(), "failed to process create rating request: %v", err)
 			_ = respond.BadRequest(w, respond.ErrorMessage("invalid request body"))
 		}
 		return
@@ -65,6 +68,7 @@ func (h *RatingHandler) HandleCreateRating(w http.ResponseWriter, r *http.Reques
 	respond.NoContent(w)
 }
 
+// HandleDeleteRating handles HTTP DELETE requests to delete an existing rating by its ID.
 func (h *RatingHandler) HandleDeleteRating(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ratingIDStr := vars["ratingID"]
@@ -97,6 +101,7 @@ func (h *RatingHandler) HandleDeleteRating(w http.ResponseWriter, r *http.Reques
 	respond.NoContent(w)
 }
 
+// HandleGetRatingsBySongID handles HTTP GET requests to retrieve ratings for a specific song.
 func (h *RatingHandler) HandleGetRatingsBySongID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	songIDStr := vars["songID"]
@@ -141,6 +146,7 @@ func (h *RatingHandler) HandleGetRatingsBySongID(w http.ResponseWriter, r *http.
 	_ = respond.OkJson(w, response)
 }
 
+// HandleGetRatingsByUserID handles HTTP GET requests to retrieve ratings for a specific user.
 func (h *RatingHandler) HandleGetRatingsByUserID(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
@@ -156,6 +162,7 @@ func (h *RatingHandler) HandleGetRatingsByUserID(w http.ResponseWriter, r *http.
 	})
 }
 
+// HandleUpdateRating handles HTTP PATCH requests to update an existing rating.
 func (h *RatingHandler) HandleUpdateRating(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
@@ -199,6 +206,7 @@ func (h *RatingHandler) HandleUpdateRating(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+// HandleGetAverageRatingBySongID handles HTTP GET requests to retrieve the average rating for a specific song.
 func (h *RatingHandler) HandleGetAverageRatingBySongID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	songIDStr := vars["songID"]

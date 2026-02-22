@@ -19,6 +19,7 @@ var (
 	ErrRatingCursor        = errors.New("error has occured while loading rating cursor")
 )
 
+// RatingRepository provides data access helpers for rating documents.
 type RatingRepository struct {
 	DbName   string
 	CollName string
@@ -29,12 +30,14 @@ func (r *RatingRepository) getCollection() *mongo.Collection {
 	return r.Client.Database(r.DbName).Collection(r.CollName)
 }
 
+// NewRatingRepository constructs a RatingRepository for the given database and collection.
 func NewRatingRepository(dbName string, collName string, c *mongo.Client) *RatingRepository {
 	r := RatingRepository{Client: c, DbName: dbName, CollName: collName}
 
 	return &r
 }
 
+// create func, inserts a new rating into the database.
 func (r *RatingRepository) Create(rating *entities.Rating, ctx context.Context) error {
 	c := r.getCollection()
 
@@ -51,6 +54,7 @@ func (r *RatingRepository) Create(rating *entities.Rating, ctx context.Context) 
 	return nil
 }
 
+// Delete func, deletes a rating by ID and user ID.
 func (r *RatingRepository) Delete(ratingID primitive.ObjectID, userID primitive.ObjectID, ctx context.Context) (int64, error) {
 	c := r.getCollection()
 
@@ -65,6 +69,7 @@ func (r *RatingRepository) Delete(ratingID primitive.ObjectID, userID primitive.
 	return res.DeletedCount, nil
 }
 
+// FindByID func, finds a rating by ID.
 func (r *RatingRepository) FindByID(ctx context.Context, ratingID primitive.ObjectID) (*entities.Rating, error) {
 	c := r.getCollection()
 
@@ -76,6 +81,7 @@ func (r *RatingRepository) FindByID(ctx context.Context, ratingID primitive.Obje
 	return &rating, nil
 }
 
+// FindRatingsBySongID func, finds ratings by song ID with pagination support.
 func (r *RatingRepository) FindRatingsBySongID(
 	ctx context.Context,
 	songID primitive.ObjectID,
@@ -113,6 +119,7 @@ func (r *RatingRepository) FindRatingsBySongID(
 	return ratings, nextID, nil
 }
 
+// FindRatingsByUserID func, finds ratings by user ID with pagination support.
 func (r *RatingRepository) FindRatingsByUserID(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Rating, int64, error) {
 	c := r.getCollection()
 
@@ -136,6 +143,7 @@ func (r *RatingRepository) FindRatingsByUserID(ctx context.Context, filter bson.
 	return ratings, total, nil
 }
 
+// UpdateByID func, updates a rating by ID and user ID.
 func (r *RatingRepository) UpdateByID(
 	ctx context.Context,
 	ratingID primitive.ObjectID,
@@ -158,6 +166,7 @@ func (r *RatingRepository) UpdateByID(
 	return &updatedRating, nil
 }
 
+// GetAverageRatingBySongID func, calculates the average rating and count of ratings for a given song ID.
 func (r *RatingRepository) GetAverageRatingBySongID(ctx context.Context, songID primitive.ObjectID) (*dtos.SongRatingSummary, error) {
 	c := r.getCollection()
 
