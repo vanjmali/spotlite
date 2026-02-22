@@ -138,6 +138,7 @@ var (
 		}{
 			CertFilePath: certFilePath,
 			KeyFilePath:  keyFilePath,
+			WriteTimeout: 25 * time.Second,
 		},
 	}
 )

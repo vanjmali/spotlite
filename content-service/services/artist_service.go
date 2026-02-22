@@ -132,18 +132,24 @@ func (s *ArtistService) FindArtistByID(ctx context.Context, idStr string) (*enti
 
 // UpdateArtist updates an existing artist with the provided partial data.
 func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos.UpdateArtistDto) (*entities.Artist, error) {
-	updateCtx, updateSpan := s.tr.Start(ctx, "artist.update_artist")
+	updateCtx, updateSpan := s.tr.Start(ctx, "artist.update")
 	defer updateSpan.End()
 
-	_, parseSpan := s.tr.Start(updateCtx, "artist.update_artist.parse_id")
-	defer parseSpan.End()
 	id, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
-		parseSpan.RecordError(err)
+		updateSpan.RecordError(err)
 		return nil, ErrObjectIdCastFailed
 	}
-	_, buildSpan := s.tr.Start(ctx, "artist.update.build_update_doc")
-	defer buildSpan.End()
+
+	// fetches current state of the genre for potential roll back
+	getCtx, getSpan := s.tr.Start(updateCtx, "artist.update.get_current_state")
+	defer getSpan.End()
+
+	currentArtist, err := s.r.FindByID(getCtx, id)
+	if err != nil {
+		getSpan.RecordError(err)
+		return nil, err
+	}
 
 	update := make(map[string]any)
 
@@ -153,9 +159,9 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 	if dto.GenreIds != nil {
 		embeddedGenres := make([]entities.Genre, 0)
 		for _, genreIdStr := range *dto.GenreIds {
-			genre, err := s.genreService.FindGenreByID(ctx, genreIdStr)
+			genre, err := s.genreService.FindGenreByID(updateCtx, genreIdStr)
 			if err != nil {
-				buildSpan.RecordError(err)
+				updateSpan.RecordError(err)
 				switch {
 				case errors.Is(err, ErrObjectIdCastFailed):
 					return nil, ErrObjectIdCastFailed
@@ -179,10 +185,10 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 
 	if len(update) == 0 {
 		err := errors.New("no fields to update")
-		buildSpan.RecordError(err)
+		updateSpan.RecordError(err)
 		return nil, err
 	}
-	repoCtx, repoSpan := s.tr.Start(ctx, "artist.update.repository_update")
+	repoCtx, repoSpan := s.tr.Start(updateCtx, "artist.update.repo")
 	defer repoSpan.End()
 
 	updatedArtist, err := s.r.UpdateByID(repoCtx, id, update)
@@ -195,7 +201,7 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 		return nil, err
 	}
 
-	eventCtx, eventSpan := s.tr.Start(ctx, "artist.update.update_event")
+	eventCtx, eventSpan := s.tr.Start(updateCtx, "artist.update.update_event")
 	defer eventSpan.End()
 
 	aep := toArtistUpdatedEvent(updatedArtist.ID.Hex(), updatedArtist.Name)
@@ -212,7 +218,29 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 	if err != nil {
 		logging.Errorf(eventCtx, "failed to publish entity updated event: %v", err)
 		eventSpan.RecordError(err)
-		return nil, err
+
+		var errs []error
+
+		errs = append(errs, err)
+
+		rbCtx, rbSpan := s.tr.Start(updateCtx, "artist.update.rollback")
+		defer rbSpan.End()
+
+		// set param to previous genre state name
+		rbUpdate := make(map[string]any)
+		if dto.Name != nil {
+			rbUpdate["name"] = currentArtist.Name
+			rbUpdate["genres"] = currentArtist.Genres
+			rbUpdate["description"] = currentArtist.Description
+		}
+
+		_, err := s.r.UpdateByID(rbCtx, id, rbUpdate)
+		if err != nil {
+			rbSpan.RecordError(err)
+			errs = append(errs, err)
+		}
+
+		return nil, errors.Join(errs...)
 	}
 
 	return updatedArtist, nil
