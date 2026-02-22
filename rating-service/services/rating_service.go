@@ -20,12 +20,12 @@ import (
 
 var (
 	ErrSongNotFound       = errors.New("song couldn't be found")
-	ErrInvalidSongID      = errors.New("error has ocurred while parsing song id")
+	ErrInvalidSongID      = errors.New("error has ocurred while parsing song ID")
 	ErrUpstreamFailure    = errors.New("error has ocurred while fetching song")
 	ErrRatingNotFound     = errors.New("rating not found")
 	ErrRatingForbidden    = errors.New("rating does not belong to user")
 	ErrNoFieldsToUpdate   = errors.New("no fields to update")
-	ErrObjectIdCastFailed = errors.New("failed to convert hex to objectId")
+	ErrObjectIdCastFailed = errors.New("failed to convert hex to objectID")
 )
 
 type RatingRepository interface {
@@ -57,10 +57,10 @@ func NewRatingService(rr RatingRepository, gcc ContentEntityGetter) *RatingServi
 
 // CreateRating creates a new rating for a song. It first checks if the song exists by calling the content entity getter.
 func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Context) error {
-	ratingCtx, ratingSpan := s.tr.Start(ctx, "rating.create_rating")
+	ratingCtx, ratingSpan := s.tr.Start(ctx, "rating.create")
 	defer ratingSpan.End()
 
-	songExistsCtx, songExistsSpan := s.tr.Start(ratingCtx, "rating.create_rating.song_exists")
+	songExistsCtx, songExistsSpan := s.tr.Start(ratingCtx, "rating.create.exists")
 	defer songExistsSpan.End()
 
 	_, err := s.gcc.GetSong(songExistsCtx, req.SongID)
@@ -92,7 +92,7 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 		return err
 	}
 
-	createCtx, createSpan := s.tr.Start(ratingCtx, "rating.create_rating.create")
+	createCtx, createSpan := s.tr.Start(ratingCtx, "rating.create.repo")
 	defer createSpan.End()
 	err = s.rr.Create(ratingEntity, createCtx)
 	if err != nil {
@@ -105,7 +105,7 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 
 // DeleteRating deletes a rating by its ID. It first checks if the rating exists and belongs to the user making the request before deleting it.
 func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Context) error {
-	ctx, span := s.tr.Start(ctx, "rating.delete_rating")
+	ctx, span := s.tr.Start(ctx, "rating.delete")
 	defer span.End()
 
 	userIDStr := middlewares.GetUserIdFromContext(ctx)
@@ -130,7 +130,7 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 		return ErrRatingForbidden
 	}
 
-	deleteCtx, deleteSpan := s.tr.Start(ctx, "rating.delete_rating.delete")
+	deleteCtx, deleteSpan := s.tr.Start(ctx, "rating.delete.repo")
 	defer deleteSpan.End()
 
 	deletedCount, err := s.rr.Delete(ratingID, userID, deleteCtx)
@@ -185,8 +185,8 @@ type RatingsQuery struct {
 
 // GetRatingByUser retrieves ratings made by a specific user with pagination support.
 func (s *RatingService) GetRatingByUser(ctx context.Context, q RatingsQuery) (*dtos.RatingListResponseDto, error) {
-	ctx, span := s.tr.Start(ctx, "rating.get_by_user")
-	defer span.End()
+	getCtx, getSpan := s.tr.Start(ctx, "rating.get_by_user")
+	defer getSpan.End()
 
 	filter := bson.M{}
 
@@ -199,9 +199,9 @@ func (s *RatingService) GetRatingByUser(ctx context.Context, q RatingsQuery) (*d
 	}
 
 	p := pagination.NewPagination(q.Page, q.Size)
-	items, total, err := s.rr.FindRatingsByUserID(ctx, filter, p.Skip(), p.Limit())
+	items, total, err := s.rr.FindRatingsByUserID(getCtx, filter, p.Skip(), p.Limit())
 	if err != nil {
-		span.RecordError(err)
+		getSpan.RecordError(err)
 		return nil, err
 	}
 
@@ -215,19 +215,19 @@ func (s *RatingService) GetRatingByUser(ctx context.Context, q RatingsQuery) (*d
 
 // UpdateRating updates an existing rating. It first checks if the rating exists and belongs to the user making the request before applying the updates.
 func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dto dtos.UpdateRatingDto) (*entities.Rating, error) {
-	ctx, span := s.tr.Start(ctx, "rating.update")
-	defer span.End()
+	updateCtx, updateSpan := s.tr.Start(ctx, "rating.update")
+	defer updateSpan.End()
 
 	ratingID, err := primitive.ObjectIDFromHex(ratingIdStr)
 	if err != nil {
-		span.RecordError(err)
+		updateSpan.RecordError(err)
 		return nil, ErrObjectIdCastFailed
 	}
 
-	userIDStr := middlewares.GetUserIdFromContext(ctx)
+	userIDStr := middlewares.GetUserIdFromContext(updateCtx)
 	userID, err := primitive.ObjectIDFromHex(userIDStr)
 	if err != nil {
-		span.RecordError(err)
+		updateSpan.RecordError(err)
 		return nil, ErrObjectIdCastFailed
 	}
 
@@ -236,15 +236,17 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 		update["value"] = *dto.Value
 		update["is_edited"] = true
 	}
-
 	if len(update) == 0 {
-		span.RecordError(ErrNoFieldsToUpdate)
+		updateSpan.RecordError(ErrNoFieldsToUpdate)
 		return nil, ErrNoFieldsToUpdate
 	}
 
-	existing, err := s.rr.FindByID(ctx, ratingID)
+	findCtx, findSpan := s.tr.Start(ctx, "rating.update.find")
+	defer findSpan.End()
+
+	existing, err := s.rr.FindByID(findCtx, ratingID)
 	if err != nil {
-		span.RecordError(err)
+		findSpan.RecordError(err)
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, ErrRatingNotFound
 		}
@@ -252,12 +254,16 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 	}
 
 	if existing.UserID != userID {
-		span.RecordError(ErrRatingForbidden)
+		updateSpan.RecordError(ErrRatingForbidden)
 		return nil, ErrRatingForbidden
 	}
 
-	rating, err := s.rr.UpdateByID(ctx, ratingID, userID, update)
+	repoCtx, repoSpan := s.tr.Start(ctx, "rating.update.repo")
+	defer findSpan.End()
+
+	rating, err := s.rr.UpdateByID(repoCtx, ratingID, userID, update)
 	if err != nil {
+		repoSpan.RecordError(err)
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, ErrRatingNotFound
 		}
@@ -269,18 +275,18 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 
 // GetAverageRatingBySongID retrieves the average rating for a specific song.
 func (s *RatingService) GetAverageRatingBySongID(ctx context.Context, songIDStr string) (*dtos.SongRatingSummary, error) {
-	ctx, span := s.tr.Start(ctx, "rating.get_average")
-	defer span.End()
+	avgCtx, avgSpan := s.tr.Start(ctx, "rating.average")
+	defer avgSpan.End()
 
 	songID, err := primitive.ObjectIDFromHex(songIDStr)
 	if err != nil {
-		span.RecordError(err)
+		avgSpan.RecordError(err)
 		return nil, ErrObjectIdCastFailed
 	}
 
-	summary, err := s.rr.GetAverageRatingBySongID(ctx, songID)
+	summary, err := s.rr.GetAverageRatingBySongID(avgCtx, songID)
 	if err != nil {
-		span.RecordError(err)
+		avgSpan.RecordError(err)
 		return nil, err
 	}
 

@@ -23,7 +23,7 @@ func HandleRequests(rh *handlers.RatingHandler) http.Handler {
 	api.Handle("/users/{userID}", middlewares.RequireAuthenticated(rh.HandleGetRatingsByUserID)).Methods("GET")
 	api.Handle("/songs/{songID}/average", middlewares.RequireAuthenticated(rh.HandleGetAverageRatingBySongID)).Methods("GET")
 
-	api.Handle("/{id}", middlewares.RequireAuthenticated(rh.HandleUpdateRating)).Methods("PATCH")
+	api.Handle("/{ID}", middlewares.RequireAuthenticated(rh.HandleUpdateRating)).Methods("PATCH")
 
 	api.Handle("/", middlewares.RequireAuthenticated(rh.HandleCreateRating)).Methods("POST")
 

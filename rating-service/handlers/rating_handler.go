@@ -20,6 +20,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+const LIMIT_DEFAULT = 10
+
 // RatingHandler wires HTTP handlers to the rating service and validators.
 type RatingHandler struct {
 	s *services.RatingService
@@ -57,7 +59,7 @@ func (h *RatingHandler) HandleCreateRating(w http.ResponseWriter, r *http.Reques
 			return
 		case errors.Is(err, repositories.ErrRatingAlreadyExists):
 			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
-			_ = respond.Conflict(w, respond.ErrorMessageWithCode("Rating already exists for this song.", "rating_exists"))
+			_ = respond.Conflict(w, respond.ErrorMessageWithCode("Rating already exists for this song", "rating_exists"))
 			return
 		default:
 			logging.Errorf(r.Context(), "failed to create rating: %v", err)
@@ -76,7 +78,7 @@ func (h *RatingHandler) HandleDeleteRating(w http.ResponseWriter, r *http.Reques
 	ratingID, err := primitive.ObjectIDFromHex(ratingIDStr)
 	if err != nil {
 		logging.Warnf(r.Context(), "failed to process delete rating request: %v", err)
-		_ = respond.BadRequest(w, respond.ErrorMessage("Invalid rating ID."))
+		_ = respond.BadRequest(w, respond.ErrorMessage("Invalid rating ID"))
 		return
 	}
 
@@ -89,7 +91,7 @@ func (h *RatingHandler) HandleDeleteRating(w http.ResponseWriter, r *http.Reques
 			return
 		case errors.Is(err, services.ErrRatingForbidden):
 			logging.Warnf(r.Context(), "failed to process delete rating request: %v", err)
-			_ = respond.Forbidden(w, respond.ErrorMessage("You can only delete your own rating."))
+			_ = respond.Forbidden(w, respond.ErrorMessage("You can only delete your own rating"))
 			return
 		default:
 			logging.Errorf(r.Context(), "failed to process delete rating request: %v", err)
@@ -106,15 +108,13 @@ func (h *RatingHandler) HandleGetRatingsBySongID(w http.ResponseWriter, r *http.
 	vars := mux.Vars(r)
 	songIDStr := vars["songID"]
 
-	limit := 10
-	if l := r.URL.Query().Get("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil {
-			if parsed < 1 {
-				limit = 1
-			} else if parsed > 200 {
-				limit = 200
+	var limit int
+	if lStr := r.URL.Query().Get("limit"); lStr != "" {
+		if l, err := strconv.Atoi(lStr); err == nil {
+			if l < 1 || l > 200 {
+				limit = LIMIT_DEFAULT
 			} else {
-				limit = parsed
+				limit = l
 			}
 		}
 	}
@@ -126,7 +126,7 @@ func (h *RatingHandler) HandleGetRatingsBySongID(w http.ResponseWriter, r *http.
 		switch {
 		case errors.Is(err, services.ErrInvalidSongID):
 			logging.Warnf(r.Context(), "failed to process get ratings request: %v", err)
-			_ = respond.BadRequest(w, respond.ErrorMessage("invalid song ID."))
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid song ID"))
 			return
 		default:
 			logging.Errorf(r.Context(), "failed to process get ratings request: %v", err)
@@ -165,7 +165,7 @@ func (h *RatingHandler) HandleGetRatingsByUserID(w http.ResponseWriter, r *http.
 // HandleUpdateRating handles HTTP PATCH requests to update an existing rating.
 func (h *RatingHandler) HandleUpdateRating(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id := vars["id"]
+	id := vars["ID"]
 
 	var dto dtos.UpdateRatingDto
 
@@ -185,11 +185,11 @@ func (h *RatingHandler) HandleUpdateRating(w http.ResponseWriter, r *http.Reques
 		return
 	case errors.Is(err, services.ErrNoFieldsToUpdate):
 		logging.Warnf(r.Context(), "failed to process update rating request: %v", err)
-		_ = respond.BadRequest(w, respond.ErrorMessage("No fields to update"))
+		_ = respond.BadRequest(w)
 		return
 	case errors.Is(err, services.ErrRatingForbidden):
 		logging.Warnf(r.Context(), "failed to process update rating request: %v", err)
-		_ = respond.Forbidden(w, respond.ErrorMessage("You can only edit your own rating."))
+		_ = respond.Forbidden(w, respond.ErrorMessage("You can only edit your own rating"))
 		return
 	case errors.Is(err, services.ErrRatingNotFound):
 		logging.Warnf(r.Context(), "failed to process update rating request: %v", err)
@@ -216,7 +216,7 @@ func (h *RatingHandler) HandleGetAverageRatingBySongID(w http.ResponseWriter, r 
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):
 			logging.Warnf(r.Context(), "failed to process get average rating request: %v", err)
-			_ = respond.BadRequest(w, respond.ErrorMessage("invalid song ID format."))
+			_ = respond.BadRequest(w, respond.ErrorMessage("invalid song ID format"))
 			return
 		default:
 			logging.Errorf(r.Context(), "failed to process get average rating request: %v", err)

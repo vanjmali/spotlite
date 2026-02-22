@@ -19,7 +19,7 @@ type UpdateRatingDto struct {
 // RatingResponseDto represents the response payload when returning a paginated list of ratings.
 type RatingResponseDto struct {
 	Items      []*entities.Rating `json:"items"`
-	NextCursor string             `json:"nextCursor,omitempty"`
+	NextCursor string             `json:"next_cursor,omitempty"`
 }
 
 // SongRatingSummary represents the average rating and total count of ratings for a song.

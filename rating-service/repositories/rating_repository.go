@@ -128,7 +128,7 @@ func (r *RatingRepository) FindRatingsByUserID(ctx context.Context, filter bson.
 		return nil, 0, err
 	}
 
-	opts := options.Find().SetSkip(skip).SetLimit(limit).SetSort(bson.D{{Key: "created_at", Value: -1}, {Key: "_id", Value: -1}})
+	opts := options.Find().SetSkip(skip).SetLimit(limit).SetSort(bson.D{{Key: "_id", Value: -1}})
 
 	cur, err := c.Find(ctx, filter, opts)
 	if err != nil {
