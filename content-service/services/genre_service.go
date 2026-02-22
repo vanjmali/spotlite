@@ -94,6 +94,15 @@ func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.U
 		return nil, ErrObjectIdCastFailed
 	}
 
+	// fetches current state of the genre for potential roll back
+	getCtx, getSpan := s.tr.Start(updateCtx, "genre.update.get_current_state")
+	defer getSpan.End()
+
+	currentGenre, err := s.r.FindByID(getCtx, id)
+	if err != nil {
+		return nil, err
+	}
+
 	update := make(map[string]any)
 	if dto.Name != nil {
 		update["name"] = *dto.Name
@@ -115,11 +124,13 @@ func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.U
 		return nil, err
 	}
 
-	eventCtx, eventSpan := s.tr.Start(ctx, "genre.update.update_event")
+	eventCtx, eventSpan := s.tr.Start(updateCtx, "genre.update.update_event")
 	defer eventSpan.End()
 
+	// prepare payload
 	aep := toGenreUpdatedEvent(genre.ID.Hex(), genre.Name)
 
+	// attempts broadcasting event
 	err = retry.Do(
 		func() error {
 			return s.jsc.Publish(eventCtx, events.SUBJECT_ENTITY_UPDATED, aep)
@@ -129,10 +140,32 @@ func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.U
 		retry.DelayType(retry.BackOffDelay),
 		retry.Context(eventCtx),
 	)
+
+	// if event couldn't be published rollback to previous genre state
 	if err != nil {
 		logging.Errorf(eventCtx, "failed to publish entity updated event: %v", err)
 		eventSpan.RecordError(err)
-		return nil, err
+
+		var errs []error
+
+		errs = append(errs, err)
+
+		rbCtx, rbSpan := s.tr.Start(updateCtx, "genre.update.rollback")
+		defer rbSpan.End()
+
+		// set param to previous genre state name
+		rbUpdate := make(map[string]any)
+		if dto.Name != nil {
+			rbUpdate["name"] = currentGenre.Name
+		}
+
+		_, err := s.r.UpdateByID(rbCtx, id, rbUpdate)
+		if err != nil {
+			rbSpan.RecordError(err)
+			errs = append(errs, err)
+		}
+
+		return nil, errors.Join(errs...)
 	}
 
 	return genre, nil
