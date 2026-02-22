@@ -19,4 +19,9 @@ type RatingResponseDto struct {
 	NextCursor string             `json:"nextCursor,omitempty"`
 }
 
+type SongRatingSummary struct {
+	Avg   float64 `bson:"avg" json:"avg"`
+	Count int64   `bson:"count" json:"count"`
+}
+
 type RatingListResponseDto = commondtos.ItemCollectionResponse[entities.Rating]

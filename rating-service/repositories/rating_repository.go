@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/vanjmali/spotlite/rating-service/dtos"
 	"github.com/vanjmali/spotlite/rating-service/entities"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -16,7 +17,6 @@ var (
 	ErrRatingAlreadyExists = errors.New("user has already rated the given content")
 	ErrFindRatings         = errors.New("error has occured while finding ratings for the given parameters")
 	ErrRatingCursor        = errors.New("error has occured while loading rating cursor")
-	ErrUUIDParse           = errors.New("error has occurred while parsing song IDs")
 )
 
 type RatingRepository struct {
@@ -158,12 +158,7 @@ func (r *RatingRepository) UpdateByID(
 	return &updatedRating, nil
 }
 
-type SongRatingSummary struct {
-	Avg   float64 `bson:"avg" json:"avg"`
-	Count int64   `bson:"count" json:"count"`
-}
-
-func (r *RatingRepository) GetAverageRatingBySongID(ctx context.Context, songID primitive.ObjectID) (*SongRatingSummary, error) {
+func (r *RatingRepository) GetAverageRatingBySongID(ctx context.Context, songID primitive.ObjectID) (*dtos.SongRatingSummary, error) {
 	c := r.getCollection()
 
 	pipeline := mongo.Pipeline{
@@ -181,13 +176,13 @@ func (r *RatingRepository) GetAverageRatingBySongID(ctx context.Context, songID 
 	}
 	defer cur.Close(ctx)
 
-	var rows []SongRatingSummary
+	var rows []dtos.SongRatingSummary
 	if err := cur.All(ctx, &rows); err != nil {
 		return nil, err
 	}
 
 	if len(rows) == 0 {
-		return &SongRatingSummary{Avg: 0, Count: 0}, nil
+		return &dtos.SongRatingSummary{Avg: 0, Count: 0}, nil
 	}
 
 	return &rows[0], nil

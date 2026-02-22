@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -68,7 +67,6 @@ func (h *RatingHandler) HandleCreateRating(w http.ResponseWriter, r *http.Reques
 func (h *RatingHandler) HandleDeleteRating(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	ratingIDStr := vars["ratingID"]
-	log.Println(ratingIDStr)
 
 	ratingID, err := primitive.ObjectIDFromHex(ratingIDStr)
 	if err != nil {

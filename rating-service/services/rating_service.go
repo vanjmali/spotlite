@@ -9,7 +9,6 @@ import (
 	"github.com/vanjmali/spotlite/rating-service/dtos"
 	"github.com/vanjmali/spotlite/rating-service/entities"
 	"github.com/vanjmali/spotlite/rating-service/mappers"
-	"github.com/vanjmali/spotlite/rating-service/repositories"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -36,7 +35,7 @@ type RatingRepository interface {
 	FindRatingsBySongID(ctx context.Context, songID primitive.ObjectID, batchSize int, lastID *primitive.ObjectID) ([]*entities.Rating, string, error)
 	FindRatingsByUserID(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Rating, int64, error)
 	UpdateByID(ctx context.Context, ratingID primitive.ObjectID, userID primitive.ObjectID, update map[string]any) (*entities.Rating, error)
-	GetAverageRatingBySongID(ctx context.Context, songID primitive.ObjectID) (*repositories.SongRatingSummary, error)
+	GetAverageRatingBySongID(ctx context.Context, songID primitive.ObjectID) (*dtos.SongRatingSummary, error)
 }
 
 type ContentEntityGetter interface {
@@ -261,7 +260,7 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 	return rating, nil
 }
 
-func (s *RatingService) GetAverageRatingBySongID(ctx context.Context, songIDStr string) (*repositories.SongRatingSummary, error) {
+func (s *RatingService) GetAverageRatingBySongID(ctx context.Context, songIDStr string) (*dtos.SongRatingSummary, error) {
 	ctx, span := s.tr.Start(ctx, "rating.get_average")
 	defer span.End()
 
