@@ -37,6 +37,7 @@
   }
 
   &__aside,
+  &__custom-aside,
   &__content,
   &__right {
     min-height: 0;
@@ -55,6 +56,17 @@
     min-width: 0;
     overflow-y: auto;
     @include m.scrollbar;
+  }
+
+  &__custom-aside {
+    flex: 0 0 auto;
+    overflow: hidden;
+    margin-right: 12px;
+
+    &:empty {
+      display: none;
+      margin-right: 0;
+    }
   }
 
   &__right {

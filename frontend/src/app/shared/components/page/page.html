@@ -13,6 +13,11 @@
         title="Drag to resize. Double-click to reset."
       ></div>
     }
+    @if (!showSidebarsSg()) {
+      <aside class="page__custom-aside">
+        <ng-content select="[aside]"></ng-content>
+      </aside>
+    }
 
     <main class="page__content">
       <ng-content select="[content]"></ng-content>
