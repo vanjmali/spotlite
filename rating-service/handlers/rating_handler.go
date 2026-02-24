@@ -124,9 +124,9 @@ func (h *RatingHandler) HandleGetRatingsBySongID(w http.ResponseWriter, r *http.
 	ratings, nextCursor, err := h.s.GetRatingBySong(r.Context(), songIDStr, limit, cursor)
 	if err != nil {
 		switch {
-		case errors.Is(err, services.ErrInvalidSongID):
+		case errors.Is(err, services.ErrEntityNotFound):
 			logging.Warnf(r.Context(), "failed to process get ratings request: %v", err)
-			_ = respond.BadRequest(w, respond.ErrorMessage("invalid song ID"))
+			_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))
 			return
 		default:
 			logging.Errorf(r.Context(), "failed to process get ratings request: %v", err)
