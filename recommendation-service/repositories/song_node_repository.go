@@ -60,18 +60,15 @@ func (r *SongNodeRepository) Get(ctx context.Context, songID string) (*entities.
 			}, nil
 		}
 
-		return nil, nil
+		return nil, ErrNotFound
 	})
 
 	if err != nil {
 		return nil, err
 	}
-	if result == nil {
-		return nil, nil
-	}
 
 	return result.(*entities.SongNode), nil
-}
+}}
 
 // Exists checks if a song node exists.
 func (r *SongNodeRepository) Exists(ctx context.Context, songID string) (bool, error) {

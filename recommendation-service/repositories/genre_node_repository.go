@@ -58,18 +58,15 @@ func (r *GenreNodeRepository) Get(ctx context.Context, genreID string) (*entitie
 			}, nil
 		}
 
-		return nil, nil
+		return nil, ErrNotFound
 	})
 
 	if err != nil {
 		return nil, err
 	}
-	if result == nil {
-		return nil, nil
-	}
 
 	return result.(*entities.GenreNode), nil
-}
+}}
 
 // Exists checks if a genre node exists.
 func (r *GenreNodeRepository) Exists(ctx context.Context, genreID string) (bool, error) {

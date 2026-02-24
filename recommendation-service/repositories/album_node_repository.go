@@ -58,18 +58,15 @@ func (r *AlbumNodeRepository) Get(ctx context.Context, albumID string) (*entitie
 			}, nil
 		}
 
-		return nil, nil
+		return nil, ErrNotFound
 	})
 
 	if err != nil {
 		return nil, err
 	}
-	if result == nil {
-		return nil, nil
-	}
 
 	return result.(*entities.AlbumNode), nil
-}
+}}
 
 // Exists checks if an album node exists.
 func (r *AlbumNodeRepository) Exists(ctx context.Context, albumID string) (bool, error) {

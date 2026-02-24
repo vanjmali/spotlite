@@ -58,18 +58,15 @@ func (r *ArtistNodeRepository) Get(ctx context.Context, artistID string) (*entit
 			}, nil
 		}
 
-		return nil, nil
+		return nil, ErrNotFound
 	})
 
 	if err != nil {
 		return nil, err
 	}
-	if result == nil {
-		return nil, nil
-	}
 
 	return result.(*entities.ArtistNode), nil
-}
+}}
 
 // Exists checks if an artist node exists.
 func (r *ArtistNodeRepository) Exists(ctx context.Context, artistID string) (bool, error) {
