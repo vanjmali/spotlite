@@ -72,9 +72,9 @@ func main() {
 }
 
 func createClients() (neo4j.DriverWithContext, error) {
-	neoUri := utils.GetEnv("NEO4J_URI", "neo4j://localhost:7687")
-	neoUser := utils.GetEnv("NEO4J_USER", "neo4j")
-	neoPass := utils.GetEnv("NEO4J_PASSWORD", "password")
+	neoUri := utils.GetEnv("SRV_REC_NEO4J_URI", "neo4j://localhost:7687")
+	neoUser := utils.GetEnv("SRV_REC_NEO4J_USER", "neo4j")
+	neoPass := utils.GetEnv("SRV_REC_NEO4J_PASSWORD", "password")
 
 	return neo4j.NewDriverWithContext(neoUri, neo4j.BasicAuth(neoUser, neoPass, ""))
 }
