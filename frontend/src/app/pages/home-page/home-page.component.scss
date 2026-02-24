@@ -14,10 +14,6 @@
   min-height: 100%;
   box-sizing: border-box;
   padding: 12px 0 18px;
-
-  > * {
-    width: 100%;
-  }
 }
 
 .home-page--guest {
@@ -32,6 +28,7 @@
   justify-content: center;
   padding: 24px;
   text-align: center;
+  width: stretch;
 }
 
 .home-page__guest-card {
