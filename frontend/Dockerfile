@@ -8,8 +8,8 @@ ARG API_BASE_URL
 ENV API_BASE_URL=${API_BASE_URL}
 
 COPY . .
-RUN sed -i "s|__API_BASE_URL__|${API_BASE_URL}|g" src/environments/environment.ts \
-  && npm run build -- --configuration production
+RUN : "${API_BASE_URL:?API_BASE_URL build arg is required}" \
+  && npm run build -- --configuration production --define __API_BASE_URL__="'${API_BASE_URL}'"
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 COPY --from=build /app/dist/spotlite/browser /usr/share/nginx/html

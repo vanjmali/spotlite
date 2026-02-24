@@ -120,7 +120,6 @@ services:
   # For hot reload
 
   frontend:
-    command: npm run start -- --host 0.0.0.0 --port 3000
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
@@ -143,6 +142,7 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true # reliable file watching on Docker for Win/Mac
       - NG_CLI_ANALYTICS=false # disable telemetry
+      - API_BASE_URL=${APP_API_BASE_URL?}
 
   # --- User Service ---
 
