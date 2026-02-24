@@ -126,9 +126,13 @@ services:
       dockerfile: Dockerfile.dev
     labels:
       traefik.enable: true
-      traefik.http.routers.frontend.rule: PathPrefix(`/`)
-      traefik.http.routers.frontend.entrypoints: websecure
-      traefik.http.routers.frontend.tls: true
+      traefik.http.routers.frontend-https.rule: PathPrefix(`/`)
+      traefik.http.routers.frontend-https.entrypoints: websecure
+      traefik.http.routers.frontend-https.tls: true
+      traefik.http.routers.frontend-https.service: frontend
+      traefik.http.routers.frontend-http.rule: PathPrefix(`/`)
+      traefik.http.routers.frontend-http.entrypoints: web
+      traefik.http.routers.frontend-http.service: frontend
       traefik.http.services.frontend.loadbalancer.server.port: "3000"
     volumes:
       - ./frontend/:/app
