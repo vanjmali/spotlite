@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/sony/gobreaker"
@@ -80,7 +79,8 @@ func NewRatingService(rr RatingRepository, gcc ContentEntityGetter) *RatingServi
 			// return counts.TotalFailures >= 1
 		},
 		OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
-			fmt.Print("rating service circuit breaker state changed: ", to.String())
+			// testing purposes
+			// fmt.Print("circuit breaker state changed: ", to.String())
 		},
 	}
 	s := RatingService{rr: rr, gcc: gcc, cb: gobreaker.NewCircuitBreaker(settings), tr: tr}
