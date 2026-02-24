@@ -1,0 +1,125 @@
+@use 'variables/colors' as *;
+@use 'mixins' as m;
+
+.homepage-left-sidebar {
+  height: 100%;
+  padding: 10px;
+  border: 1px solid $color-border-primary;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+
+  &__top,
+  &__bottom {
+    min-height: 0;
+    overflow-y: auto;
+    @include m.scrollbar;
+  }
+
+  &__top {
+    flex: 2 1 0;
+  }
+
+  &__bottom {
+    flex: 1 1 0;
+  }
+
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 13px;
+    letter-spacing: 0.03em;
+    color: $color-text-secondary;
+    text-transform: uppercase;
+  }
+
+  &__subtitle {
+    margin: 2px 0 0;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    color: $color-text-tertiary;
+    text-transform: uppercase;
+  }
+
+  &__list,
+  &__stats {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__item,
+  &__stat {
+    border: 1px solid $color-border-primary;
+    border-radius: 10px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  &__item {
+    text-decoration: none;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+
+    &:hover {
+      border-color: $color-primary;
+      background: $color-primary-transparent-10;
+    }
+  }
+
+  &__cover {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  &__cover--square {
+    border-radius: 8px;
+  }
+
+  &__item-meta {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__item-label {
+    color: $color-text-primary;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__item-note,
+  &__stat-label {
+    color: $color-text-secondary;
+    font-size: 12px;
+  }
+
+  &__stat {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  &__stat-value {
+    color: $color-primary-light;
+    font-size: 14px;
+  }
+}

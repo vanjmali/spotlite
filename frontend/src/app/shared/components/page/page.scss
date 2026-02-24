@@ -32,41 +32,35 @@
     width: 100%;
     box-sizing: border-box;
     min-height: 0;
-    gap: 4px;
+    gap: 0;
     padding: 12px;
   }
 
   &__aside,
   &__content,
   &__right {
-    overflow-y: auto;
     min-height: 0;
     box-sizing: border-box;
     justify-content: center;
-
-    @include m.scrollbar;
   }
 
   &__aside {
     flex: 0 0 auto;
-    overflow-x: hidden;
-    background: rgba(56, 189, 248, 0.12);
-    border: 1px dashed rgba(56, 189, 248, 0.4);
-    border-radius: 10px;
+    overflow: hidden;
   }
 
   &__content {
     flex: 1;
     display: flex;
     min-width: 0;
+    overflow-y: auto;
+    @include m.scrollbar;
   }
 
   &__right {
     flex: 0 0 auto;
     width: 280px;
-    background: rgba(244, 114, 182, 0.12);
-    border: 1px dashed rgba(244, 114, 182, 0.4);
-    border-radius: 10px;
+    overflow: hidden;
   }
 
   &__resizer {
@@ -89,9 +83,9 @@
 
   &__footer {
     flex-shrink: 0;
-    background: linear-gradient(90deg, rgba(88, 28, 135, 0.9) 0%, rgba(30, 30, 30, 0.95) 100%);
-    border-top: 1px solid rgba(216, 180, 254, 0.35);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    background: transparent;
+    border-top: 0;
+    box-shadow: none;
   }
 }
 

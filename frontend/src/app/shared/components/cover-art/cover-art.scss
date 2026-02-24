@@ -66,4 +66,20 @@
     text-transform: uppercase;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   }
+
+  &__slot {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  &__slot:empty {
+    display: none;
+  }
+
+  &__slot:not(:empty) + &__initials {
+    display: none;
+  }
 }

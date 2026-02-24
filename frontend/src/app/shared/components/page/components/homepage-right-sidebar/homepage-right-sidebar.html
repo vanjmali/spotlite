@@ -1,0 +1,56 @@
+<section class="homepage-right-sidebar">
+  <div class="homepage-right-sidebar__top">
+    <h3 class="homepage-right-sidebar__heading homepage-right-sidebar__heading--top">Currently playing</h3>
+    @if (currentAlbumSg(); as album) {
+      <app-cover-art class="homepage-right-sidebar__cover" [name]="album.title" [square]="true" />
+
+      <a class="homepage-right-sidebar__album" [routerLink]="['/albums', album.id]">{{ album.title }}</a>
+      @if (primaryAlbumArtistSg(); as artist) {
+        <a class="homepage-right-sidebar__artist" [routerLink]="['/artists', artist.id]">
+          {{ artist.name }}
+        </a>
+      } @else {
+        <span class="homepage-right-sidebar__artist">Unknown artist</span>
+      }
+    } @else {
+      <app-cover-art class="homepage-right-sidebar__cover homepage-right-sidebar__cover--empty" [name]="'Nothing playing'" [square]="true">
+        <mat-icon class="homepage-right-sidebar__empty-cover-icon">music_off</mat-icon>
+      </app-cover-art>
+      <p class="homepage-right-sidebar__empty-title">Nothing playing yet</p>
+      <p class="homepage-right-sidebar__empty-text">Pick an album or song to start.</p>
+    }
+
+    <div class="homepage-right-sidebar__list">
+      <h3 class="homepage-right-sidebar__heading">Up next</h3>
+      @if (queueSg().length === 0) {
+        <p class="homepage-right-sidebar__empty-text">Your queue is empty.</p>
+      } @else {
+        @for (song of queueSg(); track song.id) {
+          <button
+            type="button"
+            class="homepage-right-sidebar__song"
+            [class.homepage-right-sidebar__song--active]="song.id === activeSongIdSg()"
+            (click)="playQueueIndex($index)"
+          >
+            <span class="homepage-right-sidebar__song-index">{{ $index + 1 }}</span>
+            <span class="homepage-right-sidebar__song-title">{{ song.title }}</span>
+          </button>
+        }
+      }
+    </div>
+  </div>
+
+  <div class="homepage-right-sidebar__bottom">
+    <div class="homepage-right-sidebar__stats-wrap">
+      <h3 class="homepage-right-sidebar__heading">Stats</h3>
+      <div class="homepage-right-sidebar__stats">
+        @for (entry of statsSg(); track entry.label) {
+          <article class="homepage-right-sidebar__stat">
+            <span class="homepage-right-sidebar__stat-label">{{ entry.label }}</span>
+            <strong class="homepage-right-sidebar__stat-value">{{ entry.value }}</strong>
+          </article>
+        }
+      </div>
+    </div>
+  </div>
+</section>

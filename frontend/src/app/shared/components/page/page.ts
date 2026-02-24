@@ -4,7 +4,10 @@ import { HeaderComponent } from '../header/header';
 import { ControlBarComponent } from '../control-bar';
 import { AuthService } from '@app/services/auth.service';
 import { PlaybackBarComponent } from '../playback-bar/playback-bar';
-import { NowPlayingSidebarComponent } from '../now-playing-sidebar/now-playing-sidebar';
+import {
+  HomepageLeftSidebarComponent,
+  HomepageRightSidebarComponent,
+} from './components';
 
 type ResizeSide = 'left' | 'right';
 
@@ -16,7 +19,8 @@ type ResizeSide = 'left' | 'right';
     HeaderComponent,
     ControlBarComponent,
     PlaybackBarComponent,
-    NowPlayingSidebarComponent,
+    HomepageLeftSidebarComponent,
+    HomepageRightSidebarComponent,
   ],
   templateUrl: './page.html',
   styleUrls: ['./page.scss'],

@@ -1,7 +1,18 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { Album } from './album.service';
 import { Artist } from './artist.service';
 import { Song } from './song.service';
+import { AuthService } from './auth.service';
+import { RatingService } from './rating.service';
+
+export interface PlayedTrack {
+  id: string;
+  title: string;
+  albumId: string;
+  albumTitle: string;
+  artists: Artist[];
+  playedAt: string;
+}
 
 export interface PlaybackTrack {
   id: string;
@@ -17,6 +28,8 @@ export interface PlaybackTrack {
 })
 export class PlaybackService {
   private readonly audio = new Audio();
+  private readonly authService = inject(AuthService);
+  private readonly ratingService = inject(RatingService);
 
   readonly currentTrackSg = signal<PlaybackTrack | null>(null);
   readonly currentAlbumSg = signal<Album | null>(null);
@@ -28,6 +41,8 @@ export class PlaybackService {
   readonly durationSg = signal(0);
   readonly volumeSg = signal(0.85);
   readonly ratingsBySongSg = signal<Record<string, number>>({});
+  readonly ratingIdsBySongSg = signal<Record<string, string>>({});
+  readonly playHistorySg = signal<PlayedTrack[]>([]);
 
   readonly progressPercentSg = computed(() => {
     const duration = this.durationSg();
@@ -63,6 +78,16 @@ export class PlaybackService {
     this.audio.addEventListener('play', () => this.isPlayingSg.set(true));
     this.audio.addEventListener('pause', () => this.isPlayingSg.set(false));
     this.audio.addEventListener('ended', () => this.next());
+
+    effect(() => {
+      const userId = this.authService.currentUserIdSg();
+      if (!userId) {
+        this.ratingsBySongSg.set({});
+        this.ratingIdsBySongSg.set({});
+        return;
+      }
+      this.loadUserRatings(userId);
+    });
   }
 
   playAlbum(album: Album, startSongId?: string): void {
@@ -102,6 +127,8 @@ export class PlaybackService {
     void this.audio.play().catch(() => {
       this.isPlayingSg.set(false);
     });
+
+    this.recordPlay(track);
   }
 
   togglePlayPause(): void {
@@ -176,16 +203,124 @@ export class PlaybackService {
     }
 
     const normalized = Math.max(0, Math.min(5, Math.round(rating)));
-    const currentMap = this.ratingsBySongSg();
+    const currentValue = this.ratingsBySongSg()[songId] ?? 0;
+    const nextValue = currentValue === normalized ? 0 : normalized;
+    const existingRatingId = this.ratingIdsBySongSg()[songId];
 
-    this.ratingsBySongSg.set({
-      ...currentMap,
-      [songId]: normalized,
+    if (nextValue === 0) {
+      if (!existingRatingId) {
+        this.removeLocalRating(songId);
+        return;
+      }
+
+      this.ratingService.deleteRating(existingRatingId).subscribe({
+        next: () => {
+          this.removeLocalRating(songId);
+        },
+      });
+      return;
+    }
+
+    if (existingRatingId) {
+      this.ratingService.updateRating(existingRatingId, nextValue).subscribe({
+        next: () => {
+          this.upsertLocalRating(songId, nextValue, existingRatingId);
+        },
+      });
+      return;
+    }
+
+    this.ratingService.createRating(songId, nextValue).subscribe({
+      next: () => {
+        this.syncSongRatingFromApi(songId, nextValue);
+      },
     });
   }
 
   private streamUrl(songId: string): string {
     return `/api/content/songs/${songId}/audio`;
+  }
+
+  private recordPlay(track: PlaybackTrack): void {
+    const next: PlayedTrack = {
+      id: track.id,
+      title: track.title,
+      albumId: track.albumId,
+      albumTitle: track.albumTitle,
+      artists: track.artists,
+      playedAt: new Date().toISOString(),
+    };
+
+    const history = this.playHistorySg().filter((entry) => entry.id !== track.id);
+    this.playHistorySg.set([next, ...history].slice(0, 20));
+  }
+
+  private loadUserRatings(userId: string): void {
+    this.ratingService.getRatingsByUser(userId, 1, 200).subscribe({
+      next: (response) => {
+        const ratingsMap: Record<string, number> = {};
+        const idsMap: Record<string, string> = {};
+
+        for (const rating of response.items ?? []) {
+          ratingsMap[rating.song_id] = rating.value;
+          idsMap[rating.song_id] = rating.id;
+        }
+
+        this.ratingsBySongSg.set(ratingsMap);
+        this.ratingIdsBySongSg.set(idsMap);
+      },
+      error: () => {
+        this.ratingsBySongSg.set({});
+        this.ratingIdsBySongSg.set({});
+      },
+    });
+  }
+
+  private syncSongRatingFromApi(songId: string, fallbackValue: number): void {
+    const userId = this.authService.currentUserIdSg();
+    if (!userId) {
+      this.upsertLocalRating(songId, fallbackValue);
+      return;
+    }
+
+    this.ratingService.getRatingsBySong(songId).subscribe({
+      next: (response) => {
+        const ownRating = (response.items ?? []).find((entry) => entry.user_id === userId);
+        if (!ownRating) {
+          this.upsertLocalRating(songId, fallbackValue);
+          return;
+        }
+        this.upsertLocalRating(songId, ownRating.value, ownRating.id);
+      },
+      error: () => {
+        this.upsertLocalRating(songId, fallbackValue);
+      },
+    });
+  }
+
+  private upsertLocalRating(songId: string, value: number, ratingId?: string): void {
+    this.ratingsBySongSg.set({
+      ...this.ratingsBySongSg(),
+      [songId]: value,
+    });
+
+    if (!ratingId) {
+      return;
+    }
+
+    this.ratingIdsBySongSg.set({
+      ...this.ratingIdsBySongSg(),
+      [songId]: ratingId,
+    });
+  }
+
+  private removeLocalRating(songId: string): void {
+    const nextRatings = { ...this.ratingsBySongSg() };
+    const nextRatingIds = { ...this.ratingIdsBySongSg() };
+    delete nextRatings[songId];
+    delete nextRatingIds[songId];
+    this.ratingsBySongSg.set(nextRatings);
+    this.ratingIdsBySongSg.set(nextRatingIds);
   }
 
   private mapSongToTrack(song: Song, album: Album): PlaybackTrack {
@@ -199,4 +334,3 @@ export class PlaybackService {
     };
   }
 }
-

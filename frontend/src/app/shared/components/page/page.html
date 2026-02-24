@@ -4,7 +4,7 @@
   <div class="page__main">
     @if (showSidebarsSg() && authService.isAuthenticatedSg()) {
       <aside class="page__aside" [style.width.px]="leftSidebarWidthSg()">
-        <ng-content select="[aside]"></ng-content>
+        <app-homepage-left-sidebar />
       </aside>
       <div
         class="page__resizer page__resizer--left"
@@ -26,18 +26,18 @@
         title="Drag to resize. Double-click to reset."
       ></div>
       <aside class="page__right" [style.width.px]="rightSidebarWidthSg()">
-        <app-now-playing-sidebar />
+        <app-homepage-right-sidebar />
       </aside>
     }
   </div>
 
-  @if (authService.isAuthenticatedSg()) {
+  @if (authService.isAuthenticatedSg() && !showSidebarsSg()) {
     <div class="page__player">
       <app-playback-bar />
     </div>
   }
 
   <footer class="page__footer">
-    <app-control-bar />
+    <app-control-bar [homepageMode]="showSidebarsSg() && authService.isAuthenticatedSg()" />
   </footer>
 </div>

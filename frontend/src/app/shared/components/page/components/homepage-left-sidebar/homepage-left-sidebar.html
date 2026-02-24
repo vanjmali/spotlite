@@ -1,0 +1,61 @@
+<section class="homepage-left-sidebar">
+  <div class="homepage-left-sidebar__top">
+    <div class="homepage-left-sidebar__section">
+      <h3 class="homepage-left-sidebar__title">Following</h3>
+      <h4 class="homepage-left-sidebar__subtitle">Artists</h4>
+      <nav class="homepage-left-sidebar__list" aria-label="Followed artists">
+        @if (followedArtistsSg().length === 0) {
+          <p class="homepage-left-sidebar__item-note">No followed artists yet.</p>
+        } @else {
+          @for (item of followedArtistsSg(); track item.href) {
+            <a class="homepage-left-sidebar__item" [routerLink]="item.href">
+              <app-cover-art class="homepage-left-sidebar__cover" [name]="item.label" [size]="34" [fontSize]="14" />
+              <span class="homepage-left-sidebar__item-meta">
+                <span class="homepage-left-sidebar__item-label">{{ item.label }}</span>
+              </span>
+            </a>
+          }
+        }
+      </nav>
+      <h4 class="homepage-left-sidebar__subtitle">Genres</h4>
+      <nav class="homepage-left-sidebar__list" aria-label="Followed genres">
+        @if (followedGenresSg().length === 0) {
+          <p class="homepage-left-sidebar__item-note">No followed genres yet.</p>
+        } @else {
+          @for (item of followedGenresSg(); track item.href) {
+            <a class="homepage-left-sidebar__item" [routerLink]="item.href">
+              <span class="homepage-left-sidebar__item-label">{{ item.label }}</span>
+            </a>
+          }
+        }
+      </nav>
+    </div>
+  </div>
+
+  <div class="homepage-left-sidebar__bottom">
+    <div class="homepage-left-sidebar__section">
+      <h3 class="homepage-left-sidebar__title">Recently played</h3>
+      <nav class="homepage-left-sidebar__list" aria-label="Recent activity">
+        @if (recentActivitySg().length === 0) {
+          <p class="homepage-left-sidebar__item-note">No recent playback yet.</p>
+        } @else {
+          @for (item of recentActivitySg(); track item.label + ':' + item.meta) {
+            <a class="homepage-left-sidebar__item" [routerLink]="item.href">
+              <app-cover-art
+                class="homepage-left-sidebar__cover homepage-left-sidebar__cover--square"
+                [name]="item.label"
+                [square]="true"
+                [size]="34"
+                [fontSize]="14"
+              />
+              <span class="homepage-left-sidebar__item-meta">
+                <span class="homepage-left-sidebar__item-label">{{ item.label }}</span>
+                <span class="homepage-left-sidebar__item-note">{{ item.meta }}</span>
+              </span>
+            </a>
+          }
+        }
+      </nav>
+    </div>
+  </div>
+</section>

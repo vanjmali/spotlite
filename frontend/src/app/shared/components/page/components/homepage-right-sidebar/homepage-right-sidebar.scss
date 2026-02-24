@@ -1,0 +1,182 @@
+@use 'variables/colors' as *;
+@use 'mixins' as m;
+
+.homepage-right-sidebar {
+  height: 100%;
+  border: 1px solid $color-border-primary;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+
+  &__top,
+  &__bottom {
+    min-height: 0;
+    overflow-y: auto;
+    @include m.scrollbar;
+  }
+
+  &__top {
+    flex: 2 1 0;
+  }
+
+  &__bottom {
+    flex: 1 1 0;
+  }
+
+  &__cover {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 10px;
+    margin-bottom: 8px;
+  }
+
+  &__empty-cover-icon {
+    font-size: clamp(28px, 10vw, 52px);
+    width: clamp(28px, 10vw, 52px);
+    height: clamp(28px, 10vw, 52px);
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  &__album,
+  &__artist {
+    text-decoration: none;
+    width: fit-content;
+    display: block;
+  }
+
+  &__album {
+    color: $color-text-primary;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  &__artist {
+    color: $color-text-secondary;
+    font-size: 13px;
+  }
+
+  a#{&__album}:hover,
+  a#{&__artist}:hover {
+    color: $color-primary-light;
+    text-decoration: underline;
+  }
+
+  &__list {
+    margin-top: 12px;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__heading {
+    margin: 0 0 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: $color-text-secondary;
+  }
+
+  &__heading--top {
+    margin-bottom: 2px;
+  }
+
+  &__song {
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.01);
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    text-decoration: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      border-color: $color-primary-transparent-30;
+      background: $color-primary-transparent-10;
+    }
+  }
+
+  &__song--active {
+    border-color: $color-primary;
+    background: $color-primary-transparent-10;
+  }
+
+  &__song-index {
+    color: $color-text-tertiary;
+    font-size: 11px;
+    text-align: center;
+  }
+
+  &__song-title {
+    color: $color-text-primary;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__stats-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__empty-title,
+  &__empty-text {
+    margin: 0;
+    display: block;
+    width: 100%;
+  }
+
+  &__empty-title {
+    color: $color-text-primary;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  &__empty-text {
+    color: $color-text-secondary;
+    font-size: 13px;
+  }
+
+  &__stats {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  &__stat {
+    border: 1px solid $color-border-primary;
+    border-radius: 10px;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.02);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  &__stat-label {
+    color: $color-text-secondary;
+    font-size: 12px;
+  }
+
+  &__stat-value {
+    color: $color-primary-light;
+    font-size: 14px;
+  }
+}
+
+:host ::ng-deep .homepage-right-sidebar__cover--empty .cover-art {
+  background: linear-gradient(160deg, #5f6368 0%, #3f4349 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
+}

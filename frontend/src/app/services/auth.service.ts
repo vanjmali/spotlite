@@ -21,6 +21,10 @@ export class AuthService {
   readonly currentEmailSg = signal<string | null>(null);
   readonly accessTokenSg = signal<string | null>(null);
   readonly isAuthenticatedSg = computed(() => !!this.accessTokenSg());
+  readonly currentUserIdSg = computed(() => {
+    const claims = this.getTokenClaims(this.accessTokenSg());
+    return this.extractUserIdFromClaims(claims);
+  });
   readonly isAdminSg = computed(() => {
     const claims = this.getTokenClaims(this.accessTokenSg());
     if (!claims) {
@@ -289,7 +293,7 @@ export class AuthService {
     name?: string;
     username?: string;
     email?: string;
-    sub?: string;
+    sub?: string | { $oid?: string } | Record<string, unknown>;
     role?: string;
     roles?: string[];
     is_admin?: boolean;
@@ -312,5 +316,27 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  private extractUserIdFromClaims(claims: {
+    sub?: string | { $oid?: string } | Record<string, unknown>;
+  } | null): string | null {
+    const sub = claims?.sub;
+    if (!sub) {
+      return null;
+    }
+
+    if (typeof sub === 'string' && sub.trim().length > 0) {
+      return sub;
+    }
+
+    if (typeof sub === 'object' && '$oid' in sub) {
+      const oid = (sub as { $oid?: unknown }).$oid;
+      if (typeof oid === 'string' && oid.trim().length > 0) {
+        return oid;
+      }
+    }
+
+    return null;
   }
 }
