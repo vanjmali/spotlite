@@ -7,6 +7,7 @@ replace github.com/vanjmali/spotlite/common-lib => ../common-lib
 require (
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/gorilla/mux v1.8.1
+	github.com/sony/gobreaker v1.0.0
 	github.com/vanjmali/spotlite/common-lib v0.0.0-00010101000000-000000000000
 	go.mongodb.org/mongo-driver v1.17.9
 	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo v0.65.0

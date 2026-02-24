@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/avast/retry-go"
@@ -80,6 +81,10 @@ func NewSubscriptionService(sr SubscriptionRepository, gcc ContentEntityGetter, 
 		ReadyToTrip: func(counts gobreaker.Counts) bool {
 			failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
 			return counts.Requests >= 10 && failureRatio >= 0.3
+			// return counts.TotalFailures >= 1
+		},
+		OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
+			fmt.Print("circuit breaker state changed: ", to.String())
 		},
 	}
 	s := SubscriptionService{sr: sr, gcc: gcc, jsc: jsc, tr: tr, cb: gobreaker.NewCircuitBreaker(settings)}
