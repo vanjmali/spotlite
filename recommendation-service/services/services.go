@@ -9,6 +9,8 @@ type Services struct {
 	songNodeRepository   *repositories.SongNodeRepository
 	artistNodeRepository *repositories.ArtistNodeRepository
 	genreNodeRepository  *repositories.GenreNodeRepository
+	albumNodeRepository  *repositories.AlbumNodeRepository
+	relationRepository   *repositories.GraphRelationRepository
 }
 
 func NewServices(
@@ -16,11 +18,15 @@ func NewServices(
 	sr *repositories.SongNodeRepository,
 	ar *repositories.ArtistNodeRepository,
 	gr *repositories.GenreNodeRepository,
+	ab *repositories.AlbumNodeRepository,
+	rr *repositories.GraphRelationRepository,
 ) *Services {
 	return &Services{
 		userNodeRepository:   ur,
 		songNodeRepository:   sr,
 		artistNodeRepository: ar,
 		genreNodeRepository:  gr,
+		albumNodeRepository:  ab,
+		relationRepository:   rr,
 	}
 }
