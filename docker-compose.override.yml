@@ -240,6 +240,10 @@ services:
       - api-gateway
       - content-internal
 
+  content-redis:
+    ports:
+      - "${CONTENT_REDIS_PORT}:6379"
+
   content-hdfs-namenode:
     ports:
       - "9870:9870" # HDFS web UI

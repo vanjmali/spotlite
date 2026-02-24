@@ -20,6 +20,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/h2non/filetype"
+	"github.com/redis/go-redis/v9"
 	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
@@ -32,8 +33,9 @@ import (
 
 // SongHandler wires HTTP handlers to the song service and validators.
 type SongHandler struct {
-	s *services.SongService
-	v *validator.Validate
+	s  *services.SongService
+	rc *redis.Client
+	v  *validator.Validate
 }
 
 const (
@@ -61,8 +63,8 @@ var (
 var audioDurationDetector = detectAudioDurationSeconds
 
 // NewSongHandler creates and returns a new SongHandler with the provided service and validator.
-func NewSongHandler(s services.SongService, v validator.Validate) *SongHandler {
-	h := SongHandler{s: &s, v: &v}
+func NewSongHandler(s services.SongService, rc *redis.Client, v validator.Validate) *SongHandler {
+	h := SongHandler{s: &s, rc: rc, v: &v}
 	return &h
 }
 
