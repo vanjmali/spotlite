@@ -8,7 +8,7 @@ services:
     image: alpine:3.23
     command: >
       sh -c "
-        mkdir -p /logs/user-service /logs/content-service /logs/notification-service /logs/subscription-service &&
+        mkdir -p /logs/user-service /logs/content-service /logs/rating-service /logs/subscription-service /logs/notification-service /logs/recommendation-service /logs/analytics-service && \
         chmod -R 0777 /logs
       "
     volumes:
