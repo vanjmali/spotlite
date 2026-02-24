@@ -1,7 +1,7 @@
 import { Component, input, inject, signal, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HeaderComponent } from '../header/header';
-import { SiteFooterComponent } from '../site-footer';
+import { ControlBarComponent } from '../control-bar';
 import { AuthService } from '@app/services/auth.service';
 import { PlaybackBarComponent } from '../playback-bar/playback-bar';
 import { NowPlayingSidebarComponent } from '../now-playing-sidebar/now-playing-sidebar';
@@ -14,7 +14,7 @@ type ResizeSide = 'left' | 'right';
   imports: [
     CommonModule,
     HeaderComponent,
-    SiteFooterComponent,
+    ControlBarComponent,
     PlaybackBarComponent,
     NowPlayingSidebarComponent,
   ],

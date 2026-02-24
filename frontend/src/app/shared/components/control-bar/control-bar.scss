@@ -1,0 +1,24 @@
+.control-bar {
+  width: 100%;
+}
+
+.control-bar__copyright {
+  margin: 0;
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.78;
+  padding: 10px 16px;
+  color: rgba(255, 255, 255, 0.9);
+
+  a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: opacity 0.2s ease;
+
+    &:hover,
+    &:focus-visible {
+      opacity: 1;
+    }
+  }
+}
