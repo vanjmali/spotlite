@@ -280,5 +280,4 @@ func generateCreds() (credentials.TransportCredentials, error) {
 		MinVersion: tls.VersionTLS13,
 	}
 	return credentials.NewTLS(tlsConfig), nil
-
 }

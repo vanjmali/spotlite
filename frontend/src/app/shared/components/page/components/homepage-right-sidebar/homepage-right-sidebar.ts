@@ -28,7 +28,9 @@ export class HomepageRightSidebarComponent {
   readonly currentAlbumSg = computed(() => this.playback.currentAlbumSg());
   readonly queueSg = computed(() => this.playback.queueSg());
   readonly activeSongIdSg = computed(() => this.playback.currentTrackSg()?.id ?? '');
-  readonly primaryAlbumArtistSg = computed(() => this.playback.currentAlbumSg()?.artists?.[0] ?? null);
+  readonly primaryAlbumArtistSg = computed(
+    () => this.playback.currentAlbumSg()?.artists?.[0] ?? null
+  );
   readonly subscribedArtistsCountSg = signal(0);
   readonly subscribedGenresCountSg = signal(0);
   readonly avgRatingValueSg = signal<number | null>(null);
@@ -67,8 +69,12 @@ export class HomepageRightSidebarComponent {
       .subscribe({
         next: (response) => {
           const items = response.items ?? [];
-          this.subscribedArtistsCountSg.set(items.filter((entry) => entry.sub_type === 'ARTIST').length);
-          this.subscribedGenresCountSg.set(items.filter((entry) => entry.sub_type === 'GENRE').length);
+          this.subscribedArtistsCountSg.set(
+            items.filter((entry) => entry.sub_type === 'ARTIST').length
+          );
+          this.subscribedGenresCountSg.set(
+            items.filter((entry) => entry.sub_type === 'GENRE').length
+          );
         },
         error: () => {
           this.subscribedArtistsCountSg.set(0);

@@ -44,7 +44,11 @@ export class RatingService {
     return this.http.get<SongRatingSummary>(`${this.apiUrl}/songs/${songId}/average`);
   }
 
-  getRatingsByUser(userId: string, page: number = 1, size: number = 50): Observable<PaginatedRatingsResponse> {
+  getRatingsByUser(
+    userId: string,
+    page: number = 1,
+    size: number = 50
+  ): Observable<PaginatedRatingsResponse> {
     return this.http.get<PaginatedRatingsResponse>(`${this.apiUrl}/users/${userId}`, {
       params: {
         page,

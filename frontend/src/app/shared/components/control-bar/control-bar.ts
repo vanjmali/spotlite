@@ -23,7 +23,10 @@ export class ControlBarComponent {
   readonly hasTrackSg = computed(() => !!this.playback.currentTrackSg());
   readonly currentTrackSg = computed(() => this.playback.currentTrackSg());
   readonly currentAlbumTitleSg = computed(
-    () => this.playback.currentAlbumSg()?.title ?? this.playback.currentTrackSg()?.albumTitle ?? 'No album'
+    () =>
+      this.playback.currentAlbumSg()?.title ??
+      this.playback.currentTrackSg()?.albumTitle ??
+      'No album'
   );
   readonly currentVolumePercentSg = computed(() => Math.round(this.playback.volumeSg() * 100));
 

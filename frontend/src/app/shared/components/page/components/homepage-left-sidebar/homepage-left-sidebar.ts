@@ -26,11 +26,14 @@ export class HomepageLeftSidebarComponent {
   readonly followedArtistsSg = signal<SidebarShortcut[]>([]);
   readonly followedGenresSg = signal<SidebarShortcut[]>([]);
   readonly recentActivitySg = computed<RecentActivity[]>(() =>
-    this.playback.playHistorySg().slice(0, 6).map((entry) => ({
-      label: entry.title,
-      href: `/albums/${entry.albumId}`,
-      meta: `Played ${this.relativeTime(entry.playedAt)}`,
-    }))
+    this.playback
+      .playHistorySg()
+      .slice(0, 6)
+      .map((entry) => ({
+        label: entry.title,
+        href: `/albums/${entry.albumId}`,
+        meta: `Played ${this.relativeTime(entry.playedAt)}`,
+      }))
   );
 
   constructor() {

@@ -5,10 +5,7 @@ import { ControlBarComponent } from '../control-bar';
 import { AuthService } from '@app/services/auth.service';
 import { PlaybackBarComponent } from '../playback-bar/playback-bar';
 import { SiteFooterComponent } from '../site-footer';
-import {
-  HomepageLeftSidebarComponent,
-  HomepageRightSidebarComponent,
-} from './components';
+import { HomepageLeftSidebarComponent, HomepageRightSidebarComponent } from './components';
 
 type ResizeSide = 'left' | 'right';
 
@@ -49,7 +46,9 @@ export class PageComponent implements OnDestroy {
 
   constructor() {
     this.leftSidebarWidthSg.set(this.readWidth(PageComponent.LEFT_KEY, PageComponent.LEFT_DEFAULT));
-    this.rightSidebarWidthSg.set(this.readWidth(PageComponent.RIGHT_KEY, PageComponent.RIGHT_DEFAULT));
+    this.rightSidebarWidthSg.set(
+      this.readWidth(PageComponent.RIGHT_KEY, PageComponent.RIGHT_DEFAULT)
+    );
   }
 
   startResize(side: ResizeSide, event: MouseEvent): void {

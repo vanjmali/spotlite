@@ -15,7 +15,12 @@
     <app-widget [title]="artistSg()!.name">
       <div content class="artist-details__widget-content">
         <div class="artist-details__header">
-          <app-cover-art class="artist-details__image" [name]="artistSg()!.name" [size]="150" [fontSize]="62" />
+          <app-cover-art
+            class="artist-details__image"
+            [name]="artistSg()!.name"
+            [size]="150"
+            [fontSize]="62"
+          />
           <div class="artist-details__info">
             @if (artistSg()!.genres && artistSg()!.genres.length > 0) {
               <div class="artist-details__genres">

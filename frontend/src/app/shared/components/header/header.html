@@ -29,7 +29,11 @@
               <p class="header__search-empty">No results</p>
             } @else {
               @for (suggestion of suggestionsSg(); track suggestion.type + ':' + suggestion.id) {
-                <button type="button" class="header__search-item" (mousedown)="openSuggestion(suggestion)">
+                <button
+                  type="button"
+                  class="header__search-item"
+                  (mousedown)="openSuggestion(suggestion)"
+                >
                   <span class="header__search-item-title">{{ suggestion.label }}</span>
                   <span class="header__search-item-subtitle"
                     >{{ labelForType(suggestion.type) }} · {{ suggestion.subtitle }}</span

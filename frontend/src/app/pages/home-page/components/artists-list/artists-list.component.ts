@@ -72,7 +72,7 @@ export class ArtistsListComponent {
           return of({ items: [] });
         })
       ),
-  }).subscribe({
+    }).subscribe({
       next: (result) => {
         this.recommendedArtistsSg.set(result.artists.items ?? []);
         this.recommendedAlbumsSg.set(result.albums.items ?? []);

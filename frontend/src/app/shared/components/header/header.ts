@@ -12,7 +12,13 @@ import { MatIconModule } from '@angular/material/icon';
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, RouterLink, ReactiveFormsModule, UserProfileDropdownComponent, MatIconModule],
+  imports: [
+    CommonModule,
+    RouterLink,
+    ReactiveFormsModule,
+    UserProfileDropdownComponent,
+    MatIconModule,
+  ],
   templateUrl: './header.html',
   styleUrls: ['./header.scss'],
 })

@@ -318,9 +318,11 @@ export class AuthService {
     }
   }
 
-  private extractUserIdFromClaims(claims: {
-    sub?: string | { $oid?: string } | Record<string, unknown>;
-  } | null): string | null {
+  private extractUserIdFromClaims(
+    claims: {
+      sub?: string | { $oid?: string } | Record<string, unknown>;
+    } | null
+  ): string | null {
     const sub = claims?.sub;
     if (!sub) {
       return null;

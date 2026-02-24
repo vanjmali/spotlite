@@ -31,7 +31,10 @@ export class SubscriptionService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/subscriptions';
 
-  getMySubscriptions(page: number = 1, size: number = 100): Observable<PaginatedSubscriptionsResponse> {
+  getMySubscriptions(
+    page: number = 1,
+    size: number = 100
+  ): Observable<PaginatedSubscriptionsResponse> {
     return this.http.get<PaginatedSubscriptionsResponse>(`${this.apiUrl}/`, {
       params: {
         page,

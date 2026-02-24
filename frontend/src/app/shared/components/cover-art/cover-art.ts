@@ -1,7 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { angleFromName, colorFromName, iconFromName, initialsFromName } from '@app/shared/utils/display';
+import {
+  angleFromName,
+  colorFromName,
+  iconFromName,
+  initialsFromName,
+} from '@app/shared/utils/display';
 
 @Component({
   selector: 'app-cover-art',

@@ -1,10 +1,14 @@
 <section class="homepage-right-sidebar">
   <div class="homepage-right-sidebar__top">
-    <h3 class="homepage-right-sidebar__heading homepage-right-sidebar__heading--top">Currently playing</h3>
+    <h3 class="homepage-right-sidebar__heading homepage-right-sidebar__heading--top">
+      Currently playing
+    </h3>
     @if (currentAlbumSg(); as album) {
       <app-cover-art class="homepage-right-sidebar__cover" [name]="album.title" [square]="true" />
 
-      <a class="homepage-right-sidebar__album" [routerLink]="['/albums', album.id]">{{ album.title }}</a>
+      <a class="homepage-right-sidebar__album" [routerLink]="['/albums', album.id]">{{
+        album.title
+      }}</a>
       @if (primaryAlbumArtistSg(); as artist) {
         <a class="homepage-right-sidebar__artist" [routerLink]="['/artists', artist.id]">
           {{ artist.name }}
@@ -13,7 +17,11 @@
         <span class="homepage-right-sidebar__artist">Unknown artist</span>
       }
     } @else {
-      <app-cover-art class="homepage-right-sidebar__cover homepage-right-sidebar__cover--empty" [name]="'Nothing playing'" [square]="true">
+      <app-cover-art
+        class="homepage-right-sidebar__cover homepage-right-sidebar__cover--empty"
+        [name]="'Nothing playing'"
+        [square]="true"
+      >
         <mat-icon class="homepage-right-sidebar__empty-cover-icon">music_off</mat-icon>
       </app-cover-art>
       <p class="homepage-right-sidebar__empty-title">Nothing playing yet</p>

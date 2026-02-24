@@ -1,7 +1,9 @@
 <section class="search-results">
   <header class="search-results__header">
     <h1>Search</h1>
-    <p>Results for: <strong>{{ querySg() || '...' }}</strong></p>
+    <p>
+      Results for: <strong>{{ querySg() || '...' }}</strong>
+    </p>
   </header>
 
   @if (isLoadingSg()) {
@@ -34,7 +36,11 @@
         <div class="search-results__album-grid">
           @for (album of resultsSg().albums; track album.id) {
             <a class="search-results__album-card" [routerLink]="['/albums', album.id]">
-              <app-cover-art class="search-results__avatar search-results__avatar--square" [name]="album.title" [square]="true" />
+              <app-cover-art
+                class="search-results__avatar search-results__avatar--square"
+                [name]="album.title"
+                [square]="true"
+              />
               <span class="search-results__album-title">{{ album.title }}</span>
               <span class="search-results__album-subtitle">{{ artistNames(album.artists) }}</span>
             </a>

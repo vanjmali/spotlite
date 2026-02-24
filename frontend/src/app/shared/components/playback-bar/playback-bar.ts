@@ -16,7 +16,11 @@ export class PlaybackBarComponent {
   readonly stars = [1, 2, 3, 4, 5];
 
   readonly currentTrackArtistsSg = computed(
-    () => this.playback.currentTrackSg()?.artists?.map((artist) => artist.name).join(', ') || 'Unknown'
+    () =>
+      this.playback
+        .currentTrackSg()
+        ?.artists?.map((artist) => artist.name)
+        .join(', ') || 'Unknown'
   );
 
   togglePlayPause(): void {
@@ -52,4 +56,3 @@ export class PlaybackBarComponent {
     return `${minutes}:${remainder.toString().padStart(2, '0')}`;
   }
 }
-

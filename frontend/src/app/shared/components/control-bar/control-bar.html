@@ -58,14 +58,20 @@
 
           <div class="control-bar__meta">
             @if (currentTrackSg(); as track) {
-              <a class="control-bar__title" [routerLink]="['/albums', track.albumId]">{{ track.title }}</a>
+              <a class="control-bar__title" [routerLink]="['/albums', track.albumId]">{{
+                track.title
+              }}</a>
             } @else {
-              <span class="control-bar__title control-bar__title--inactive">Pick a song to start listening</span>
+              <span class="control-bar__title control-bar__title--inactive"
+                >Pick a song to start listening</span
+              >
             }
             @if (currentTrackSg(); as track) {
               <div class="control-bar__subline">
                 @for (artist of track.artists; track artist.id) {
-                  <a class="control-bar__link" [routerLink]="['/artists', artist.id]">{{ artist.name }}</a>
+                  <a class="control-bar__link" [routerLink]="['/artists', artist.id]">{{
+                    artist.name
+                  }}</a>
                 }
                 <span>•</span>
                 <a class="control-bar__link" [routerLink]="['/albums', track.albumId]">
@@ -94,7 +100,10 @@
 
           <div class="control-bar__progress-wrap">
             <div class="control-bar__progress">
-              <div class="control-bar__progress-fill" [style.width.%]="playback.progressPercentSg()"></div>
+              <div
+                class="control-bar__progress-fill"
+                [style.width.%]="playback.progressPercentSg()"
+              ></div>
             </div>
           </div>
         </div>

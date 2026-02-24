@@ -9,7 +9,12 @@
         } @else {
           @for (item of followedArtistsSg(); track item.href) {
             <a class="homepage-left-sidebar__item" [routerLink]="item.href">
-              <app-cover-art class="homepage-left-sidebar__cover" [name]="item.label" [size]="34" [fontSize]="14" />
+              <app-cover-art
+                class="homepage-left-sidebar__cover"
+                [name]="item.label"
+                [size]="34"
+                [fontSize]="14"
+              />
               <span class="homepage-left-sidebar__item-meta">
                 <span class="homepage-left-sidebar__item-label">{{ item.label }}</span>
               </span>

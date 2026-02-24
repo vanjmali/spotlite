@@ -4,7 +4,11 @@
       <button type="button" class="playback-bar__control" (click)="playback.previous()">
         <mat-icon>skip_previous</mat-icon>
       </button>
-      <button type="button" class="playback-bar__control playback-bar__control--play" (click)="togglePlayPause()">
+      <button
+        type="button"
+        class="playback-bar__control playback-bar__control--play"
+        (click)="togglePlayPause()"
+      >
         <mat-icon>{{ playback.isPlayingSg() ? 'pause' : 'play_arrow' }}</mat-icon>
       </button>
       <button type="button" class="playback-bar__control" (click)="playback.next()">
@@ -14,10 +18,14 @@
 
     <div class="playback-bar__center">
       <div class="playback-bar__meta">
-        <a class="playback-bar__title" [routerLink]="['/albums', track.albumId]">{{ track.title }}</a>
+        <a class="playback-bar__title" [routerLink]="['/albums', track.albumId]">{{
+          track.title
+        }}</a>
         <div class="playback-bar__subline">
           @for (artist of track.artists; track artist.id) {
-            <a class="playback-bar__entity-link" [routerLink]="['/artists', artist.id]">{{ artist.name }}</a>
+            <a class="playback-bar__entity-link" [routerLink]="['/artists', artist.id]">{{
+              artist.name
+            }}</a>
           }
           <span class="playback-bar__separator">•</span>
           <a class="playback-bar__entity-link" [routerLink]="['/albums', track.albumId]">{{
@@ -67,4 +75,3 @@
     </div>
   </section>
 }
-

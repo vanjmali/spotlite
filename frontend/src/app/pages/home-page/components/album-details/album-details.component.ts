@@ -12,7 +12,14 @@ import { MessageComponent } from '@app/shared/components/message';
 @Component({
   selector: 'app-album-details',
   standalone: true,
-  imports: [CommonModule, MatIconModule, WidgetComponent, RouterLink, CoverArtComponent, MessageComponent],
+  imports: [
+    CommonModule,
+    MatIconModule,
+    WidgetComponent,
+    RouterLink,
+    CoverArtComponent,
+    MessageComponent,
+  ],
   templateUrl: './album-details.component.html',
   styleUrl: './album-details.component.scss',
 })
