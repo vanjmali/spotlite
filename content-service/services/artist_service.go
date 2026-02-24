@@ -3,10 +3,12 @@ package services
 import (
 	"context"
 	"errors"
-	"log"
+	"time"
 
+	"github.com/avast/retry-go"
+	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
@@ -26,13 +28,14 @@ var (
 type ArtistService struct {
 	r            *repositories.ArtistRepository
 	genreService *GenreService
+	jsc          *events.JetStreamClient
 	tr           trace.Tracer
 }
 
 // NewArtistService builds a ArtistService with repository.
-func NewArtistService(r repositories.ArtistRepository, genreService GenreService) *ArtistService {
+func NewArtistService(r repositories.ArtistRepository, genreService GenreService, jsc events.JetStreamClient) *ArtistService {
 	tr := otel.Tracer("content-service/artist-service")
-	s := ArtistService{r: &r, genreService: &genreService, tr: tr}
+	s := ArtistService{r: &r, genreService: &genreService, tr: tr, jsc: &jsc}
 	return &s
 }
 
@@ -42,14 +45,15 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 	defer span.End()
 
 	resolveGenreCtx, resolveGenreSpan := s.tr.Start(ctx, "artist.create.resolve_genres")
+	defer resolveGenreSpan.End()
 
 	embeddedGenre := make([]entities.Genre, 0)
+	genreIDs := []string{}
 
 	for _, genresIdStr := range reqDto.GenreIds {
 		genre, err := s.genreService.FindGenreByID(resolveGenreCtx, genresIdStr)
 		if err != nil {
 			resolveGenreSpan.RecordError(err)
-			resolveGenreSpan.End()
 
 			switch {
 			case errors.Is(err, ErrObjectIdCastFailed):
@@ -65,18 +69,19 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 			ID:   genre.ID,
 			Name: genre.Name,
 		})
-	}
 
-	resolveGenreSpan.End()
+		genreIDs = append(genreIDs, genre.ID.Hex())
+	}
 
 	// Converts ArtistDto to Artist entity.
 	// No uniqueness check for artist name is done here.
 	createCtx, createSpan := s.tr.Start(ctx, "artist.create.create_artist")
+	defer createSpan.End()
+
 	artistEntity, err := mappers.ToArtistEntity(reqDto, embeddedGenre)
 	if err != nil {
 		createSpan.RecordError(err)
-		createSpan.End()
-		log.Printf("trace_id=%s error converting to artist entity: %v", telemetry.TraceID(ctx), err)
+		logging.Errorf(ctx, "error converting to artist entity: %v", err)
 		return err
 	}
 
@@ -84,12 +89,24 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 	err = s.r.Create(createCtx, *artistEntity)
 	if err != nil {
 		createSpan.RecordError(err)
-		createSpan.End()
-		log.Printf("trace_id=%s error creating artist in database: %v", telemetry.TraceID(ctx), err)
+		logging.Errorf(ctx, "error creating artist in database: %v", err)
 		return err
 	}
 
-	createSpan.End()
+	aep := toArtistCreatedEvent(genreIDs, artistEntity.ID.Hex(), artistEntity.Name)
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(createCtx, events.SUBJECT_ENTITY_CREATED, aep)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(createCtx),
+	)
+	if err != nil {
+		logging.Errorf(createCtx, "failed to publish entity created event: %v", err)
+	}
 
 	return nil
 }
@@ -285,4 +302,15 @@ func (s *ArtistService) Exists(ctx context.Context, artistIDstr string) (bool, e
 	}
 
 	return exists, nil
+}
+
+func toArtistCreatedEvent(genreIDs []string, artistID string, artistName string) *events.EntityCreatedEventPayload {
+	return &events.EntityCreatedEventPayload{
+		TargetIDs:  genreIDs,
+		EntityID:   artistID,
+		EntityName: artistName,
+		CreatedAt:  time.Now(),
+		EntityType: events.ArtistType,
+		EventID:    primitive.NewObjectID().Hex(),
+	}
 }

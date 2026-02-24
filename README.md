@@ -54,6 +54,45 @@ Install [`golangci-lint`](https://golangci-lint.run/docs/welcome/install/local/)
 
 See [`frontend/README.md`](frontend/README.md).
 
+### Security Checks
+
+#### XSS Injection
+
+1. Create user `admin@example.com` with any name.
+2. Set password to `SuperAdmin123!` and verify the account.
+3. In User Service Mongo Express (`http://localhost:3000/dev/user-service`), set that account's role to `ADMIN`.
+4. Run:
+
+```bash
+cd frontend
+npm run test:e2e:xss
+```
+
+The script goes through different XSS injection methods, controls the app, and verifies attacks are invalidated by passing tests.
+
+#### Other Security Test Commands
+
+```bash
+# Run tests in UI
+cd frontend && npm run test:e2e:ui
+
+# Run tests with debug
+cd frontend && npm run test:e2e:debug
+
+# Run tests with headed mode
+cd frontend && npm run test:e2e:headed
+
+# Run smoke tests
+cd frontend && npm run test:e2e:smoke
+```
+
+If your stack is not reachable on `https://localhost:4443`, override the Playwright base URL:
+
+```bash
+cd frontend
+PLAYWRIGHT_BASE_URL=http://localhost:3000 npm run test:e2e
+```
+
 ### Development Services
 
 There are additional services available for local development:

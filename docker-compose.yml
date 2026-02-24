@@ -23,9 +23,19 @@ services:
     networks:
       - api-gateway
 
+  nats:
+    image: nats:2.12.4
+    networks:
+      - api-gateway
+    volumes:
+      - nats-data:/data
+
 networks:
   api-gateway:
     name: spotlite-api-gateway
+
+volumes:
+  nats-data:
 
 include:
   - frontend/docker-compose.yml
@@ -33,6 +43,6 @@ include:
   - content-service/docker-compose.yml
   - notification-service/docker-compose.yml
   - subscription-service/docker-compose.yml
-  # - rating-service/docker-compose.yml
+  - rating-service/docker-compose.yml
   # - recommendation-service/docker-compose.yml
   # - analytic-service/docker-compose.yml

@@ -3,10 +3,14 @@ package services
 import (
 	"context"
 	"errors"
-	"log"
+	"time"
+
+	"github.com/avast/retry-go"
+	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
+	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 
 	"github.com/vanjmali/spotlite/common-lib/pagination"
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
@@ -21,40 +25,43 @@ import (
 var ErrAlbumNotFound = errors.New("album not found")
 
 type AlbumService struct {
-	albumRepo     *repositories.AlbumRepository
-	artistService *ArtistService
-	songRepo      *repositories.SongRepository
-	genreService  *GenreService
-	tr            trace.Tracer
+	albumRepo      *repositories.AlbumRepository
+	artistService  *ArtistService
+	songRepository *repositories.SongRepository
+	genreService   *GenreService
+	jsc            *events.JetStreamClient
+	tr             trace.Tracer
 }
 
 // NewAlbumService creates and returns a new AlbumService with the provided repository and dependent services.
 func NewAlbumService(
 	r repositories.AlbumRepository,
-	songRepo repositories.SongRepository,
 	artistService ArtistService,
+	songRepository repositories.SongRepository,
 	genreService GenreService,
+	jsc events.JetStreamClient,
 ) *AlbumService {
 	tr := otel.Tracer("content-service/album-service")
-	s := AlbumService{albumRepo: &r, songRepo: &songRepo, artistService: &artistService, genreService: &genreService, tr: tr}
+	s := AlbumService{albumRepo: &r, artistService: &artistService, songRepository: &songRepository, genreService: &genreService, jsc: &jsc, tr: tr}
 
 	return &s
 }
 
 // Create creates a new album with the provided data, resolving associated artists and songs.
 func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto) error {
-	ctx, span := s.tr.Start(ctx, "album.create")
-	defer span.End()
+	createCtx, createSpan := s.tr.Start(ctx, "album.create")
+	defer createSpan.End()
 
-	resolveArtistCtx, resolveArtistSpan := s.tr.Start(ctx, "album.create.resolve_artist")
+	resolveArtistCtx, resolveArtistSpan := s.tr.Start(createCtx, "album.create.resolve_artist")
+	defer resolveArtistSpan.End()
 
 	embeddedArtist := make([]entities.Artist, 0)
+	artistIDs := []string{}
 
 	for _, artistsIdStr := range albumDto.ArtistIds {
 		artist, err := s.artistService.FindArtistByID(resolveArtistCtx, artistsIdStr)
 		if err != nil {
 			resolveArtistSpan.RecordError(err)
-			resolveArtistSpan.End()
 
 			switch {
 			case errors.Is(err, ErrObjectIdCastFailed):
@@ -72,11 +79,12 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 			Genres:      artist.Genres,
 			Description: artist.Description,
 		})
+
+		artistIDs = append(artistIDs, artist.ID.Hex())
 	}
 
-	resolveArtistSpan.End()
-
-	resolveGenreCtx, resolveGenreSpan := s.tr.Start(ctx, "album.create.resolve_genre")
+	resolveGenreCtx, resolveGenreSpan := s.tr.Start(createCtx, "album.create.resolve_genre")
+	defer resolveGenreSpan.End()
 
 	embeddedGenre := make([]entities.Genre, 0)
 
@@ -84,7 +92,6 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 		genre, err := s.genreService.FindGenreByID(resolveGenreCtx, genreIdStr)
 		if err != nil {
 			resolveGenreSpan.RecordError(err)
-			resolveGenreSpan.End()
 
 			switch {
 			case errors.Is(err, ErrObjectIdCastFailed):
@@ -102,26 +109,38 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 		})
 	}
 
-	resolveGenreSpan.End()
+	createAlCtx, createAlSpan := s.tr.Start(createCtx, "album.create.create_album")
+	defer createAlSpan.End()
 
-	createCtx, createSpan := s.tr.Start(ctx, "album.create.create_album")
 	albumEntity, err := mappers.ToAlbumEntity(albumDto, embeddedArtist, embeddedGenre)
 	if err != nil {
-		createSpan.RecordError(err)
-		createSpan.End()
-		log.Printf("trace_id=%s error converting to album entity: %v", telemetry.TraceID(ctx), err)
+		createAlSpan.RecordError(err)
+		logging.Errorf(ctx, "error converting to album entity: %v", err)
 		return err
 	}
 
-	err = s.albumRepo.Create(createCtx, *albumEntity)
+	err = s.albumRepo.Create(createAlCtx, *albumEntity)
 	if err != nil {
-		createSpan.RecordError(err)
-		createSpan.End()
-		log.Printf("trace_id=%s error creating album in database: %v", telemetry.TraceID(ctx), err)
+		createAlSpan.RecordError(err)
+		logging.Errorf(ctx, "error creating album in database: %v", err)
 		return err
 	}
 
-	createSpan.End()
+	aep := toAlbumCreatedEvent(artistIDs, albumEntity.ID.Hex(), albumEntity.Title)
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(createAlCtx, events.SUBJECT_ENTITY_CREATED, aep)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(createCtx),
+	)
+	if err != nil {
+		logging.Errorf(createAlCtx, "failed to publish entity created event: %v", err)
+	}
+
 	return nil
 }
 
@@ -279,7 +298,7 @@ func (s *AlbumService) AddSongsToAlbum(ctx context.Context, idStr string, dto dt
 			return nil, ErrObjectIdCastFailed
 		}
 
-		song, err := s.songRepo.FindByID(ctx, songId)
+		song, err := s.songRepository.FindByID(ctx, songId)
 		if err != nil {
 			if errors.Is(err, mongo.ErrNoDocuments) {
 				span.RecordError(err)
@@ -502,11 +521,22 @@ func (s *AlbumService) GetAlbums(ctx context.Context, q AlbumsQuery) (*dtos.Albu
 	}
 
 	p := pagination.NewPagination(q.Page, q.Size)
-	resp, err := listWithPagination(ctx, p, filter, s.albumRepo.FindAll)
+	resp, err := commondtos.ListWithPagination(ctx, p, filter, s.albumRepo.FindAll)
 	if err != nil {
 		span.RecordError(err)
 		return nil, err
 	}
 
 	return resp, nil
+}
+
+func toAlbumCreatedEvent(artistIDs []string, albumID string, albumName string) *events.EntityCreatedEventPayload {
+	return &events.EntityCreatedEventPayload{
+		TargetIDs:  artistIDs,
+		EntityID:   albumID,
+		EntityName: albumName,
+		CreatedAt:  time.Now(),
+		EntityType: events.AlbumType,
+		EventID:    primitive.NewObjectID().Hex(),
+	}
 }

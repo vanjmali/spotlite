@@ -72,7 +72,7 @@ export class ArtistsListComponent {
           return of({ items: [] });
         })
       ),
-    }).subscribe({
+  }).subscribe({
       next: (result) => {
         this.recommendedArtistsSg.set(result.artists.items ?? []);
         this.recommendedAlbumsSg.set(result.albums.items ?? []);
@@ -112,11 +112,17 @@ export class ArtistsListComponent {
   }
 
   playSong(song: Song): void {
-    const album = this.recommendedAlbumsSg().find((entry) => entry.songs.some((it) => it.id === song.id));
+    const album = this.recommendedAlbumsSg().find((entry) =>
+      entry.songs.some((it) => it.id === song.id)
+    );
     if (!album) {
       return;
     }
 
     this.playback.playSingleSong(song, album);
+  }
+
+  selectArtist(artist: Artist): void {
+    this.router.navigate(['/artist', artist.id]);
   }
 }

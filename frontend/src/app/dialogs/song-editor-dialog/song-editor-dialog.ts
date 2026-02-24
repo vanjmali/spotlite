@@ -164,19 +164,23 @@ export class SongEditorDialogComponent {
       const id = this.song()!.id;
       this.songService
         .updateSong(id, updateDto)
-        .pipe(switchMap(() => (audioFile ? this.songService.uploadSongAudio(id, audioFile) : of(null))))
+        .pipe(
+          switchMap(() => (audioFile ? this.songService.uploadSongAudio(id, audioFile) : of(null)))
+        )
         .subscribe({
-        next: () => {
-          this.isLoadingSg.set(false);
-          this.saved.emit();
-          this.cancel();
-        },
-        error: (error) => {
-          console.error('Failed to update song:', error);
-          this.errorSg.set(getHttpErrorMessage(error, 'Failed to update song. Please try again.'));
-          this.isLoadingSg.set(false);
-        },
-      });
+          next: () => {
+            this.isLoadingSg.set(false);
+            this.saved.emit();
+            this.cancel();
+          },
+          error: (error) => {
+            console.error('Failed to update song:', error);
+            this.errorSg.set(
+              getHttpErrorMessage(error, 'Failed to update song. Please try again.')
+            );
+            this.isLoadingSg.set(false);
+          },
+        });
       return;
     }
 

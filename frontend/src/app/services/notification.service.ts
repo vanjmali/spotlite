@@ -7,8 +7,10 @@ import { environment } from 'src/environments/environment';
 export interface Notification {
   notification_id: string;
   title: string;
-  message: string;
   created_at: string;
+  entity_id: string;
+  notification_type: string;
+  entity_name: string;
   is_new: boolean;
 }
 
@@ -96,7 +98,9 @@ export class NotificationService {
     return {
       notification_id: notificationJSONObject.notification_id,
       title: 'Notification',
-      message: notificationJSONObject.message,
+      entity_id: notificationJSONObject.entity_id,
+      entity_name: notificationJSONObject.entity_name,
+      notification_type: notificationJSONObject.notification_type,
       created_at: notificationJSONObject.created_at,
       is_new: true,
     };

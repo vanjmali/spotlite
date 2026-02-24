@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"errors"
-	"log"
 	"strings"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/vanjmali/spotlite/common-lib/account"
 	"github.com/vanjmali/spotlite/common-lib/clock"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/user-service/dtos"
@@ -117,7 +117,7 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	if err != nil {
 		createSpan.RecordError(err)
 		createSpan.End()
-		log.Printf("Error converting to user entity: %v", err)
+		logging.Errorf(ctx, "error converting to user entity: %v", err)
 		return err
 	}
 
@@ -127,7 +127,7 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	if err := s.ms.SendAccountVerificationEmail(reqDto.Email, userEntity.EmailVerification.Token); err != nil {
 		mailSpan.RecordError(err)
 		mailSpan.End()
-		log.Printf("Failed to send verification email: %v", err)
+		logging.Errorf(ctx, "failed to send verification email: %v", err)
 		return err
 	}
 	mailSpan.End()
@@ -135,9 +135,15 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	// insert the user in the database,
 	err = s.r.Create(createCtx, *userEntity)
 	if err != nil {
+		switch {
+		case errors.Is(err, repositories.ErrUsernameAlreadyTaken):
+			err = ErrUsernameTaken
+		case errors.Is(err, repositories.ErrEmailAlreadyTaken):
+			err = ErrEmailTaken
+		}
 		createSpan.RecordError(err)
 		createSpan.End()
-		log.Printf("Error creating user in database: %v", err)
+		logging.Errorf(ctx, "error creating user in database: %v", err)
 		return err
 	}
 	createSpan.End()

@@ -13,7 +13,30 @@ import { LoginStore } from './pages/login/store';
 import { NotFoundPage } from './pages/not-found-page';
 import { AuthService } from './services/auth.service';
 
-const adminOnlyMatch: CanMatchFn = () => inject(AuthService).isAdminSg();
+const adminOnlyMatch: CanMatchFn = async () => {
+  const authService = inject(AuthService);
+
+  if (authService.isAdminSg()) {
+    return true;
+  }
+
+  const refreshed = await authService.refreshAccessToken();
+  if (!refreshed) {
+    return false;
+  }
+
+  return authService.isAdminSg();
+};
+
+const authenticatedMatch: CanMatchFn = async () => {
+  const authService = inject(AuthService);
+
+  if (authService.isAuthenticatedSg()) {
+    return true;
+  }
+
+  return authService.refreshAccessToken();
+};
 
 export const routes: Routes = [
   {
@@ -53,10 +76,12 @@ export const routes: Routes = [
   {
     path: 'inbox',
     component: InboxPage,
+    canMatch: [authenticatedMatch],
   },
   {
     path: 'profile',
     component: ProfilePage,
+    canMatch: [authenticatedMatch],
   },
   {
     path: 'admin',
@@ -110,14 +135,14 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'artists/:id',
+        path: 'artist/:id',
         loadComponent: () =>
           import('./pages/home-page/components/artist-details/artist-details.component').then(
             (m) => m.ArtistDetailsComponent
           ),
       },
       {
-        path: 'albums/:id',
+        path: 'album/:id',
         loadComponent: () =>
           import('./pages/home-page/components/album-details/album-details.component').then(
             (m) => m.AlbumDetailsComponent
@@ -131,12 +156,14 @@ export const routes: Routes = [
           ),
       },
       {
-        path: 'artist/:id',
-        redirectTo: 'artists/:id',
+        path: 'artists/:id',
+        redirectTo: 'artist/:id',
+        pathMatch: 'full',
       },
       {
-        path: 'album/:id',
-        redirectTo: 'albums/:id',
+        path: 'albums/:id',
+        redirectTo: 'album/:id',
+        pathMatch: 'full',
       },
     ],
   },

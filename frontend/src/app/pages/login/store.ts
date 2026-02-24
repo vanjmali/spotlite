@@ -34,6 +34,7 @@ export class LoginStore {
   public clearOtpSession(): void {
     this.stepSg.set('credentials');
     this.emailSg.set('');
+    this.passwordSg.set('');
     this.errorSg.set(null);
     this.persistToSession();
   }
@@ -92,6 +93,7 @@ export class LoginStore {
       return false;
     }
 
+    this.passwordSg.set('');
     this.persistToSession();
     return true;
   }

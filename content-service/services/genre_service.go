@@ -3,8 +3,9 @@ package services
 import (
 	"context"
 	"errors"
-	"log"
 
+	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
@@ -41,7 +42,7 @@ func (s *GenreService) Create(ctx context.Context, reqDto *dtos.GenreDto) error 
 	if err != nil {
 		createSpan.RecordError(err)
 		createSpan.End()
-		log.Printf("Error converting to genre entity: %v", err)
+		logging.Errorf(ctx, "error converting to genre entity: %v", err)
 		return err
 	}
 
@@ -49,7 +50,7 @@ func (s *GenreService) Create(ctx context.Context, reqDto *dtos.GenreDto) error 
 	if err != nil {
 		createSpan.RecordError(err)
 		createSpan.End()
-		log.Printf("Error creating genre in database: %v", err)
+		logging.Errorf(ctx, "error creating genre in database: %v", err)
 		return err
 	}
 
@@ -157,7 +158,7 @@ func (s *GenreService) GetGenres(ctx context.Context, q GenresQuery) (*dtos.Genr
 	}
 
 	p := pagination.NewPagination(q.Page, q.Size)
-	return listWithPagination(ctx, p, filter, s.r.FindAll)
+	return commondtos.ListWithPagination(ctx, p, filter, s.r.FindAll)
 }
 
 func (s *GenreService) Exists(ctx context.Context, genreIDstr string) (bool, error) {

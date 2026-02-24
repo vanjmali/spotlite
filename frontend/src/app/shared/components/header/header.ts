@@ -103,10 +103,10 @@ export class HeaderComponent {
         this.router.navigate(['/search'], { queryParams: { q: this.searchControl.value.trim() } });
         break;
       case 'artist':
-        this.router.navigate(['/artists', id]);
+        this.router.navigate(['/artist', id]);
         break;
       case 'album':
-        this.router.navigate(['/albums', id]);
+        this.router.navigate(['/album', id]);
         break;
       case 'genre':
         this.router.navigate(['/search'], { queryParams: { q: this.searchControl.value.trim() } });

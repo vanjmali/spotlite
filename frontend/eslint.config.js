@@ -27,7 +27,7 @@ const templateConfigs = templateExtends.map((cfg) => ({ ...cfg, files: ['**/*.ht
 
 export default defineConfig([
   // global ignores (clear and explicit)
-  globalIgnores(['dist/**', 'node_modules/**']),
+  globalIgnores(['dist/**', 'node_modules/**', 'e2e/**', 'playwright.config.ts']),
 
   // base JS rules
   js.configs.recommended,

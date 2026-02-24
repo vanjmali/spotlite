@@ -1,7 +1,6 @@
 package services
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,6 +24,5 @@ func TestRenderVerificationEmailRendersLink(t *testing.T) {
 
 	require.NotContains(t, html, "ZgotmplZ")
 	require.Contains(t, html, link)
-	require.True(t, strings.Contains(html, "Verify Email Address"))
+	require.Contains(t, html, "Verify Email Address")
 }
-

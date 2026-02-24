@@ -1,10 +1,16 @@
-module github.com/vanjmali/spotlite/notifications
+module github.com/vanjmali/spotlite/notification-service
 
 go 1.25.5
 
 require (
 	github.com/gorilla/mux v1.8.1
+	github.com/redis/go-redis/v9 v9.17.3
 	github.com/vanjmali/spotlite/common-lib v0.0.0-00010101000000-000000000000
+)
+
+require (
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
 
 require (
@@ -13,7 +19,11 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
+	github.com/klauspost/compress v1.18.3 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/nats-io/nats.go v1.48.0
+	github.com/nats-io/nkeys v0.4.11 // indirect
+	github.com/nats-io/nuid v1.0.1 // indirect
 	golang.org/x/crypto v0.47.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect

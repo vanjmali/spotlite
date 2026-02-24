@@ -71,7 +71,7 @@
       }
       <div class="recommendations__artists">
         @for (artist of recommendedArtistsSg(); track artist.id) {
-          <a class="recommendations__artist-card" [routerLink]="['/artists', artist.id]">
+          <a class="recommendations__artist-card" [routerLink]="['/artist', artist.id]">
             <app-cover-art class="recommendations__avatar" [name]="artist.name" />
             <div class="recommendations__artist-meta">
               <span class="recommendations__artist-name">{{ artist.name }}</span>
@@ -93,7 +93,7 @@
       }
       <div class="recommendations__albums">
         @for (album of recommendedAlbumsSg(); track album.id) {
-          <a class="recommendations__album-card" [routerLink]="['/albums', album.id]">
+          <a class="recommendations__album-card" [routerLink]="['/album', album.id]">
             <app-cover-art class="recommendations__avatar recommendations__avatar--square" [name]="album.title" [square]="true" />
             <span class="recommendations__album-title">{{ album.title }}</span>
             <span class="recommendations__album-artists">{{ artistNames(album.artists) }}</span>

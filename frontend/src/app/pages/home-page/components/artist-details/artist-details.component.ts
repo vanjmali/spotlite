@@ -75,7 +75,7 @@ export class ArtistDetailsComponent {
   }
 
   onAlbumClick(album: Album): void {
-    this.router.navigate(['/albums', album.id]);
+    this.router.navigate(['/album', album.id]);
   }
 
   playAlbum(album: Album): void {
