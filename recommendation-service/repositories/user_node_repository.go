@@ -66,7 +66,7 @@ func (r *UserNodeRepository) Get(ctx context.Context, userID string) (*entities.
 	}
 
 	return result.(*entities.UserNode), nil
-}}
+}
 
 // Exists checks if a user node exists.
 func (r *UserNodeRepository) Exists(ctx context.Context, userID string) (bool, error) {
