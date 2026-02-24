@@ -1,4 +1,8 @@
+const buildApiBaseUrl = '__API_BASE_URL__';
+if (buildApiBaseUrl === '__API_BASE_URL__') {
+  throw new Error('API_BASE_URL is not defined at build time.');
+}
+
 export const environment = {
-  production: false,
-  apiBaseUrl: 'https://localhost:4443/api',
+  apiBaseUrl: buildApiBaseUrl,
 };
