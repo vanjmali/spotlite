@@ -2,6 +2,12 @@
   width: 100%;
 }
 
+.control-bar__minimal {
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+}
+
 .control-bar__layout {
   position: relative;
   display: flex;

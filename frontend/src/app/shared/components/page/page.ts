@@ -4,6 +4,7 @@ import { HeaderComponent } from '../header/header';
 import { ControlBarComponent } from '../control-bar';
 import { AuthService } from '@app/services/auth.service';
 import { PlaybackBarComponent } from '../playback-bar/playback-bar';
+import { SiteFooterComponent } from '../site-footer';
 import {
   HomepageLeftSidebarComponent,
   HomepageRightSidebarComponent,
@@ -18,6 +19,7 @@ type ResizeSide = 'left' | 'right';
     CommonModule,
     HeaderComponent,
     ControlBarComponent,
+    SiteFooterComponent,
     PlaybackBarComponent,
     HomepageLeftSidebarComponent,
     HomepageRightSidebarComponent,
