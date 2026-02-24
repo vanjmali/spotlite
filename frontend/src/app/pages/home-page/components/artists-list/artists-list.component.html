@@ -69,19 +69,23 @@
       @if (artistsErrorSg()) {
         <app-message [message]="artistsErrorSg()" type="error" />
       }
-      <div class="recommendations__artists">
-        @for (artist of recommendedArtistsSg(); track artist.id) {
-          <a class="recommendations__artist-card" [routerLink]="['/artist', artist.id]">
-            <app-cover-art class="recommendations__avatar" [name]="artist.name" />
-            <div class="recommendations__artist-meta">
-              <span class="recommendations__artist-name">{{ artist.name }}</span>
-              <span class="recommendations__artist-desc">{{
-                shortDescription(artist.description || 'No artist description available.', 120)
-              }}</span>
-            </div>
-          </a>
-        }
-      </div>
+      @if (recommendedArtistsSg().length === 0 && !artistsErrorSg()) {
+        <p class="recommendations__empty">Not available right now, check back later!</p>
+      } @else {
+        <div class="recommendations__artists">
+          @for (artist of recommendedArtistsSg(); track artist.id) {
+            <a class="recommendations__artist-card" [routerLink]="['/artist', artist.id]">
+              <app-cover-art class="recommendations__avatar" [name]="artist.name" />
+              <div class="recommendations__artist-meta">
+                <span class="recommendations__artist-name">{{ artist.name }}</span>
+                <span class="recommendations__artist-desc">{{
+                  shortDescription(artist.description || 'No artist description available.', 120)
+                }}</span>
+              </div>
+            </a>
+          }
+        </div>
+      }
     </section>
 
     <section class="recommendations__section">
@@ -91,15 +95,19 @@
       @if (albumsErrorSg()) {
         <app-message [message]="albumsErrorSg()" type="error" />
       }
-      <div class="recommendations__albums">
-        @for (album of recommendedAlbumsSg(); track album.id) {
-          <a class="recommendations__album-card" [routerLink]="['/album', album.id]">
-            <app-cover-art class="recommendations__avatar recommendations__avatar--square" [name]="album.title" [square]="true" />
-            <span class="recommendations__album-title">{{ album.title }}</span>
-            <span class="recommendations__album-artists">{{ artistNames(album.artists) }}</span>
-          </a>
-        }
-      </div>
+      @if (recommendedAlbumsSg().length === 0 && !albumsErrorSg()) {
+        <p class="recommendations__empty">Nothing to show right now, check back later!</p>
+      } @else {
+        <div class="recommendations__albums">
+          @for (album of recommendedAlbumsSg(); track album.id) {
+            <a class="recommendations__album-card" [routerLink]="['/album', album.id]">
+              <app-cover-art class="recommendations__avatar recommendations__avatar--square" [name]="album.title" [square]="true" />
+              <span class="recommendations__album-title">{{ album.title }}</span>
+              <span class="recommendations__album-artists">{{ artistNames(album.artists) }}</span>
+            </a>
+          }
+        </div>
+      }
     </section>
 
     <section class="recommendations__section">
@@ -109,13 +117,17 @@
       @if (genresErrorSg()) {
         <app-message [message]="genresErrorSg()" type="error" />
       }
-      <div class="recommendations__genres">
-        @for (genre of recommendedGenresSg(); track genre.id) {
-          <button type="button" class="recommendations__genre-chip" (click)="openGenre(genre)">
-            {{ genre.name }}
-          </button>
-        }
-      </div>
+      @if (recommendedGenresSg().length === 0 && !genresErrorSg()) {
+        <p class="recommendations__empty">No genres to explore just yet. More are on the way.</p>
+      } @else {
+        <div class="recommendations__genres">
+          @for (genre of recommendedGenresSg(); track genre.id) {
+            <button type="button" class="recommendations__genre-chip" (click)="openGenre(genre)">
+              {{ genre.name }}
+            </button>
+          }
+        </div>
+      }
     </section>
 
     <section class="recommendations__section">
@@ -125,14 +137,18 @@
       @if (songsErrorSg()) {
         <app-message [message]="songsErrorSg()" type="error" />
       }
-      <div class="recommendations__songs">
-        @for (song of recommendedSongsSg(); track song.id) {
-          <button type="button" class="recommendations__song" (click)="playSong(song)">
-            <span class="recommendations__song-title">{{ song.title }}</span>
-            <span class="recommendations__song-artists">{{ artistNames(song.artists) }}</span>
-          </button>
-        }
-      </div>
+      @if (recommendedSongsSg().length === 0 && !songsErrorSg()) {
+        <p class="recommendations__empty">No songs queued right now. Try again in a moment.</p>
+      } @else {
+        <div class="recommendations__songs">
+          @for (song of recommendedSongsSg(); track song.id) {
+            <button type="button" class="recommendations__song" (click)="playSong(song)">
+              <span class="recommendations__song-title">{{ song.title }}</span>
+              <span class="recommendations__song-artists">{{ artistNames(song.artists) }}</span>
+            </button>
+          }
+        </div>
+      }
     </section>
   }
 </section>
