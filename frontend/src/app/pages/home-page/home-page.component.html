@@ -1,4 +1,4 @@
-<app-page>
+<app-page [showSidebars]="true">
   <div content class="home-page" [class.home-page--guest]="!authService.isAuthenticatedSg()">
     @if (authService.isAuthenticatedSg()) {
       <router-outlet></router-outlet>
