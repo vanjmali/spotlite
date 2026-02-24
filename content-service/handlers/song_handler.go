@@ -264,6 +264,7 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 
 func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
+	cacheKey := "audio:" + id
 
 	song, err := h.s.FindSongById(r.Context(), id)
 	if err != nil {
@@ -287,6 +288,17 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	cachedAudio, err := h.rc.Get(r.Context(), cacheKey).Bytes()
+	if err == nil && len(cachedAudio) > 0 {
+		logging.Infof(r.Context(), "Cache HIT song: %s", id)
+		setSongAudioResponseHeaders(w, int64(len(cachedAudio)), song.AudioMimeType)
+
+		_, _ = w.Write(cachedAudio)
+		return
+	}
+
+	logging.Infof(r.Context(), "Cache MISS for song: %s. Fetching from HDFS...", id)
+
 	rc, err := h.s.OpenAudio(r.Context(), song.AudioPath)
 	if err != nil {
 		logging.Errorf(r.Context(), "failed to open audio file at path %s: %v", song.AudioPath, err)
@@ -309,9 +321,23 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 	}
 	defer streamReader.Close()
 
-	setSongAudioResponseHeaders(w, song.AudioSize, song.AudioMimeType)
+	audioBytes, err := io.ReadAll(streamReader)
+	if err != nil {
+		logging.Errorf(r.Context(), "failed to read audio stream for song %s: %v", id, err)
+		_ = respond.InternalServerError(w)
+		return
+	}
 
-	_, _ = io.Copy(w, streamReader)
+	err = h.rc.Set(r.Context(), cacheKey, audioBytes, 24*time.Hour).Err()
+	if err != nil {
+		logging.Errorf(r.Context(), "failed to cache audio for song %s: %v", id, err)
+	} else {
+		logging.Infof(r.Context(), "successfully cached audio for song: %s", id)
+	}
+
+	setSongAudioResponseHeaders(w, int64(len(audioBytes)), song.AudioMimeType)
+
+	_, _ = w.Write(audioBytes)
 }
 
 func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.Request) {
