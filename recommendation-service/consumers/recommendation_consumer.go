@@ -165,7 +165,7 @@ func (c *RecommendationConsumer) HandleSubscriptionCreated(ctx context.Context, 
 	}
 
 	switch p.EntityType {
-	case "ARTIST":
+	case events.SubscriptionEntityArtist:
 		// Ensure artist node exists
 		if err := c.artistRepo.Create(ctx, entities.ArtistNode{ArtistID: p.EntityID}); err != nil {
 			logging.Errorf(ctx, "failed to create artist node: %v", err)
@@ -182,7 +182,7 @@ func (c *RecommendationConsumer) HandleSubscriptionCreated(ctx context.Context, 
 			return err
 		}
 
-	case "GENRE":
+	case events.SubscriptionEntityGenre:
 		// Ensure genre node exists
 		if err := c.genreRepo.Create(ctx, entities.GenreNode{GenreID: p.EntityID}); err != nil {
 			logging.Errorf(ctx, "failed to create genre node: %v", err)
@@ -217,13 +217,13 @@ func (c *RecommendationConsumer) HandleSubscriptionDeleted(ctx context.Context, 
 	}
 
 	switch p.EntityType {
-	case "ARTIST":
+	case events.SubscriptionEntityArtist:
 		if err := c.relationRepo.DeleteArtistSubscription(ctx, p.UserID, p.EntityID); err != nil {
 			logging.Errorf(ctx, "failed to delete artist subscription: %v", err)
 			return err
 		}
 
-	case "GENRE":
+	case events.SubscriptionEntityGenre:
 		if err := c.relationRepo.DeleteGenreSubscription(ctx, p.UserID, p.EntityID); err != nil {
 			logging.Errorf(ctx, "failed to delete genre subscription: %v", err)
 			return err

@@ -37,6 +37,13 @@ const (
 	SUBSCRIPTION_DURABLE         = "SUBSCRIPTION_PROCESSOR"
 )
 
+type SubscriptionEntityType string
+
+const (
+	SubscriptionEntityArtist SubscriptionEntityType = "ARTIST"
+	SubscriptionEntityGenre  SubscriptionEntityType = "GENRE"
+)
+
 type EntityCreatedEventPayload struct {
 	TargetIDs  []string   `json:"target_ids"`
 	CreatedAt  time.Time  `json:"created_at"`
@@ -76,9 +83,9 @@ type ListenEventPayload struct {
 }
 
 type SubscriptionEventPayload struct {
-	UserID     string    `json:"user_id"`
-	EntityID   string    `json:"entity_id"`
-	EntityType string    `json:"entity_type"` // "ARTIST" or "GENRE"
-	EventID    string    `json:"event_id"`
-	CreatedAt  time.Time `json:"created_at"`
+	UserID     string                 `json:"user_id"`
+	EntityID   string                 `json:"entity_id"`
+	EntityType SubscriptionEntityType `json:"entity_type"`
+	EventID    string                 `json:"event_id"`
+	CreatedAt  time.Time              `json:"created_at"`
 }

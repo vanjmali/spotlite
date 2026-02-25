@@ -81,7 +81,7 @@ var (
 			err = jsc.EnsureStream(
 				ctx,
 				events.CONTENT_STREAM,
-				[]string{events.SUBJECT_ENTITY_CREATED, events.SUBSCRIPTIONS_STREAM, events.SUBJECT_ENTITY_UPDATED},
+				[]string{events.SUBJECT_ENTITY_CREATED, events.SUBJECT_ENTITY_UPDATED},
 			)
 			if err != nil {
 				err = fmt.Errorf("failed to ensure NATS stream: %w", err)

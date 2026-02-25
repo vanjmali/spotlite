@@ -180,12 +180,12 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 	}
 
 	// Publish subscription created event with retry for reliability
-	entityType := ""
+	var entityType events.SubscriptionEntityType
 	switch se.Type {
 	case subscription.ArtistSubscription:
-		entityType = "ARTIST"
+		entityType = events.SubscriptionEntityArtist
 	case subscription.GenreSubscription:
-		entityType = "GENRE"
+		entityType = events.SubscriptionEntityGenre
 	}
 
 	payload := events.SubscriptionEventPayload{
@@ -263,12 +263,12 @@ func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx conte
 	}
 
 	// Publish subscription deleted event with retry for reliability
-	entityType := ""
+	var entityType events.SubscriptionEntityType
 	switch existing.Type {
 	case subscription.ArtistSubscription:
-		entityType = "ARTIST"
+		entityType = events.SubscriptionEntityArtist
 	case subscription.GenreSubscription:
-		entityType = "GENRE"
+		entityType = events.SubscriptionEntityGenre
 	}
 
 	payload := events.SubscriptionEventPayload{
