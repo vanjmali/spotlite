@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -18,6 +19,14 @@ import (
 	"github.com/vanjmali/spotlite/recommendation-service/repositories"
 	"github.com/vanjmali/spotlite/recommendation-service/routers"
 	"github.com/vanjmali/spotlite/recommendation-service/services"
+)
+
+const (
+	ratingCreatedDurable       = events.RATING_DURABLE + "_CREATED"
+	ratingUpdatedDurable       = events.RATING_DURABLE + "_UPDATED"
+	ratingDeletedDurable       = events.RATING_DURABLE + "_DELETED"
+	subscriptionCreatedDurable = events.SUBSCRIPTION_DURABLE + "_CREATED"
+	subscriptionDeletedDurable = events.SUBSCRIPTION_DURABLE + "_DELETED"
 )
 
 var (
@@ -72,106 +81,74 @@ var (
 			h = createHandlers(ss)
 			c := createConsumers(ur, sr, ar, gr, abr, rr)
 
-			// Start consumers in background
+			// Start consumers in background.
 			consumerCtx, consumerCancel := context.WithCancel(ctx)
-			consumerDone := make(chan struct{})
+			var consumerWg sync.WaitGroup
+			consumerErrCh := make(chan error, 6)
 
-			var consumerErr error
+			startConsumer := func(stream, subject, durable, label string, handler events.SubscribeHandler) {
+				consumerWg.Add(1)
+				go func() {
+					defer consumerWg.Done()
+					err := jsc.StartConsumer(consumerCtx, stream, subject, durable, handler)
+					if err != nil && !errors.Is(err, context.Canceled) {
+						logging.Errorf(ctx, "%s consumer error: %v", label, err)
+						consumerErrCh <- fmt.Errorf("%s consumer error: %w", label, err)
+					}
+				}()
+			}
 
-			go func() {
-				consumerErr = jsc.StartConsumer(
-					consumerCtx,
-					events.RATINGS_STREAM,
-					events.SUBJECT_RATING_CREATED,
-					events.RATING_DURABLE,
-					c.HandleRatingCreated,
-				)
-				if consumerErr != nil {
-					logging.Errorf(ctx, "rating created consumer error: %v", consumerErr)
-				}
-			}()
-
-			go func() {
-				err := jsc.StartConsumer(
-					consumerCtx,
-					events.RATINGS_STREAM,
-					events.SUBJECT_RATING_UPDATED,
-					events.RATING_DURABLE,
-					c.HandleRatingUpdated,
-				)
-				if err != nil {
-					logging.Errorf(ctx, "rating updated consumer error: %v", err)
-				}
-			}()
-
-			go func() {
-				err := jsc.StartConsumer(
-					consumerCtx,
-					events.RATINGS_STREAM,
-					events.SUBJECT_RATING_DELETED,
-					events.RATING_DURABLE,
-					c.HandleRatingDeleted,
-				)
-				if err != nil {
-					logging.Errorf(ctx, "rating deleted consumer error: %v", err)
-				}
-			}()
-
-			go func() {
-				err := jsc.StartConsumer(
-					consumerCtx,
-					events.LISTENS_STREAM,
-					events.SUBJECT_LISTEN_CREATED,
-					events.LISTEN_DURABLE,
-					c.HandleListenCreated,
-				)
-				if err != nil {
-					logging.Errorf(ctx, "listen consumer error: %v", err)
-				}
-			}()
-
-			go func() {
-				err := jsc.StartConsumer(
-					consumerCtx,
-					events.SUBSCRIPTIONS_STREAM,
-					events.SUBJECT_SUBSCRIPTION_CREATED,
-					events.SUBSCRIPTION_DURABLE,
-					c.HandleSubscriptionCreated,
-				)
-				if err != nil {
-					logging.Errorf(ctx, "subscription created consumer error: %v", err)
-				}
-			}()
-
-			go func() {
-				err := jsc.StartConsumer(
-					consumerCtx,
-					events.SUBSCRIPTIONS_STREAM,
-					events.SUBJECT_SUBSCRIPTION_DELETED,
-					events.SUBSCRIPTION_DURABLE,
-					c.HandleSubscriptionDeleted,
-				)
-				if err != nil {
-					logging.Errorf(ctx, "subscription deleted consumer error: %v", err)
-				}
-				close(consumerDone)
-			}()
-
-			go func() {
-				<-consumerDone
-				if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
-					logging.Errorf(context.Background(), "recommendation consumer stopped unexpectedly: %v", consumerErr)
-				}
-			}()
+			startConsumer(
+				events.RATINGS_STREAM,
+				events.SUBJECT_RATING_CREATED,
+				ratingCreatedDurable,
+				"rating created",
+				c.HandleRatingCreated,
+			)
+			startConsumer(
+				events.RATINGS_STREAM,
+				events.SUBJECT_RATING_UPDATED,
+				ratingUpdatedDurable,
+				"rating updated",
+				c.HandleRatingUpdated,
+			)
+			startConsumer(
+				events.RATINGS_STREAM,
+				events.SUBJECT_RATING_DELETED,
+				ratingDeletedDurable,
+				"rating deleted",
+				c.HandleRatingDeleted,
+			)
+			startConsumer(
+				events.LISTENS_STREAM,
+				events.SUBJECT_LISTEN_CREATED,
+				events.LISTEN_DURABLE,
+				"listen created",
+				c.HandleListenCreated,
+			)
+			startConsumer(
+				events.SUBSCRIPTIONS_STREAM,
+				events.SUBJECT_SUBSCRIPTION_CREATED,
+				subscriptionCreatedDurable,
+				"subscription created",
+				c.HandleSubscriptionCreated,
+			)
+			startConsumer(
+				events.SUBSCRIPTIONS_STREAM,
+				events.SUBJECT_SUBSCRIPTION_DELETED,
+				subscriptionDeletedDurable,
+				"subscription deleted",
+				c.HandleSubscriptionDeleted,
+			)
 
 			shutdown = func() error {
 				var errs []error
 
 				consumerCancel()
-				<-consumerDone
-
-				if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
-					errs = append(errs, fmt.Errorf("recommendation consumer error: %w", consumerErr))
+				consumerWg.Wait()
+				close(consumerErrCh)
+				for consumerErr := range consumerErrCh {
+					errs = append(errs, consumerErr)
 				}
 
 				shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
