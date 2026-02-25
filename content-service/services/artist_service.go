@@ -148,7 +148,14 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 	currentArtist, err := s.r.FindByID(getCtx, id)
 	if err != nil {
 		getSpan.RecordError(err)
-		return nil, err
+		switch {
+		case errors.Is(err, mongo.ErrNoDocuments):
+			updateSpan.RecordError(err)
+			return nil, ErrArtistNotFound
+		default:
+			updateSpan.RecordError(err)
+			return nil, err
+		}
 	}
 
 	update := make(map[string]any)
