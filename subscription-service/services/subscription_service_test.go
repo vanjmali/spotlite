@@ -116,6 +116,10 @@ func (f *fakeSubscriptionRepo) FindEntitySubscriberCount(ctx context.Context, en
 	return count, nil
 }
 
+func (r *fakeSubscriptionRepo) UpdateSubscriptionsByEntityID(ctx context.Context, entityID primitive.ObjectID, entityName string) error {
+	return nil
+}
+
 type fakeContentGetter struct {
 	getEntityFn func(context.Context, string, subscription.SubscriptionType) (string, error)
 	lastType    subscription.SubscriptionType
