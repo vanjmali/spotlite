@@ -53,6 +53,18 @@ func (h *RatingHandler) HandleCreateRating(w http.ResponseWriter, r *http.Reques
 			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
 			_ = respond.TooManyRequests(w)
 			return
+		case errors.Is(err, services.ErrInvalidEntityID):
+			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
+			_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))
+			return
+		case errors.Is(err, services.ErrUpstreamTimeout):
+			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
+			_ = respond.GatewayTimeout(w, respond.ErrorMessage(err.Error()))
+			return
+		case errors.Is(err, services.ErrUpstreamUnavailable):
+			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
+			_ = respond.ServiceUnavailable(w, respond.ErrorMessage(err.Error()))
+			return
 		case errors.Is(err, mappers.ErrRatingMapping):
 			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
 			_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))

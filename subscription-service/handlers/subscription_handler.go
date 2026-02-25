@@ -74,6 +74,18 @@ func (h *SubscriptionHandler) HandleSubscribe(w http.ResponseWriter, r *http.Req
 			logging.Warnf(r.Context(), "failed to process subscribe request: %v", err)
 			_ = respond.TooManyRequests(w)
 			return
+		case errors.Is(err, services.ErrInvalidEntityID):
+			logging.Warnf(r.Context(), "failed to process subscribe request: %v", err)
+			_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))
+			return
+		case errors.Is(err, services.ErrUpstreamTimeout):
+			logging.Warnf(r.Context(), "failed to process subscribe request: %v", err)
+			_ = respond.GatewayTimeout(w, respond.ErrorMessage(err.Error()))
+			return
+		case errors.Is(err, services.ErrUpstreamUnavailable):
+			logging.Warnf(r.Context(), "failed to process subscribe request: %v", err)
+			_ = respond.ServiceUnavailable(w, respond.ErrorMessage(err.Error()))
+			return
 		case errors.Is(err, mappers.ErrSubscriptionMapping):
 			logging.Warnf(r.Context(), "failed to process subscribe request: %v", err)
 			_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))
