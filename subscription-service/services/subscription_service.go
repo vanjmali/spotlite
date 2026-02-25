@@ -33,6 +33,7 @@ var (
 	ErrUpstreamTimeout      = errors.New("upstream service request timed out")
 	ErrUpstreamFailure      = errors.New("upstream service returned an internal error")
 	ErrUpstreamUnavailable  = errors.New("upstream service is temporarily unavailable")
+	ErrUpstreamThrottled    = errors.New("upstream throttled")
 )
 
 const BATCH_SIZE = 500
@@ -134,6 +135,10 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 	if err != nil {
 		if err == gobreaker.ErrOpenState {
 			return ErrUpstreamUnavailable
+		}
+
+		if err == gobreaker.ErrTooManyRequests {
+			return ErrUpstreamThrottled
 		}
 
 		st, ok := status.FromError(err)

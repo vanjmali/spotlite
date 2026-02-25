@@ -70,6 +70,10 @@ func (h *SubscriptionHandler) HandleSubscribe(w http.ResponseWriter, r *http.Req
 
 	if err := h.s.Subscribe(&req, r.Context()); err != nil {
 		switch {
+		case errors.Is(err, services.ErrUpstreamThrottled):
+			logging.Warnf(r.Context(), "failed to process subscribe request: %v", err)
+			_ = respond.TooManyRequests(w)
+			return
 		case errors.Is(err, mappers.ErrSubscriptionMapping):
 			logging.Warnf(r.Context(), "failed to process subscribe request: %v", err)
 			_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))

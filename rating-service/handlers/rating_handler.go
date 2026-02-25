@@ -49,6 +49,10 @@ func (h *RatingHandler) HandleCreateRating(w http.ResponseWriter, r *http.Reques
 
 	if err := h.s.CreateRating(&req, r.Context()); err != nil {
 		switch {
+		case errors.Is(err, services.ErrUpstreamThrottled):
+			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
+			_ = respond.TooManyRequests(w)
+			return
 		case errors.Is(err, mappers.ErrRatingMapping):
 			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
 			_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))
