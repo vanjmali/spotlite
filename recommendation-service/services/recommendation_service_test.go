@@ -682,7 +682,7 @@ func TestEnrichmentHandlesRatingStatsErrors(t *testing.T) {
 	// Should not error, but return defaults for rating stats
 	require.NoError(t, err)
 	require.Len(t, recommendations, 1)
-	require.InEpsilon(t, 0.0, recommendations[0].AverageRating, 0.01)
+	require.InDelta(t, 0.0, recommendations[0].AverageRating, 0.01)
 	require.Equal(t, int64(0), recommendations[0].RatingCount)
 	require.Equal(t, "Track 1", recommendations[0].Title)
 }
