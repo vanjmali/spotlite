@@ -3,7 +3,11 @@ package services
 import (
 	"context"
 	"errors"
+	"time"
 
+	"github.com/avast/retry-go"
+	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/rating-service/dtos"
@@ -45,12 +49,13 @@ type RatingService struct {
 	rr  RatingRepository
 	gcc ContentEntityGetter
 	tr  trace.Tracer
+	jsc *events.JetStreamClient
 }
 
 // NewRatingService creates and returns a new RatingService with the provided repository and content entity getter.
-func NewRatingService(rr RatingRepository, gcc ContentEntityGetter) *RatingService {
+func NewRatingService(rr RatingRepository, gcc ContentEntityGetter, jsc *events.JetStreamClient) *RatingService {
 	tr := otel.Tracer("rating-service/rating-service")
-	s := RatingService{rr: rr, gcc: gcc, tr: tr}
+	s := RatingService{rr: rr, gcc: gcc, tr: tr, jsc: jsc}
 
 	return &s
 }
@@ -100,6 +105,32 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 		return err
 	}
 
+	// Publish rating created event with retry for reliability
+	payload := events.RatingEventPayload{
+		UserID:    ratingEntity.UserID.Hex(),
+		SongID:    ratingEntity.SongID.Hex(),
+		Rating:    int(ratingEntity.Value),
+		EventID:   primitive.NewObjectID().Hex(),
+		CreatedAt: ratingEntity.CreatedAt,
+	}
+
+	publishCtx, publishSpan := s.tr.Start(ratingCtx, "rating.create.publish")
+	defer publishSpan.End()
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_CREATED, payload)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(publishCtx),
+	)
+	if err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish rating created event: %v", err)
+	}
+
 	return nil
 }
 
@@ -141,6 +172,32 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 
 	if deletedCount != 1 {
 		return ErrRatingNotFound
+	}
+
+	// Publish rating deleted event with retry for reliability
+	payload := events.RatingEventPayload{
+		UserID:    userID.Hex(),
+		SongID:    existing.SongID.Hex(),
+		Rating:    int(existing.Value),
+		EventID:   primitive.NewObjectID().Hex(),
+		CreatedAt: existing.CreatedAt,
+	}
+
+	publishCtx, publishSpan := s.tr.Start(ctx, "rating.delete.publish")
+	defer publishSpan.End()
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_DELETED, payload)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(publishCtx),
+	)
+	if err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish rating deleted event: %v", err)
 	}
 
 	return nil
@@ -259,7 +316,7 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 	}
 
 	repoCtx, repoSpan := s.tr.Start(ctx, "rating.update.repo")
-	defer findSpan.End()
+	defer repoSpan.End()
 
 	rating, err := s.rr.UpdateByID(repoCtx, ratingID, userID, update)
 	if err != nil {
@@ -268,6 +325,32 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 			return nil, ErrRatingNotFound
 		}
 		return nil, err
+	}
+
+	// Publish rating updated event with retry for reliability
+	payload := events.RatingEventPayload{
+		UserID:    rating.UserID.Hex(),
+		SongID:    rating.SongID.Hex(),
+		Rating:    int(rating.Value),
+		EventID:   primitive.NewObjectID().Hex(),
+		CreatedAt: rating.CreatedAt,
+	}
+
+	publishCtx, publishSpan := s.tr.Start(ctx, "rating.update.publish")
+	defer publishSpan.End()
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_UPDATED, payload)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(publishCtx),
+	)
+	if err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish rating updated event: %v", err)
 	}
 
 	return rating, nil
