@@ -49,11 +49,27 @@ func (h *RatingHandler) HandleCreateRating(w http.ResponseWriter, r *http.Reques
 
 	if err := h.s.CreateRating(&req, r.Context()); err != nil {
 		switch {
+		case errors.Is(err, services.ErrUpstreamThrottled):
+			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
+			_ = respond.TooManyRequests(w)
+			return
+		case errors.Is(err, services.ErrInvalidEntityID):
+			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
+			_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))
+			return
+		case errors.Is(err, services.ErrUpstreamTimeout):
+			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
+			_ = respond.GatewayTimeout(w, respond.ErrorMessage(err.Error()))
+			return
+		case errors.Is(err, services.ErrUpstreamUnavailable):
+			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
+			_ = respond.ServiceUnavailable(w, respond.ErrorMessage(err.Error()))
+			return
 		case errors.Is(err, mappers.ErrRatingMapping):
 			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
 			_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))
 			return
-		case errors.Is(err, services.ErrSongNotFound):
+		case errors.Is(err, services.ErrEntityNotFound):
 			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
 			_ = respond.NotFound(w)
 			return
@@ -124,9 +140,13 @@ func (h *RatingHandler) HandleGetRatingsBySongID(w http.ResponseWriter, r *http.
 	ratings, nextCursor, err := h.s.GetRatingBySong(r.Context(), songIDStr, limit, cursor)
 	if err != nil {
 		switch {
-		case errors.Is(err, services.ErrInvalidSongID):
+		case errors.Is(err, services.ErrEntityNotFound):
 			logging.Warnf(r.Context(), "failed to process get ratings request: %v", err)
-			_ = respond.BadRequest(w, respond.ErrorMessage("invalid song ID"))
+			_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))
+			return
+		case errors.Is(err, services.ErrObjectIdCastFailed):
+			logging.Warnf(r.Context(), "failed to process get ratings request: %v", err)
+			_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))
 			return
 		default:
 			logging.Errorf(r.Context(), "failed to process get ratings request: %v", err)
@@ -135,7 +155,7 @@ func (h *RatingHandler) HandleGetRatingsBySongID(w http.ResponseWriter, r *http.
 		}
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"items": ratings,
 	}
 

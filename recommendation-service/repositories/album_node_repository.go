@@ -22,11 +22,11 @@ func (r *AlbumNodeRepository) Create(ctx context.Context, album entities.AlbumNo
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		return tx.Run(
 			ctx,
 			`MERGE (a:Album {album_id: $album_id}) SET a.title = $title`,
-			map[string]interface{}{
+			map[string]any{
 				"album_id": album.AlbumID,
 				"title":    album.Title,
 			},
@@ -40,11 +40,11 @@ func (r *AlbumNodeRepository) Get(ctx context.Context, albumID string) (*entitie
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (a:Album {album_id: $album_id}) RETURN a.album_id, a.title`,
-			map[string]interface{}{"album_id": albumID},
+			map[string]any{"album_id": albumID},
 		)
 		if err != nil {
 			return nil, err
@@ -60,7 +60,6 @@ func (r *AlbumNodeRepository) Get(ctx context.Context, albumID string) (*entitie
 
 		return nil, ErrNotFound
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -73,11 +72,11 @@ func (r *AlbumNodeRepository) Exists(ctx context.Context, albumID string) (bool,
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (a:Album {album_id: $album_id}) RETURN count(a) > 0 AS exists`,
-			map[string]interface{}{"album_id": albumID},
+			map[string]any{"album_id": albumID},
 		)
 		if err != nil {
 			return false, err
@@ -90,7 +89,6 @@ func (r *AlbumNodeRepository) Exists(ctx context.Context, albumID string) (bool,
 
 		return false, nil
 	})
-
 	if err != nil {
 		return false, err
 	}

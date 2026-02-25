@@ -16,7 +16,10 @@ const (
 	LISTENS_STREAM       = "LISTENS"
 
 	SUBJECT_ENTITY_CREATED = "content.created"
-	ENTITY_DURABLE         = "ENTITY_CREATOR"
+	ENTITY_CREATE_DURABLE  = "ENTITY_CREATOR"
+
+	SUBJECT_ENTITY_UPDATED = "content.updated"
+	ENTITY_UPDATE_DURABLE  = "ENTITY_UPDATER"
 
 	SUBJECT_SUBSCRIBER_BATCH = "subscribers.batch.process"
 	SUB_DURABLE              = "SUBSCRIBER_PROCESSOR"
@@ -41,6 +44,11 @@ type EntityCreatedEventPayload struct {
 	EntityName string     `json:"entity_name"`
 	EntityType EntityType `json:"entity_type"`
 	EventID    string     `json:"event_id"`
+}
+
+type EntityUpdatedEventPayload struct {
+	EntityID   string `json:"entity_id"`
+	EntityName string `json:"entity_name"`
 }
 
 type SubscribersBatchEventPayload struct {

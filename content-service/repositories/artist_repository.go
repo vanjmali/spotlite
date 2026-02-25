@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"context"
+	"errors"
 
 	"github.com/vanjmali/spotlite/content/entities"
 	"go.mongodb.org/mongo-driver/bson"
@@ -9,6 +10,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+var ErrArtistNotFound = errors.New("artist not found")
 
 // ArtistRepository provides data access helpers for artist documents.
 type ArtistRepository struct {

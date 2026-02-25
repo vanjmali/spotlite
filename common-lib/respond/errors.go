@@ -106,6 +106,28 @@ func TooManyRequests(w http.ResponseWriter) error {
 	return Error(w, r)
 }
 
+// ServiceUnavailable issues a 503 Service Unavailable error response with a standard message.
+func ServiceUnavailable(w http.ResponseWriter, message ...ErrorMessagePayload) error {
+	payload := mergeErrorPayload(ErrorMessagePayload{
+		Code:    "service_unavailable",
+		Message: "The service is temporarily unavailable.",
+	}, message...)
+
+	r := createErrorResponse(http.StatusServiceUnavailable, payload)
+	return Error(w, r)
+}
+
+// GatewayTimeout issues a 504 Gateway Timeout error response with a standard message.
+func GatewayTimeout(w http.ResponseWriter, message ...ErrorMessagePayload) error {
+	payload := mergeErrorPayload(ErrorMessagePayload{
+		Code:    "gateway_timeout",
+		Message: "The upstream service timed out.",
+	}, message...)
+
+	r := createErrorResponse(http.StatusGatewayTimeout, payload)
+	return Error(w, r)
+}
+
 // NotFound issues a 404 Not Found error response with a standard message.
 func NotFound(w http.ResponseWriter) error {
 	r := ErrorResponse{

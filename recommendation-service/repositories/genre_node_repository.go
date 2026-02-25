@@ -22,11 +22,11 @@ func (r *GenreNodeRepository) Create(ctx context.Context, genre entities.GenreNo
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		return tx.Run(
 			ctx,
 			`MERGE (g:Genre {genre_id: $genre_id}) SET g.name = $name`,
-			map[string]interface{}{
+			map[string]any{
 				"genre_id": genre.GenreID,
 				"name":     genre.Name,
 			},
@@ -40,11 +40,11 @@ func (r *GenreNodeRepository) Get(ctx context.Context, genreID string) (*entitie
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (g:Genre {genre_id: $genre_id}) RETURN g.genre_id, g.name`,
-			map[string]interface{}{"genre_id": genreID},
+			map[string]any{"genre_id": genreID},
 		)
 		if err != nil {
 			return nil, err
@@ -60,7 +60,6 @@ func (r *GenreNodeRepository) Get(ctx context.Context, genreID string) (*entitie
 
 		return nil, ErrNotFound
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -73,11 +72,11 @@ func (r *GenreNodeRepository) Exists(ctx context.Context, genreID string) (bool,
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (g:Genre {genre_id: $genre_id}) RETURN count(g) > 0 AS exists`,
-			map[string]interface{}{"genre_id": genreID},
+			map[string]any{"genre_id": genreID},
 		)
 		if err != nil {
 			return false, err
@@ -90,7 +89,6 @@ func (r *GenreNodeRepository) Exists(ctx context.Context, genreID string) (bool,
 
 		return false, nil
 	})
-
 	if err != nil {
 		return false, err
 	}

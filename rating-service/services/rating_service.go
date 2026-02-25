@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go"
+	"github.com/sony/gobreaker"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
@@ -26,10 +27,15 @@ var (
 	ErrSongNotFound       = errors.New("song couldn't be found")
 	ErrInvalidSongID      = errors.New("error has ocurred while parsing song ID")
 	ErrUpstreamFailure    = errors.New("error has ocurred while fetching song")
+	ErrUpstreamTimeout    = errors.New("upstream service request timed out")
+	ErrUpstreamUnavailable = errors.New("upstream service is temporarily unavailable")
+	ErrUpstreamThrottled  = errors.New("upstream throttled")
 	ErrRatingNotFound     = errors.New("rating not found")
 	ErrRatingForbidden    = errors.New("rating does not belong to user")
 	ErrNoFieldsToUpdate   = errors.New("no fields to update")
 	ErrObjectIdCastFailed = errors.New("failed to convert hex to objectID")
+	ErrEntityNotFound     = ErrSongNotFound
+	ErrInvalidEntityID    = ErrInvalidSongID
 )
 
 type RatingRepository interface {
@@ -53,9 +59,13 @@ type RatingService struct {
 }
 
 // NewRatingService creates and returns a new RatingService with the provided repository and content entity getter.
-func NewRatingService(rr RatingRepository, gcc ContentEntityGetter, jsc *events.JetStreamClient) *RatingService {
+func NewRatingService(rr RatingRepository, gcc ContentEntityGetter, jsc ...*events.JetStreamClient) *RatingService {
 	tr := otel.Tracer("rating-service/rating-service")
-	s := RatingService{rr: rr, gcc: gcc, tr: tr, jsc: jsc}
+	var publisher *events.JetStreamClient
+	if len(jsc) > 0 {
+		publisher = jsc[0]
+	}
+	s := RatingService{rr: rr, gcc: gcc, tr: tr, jsc: publisher}
 
 	return &s
 }
@@ -71,6 +81,12 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 	_, err := s.gcc.GetSong(songExistsCtx, req.SongID)
 	if err != nil {
 		songExistsSpan.RecordError(err)
+		if errors.Is(err, gobreaker.ErrOpenState) {
+			return ErrUpstreamUnavailable
+		}
+		if errors.Is(err, gobreaker.ErrTooManyRequests) {
+			return ErrUpstreamThrottled
+		}
 
 		st, ok := status.FromError(err)
 		if !ok {
@@ -80,9 +96,11 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 		//nolint:exhaustive
 		switch st.Code() {
 		case codes.NotFound:
-			return ErrSongNotFound
+			return ErrEntityNotFound
 		case codes.InvalidArgument:
-			return ErrInvalidSongID
+			return ErrInvalidEntityID
+		case codes.DeadlineExceeded:
+			return ErrUpstreamTimeout
 		default:
 			return ErrUpstreamFailure
 		}
@@ -116,6 +134,9 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 
 	publishCtx, publishSpan := s.tr.Start(ratingCtx, "rating.create.publish")
 	defer publishSpan.End()
+	if s.jsc == nil {
+		return nil
+	}
 
 	err = retry.Do(
 		func() error {
@@ -185,6 +206,9 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 
 	publishCtx, publishSpan := s.tr.Start(ctx, "rating.delete.publish")
 	defer publishSpan.End()
+	if s.jsc == nil {
+		return nil
+	}
 
 	err = retry.Do(
 		func() error {
@@ -338,6 +362,9 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 
 	publishCtx, publishSpan := s.tr.Start(ctx, "rating.update.publish")
 	defer publishSpan.End()
+	if s.jsc == nil {
+		return rating, nil
+	}
 
 	err = retry.Do(
 		func() error {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go"
+	"github.com/sony/gobreaker"
 	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
@@ -27,9 +28,12 @@ var (
 	ErrEntityNotFound       = errors.New("genre/artist couldn't be found")
 	ErrSubscriptionNotFound = errors.New("subscription couldn't found")
 	ErrInvalidEntityID      = errors.New("error has ocurred while parsing genre/artist id")
-	ErrUpstreamFailure      = errors.New("error has ocurred while fetching artist/genre")
 	ErrPublish              = errors.New("error has occured while publishing subscriber batch event")
 	ErrObjectIdCastFailed   = errors.New("failed to convert hex to objectId")
+	ErrUpstreamTimeout      = errors.New("upstream service request timed out")
+	ErrUpstreamFailure      = errors.New("upstream service returned an internal error")
+	ErrUpstreamUnavailable  = errors.New("upstream service is temporarily unavailable")
+	ErrUpstreamThrottled    = errors.New("upstream throttled")
 )
 
 const BATCH_SIZE = 500
@@ -41,6 +45,7 @@ type SubscriptionRepository interface {
 	IsSubscribed(subscriberID, entityID primitive.ObjectID, ctx context.Context) error
 	FindSubscriptionsByUserID(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Subscription, int64, error)
 	FindEntitySubscriberCount(ctx context.Context, entityID primitive.ObjectID) (int64, error)
+	UpdateSubscriptionsByEntityID(ctx context.Context, entityID primitive.ObjectID, entityName string) error
 }
 
 type ContentEntityGetter interface {
@@ -56,11 +61,39 @@ type SubscriptionService struct {
 	gcc ContentEntityGetter
 	jsc EventPublisher
 	tr  trace.Tracer
+	cb  *gobreaker.CircuitBreaker
 }
 
 func NewSubscriptionService(sr SubscriptionRepository, gcc ContentEntityGetter, jsc EventPublisher) *SubscriptionService {
 	tr := otel.Tracer("subscription-service/subscription-service")
-	s := SubscriptionService{sr: sr, gcc: gcc, jsc: jsc, tr: tr}
+
+	settings := gobreaker.Settings{
+		Name: "content-service",
+		// defines the number of request which will be passed through when the circuit breaker is half open
+		// on which we are going to decide will we keep the circuit open or close it
+		MaxRequests: 3,
+
+		// defines the time window in which the request states will be saved, when the time is up, all request
+		// data is being removed
+		Interval: 15 * time.Second,
+
+		// amount of time given to the server to get back up, since the content service dependencies aren't slow
+		// to start up like cassandra 10 secs is fair
+		Timeout: 10 * time.Second,
+
+		// defines the case in which the circuit will be opened, in this case if more than 10 requests have been
+		// executed and more than 30% of them failed, we want to open the circuit
+		ReadyToTrip: func(counts gobreaker.Counts) bool {
+			failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
+			return counts.Requests >= 10 && failureRatio >= 0.3
+			// return counts.TotalFailures >= 1
+		},
+		OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
+			// testing purposes
+			// fmt.Print("circuit breaker state changed: ", to.String())
+		},
+	}
+	s := SubscriptionService{sr: sr, gcc: gcc, jsc: jsc, tr: tr, cb: gobreaker.NewCircuitBreaker(settings)}
 
 	return &s
 }
@@ -90,25 +123,41 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 	ctx, span := s.tr.Start(ctx, "subscription.subscribe")
 	defer span.End()
 
-	entityExistenceCtx, entityExistenceSpan := s.tr.Start(ctx, "subscription.subscribe.entity_exists")
-	defer entityExistenceSpan.End()
+	entityName, err := s.cb.Execute(func() (any, error) {
+		entityCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		defer cancel()
 
-	entityName, err := s.gcc.GetEntity(entityExistenceCtx, req.EntityID, req.Type)
+		entityExistenceCtx, entityExistenceSpan := s.tr.Start(entityCtx, "subscription.subscribe.entity_exists")
+		defer entityExistenceSpan.End()
+
+		name, err := s.gcc.GetEntity(entityExistenceCtx, req.EntityID, req.Type)
+		if err != nil {
+			return nil, err
+		}
+		return name, nil
+	})
 	if err != nil {
-		entityExistenceSpan.RecordError(err)
+		if errors.Is(err, gobreaker.ErrOpenState) {
+			return ErrUpstreamUnavailable
+		}
+
+		if errors.Is(err, gobreaker.ErrTooManyRequests) {
+			return ErrUpstreamThrottled
+		}
 
 		st, ok := status.FromError(err)
 		if !ok {
 			return err
 		}
 
-		// TODO: Handle different types of errors with resiliency mechanisms
 		//nolint:exhaustive
 		switch st.Code() {
 		case codes.NotFound:
 			return ErrEntityNotFound
 		case codes.InvalidArgument:
 			return ErrInvalidEntityID
+		case codes.DeadlineExceeded:
+			return ErrUpstreamTimeout
 		default:
 			return ErrUpstreamFailure
 		}
@@ -116,7 +165,7 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 
 	userIDstr := middlewares.GetUserIdFromContext(ctx)
 
-	se, err := mappers.ToSubscriptionEntity(req, userIDstr, entityName)
+	se, err := mappers.ToSubscriptionEntity(req, userIDstr, entityName.(string))
 	if err != nil {
 		span.RecordError(err)
 		return err
@@ -339,4 +388,26 @@ func (s *SubscriptionService) FindEntitySubscriberCount(ctx context.Context, ent
 	}
 
 	return &dtos.EntitySubscriberCountDTO{SubscriberCount: c}, nil
+}
+
+func (s *SubscriptionService) UpdateSubscriptions(ctx context.Context, p events.EntityUpdatedEventPayload) error {
+	updateCtx, updateSpan := s.tr.Start(ctx, "subscriptions.update")
+	defer updateSpan.End()
+
+	entityID, err := primitive.ObjectIDFromHex(p.EntityID)
+	if err != nil {
+		updateSpan.RecordError(err)
+		return ErrInvalidEntityID
+	}
+
+	repoCtx, repoSpan := s.tr.Start(updateCtx, "subscriptions.update.repo_update")
+	defer repoSpan.End()
+
+	err = s.sr.UpdateSubscriptionsByEntityID(repoCtx, entityID, p.EntityName)
+	if err != nil {
+		repoSpan.RecordError(err)
+		return err
+	}
+
+	return nil
 }
