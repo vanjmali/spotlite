@@ -7,10 +7,9 @@ services:
       dockerfile: ../Dockerfile.microservice
     environment:
       APP_PORT: 3000
-      SRV_REC_NEO4J_URI: ${SRV_REC_NEO4J_URI?}
-      SRV_REC_NEO4J_USER: ${SRV_REC_NEO4J_USER?}
-      SRV_REC_NEO4J_PASSWORD: ${SRV_REC_NEO4J_PASSWORD?}
-      NATS_URL: ${NATS_URL?}
+      NEO4J_URI: ${SRV_REC_NEO4J_URI?}
+      NEO4J_USER: ${SRV_REC_NEO4J_USER?}
+      NEO4J_PASSWORD: ${SRV_REC_NEO4J_PASSWORD?}
       LOG_DIR: ${LOG_DIR?}
       LOG_ROTATE_MAX_SIZE_MB: ${LOG_ROTATE_MAX_SIZE_MB?}
       LOG_ROTATE_MAX_BACKUPS: ${LOG_ROTATE_MAX_BACKUPS?}
@@ -42,7 +41,7 @@ services:
     image: neo4j:5.18
     environment:
       NEO4J_AUTH: ${SRV_REC_NEO4J_USER?}/${SRV_REC_NEO4J_PASSWORD?}
-      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+      NEO4J_dbms_security_procedures_unrestricted: ${SRV_REC_NEO4J_UNRESTRICTED_PROCEDURES?}
     healthcheck:
       test:
         [

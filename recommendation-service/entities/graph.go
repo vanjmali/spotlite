@@ -35,7 +35,8 @@ type AlbumNode struct {
 type Rating struct {
 	UserID string
 	SongID string
-	Value  int // 1-5
+	// Value is a rating value from 1 to 5
+	Value  int
 }
 
 // Listened represents a LISTENED relationship in the graph.

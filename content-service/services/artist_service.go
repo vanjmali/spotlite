@@ -132,19 +132,31 @@ func (s *ArtistService) FindArtistByID(ctx context.Context, idStr string) (*enti
 
 // UpdateArtist updates an existing artist with the provided partial data.
 func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos.UpdateArtistDto) (*entities.Artist, error) {
-	ctx, span := s.tr.Start(ctx, "artist.update_artist")
-	defer span.End()
+	updateCtx, updateSpan := s.tr.Start(ctx, "artist.update")
+	defer updateSpan.End()
 
-	_, parseSpan := s.tr.Start(ctx, "artist.update_artist.parse_id")
 	id, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
-		parseSpan.RecordError(err)
-		parseSpan.End()
+		updateSpan.RecordError(err)
 		return nil, ErrObjectIdCastFailed
 	}
-	parseSpan.End()
 
-	_, buildSpan := s.tr.Start(ctx, "artist.update.build_update_doc")
+	// fetches current state of the genre for potential roll back
+	getCtx, getSpan := s.tr.Start(updateCtx, "artist.update.get_current_state")
+	defer getSpan.End()
+
+	currentArtist, err := s.r.FindByID(getCtx, id)
+	if err != nil {
+		getSpan.RecordError(err)
+		switch {
+		case errors.Is(err, mongo.ErrNoDocuments):
+			updateSpan.RecordError(err)
+			return nil, ErrArtistNotFound
+		default:
+			updateSpan.RecordError(err)
+			return nil, err
+		}
+	}
 
 	update := make(map[string]any)
 
@@ -154,11 +166,9 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 	if dto.GenreIds != nil {
 		embeddedGenres := make([]entities.Genre, 0)
 		for _, genreIdStr := range *dto.GenreIds {
-			genre, err := s.genreService.FindGenreByID(ctx, genreIdStr)
+			genre, err := s.genreService.FindGenreByID(updateCtx, genreIdStr)
 			if err != nil {
-				buildSpan.RecordError(err)
-				buildSpan.End()
-
+				updateSpan.RecordError(err)
 				switch {
 				case errors.Is(err, ErrObjectIdCastFailed):
 					return nil, ErrObjectIdCastFailed
@@ -182,26 +192,70 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 
 	if len(update) == 0 {
 		err := errors.New("no fields to update")
-		buildSpan.RecordError(err)
-		buildSpan.End()
+		updateSpan.RecordError(err)
 		return nil, err
 	}
-	buildSpan.End()
-
-	repoCtx, repoSpan := s.tr.Start(ctx, "artist.update.repository_update")
+	repoCtx, repoSpan := s.tr.Start(updateCtx, "artist.update.repo")
+	defer repoSpan.End()
 
 	updatedArtist, err := s.r.UpdateByID(repoCtx, id, update)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			repoSpan.RecordError(err)
-			repoSpan.End()
 			return nil, ErrArtistNotFound
 		}
 		repoSpan.RecordError(err)
-		repoSpan.End()
 		return nil, err
 	}
-	repoSpan.End()
+
+	eventCtx, eventSpan := s.tr.Start(updateCtx, "artist.update.update_event")
+	defer eventSpan.End()
+
+	aep := toArtistUpdatedEvent(updatedArtist.ID.Hex(), updatedArtist.Name)
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_ENTITY_UPDATED, aep)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+	if err != nil {
+		logging.Errorf(eventCtx, "failed to publish entity updated event: %v", err)
+		eventSpan.RecordError(err)
+
+		var errs []error
+
+		errs = append(errs, err)
+
+		rbCtx, rbSpan := s.tr.Start(updateCtx, "artist.update.rollback")
+		defer rbSpan.End()
+
+		// set param to previous genre state name
+		rbUpdate := make(map[string]any)
+
+		if dto.Name != nil {
+			rbUpdate["name"] = currentArtist.Name
+		}
+
+		if dto.GenreIds != nil {
+			rbUpdate["genres"] = currentArtist.Genres
+		}
+
+		if dto.Description != nil {
+			rbUpdate["description"] = currentArtist.Description
+		}
+
+		_, err := s.r.UpdateByID(rbCtx, id, rbUpdate)
+		if err != nil {
+			rbSpan.RecordError(err)
+			errs = append(errs, err)
+		}
+
+		return nil, errors.Join(errs...)
+	}
 
 	return updatedArtist, nil
 }
@@ -312,5 +366,12 @@ func toArtistCreatedEvent(genreIDs []string, artistID string, artistName string)
 		CreatedAt:  time.Now(),
 		EntityType: events.ArtistType,
 		EventID:    primitive.NewObjectID().Hex(),
+	}
+}
+
+func toArtistUpdatedEvent(artistID string, artistName string) *events.EntityUpdatedEventPayload {
+	return &events.EntityUpdatedEventPayload{
+		EntityID:   artistID,
+		EntityName: artistName,
 	}
 }

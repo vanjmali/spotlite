@@ -34,11 +34,32 @@ func (h *SubscriptionConsumer) HandleEntityCreated(ctx context.Context, msg jets
 		// if an error has occured while parsing UUID, converting from string to primitive.objectID,
 		// another try won't make a difference and we want to abort
 		if errors.Is(err, repositories.ErrUUIDParse) {
+			logging.Errorf(ctx, "critical: failed to parse Target IDs: %v", err)
 			return nil
 		}
 
 		// errors can be caused because of the database being down, network or any
 		// other infrastructure issues so we want to retry it just in case
+		logging.Errorf(ctx, "error: an unexpected error has occured: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (h *SubscriptionConsumer) HandleEntityUpdated(ctx context.Context, msg jetstream.Msg) error {
+	var p events.EntityUpdatedEventPayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		logging.Errorf(ctx, "critical: failed to unmarshal EntityUpdatedPayload: %v", err)
+		return nil
+	}
+
+	err := h.ss.UpdateSubscriptions(ctx, p)
+	if err != nil {
+		if errors.Is(err, services.ErrInvalidEntityID) {
+			return nil
+		}
+
 		return err
 	}
 

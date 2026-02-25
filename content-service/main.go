@@ -79,7 +79,7 @@ var (
 			}()
 
 			// make sure stream is already initialized
-			err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED})
+			err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBJECT_ENTITY_UPDATED})
 			if err != nil {
 				err = fmt.Errorf("failed to ensure NATS stream: %w", err)
 				return h, shutdown, err
@@ -138,6 +138,7 @@ var (
 		}{
 			CertFilePath: certFilePath,
 			KeyFilePath:  keyFilePath,
+			WriteTimeout: 25 * time.Second,
 		},
 	}
 )
@@ -191,7 +192,7 @@ func createServices(
 	*services.AlbumService,
 	*services.GlobalSearchService,
 ) {
-	gs := services.NewGenreService(*gr)
+	gs := services.NewGenreService(*gr, *jsc)
 	as := services.NewArtistService(*ar, *gs, *jsc)
 	als := services.NewAlbumService(*alr, *as, *sr, *gs, *jsc)
 	ss := services.NewSongService(*sr, *as, *gs, als, hdfsStore)
