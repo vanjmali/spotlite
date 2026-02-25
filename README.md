@@ -105,6 +105,8 @@ Dashboards and tools:
 - http://localhost:3000/dev/user-service - [Mongo Express](https://github.com/mongo-express/mongo-express) to User Service
 - http://localhost:3000/dev/content-service - [Mongo Express](https://github.com/mongo-express/mongo-express) to Content Service
 - http://localhost:3000/dev/subscription-service - [Mongo Express](https://github.com/mongo-express/mongo-express) to Subscription Service
+- http://localhost:7474 - Neo4j Browser UI for Recommendation Service (user: `neo4j`, pass: `password`)
+- bolt://localhost:7687 - Neo4j Bolt connection for Recommendation Service
 - http://localhost:9870 - HDFS NameNode web UI (Content Service development storage)
 
 Database connections for services:

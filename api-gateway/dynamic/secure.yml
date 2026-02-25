@@ -10,6 +10,8 @@ tls:
       keyFile: /etc/traefik/certs/subscription-service.key
     - certFile: /etc/traefik/certs/notification-service.crt
       keyFile: /etc/traefik/certs/notification-service.key
+    - certFile: /etc/traefik/certs/recommendation-service.crt
+      keyFile: /etc/traefik/certs/recommendation-service.key
 
   stores:
     default:

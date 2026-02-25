@@ -1,0 +1,72 @@
+services:
+  recommendation-service:
+    build:
+      context: .
+      additional_contexts:
+        common-lib: ../common-lib
+      dockerfile: ../Dockerfile.microservice
+    environment:
+      APP_PORT: 3000
+      NEO4J_URI: ${SRV_REC_NEO4J_URI?}
+      NEO4J_USER: ${SRV_REC_NEO4J_USER?}
+      NEO4J_PASSWORD: ${SRV_REC_NEO4J_PASSWORD?}
+      LOG_DIR: ${LOG_DIR?}
+      LOG_ROTATE_MAX_SIZE_MB: ${LOG_ROTATE_MAX_SIZE_MB?}
+      LOG_ROTATE_MAX_BACKUPS: ${LOG_ROTATE_MAX_BACKUPS?}
+      LOG_ROTATE_MAX_AGE_DAYS: ${LOG_ROTATE_MAX_AGE_DAYS?}
+      LOG_ROTATE_COMPRESS: ${LOG_ROTATE_COMPRESS?}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    labels:
+      traefik.enable: true
+      traefik.docker.network: spotlite-api-gateway
+      traefik.http.routers.recommendation-service.rule: PathPrefix(`/api/recommendations`)
+      traefik.http.routers.recommendation-service.middlewares: recommendation-service-strip-prefix@docker,rate-limit-global@file
+      traefik.http.middlewares.recommendation-service-strip-prefix.stripprefix.prefixes: /api/recommendations
+      traefik.http.services.recommendation-service.loadbalancer.server.scheme: https
+      traefik.http.middlewares.recommendation-service-strip-prefix.stripprefix.forceslash: false
+      traefik.http.services.recommendation-service.loadbalancer.server.port: "3000"
+      traefik.http.services.recommendation-service.loadbalancer.healthcheck.path: /healthz
+      traefik.http.services.recommendation-service.loadbalancer.healthcheck.interval: 5s
+      traefik.http.services.recommendation-service.loadbalancer.healthcheck.timeout: 2s
+      traefik.http.routers.recommendation-service.entrypoints: websecure
+      traefik.http.routers.recommendation-service.tls: true
+    depends_on:
+      recommendation-neo4j:
+        condition: service_healthy
+    networks:
+      - api-gateway
+      - recommendation-internal
+
+  recommendation-neo4j:
+    image: neo4j:5.18
+    environment:
+      NEO4J_AUTH: ${SRV_REC_NEO4J_USER?}/${SRV_REC_NEO4J_PASSWORD?}
+      NEO4J_dbms_security_procedures_unrestricted: ${SRV_REC_NEO4J_UNRESTRICTED_PROCEDURES?}
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "cypher-shell",
+          "-u",
+          "${SRV_REC_NEO4J_USER?}",
+          "-p",
+          "${SRV_REC_NEO4J_PASSWORD?}",
+          "MATCH (n) RETURN count(n)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    volumes:
+      - recommendation-neo4j-data:/data
+    networks:
+      - recommendation-internal
+
+networks:
+  # Connects to Traefik
+  api-gateway:
+    name: spotlite-api-gateway
+  recommendation-internal:
+
+volumes:
+  recommendation-neo4j-data:
