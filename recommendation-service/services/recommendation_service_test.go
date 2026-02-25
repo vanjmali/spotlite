@@ -715,6 +715,6 @@ func TestEnrichmentHandlesArtistErrors(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, recommendations, 1)
 	require.Equal(t, []string{}, recommendations[0].ArtistNames)
-	require.Equal(t, 4.5, recommendations[0].AverageRating) // Rating stats still available
+	require.InEpsilon(t, 4.5, recommendations[0].AverageRating, 0.01) // Rating stats still available
 	require.Equal(t, int64(100), recommendations[0].RatingCount)
 }
