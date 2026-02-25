@@ -130,39 +130,6 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 		return err
 	}
 
-	// Publish subscription created event with retry for reliability
-	entityType := ""
-	if se.Type == subscription.ArtistSubscription {
-		entityType = "ARTIST"
-	} else if se.Type == subscription.GenreSubscription {
-		entityType = "GENRE"
-	}
-
-	payload := events.SubscriptionEventPayload{
-		UserID:     se.SubscriberID.Hex(),
-		EntityID:   se.EntityID.Hex(),
-		EntityType: entityType,
-		EventID:    primitive.NewObjectID().Hex(),
-		CreatedAt:  se.SubscribedAt,
-	}
-
-	publishCtx, publishSpan := s.tr.Start(ctx, "subscription.subscribe.publish")
-	defer publishSpan.End()
-
-	err = retry.Do(
-		func() error {
-			return s.jsc.Publish(publishCtx, events.SUBJECT_SUBSCRIPTION_CREATED, payload)
-		},
-		retry.Attempts(3),
-		retry.Delay(time.Second),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Context(publishCtx),
-	)
-	if err != nil {
-		publishSpan.RecordError(err)
-		logging.Errorf(publishCtx, "failed to publish subscription created event: %v", err)
-	}
-
 	return nil
 }
 
@@ -197,8 +164,6 @@ func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx conte
 		return ErrSubscriptionNotFound
 	}
 
-	existing := subs[0]
-
 	deleteCtx, deleteSpan := s.tr.Start(ctx, "subscription.unsubscribe.delete")
 	defer deleteSpan.End()
 
@@ -210,39 +175,6 @@ func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx conte
 
 	if ddc != 1 {
 		return ErrSubscriptionNotFound
-	}
-
-	// Publish subscription deleted event with retry for reliability
-	entityType := ""
-	if existing.Type == subscription.ArtistSubscription {
-		entityType = "ARTIST"
-	} else if existing.Type == subscription.GenreSubscription {
-		entityType = "GENRE"
-	}
-
-	payload := events.SubscriptionEventPayload{
-		UserID:     existing.SubscriberID.Hex(),
-		EntityID:   existing.EntityID.Hex(),
-		EntityType: entityType,
-		EventID:    primitive.NewObjectID().Hex(),
-		CreatedAt:  existing.SubscribedAt,
-	}
-
-	publishCtx, publishSpan := s.tr.Start(ctx, "subscription.unsubscribe.publish")
-	defer publishSpan.End()
-
-	err = retry.Do(
-		func() error {
-			return s.jsc.Publish(publishCtx, events.SUBJECT_SUBSCRIPTION_DELETED, payload)
-		},
-		retry.Attempts(3),
-		retry.Delay(time.Second),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Context(publishCtx),
-	)
-	if err != nil {
-		publishSpan.RecordError(err)
-		logging.Errorf(publishCtx, "failed to publish subscription deleted event: %v", err)
 	}
 
 	return nil

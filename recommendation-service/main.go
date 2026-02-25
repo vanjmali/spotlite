@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/nats-io/nats.go"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
@@ -21,18 +22,11 @@ import (
 	"github.com/vanjmali/spotlite/recommendation-service/services"
 )
 
-const (
-	ratingCreatedDurable       = events.RATING_DURABLE + "_CREATED"
-	ratingUpdatedDurable       = events.RATING_DURABLE + "_UPDATED"
-	ratingDeletedDurable       = events.RATING_DURABLE + "_DELETED"
-	subscriptionCreatedDurable = events.SUBSCRIPTION_DURABLE + "_CREATED"
-	subscriptionDeletedDurable = events.SUBSCRIPTION_DURABLE + "_DELETED"
-)
-
 var (
-	certFilePath = utils.MustGetEnv("CERT_PATH")
-	keyFilePath  = utils.MustGetEnv("KEY_PATH")
-	config       = server.ServerRunConfiguration{
+	certFilePath       = utils.MustGetEnv("CERT_PATH")
+	keyFilePath        = utils.MustGetEnv("KEY_PATH")
+	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
+	config             = server.ServerRunConfiguration{
 		TelemetryName: "recommendation-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
 		CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
@@ -51,28 +45,23 @@ var (
 				_ = dbc.Close(ctx)
 			}()
 
-			// Ensure streams exist
-			if err = jsc.EnsureStream(ctx, events.RATINGS_STREAM, []string{
-				events.SUBJECT_RATING_CREATED,
-				events.SUBJECT_RATING_UPDATED,
-				events.SUBJECT_RATING_DELETED,
-			}); err != nil {
-				err = fmt.Errorf("failed to ensure ratings stream: %w", err)
+			if err = jsc.EnsureStream(ctx, events.ARTISTS_STREAM, []string{events.SUBJECT_ARTIST_CREATED}); err != nil {
+				err = fmt.Errorf("failed to ensure artists stream: %w", err)
 				return h, shutdown, err
 			}
 
-			if err = jsc.EnsureStream(ctx, events.LISTENS_STREAM, []string{
-				events.SUBJECT_LISTEN_CREATED,
-			}); err != nil {
-				err = fmt.Errorf("failed to ensure listens stream: %w", err)
+			if err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_SUBSCRIBED, events.SUBJECT_GENRE_CREATED}); err != nil {
+				err = fmt.Errorf("failed to ensure genres stream: %w", err)
 				return h, shutdown, err
 			}
 
-			if err = jsc.EnsureStream(ctx, events.SUBSCRIPTIONS_STREAM, []string{
-				events.SUBJECT_SUBSCRIPTION_CREATED,
-				events.SUBJECT_SUBSCRIPTION_DELETED,
-			}); err != nil {
-				err = fmt.Errorf("failed to ensure subscriptions stream: %w", err)
+			if err = jsc.EnsureStream(ctx, events.USERS_STREAM, []string{events.SUBJECT_USER_CREATED}); err != nil {
+				err = fmt.Errorf("failed to ensure users stream: %w", err)
+				return h, shutdown, err
+			}
+
+			if err = jsc.EnsureStream(ctx, events.SONGS_STREAM, []string{events.SUBJECT_SONG_CREATED, events.SUBJECT_SONG_RATED}); err != nil {
+				err = fmt.Errorf("failed to ensure songs stream: %w", err)
 				return h, shutdown, err
 			}
 
@@ -99,46 +88,51 @@ var (
 			}
 
 			startConsumer(
-				events.RATINGS_STREAM,
-				events.SUBJECT_RATING_CREATED,
-				ratingCreatedDurable,
-				"rating created",
+				events.ARTISTS_STREAM,
+				events.SUBJECT_ARTIST_CREATED,
+				events.ARTIST_DURABLE,
+				"artist created",
 				c.HandleRatingCreated,
 			)
+
 			startConsumer(
-				events.RATINGS_STREAM,
-				events.SUBJECT_RATING_UPDATED,
-				ratingUpdatedDurable,
-				"rating updated",
-				c.HandleRatingUpdated,
+				events.GENRES_STREAM,
+				events.SUBJECT_GENRE_CREATED,
+				events.GENRE_DURABLE,
+				"genre created",
+				c.HandleRatingCreated,
 			)
+
 			startConsumer(
-				events.RATINGS_STREAM,
-				events.SUBJECT_RATING_DELETED,
-				ratingDeletedDurable,
-				"rating deleted",
-				c.HandleRatingDeleted,
+				events.GENRES_STREAM,
+				events.SUBJECT_GENRE_SUBSCRIBED,
+				events.GENRE_DURABLE,
+				"genre subscription created",
+				c.HandleRatingCreated,
 			)
+
 			startConsumer(
-				events.LISTENS_STREAM,
-				events.SUBJECT_LISTEN_CREATED,
-				events.LISTEN_DURABLE,
-				"listen created",
-				c.HandleListenCreated,
+				events.SONGS_STREAM,
+				events.SUBJECT_SONG_CREATED,
+				events.SONG_DURABLE,
+				"song created",
+				c.HandleRatingCreated,
 			)
+
 			startConsumer(
-				events.SUBSCRIPTIONS_STREAM,
-				events.SUBJECT_SUBSCRIPTION_CREATED,
-				subscriptionCreatedDurable,
-				"subscription created",
-				c.HandleSubscriptionCreated,
+				events.SONGS_STREAM,
+				events.SUBJECT_SONG_RATED,
+				events.SONG_DURABLE,
+				"song rating created",
+				c.HandleRatingCreated,
 			)
+
 			startConsumer(
-				events.SUBSCRIPTIONS_STREAM,
-				events.SUBJECT_SUBSCRIPTION_DELETED,
-				subscriptionDeletedDurable,
-				"subscription deleted",
-				c.HandleSubscriptionDeleted,
+				events.USERS_STREAM,
+				events.SUBJECT_USER_CREATED,
+				events.USER_DURABLE,
+				"user created",
+				c.HandleRatingCreated,
 			)
 
 			shutdown = func() error {
@@ -188,20 +182,18 @@ func main() {
 }
 
 func createClients() (neo4j.DriverWithContext, *events.JetStreamClient, error) {
-	neoUri := utils.GetEnv("SRV_REC_NEO4J_URI", "neo4j://localhost:7687")
-	neoUser := utils.GetEnv("SRV_REC_NEO4J_USER", "neo4j")
-	neoPass := utils.GetEnv("SRV_REC_NEO4J_PASSWORD", "password")
+	neoUri := utils.MustGetEnv("NEO4J_URI")
+	neoUser := utils.MustGetEnv("NEO4J_USER")
+	neoPass := utils.MustGetEnv("NEO4J_PASSWORD")
 
 	dbc, err := neo4j.NewDriverWithContext(neoUri, neo4j.BasicAuth(neoUser, neoPass, ""))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create Neo4j driver: %w", err)
 	}
 
-	natsUrl := utils.GetEnv("NATS_URL", "nats://localhost:4222")
-	jsc, err := events.NewClient(natsUrl)
+	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
 	if err != nil {
-		_ = dbc.Close(context.Background())
-		return nil, nil, fmt.Errorf("failed to create NATS JetStream client: %w", err)
+		return nil, nil, fmt.Errorf("failed to initialized NATS jet stream client: %w", err)
 	}
 
 	return dbc, jsc, nil

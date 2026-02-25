@@ -85,10 +85,7 @@ var (
 			}
 
 			// Ensure subscriptions stream for publishing subscription events
-			err = jsc.EnsureStream(ctx, events.SUBSCRIPTIONS_STREAM, []string{
-				events.SUBJECT_SUBSCRIPTION_CREATED,
-				events.SUBJECT_SUBSCRIPTION_DELETED,
-			})
+			err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_SUBSCRIBED})
 			if err != nil {
 				err = fmt.Errorf("failed to ensure subscriptions stream: %w", err)
 				return h, shutdown, err

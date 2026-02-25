@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/nats-io/nats.go"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
@@ -65,11 +66,7 @@ var (
 			}
 
 			// Ensure ratings stream exists before publishing
-			err = jsc.EnsureStream(ctx, events.RATINGS_STREAM, []string{
-				events.SUBJECT_RATING_CREATED,
-				events.SUBJECT_RATING_UPDATED,
-				events.SUBJECT_RATING_DELETED,
-			})
+			err = jsc.EnsureStream(ctx, events.SONGS_STREAM, []string{events.SUBJECT_SONG_RATED})
 			if err != nil {
 				err = fmt.Errorf("failed to ensure ratings stream: %w", err)
 				return h, shutdown, err
@@ -143,10 +140,9 @@ func createClients() (*mongodriver.Client, *grpc.ClientConn, *events.JetStreamCl
 		return nil, nil, nil, fmt.Errorf("failed to establish a RPC connection with the content-service: %w", err)
 	}
 
-	natsURL := utils.MustGetEnv("NATS_URL")
-	jsc, err := events.NewClient(natsURL)
+	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to initialize NATS JetStream client: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to initialized NATS jet stream client: %w", err)
 	}
 
 	return dbc, gc, jsc, nil

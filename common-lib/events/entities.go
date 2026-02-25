@@ -12,8 +12,10 @@ const (
 
 	CONTENT_STREAM       = "CONTENT"
 	SUBSCRIPTIONS_STREAM = "SUBSCRIPTIONS"
-	RATINGS_STREAM       = "RATINGS"
-	LISTENS_STREAM       = "LISTENS"
+	USERS_STREAM         = "USERS"
+	SONGS_STREAM         = "SONGS"
+	GENRES_STREAM        = "GENRES"
+	ARTISTS_STREAM       = "ARTISTS"
 
 	SUBJECT_ENTITY_CREATED = "content.created"
 	ENTITY_DURABLE         = "ENTITY_CREATOR"
@@ -21,17 +23,19 @@ const (
 	SUBJECT_SUBSCRIBER_BATCH = "subscribers.batch.process"
 	SUB_DURABLE              = "SUBSCRIBER_PROCESSOR"
 
-	SUBJECT_RATING_CREATED = "rating.created"
-	SUBJECT_RATING_UPDATED = "rating.updated"
-	SUBJECT_RATING_DELETED = "rating.deleted"
-	RATING_DURABLE         = "RATING_PROCESSOR"
+	SUBJECT_USER_CREATED = "user.created"
+	USER_DURABLE         = "USER_PROCESSOR"
 
-	SUBJECT_LISTEN_CREATED = "listen.created"
-	LISTEN_DURABLE         = "LISTEN_PROCESSOR"
+	SUBJECT_GENRE_CREATED    = "genre.created"
+	SUBJECT_GENRE_SUBSCRIBED = "genre.subscription.created"
+	GENRE_DURABLE            = "GENRE_PROCESSOR"
 
-	SUBJECT_SUBSCRIPTION_CREATED = "subscription.created"
-	SUBJECT_SUBSCRIPTION_DELETED = "subscription.deleted"
-	SUBSCRIPTION_DURABLE         = "SUBSCRIPTION_PROCESSOR"
+	SUBJECT_SONG_CREATED = "songs.created"
+	SUBJECT_SONG_RATED   = "songs.rating.created"
+	SONG_DURABLE         = "SONG_PROCESSOR"
+
+	SUBJECT_ARTIST_CREATED = "artist.created"
+	ARTIST_DURABLE         = "ARTIST_PROCESSOR"
 )
 
 type EntityCreatedEventPayload struct {
