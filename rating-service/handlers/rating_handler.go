@@ -128,6 +128,10 @@ func (h *RatingHandler) HandleGetRatingsBySongID(w http.ResponseWriter, r *http.
 			logging.Warnf(r.Context(), "failed to process get ratings request: %v", err)
 			_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))
 			return
+		case errors.Is(err, services.ErrObjectIdCastFailed):
+			logging.Warnf(r.Context(), "failed to process get ratings request: %v", err)
+			_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))
+			return
 		default:
 			logging.Errorf(r.Context(), "failed to process get ratings request: %v", err)
 			_ = respond.InternalServerError(w)
