@@ -145,7 +145,6 @@ func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.U
 		retry.DelayType(retry.BackOffDelay),
 		retry.Context(eventCtx),
 	)
-
 	// if event couldn't be published rollback to previous genre state
 	if err != nil {
 		logging.Errorf(eventCtx, "failed to publish entity updated event: %v", err)

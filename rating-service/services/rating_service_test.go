@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/sony/gobreaker"
@@ -13,6 +14,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+var errFakeRepoSentinel = errors.New("fake repo sentinel")
 
 type fakeRatingRepo struct {
 	createCalled bool
@@ -28,10 +31,15 @@ func (f *fakeRatingRepo) Delete(ratingID primitive.ObjectID, userID primitive.Ob
 }
 
 func (f *fakeRatingRepo) FindByID(ctx context.Context, ratingID primitive.ObjectID) (*entities.Rating, error) {
-	return nil, nil
+	return nil, errFakeRepoSentinel
 }
 
-func (f *fakeRatingRepo) FindRatingsBySongID(ctx context.Context, songID primitive.ObjectID, batchSize int, lastID *primitive.ObjectID) ([]*entities.Rating, string, error) {
+func (f *fakeRatingRepo) FindRatingsBySongID(
+	ctx context.Context,
+	songID primitive.ObjectID,
+	batchSize int,
+	lastID *primitive.ObjectID,
+) ([]*entities.Rating, string, error) {
 	return nil, "", nil
 }
 
@@ -39,12 +47,17 @@ func (f *fakeRatingRepo) FindRatingsByUserID(ctx context.Context, filter bson.M,
 	return nil, 0, nil
 }
 
-func (f *fakeRatingRepo) UpdateByID(ctx context.Context, ratingID primitive.ObjectID, userID primitive.ObjectID, update map[string]any) (*entities.Rating, error) {
-	return nil, nil
+func (f *fakeRatingRepo) UpdateByID(
+	ctx context.Context,
+	ratingID primitive.ObjectID,
+	userID primitive.ObjectID,
+	update map[string]any,
+) (*entities.Rating, error) {
+	return nil, errFakeRepoSentinel
 }
 
 func (f *fakeRatingRepo) GetAverageRatingBySongID(ctx context.Context, songID primitive.ObjectID) (*dtos.SongRatingSummary, error) {
-	return nil, nil
+	return nil, errFakeRepoSentinel
 }
 
 type fakeSongGetter struct {
