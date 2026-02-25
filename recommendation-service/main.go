@@ -69,7 +69,7 @@ var (
 
 			ur, sr, ar, gr, abr, rr := createRepositories(dbc)
 			ss, rs := createServices(ur, sr, ar, gr, abr, rr)
-			h = createHandlers(ss, rs)
+			h = createHandlers(rs)
 			c := createConsumers(ur, sr, ar, gr, abr, rr)
 
 			// Start consumers in background
@@ -272,7 +272,7 @@ func createConsumers(
 	return consumers.NewRecommendationConsumer(ur, sr, ar, gr, abr, rr)
 }
 
-func createHandlers(ss *services.Services, rs *services.RecommendationService) http.Handler {
+func createHandlers(rs *services.RecommendationService) http.Handler {
 	rh := handlers.NewRecommendationHandler(rs)
 	return routers.HandleRequests(rh)
 }

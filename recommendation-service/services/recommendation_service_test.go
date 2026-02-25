@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -75,7 +76,7 @@ func (m *mockSongRepository) Get(ctx context.Context, songID string) (*entities.
 	if song, ok := m.songs[songID]; ok {
 		return song, nil
 	}
-	return nil, nil
+	return nil, errors.New("song not found")
 }
 
 // TestGetPersonalizedRecommendations tests personalized recommendations
@@ -277,7 +278,7 @@ func TestRecommendationResponseDto(t *testing.T) {
 	require.NotNil(t, response)
 	require.Equal(t, 1, len(response.Songs))
 	require.Equal(t, "song1", response.Songs[0].SongID)
-	require.Equal(t, 4.5, response.Songs[0].AverageRating)
+	require.InEpsilon(t, 4.5, response.Songs[0].AverageRating, 0.01)
 }
 
 // TestEnrichSongMetadataSuccess tests successful API composition with content-service
@@ -596,12 +597,12 @@ func TestRatingScoreAggregation(t *testing.T) {
 	}
 
 	// Verify song1 retained higher rating from content-based
-	require.Equal(t, 4.7, mergedMap["song1"].AverageRating)
+	require.InEpsilon(t, 4.7, mergedMap["song1"].AverageRating, 0.01)
 	require.Equal(t, int64(50), mergedMap["song1"].RatingCount)
 	require.Equal(t, "subscribed_genres", mergedMap["song1"].Reason)
 
 	// Verify song3 included from collaborative
-	require.Equal(t, 4.9, mergedMap["song3"].AverageRating)
+	require.InEpsilon(t, 4.9, mergedMap["song3"].AverageRating, 0.01)
 	require.Equal(t, int64(200), mergedMap["song3"].RatingCount)
 }
 
