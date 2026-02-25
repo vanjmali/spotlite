@@ -38,8 +38,8 @@ var (
 				_ = dbc.Close(ctx)
 			}()
 
-			ur, sr, ar, gr := createRepositories(dbc)
-			ss := createServices(ur, sr, ar, gr)
+			ur, sr, ar, gr, abr, rr := createRepositories(dbc)
+			ss := createServices(ur, sr, ar, gr, abr, rr)
 			h = createHandlers(ss)
 
 			shutdown = func() error {
@@ -84,13 +84,17 @@ func createRepositories(driver neo4j.DriverWithContext) (
 	*repositories.SongNodeRepository,
 	*repositories.ArtistNodeRepository,
 	*repositories.GenreNodeRepository,
+	*repositories.AlbumNodeRepository,
+	*repositories.GraphRelationRepository,
 ) {
 	ur := repositories.NewUserNodeRepository(driver)
 	sr := repositories.NewSongNodeRepository(driver)
 	ar := repositories.NewArtistNodeRepository(driver)
 	gr := repositories.NewGenreNodeRepository(driver)
+	abr := repositories.NewAlbumNodeRepository(driver)
+	rr := repositories.NewGraphRelationRepository(driver)
 
-	return ur, sr, ar, gr
+	return ur, sr, ar, gr, abr, rr
 }
 
 func createServices(
@@ -98,8 +102,10 @@ func createServices(
 	sr *repositories.SongNodeRepository,
 	ar *repositories.ArtistNodeRepository,
 	gr *repositories.GenreNodeRepository,
+	abr *repositories.AlbumNodeRepository,
+	rr *repositories.GraphRelationRepository,
 ) *services.Services {
-	return services.NewServices(ur, sr, ar, gr)
+	return services.NewServices(ur, sr, ar, gr, abr, rr)
 }
 
 func createHandlers(ss *services.Services) http.Handler {
