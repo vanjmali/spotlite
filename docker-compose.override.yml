@@ -244,6 +244,26 @@ services:
     ports:
       - "${CONTENT_REDIS_PORT}:6379"
 
+  content-redis-ui:
+    image: rediscommander/redis-commander:latest
+    container_name: content-redis-ui
+    environment:
+      - REDIS_HOSTS=local:content-redis:6379
+      - HTTP_USER=admin
+      - HTTP_PASSWORD=admin
+      - URL_PREFIX=/dev/content-redis
+    labels:
+      traefik.enable: true
+      traefik.docker.network: spotlite-api-gateway
+      traefik.http.routers.content-redis-ui.rule: PathPrefix(`/dev/content-redis`)
+      traefik.http.routers.content-redis-ui.entrypoints: web
+      traefik.http.services.content-redis-ui.loadbalancer.server.port: "8081"
+    networks:
+      - api-gateway
+      - content-internal
+    depends_on:
+      - content-redis
+
   content-hdfs-namenode:
     ports:
       - "9870:9870" # HDFS web UI
