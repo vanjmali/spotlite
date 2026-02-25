@@ -4,11 +4,7 @@ import (
 	"context"
 	"errors"
 
-<<<<<<< feature/recommendation-service-logic
-=======
-	"github.com/avast/retry-go"
 	"github.com/sony/gobreaker"
->>>>>>> feature/recommendation-event-ingestion
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
@@ -124,38 +120,6 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 		return err
 	}
 
-<<<<<<< feature/recommendation-service-logic
-=======
-	// Publish rating created event with retry for reliability
-	payload := events.RatingEventPayload{
-		UserID:    ratingEntity.UserID.Hex(),
-		SongID:    ratingEntity.SongID.Hex(),
-		Rating:    int(ratingEntity.Value),
-		EventID:   primitive.NewObjectID().Hex(),
-		CreatedAt: ratingEntity.CreatedAt,
-	}
-
-	publishCtx, publishSpan := s.tr.Start(ratingCtx, "rating.create.publish")
-	defer publishSpan.End()
-	if s.jsc == nil {
-		return nil
-	}
-
-	err = retry.Do(
-		func() error {
-			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_CREATED, payload)
-		},
-		retry.Attempts(3),
-		retry.Delay(time.Second),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Context(publishCtx),
-	)
-	if err != nil {
-		publishSpan.RecordError(err)
-		logging.Errorf(publishCtx, "failed to publish rating created event: %v", err)
-	}
-
->>>>>>> feature/recommendation-event-ingestion
 	return nil
 }
 
@@ -199,38 +163,6 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 		return ErrRatingNotFound
 	}
 
-<<<<<<< feature/recommendation-service-logic
-=======
-	// Publish rating deleted event with retry for reliability
-	payload := events.RatingEventPayload{
-		UserID:    userID.Hex(),
-		SongID:    existing.SongID.Hex(),
-		Rating:    int(existing.Value),
-		EventID:   primitive.NewObjectID().Hex(),
-		CreatedAt: existing.CreatedAt,
-	}
-
-	publishCtx, publishSpan := s.tr.Start(ctx, "rating.delete.publish")
-	defer publishSpan.End()
-	if s.jsc == nil {
-		return nil
-	}
-
-	err = retry.Do(
-		func() error {
-			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_DELETED, payload)
-		},
-		retry.Attempts(3),
-		retry.Delay(time.Second),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Context(publishCtx),
-	)
-	if err != nil {
-		publishSpan.RecordError(err)
-		logging.Errorf(publishCtx, "failed to publish rating deleted event: %v", err)
-	}
-
->>>>>>> feature/recommendation-event-ingestion
 	return nil
 }
 
@@ -358,38 +290,6 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 		return nil, err
 	}
 
-<<<<<<< feature/recommendation-service-logic
-=======
-	// Publish rating updated event with retry for reliability
-	payload := events.RatingEventPayload{
-		UserID:    rating.UserID.Hex(),
-		SongID:    rating.SongID.Hex(),
-		Rating:    int(rating.Value),
-		EventID:   primitive.NewObjectID().Hex(),
-		CreatedAt: rating.CreatedAt,
-	}
-
-	publishCtx, publishSpan := s.tr.Start(ctx, "rating.update.publish")
-	defer publishSpan.End()
-	if s.jsc == nil {
-		return rating, nil
-	}
-
-	err = retry.Do(
-		func() error {
-			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_UPDATED, payload)
-		},
-		retry.Attempts(3),
-		retry.Delay(time.Second),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Context(publishCtx),
-	)
-	if err != nil {
-		publishSpan.RecordError(err)
-		logging.Errorf(publishCtx, "failed to publish rating updated event: %v", err)
-	}
-
->>>>>>> feature/recommendation-event-ingestion
 	return rating, nil
 }
 

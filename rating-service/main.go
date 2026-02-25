@@ -192,11 +192,11 @@ func createRepositories(dbc *mongodriver.Client) *repositories.RatingRepository 
 }
 
 func createServices(
-	sr *repositories.RatingRepository,
+	rr *repositories.RatingRepository,
 	gcc *adapters.GrpcContentEntityGetter,
 	jsc *events.JetStreamClient,
 ) *services.RatingService {
-	rs := services.NewRatingService(sr, gcc, jsc)
+	rs := services.NewRatingService(rr, gcc, jsc)
 
 	return rs
 }

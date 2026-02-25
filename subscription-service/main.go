@@ -88,7 +88,6 @@ var (
 				return h, shutdown, err
 			}
 
-<<<<<<< feature/recommendation-service-logic
 			// Ensure subscriptions stream for publishing subscription events
 			err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_SUBSCRIBED})
 			if err != nil {
@@ -96,9 +95,6 @@ var (
 				return h, shutdown, err
 			}
 
-			sr := createRepositories(dbc)
-=======
->>>>>>> feature/recommendation-event-ingestion
 			gcc := createAdapters(gc)
 			sr := createRepositories(dbc)
 			ss := createServices(sr, gcc, jsc)
