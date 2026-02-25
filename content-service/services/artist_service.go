@@ -236,15 +236,15 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 		// set param to previous genre state name
 		rbUpdate := make(map[string]any)
 
-		if currentArtist.Name != "" {
+		if dto.Name != nil {
 			rbUpdate["name"] = currentArtist.Name
 		}
 
-		if currentArtist.Genres != nil {
+		if dto.GenreIds != nil {
 			rbUpdate["genres"] = currentArtist.Genres
 		}
 
-		if currentArtist.Description != "" {
+		if dto.Description != nil {
 			rbUpdate["description"] = currentArtist.Description
 		}
 

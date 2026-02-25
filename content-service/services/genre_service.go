@@ -100,7 +100,12 @@ func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.U
 
 	currentGenre, err := s.r.FindByID(getCtx, id)
 	if err != nil {
-		return nil, err
+		switch {
+		case errors.Is(err, mongo.ErrNoDocuments):
+			return nil, ErrGenreNotFound
+		default:
+			return nil, err
+		}
 	}
 
 	update := make(map[string]any)
