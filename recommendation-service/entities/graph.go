@@ -36,7 +36,7 @@ type Rating struct {
 	UserID string
 	SongID string
 	// Value is a rating value from 1 to 5
-	Value  int
+	Value int
 }
 
 // Listened represents a LISTENED relationship in the graph.

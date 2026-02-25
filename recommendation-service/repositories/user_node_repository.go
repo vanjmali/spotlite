@@ -60,7 +60,6 @@ func (r *UserNodeRepository) Get(ctx context.Context, userID string) (*entities.
 
 		return nil, ErrNotFound
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +89,6 @@ func (r *UserNodeRepository) Exists(ctx context.Context, userID string) (bool, e
 
 		return false, nil
 	})
-
 	if err != nil {
 		return false, err
 	}

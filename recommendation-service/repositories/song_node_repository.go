@@ -62,7 +62,6 @@ func (r *SongNodeRepository) Get(ctx context.Context, songID string) (*entities.
 
 		return nil, ErrNotFound
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +91,6 @@ func (r *SongNodeRepository) Exists(ctx context.Context, songID string) (bool, e
 
 		return false, nil
 	})
-
 	if err != nil {
 		return false, err
 	}

@@ -60,7 +60,6 @@ func (r *GenreNodeRepository) Get(ctx context.Context, genreID string) (*entitie
 
 		return nil, ErrNotFound
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +89,6 @@ func (r *GenreNodeRepository) Exists(ctx context.Context, genreID string) (bool,
 
 		return false, nil
 	})
-
 	if err != nil {
 		return false, err
 	}

@@ -60,7 +60,6 @@ func (r *ArtistNodeRepository) Get(ctx context.Context, artistID string) (*entit
 
 		return nil, ErrNotFound
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +89,6 @@ func (r *ArtistNodeRepository) Exists(ctx context.Context, artistID string) (boo
 
 		return false, nil
 	})
-
 	if err != nil {
 		return false, err
 	}

@@ -60,7 +60,6 @@ func (r *AlbumNodeRepository) Get(ctx context.Context, albumID string) (*entitie
 
 		return nil, ErrNotFound
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +89,6 @@ func (r *AlbumNodeRepository) Exists(ctx context.Context, albumID string) (bool,
 
 		return false, nil
 	})
-
 	if err != nil {
 		return false, err
 	}

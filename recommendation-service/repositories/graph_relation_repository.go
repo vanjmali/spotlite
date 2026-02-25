@@ -253,7 +253,6 @@ RETURN u.user_id, s.song_id, r.rating`,
 
 		return ratings, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +288,6 @@ LIMIT $limit`,
 
 		return songIDs, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -321,7 +319,6 @@ RETURN a.artist_id`,
 
 		return artistIDs, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +350,6 @@ RETURN g.genre_id`,
 
 		return genreIDs, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -389,7 +385,6 @@ LIMIT $limit`,
 
 		return songIDs, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -425,7 +420,6 @@ LIMIT $limit`,
 
 		return songIDs, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -457,7 +451,6 @@ RETURN s.song_id`,
 
 		return songIDs, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -496,7 +489,6 @@ LIMIT $limit`,
 
 		return songIDs, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -543,7 +535,6 @@ LIMIT $limit`,
 
 		return songIDs, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -583,7 +574,6 @@ LIMIT $limit`,
 
 		return userIDs, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -625,7 +615,6 @@ LIMIT $limit`,
 
 		return songIDs, nil
 	})
-
 	if err != nil {
 		return nil, err
 	}
