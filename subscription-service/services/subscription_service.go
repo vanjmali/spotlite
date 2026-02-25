@@ -47,14 +47,18 @@ type ContentEntityGetter interface {
 	GetEntity(ctx context.Context, entityID string, subType subscription.SubscriptionType) (string, error)
 }
 
+type EventPublisher interface {
+	Publish(ctx context.Context, subject string, payload interface{}) error
+}
+
 type SubscriptionService struct {
 	sr  SubscriptionRepository
 	gcc ContentEntityGetter
-	jsc *events.JetStreamClient
+	jsc EventPublisher
 	tr  trace.Tracer
 }
 
-func NewSubscriptionService(sr SubscriptionRepository, gcc ContentEntityGetter, jsc *events.JetStreamClient) *SubscriptionService {
+func NewSubscriptionService(sr SubscriptionRepository, gcc ContentEntityGetter, jsc EventPublisher) *SubscriptionService {
 	tr := otel.Tracer("subscription-service/subscription-service")
 	s := SubscriptionService{sr: sr, gcc: gcc, jsc: jsc, tr: tr}
 
