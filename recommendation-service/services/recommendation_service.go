@@ -160,15 +160,15 @@ func (rs *RecommendationService) enrichSongsWithRatings(
 		return recommendations, nil
 	}
 
-	var mu sync.Mutex
 	var wg sync.WaitGroup
+	ordered := make([]*dtos.RecommendedSongDto, len(songIDs))
 
 	// Process songs in parallel for better performance
 	semaphore := make(chan struct{}, 5) // Limit to 5 concurrent operations
 
-	for _, songID := range songIDs {
+	for idx, songID := range songIDs {
 		wg.Add(1)
-		go func(id string) {
+		go func(i int, id string) {
 			defer wg.Done()
 			semaphore <- struct{}{}        // Acquire semaphore
 			defer func() { <-semaphore }() // Release semaphore
@@ -176,15 +176,12 @@ func (rs *RecommendationService) enrichSongsWithRatings(
 			song, err := rs.services.songNodeRepository.Get(ctx, id)
 			if err != nil {
 				logging.Errorf(ctx, "failed to get song %s: %v", id, err)
-				// Create minimal DTO on error
-				mu.Lock()
-				recommendations = append(recommendations, dtos.RecommendedSongDto{
+				ordered[i] = &dtos.RecommendedSongDto{
 					SongID:      id,
 					Title:       "Unknown",
 					ArtistNames: []string{},
 					Reason:      "recommended",
-				})
-				mu.Unlock()
+				}
 				return
 			}
 
@@ -223,7 +220,7 @@ func (rs *RecommendationService) enrichSongsWithRatings(
 				artistNames = []string{}
 			}
 
-			dto := dtos.RecommendedSongDto{
+			dto := &dtos.RecommendedSongDto{
 				SongID:        id,
 				Title:         song.Title,
 				ArtistNames:   artistNames,
@@ -232,13 +229,17 @@ func (rs *RecommendationService) enrichSongsWithRatings(
 				Reason:        "recommended",
 			}
 
-			mu.Lock()
-			recommendations = append(recommendations, dto)
-			mu.Unlock()
-		}(songID)
+			ordered[i] = dto
+		}(idx, songID)
 	}
 
 	wg.Wait()
+
+	for _, dto := range ordered {
+		if dto != nil {
+			recommendations = append(recommendations, *dto)
+		}
+	}
 
 	return recommendations, nil
 }

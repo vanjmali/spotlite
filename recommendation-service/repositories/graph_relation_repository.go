@@ -513,12 +513,11 @@ func (r *GraphRelationRepository) GetRecommendedSongsForUser(ctx context.Context
 		res, err := tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id})
-OPTIONAL MATCH (u)-[:SUBSCRIBED]->(a:Artist)<-[:BY]-(s1:Song)
-OPTIONAL MATCH (u)-[:SUBSCRIBED_GENRE]->(g:Genre)<-[:HAS_GENRE]-(s2:Song)
-OPTIONAL MATCH (u)-[rated:RATED]->(rated_song:Song)
-OPTIONAL MATCH (rated_song)-[:HAS_GENRE]->(g2:Genre)<-[:HAS_GENRE]-(s3:Song)
-WHERE rated IS NOT NULL AND rated.rating >= 4
-WITH u, collect(DISTINCT s1) + collect(DISTINCT s2) + collect(DISTINCT s3) as candidate_songs
+WITH u,
+     [(u)-[:SUBSCRIBED]->(:Artist)<-[:BY]-(s:Song) | s] AS artist_songs,
+     [(u)-[:SUBSCRIBED_GENRE]->(:Genre)<-[:HAS_GENRE]-(s:Song) | s] AS genre_songs,
+     [(u)-[r:RATED]->(:Song)-[:HAS_GENRE]->(:Genre)<-[:HAS_GENRE]-(s:Song) WHERE r.rating >= 4 | s] AS similar_genre_songs
+WITH u, artist_songs + genre_songs + similar_genre_songs as candidate_songs
 UNWIND candidate_songs as s
 WITH u, s
 WHERE s IS NOT NULL AND NOT (u)-[:RATED]->(s) AND NOT (u)-[:LISTENED]->(s)

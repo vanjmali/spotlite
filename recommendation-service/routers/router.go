@@ -21,13 +21,13 @@ func HandleRequests(h *handlers.RecommendationHandler) http.Handler {
 
 	// Personalized recommendations endpoint - requires authentication
 	api.Handle(
-		"/api/recommendations",
+		"/",
 		middlewares.RequireAuthenticated(http.HandlerFunc(h.HandleGetRecommendations)),
 	).Methods("GET")
 
 	// Trending songs endpoint - public, no authentication required
 	api.Handle(
-		"/api/recommendations/trending",
+		"/trending",
 		http.HandlerFunc(h.HandleGetTrendingSongs),
 	).Methods("GET")
 
