@@ -24,7 +24,7 @@ jobs:
           - content-service
           - notification-service
           - subscription-service
-          # - rating-service
+          - rating-service
           # - recommendation-service
           # - analytics-service
     defaults:
