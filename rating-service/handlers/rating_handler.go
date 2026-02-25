@@ -53,7 +53,7 @@ func (h *RatingHandler) HandleCreateRating(w http.ResponseWriter, r *http.Reques
 			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
 			_ = respond.BadRequest(w, respond.ErrorMessage(err.Error()))
 			return
-		case errors.Is(err, services.ErrSongNotFound):
+		case errors.Is(err, services.ErrEntityNotFound):
 			logging.Warnf(r.Context(), "failed to process rating request: %v", err)
 			_ = respond.NotFound(w)
 			return
