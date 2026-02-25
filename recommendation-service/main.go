@@ -22,6 +22,14 @@ import (
 	"github.com/vanjmali/spotlite/recommendation-service/services"
 )
 
+const (
+	ratingCreatedDurable       = events.RATING_DURABLE + "_CREATED"
+	ratingUpdatedDurable       = events.RATING_DURABLE + "_UPDATED"
+	ratingDeletedDurable       = events.RATING_DURABLE + "_DELETED"
+	subscriptionCreatedDurable = events.SUBSCRIPTION_DURABLE + "_CREATED"
+	subscriptionDeletedDurable = events.SUBSCRIPTION_DURABLE + "_DELETED"
+)
+
 var (
 	certFilePath       = utils.MustGetEnv("CERT_PATH")
 	keyFilePath        = utils.MustGetEnv("KEY_PATH")
@@ -88,6 +96,7 @@ var (
 			}
 
 			startConsumer(
+<<<<<<< feature/recommendation-service-logic
 				events.ARTISTS_STREAM,
 				events.SUBJECT_ARTIST_CREATED,
 				events.ARTIST_DURABLE,
@@ -133,6 +142,48 @@ var (
 				events.USER_DURABLE,
 				"user created",
 				c.HandleRatingCreated,
+=======
+				events.RATINGS_STREAM,
+				events.SUBJECT_RATING_CREATED,
+				ratingCreatedDurable,
+				"rating created",
+				c.HandleRatingCreated,
+			)
+			startConsumer(
+				events.RATINGS_STREAM,
+				events.SUBJECT_RATING_UPDATED,
+				ratingUpdatedDurable,
+				"rating updated",
+				c.HandleRatingUpdated,
+			)
+			startConsumer(
+				events.RATINGS_STREAM,
+				events.SUBJECT_RATING_DELETED,
+				ratingDeletedDurable,
+				"rating deleted",
+				c.HandleRatingDeleted,
+			)
+			startConsumer(
+				events.LISTENS_STREAM,
+				events.SUBJECT_LISTEN_CREATED,
+				events.LISTEN_DURABLE,
+				"listen created",
+				c.HandleListenCreated,
+			)
+			startConsumer(
+				events.SUBSCRIPTIONS_STREAM,
+				events.SUBJECT_SUBSCRIPTION_CREATED,
+				subscriptionCreatedDurable,
+				"subscription created",
+				c.HandleSubscriptionCreated,
+			)
+			startConsumer(
+				events.SUBSCRIPTIONS_STREAM,
+				events.SUBJECT_SUBSCRIPTION_DELETED,
+				subscriptionDeletedDurable,
+				"subscription deleted",
+				c.HandleSubscriptionDeleted,
+>>>>>>> feature/recommendation-event-ingestion
 			)
 
 			shutdown = func() error {

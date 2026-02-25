@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -77,13 +78,17 @@ var (
 				return nil, nil, err
 			}
 
-			// Ensure content stream for consuming entity created events
-			err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED})
+			err = jsc.EnsureStream(
+				ctx,
+				events.CONTENT_STREAM,
+				[]string{events.SUBJECT_ENTITY_CREATED, events.SUBJECT_ENTITY_UPDATED},
+			)
 			if err != nil {
-				err = fmt.Errorf("failed to ensure content stream: %w", err)
+				err = fmt.Errorf("failed to ensure NATS stream: %w", err)
 				return h, shutdown, err
 			}
 
+<<<<<<< feature/recommendation-service-logic
 			// Ensure subscriptions stream for publishing subscription events
 			err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_SUBSCRIBED})
 			if err != nil {
@@ -92,42 +97,67 @@ var (
 			}
 
 			sr := createRepositories(dbc)
+=======
+>>>>>>> feature/recommendation-event-ingestion
 			gcc := createAdapters(gc)
+			sr := createRepositories(dbc)
 			ss := createServices(sr, gcc, jsc)
 			h = createHandlers(v, ss)
 			c := createConsumers(ss)
 
 			consumerCtx, consumerCancel := context.WithCancel(ctx)
-			consumerDone := make(chan struct{})
+			var consumerWg sync.WaitGroup
 
-			var consumerErr error
+			// configure consumers
+			configs := []events.ConsumerConfig{
+				{
+					Stream:  events.CONTENT_STREAM,
+					Subject: events.SUBJECT_ENTITY_CREATED,
+					Durable: events.ENTITY_CREATE_DURABLE,
+					Handler: c.HandleEntityCreated,
+				},
+				{
+					Stream:  events.CONTENT_STREAM,
+					Subject: events.SUBJECT_ENTITY_UPDATED,
+					Durable: events.ENTITY_UPDATE_DURABLE,
+					Handler: c.HandleEntityUpdated,
+				},
+			}
 
-			go func() {
-				consumerErr = jsc.StartConsumer(
-					consumerCtx,
-					events.CONTENT_STREAM,
-					events.SUBJECT_ENTITY_CREATED,
-					events.ENTITY_DURABLE,
-					c.HandleEntityCreated,
-				)
-				close(consumerDone)
-			}()
+			consumerErrs := make([]error, len(configs))
+			for i, cfg := range configs {
+				consumerWg.Add(1)
 
-			go func() {
-				<-consumerDone
-				if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
-					logging.Errorf(context.Background(), "subscription consumer stopped unexpectedly: %v", consumerErr)
-				}
-			}()
+				// pass 'i' and 'cfg' into the goroutine to capture them correctly
+				go func(index int, config events.ConsumerConfig) {
+					defer consumerWg.Done()
+
+					err := jsc.StartConsumer(
+						consumerCtx,
+						config.Stream,
+						config.Subject,
+						config.Durable,
+						config.Handler,
+					)
+
+					if err != nil && !errors.Is(err, context.Canceled) {
+						logging.Errorf(context.Background(), "consumer %s stopped unexpectedly: %v", config.Durable, err)
+						consumerErrs[index] = fmt.Errorf("consumer %s error: %w", config.Durable, err)
+					}
+				}(i, cfg)
+			}
 
 			shutdown = func() error {
 				var errs []error
 
 				consumerCancel()
-				<-consumerDone
+				// makes sure all consumers are down before shuting down NATS stream
+				consumerWg.Wait()
 
-				if consumerErr != nil && !errors.Is(consumerErr, context.Canceled) {
-					errs = append(errs, fmt.Errorf("subscription consumer error: %w", consumerErr))
+				for _, err := range consumerErrs {
+					if err != nil {
+						errs = append(errs, err)
+					}
 				}
 
 				shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -141,6 +171,8 @@ var (
 					errs = append(errs, fmt.Errorf("mongo disconnect error: %w", err))
 				}
 
+				// close nats jetstream connection only after the consumers are shut down, to avoid consumers communicating
+				// via closed connection (potential panics)
 				jsc.Close()
 
 				return errors.Join(errs...)
@@ -288,5 +320,4 @@ func generateCreds() (credentials.TransportCredentials, error) {
 		MinVersion: tls.VersionTLS13,
 	}
 	return credentials.NewTLS(tlsConfig), nil
-
 }

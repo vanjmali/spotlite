@@ -22,11 +22,11 @@ func (r *UserNodeRepository) Create(ctx context.Context, user entities.UserNode)
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		return tx.Run(
 			ctx,
 			`MERGE (u:User {user_id: $user_id}) SET u.username = $username`,
-			map[string]interface{}{
+			map[string]any{
 				"user_id":  user.UserID,
 				"username": user.Username,
 			},
@@ -40,11 +40,11 @@ func (r *UserNodeRepository) Get(ctx context.Context, userID string) (*entities.
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id}) RETURN u.user_id, u.username`,
-			map[string]interface{}{"user_id": userID},
+			map[string]any{"user_id": userID},
 		)
 		if err != nil {
 			return nil, err
@@ -60,7 +60,6 @@ func (r *UserNodeRepository) Get(ctx context.Context, userID string) (*entities.
 
 		return nil, ErrNotFound
 	})
-
 	if err != nil {
 		return nil, err
 	}
@@ -73,11 +72,11 @@ func (r *UserNodeRepository) Exists(ctx context.Context, userID string) (bool, e
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id}) RETURN count(u) > 0 AS exists`,
-			map[string]interface{}{"user_id": userID},
+			map[string]any{"user_id": userID},
 		)
 		if err != nil {
 			return false, err
@@ -90,7 +89,6 @@ func (r *UserNodeRepository) Exists(ctx context.Context, userID string) (bool, e
 
 		return false, nil
 	})
-
 	if err != nil {
 		return false, err
 	}
