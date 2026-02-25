@@ -22,13 +22,13 @@ func (r *GraphRelationRepository) CreateRating(ctx context.Context, rating entit
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		return tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id}), (s:Song {song_id: $song_id})
 MERGE (u)-[r:RATED]->(s)
 SET r.rating = $rating`,
-			map[string]interface{}{
+			map[string]any{
 				"user_id": rating.UserID,
 				"song_id": rating.SongID,
 				"rating":  rating.Value,
@@ -43,12 +43,12 @@ func (r *GraphRelationRepository) CreateListened(ctx context.Context, listened e
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		return tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id}), (s:Song {song_id: $song_id})
 MERGE (u)-[:LISTENED]->(s)`,
-			map[string]interface{}{
+			map[string]any{
 				"user_id": listened.UserID,
 				"song_id": listened.SongID,
 			},
@@ -62,12 +62,12 @@ func (r *GraphRelationRepository) CreateArtistSubscription(ctx context.Context, 
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		return tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id}), (a:Artist {artist_id: $artist_id})
 MERGE (u)-[:SUBSCRIBED]->(a)`,
-			map[string]interface{}{
+			map[string]any{
 				"user_id":   sub.UserID,
 				"artist_id": sub.ArtistID,
 			},
@@ -81,12 +81,12 @@ func (r *GraphRelationRepository) CreateGenreSubscription(ctx context.Context, s
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		return tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id}), (g:Genre {genre_id: $genre_id})
 MERGE (u)-[:SUBSCRIBED_GENRE]->(g)`,
-			map[string]interface{}{
+			map[string]any{
 				"user_id":  sub.UserID,
 				"genre_id": sub.GenreID,
 			},
@@ -100,12 +100,12 @@ func (r *GraphRelationRepository) CreateSongBelongsTo(ctx context.Context, songI
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		return tx.Run(
 			ctx,
 			`MATCH (s:Song {song_id: $song_id}), (a:Album {album_id: $album_id})
 MERGE (s)-[:BELONGS_TO]->(a)`,
-			map[string]interface{}{
+			map[string]any{
 				"song_id":  songID,
 				"album_id": albumID,
 			},
@@ -119,12 +119,12 @@ func (r *GraphRelationRepository) CreateSongHasGenre(ctx context.Context, songID
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		return tx.Run(
 			ctx,
 			`MATCH (s:Song {song_id: $song_id}), (g:Genre {genre_id: $genre_id})
 MERGE (s)-[:HAS_GENRE]->(g)`,
-			map[string]interface{}{
+			map[string]any{
 				"song_id":  songID,
 				"genre_id": genreID,
 			},
@@ -138,12 +138,12 @@ func (r *GraphRelationRepository) CreateSongByArtist(ctx context.Context, songID
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		return tx.Run(
 			ctx,
 			`MATCH (s:Song {song_id: $song_id}), (a:Artist {artist_id: $artist_id})
 MERGE (s)-[:BY]->(a)`,
-			map[string]interface{}{
+			map[string]any{
 				"song_id":   songID,
 				"artist_id": artistID,
 			},
@@ -157,12 +157,12 @@ func (r *GraphRelationRepository) CreateArtistHasGenre(ctx context.Context, arti
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		return tx.Run(
 			ctx,
 			`MATCH (a:Artist {artist_id: $artist_id}), (g:Genre {genre_id: $genre_id})
 MERGE (a)-[:HAS_GENRE]->(g)`,
-			map[string]interface{}{
+			map[string]any{
 				"artist_id": artistID,
 				"genre_id":  genreID,
 			},
@@ -176,11 +176,11 @@ func (r *GraphRelationRepository) DeleteRating(ctx context.Context, userID strin
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		return tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id})-[r:RATED]->(s:Song {song_id: $song_id}) DELETE r`,
-			map[string]interface{}{
+			map[string]any{
 				"user_id": userID,
 				"song_id": songID,
 			},
@@ -194,11 +194,11 @@ func (r *GraphRelationRepository) DeleteArtistSubscription(ctx context.Context, 
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		return tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id})-[r:SUBSCRIBED]->(a:Artist {artist_id: $artist_id}) DELETE r`,
-			map[string]interface{}{
+			map[string]any{
 				"user_id":   userID,
 				"artist_id": artistID,
 			},
@@ -212,11 +212,11 @@ func (r *GraphRelationRepository) DeleteGenreSubscription(ctx context.Context, u
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		return tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id})-[r:SUBSCRIBED_GENRE]->(g:Genre {genre_id: $genre_id}) DELETE r`,
-			map[string]interface{}{
+			map[string]any{
 				"user_id":  userID,
 				"genre_id": genreID,
 			},
@@ -230,12 +230,12 @@ func (r *GraphRelationRepository) GetUserRatings(ctx context.Context, userID str
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id})-[r:RATED]->(s:Song)
 RETURN u.user_id, s.song_id, r.rating`,
-			map[string]interface{}{"user_id": userID},
+			map[string]any{"user_id": userID},
 		)
 		if err != nil {
 			return nil, err
@@ -266,13 +266,13 @@ func (r *GraphRelationRepository) GetUserListenHistory(ctx context.Context, user
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id})-[:LISTENED]->(s:Song)
 RETURN s.song_id
 LIMIT $limit`,
-			map[string]interface{}{
+			map[string]any{
 				"user_id": userID,
 				"limit":   limit,
 			},
@@ -302,12 +302,12 @@ func (r *GraphRelationRepository) GetUserArtistSubscriptions(ctx context.Context
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id})-[:SUBSCRIBED]->(a:Artist)
 RETURN a.artist_id`,
-			map[string]interface{}{"user_id": userID},
+			map[string]any{"user_id": userID},
 		)
 		if err != nil {
 			return nil, err
@@ -334,12 +334,12 @@ func (r *GraphRelationRepository) GetUserGenreSubscriptions(ctx context.Context,
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id})-[:SUBSCRIBED_GENRE]->(g:Genre)
 RETURN g.genre_id`,
-			map[string]interface{}{"user_id": userID},
+			map[string]any{"user_id": userID},
 		)
 		if err != nil {
 			return nil, err
@@ -366,13 +366,13 @@ func (r *GraphRelationRepository) GetSongsByGenre(ctx context.Context, genreID s
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (s:Song)-[:HAS_GENRE]->(g:Genre {genre_id: $genre_id})
 RETURN s.song_id
 LIMIT $limit`,
-			map[string]interface{}{
+			map[string]any{
 				"genre_id": genreID,
 				"limit":    limit,
 			},
@@ -402,13 +402,13 @@ func (r *GraphRelationRepository) GetSongsByArtist(ctx context.Context, artistID
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (s:Song)-[:BY]->(a:Artist {artist_id: $artist_id})
 RETURN s.song_id
 LIMIT $limit`,
-			map[string]interface{}{
+			map[string]any{
 				"artist_id": artistID,
 				"limit":     limit,
 			},
@@ -438,12 +438,12 @@ func (r *GraphRelationRepository) GetSongsByAlbum(ctx context.Context, albumID s
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (s:Song)-[:BELONGS_TO]->(a:Album {album_id: $album_id})
 RETURN s.song_id`,
-			map[string]interface{}{"album_id": albumID},
+			map[string]any{"album_id": albumID},
 		)
 		if err != nil {
 			return nil, err
@@ -470,7 +470,7 @@ func (r *GraphRelationRepository) GetHighlyRatedSongs(ctx context.Context, minRa
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (s:Song)<-[r:RATED]-()
@@ -479,7 +479,7 @@ WHERE avg_rating >= $min_rating AND rating_count >= 3
 RETURN s.song_id
 ORDER BY avg_rating DESC, rating_count DESC
 LIMIT $limit`,
-			map[string]interface{}{
+			map[string]any{
 				"min_rating": minRating,
 				"limit":      limit,
 			},
@@ -509,7 +509,7 @@ func (r *GraphRelationRepository) GetRecommendedSongsForUser(ctx context.Context
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id})
@@ -526,7 +526,7 @@ WITH s, avg(r.rating) as avg_rating, count(r) as rating_count
 RETURN s.song_id, avg_rating, rating_count
 ORDER BY avg_rating DESC, rating_count DESC
 LIMIT $limit`,
-			map[string]interface{}{
+			map[string]any{
 				"user_id": userID,
 				"limit":   limit,
 			},
@@ -556,7 +556,7 @@ func (r *GraphRelationRepository) GetSimilarUsers(ctx context.Context, userID st
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id})-[r1:RATED]->(s:Song)<-[r2:RATED]-(other:User)
@@ -566,7 +566,7 @@ WHERE common_songs >= 3
 RETURN other.user_id
 ORDER BY common_songs DESC, avg_diff ASC
 LIMIT $limit`,
-			map[string]interface{}{
+			map[string]any{
 				"user_id": userID,
 				"limit":   limit,
 			},
@@ -596,7 +596,7 @@ func (r *GraphRelationRepository) GetCollaborativeRecommendations(ctx context.Co
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (u:User {user_id: $user_id})-[r1:RATED]->(s1:Song)<-[r2:RATED]-(similar:User)
@@ -608,7 +608,7 @@ WHERE r3.rating >= 4 AND NOT (u)-[:RATED]->(s2) AND NOT (u)-[:LISTENED]->(s2)
 RETURN s2.song_id, count(similar) as similar_user_count, avg(r3.rating) as avg_rating
 ORDER BY similar_user_count DESC, avg_rating DESC
 LIMIT $limit`,
-			map[string]interface{}{
+			map[string]any{
 				"user_id": userID,
 				"limit":   limit,
 			},

@@ -22,11 +22,11 @@ func (r *SongNodeRepository) Create(ctx context.Context, song entities.SongNode)
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		return tx.Run(
 			ctx,
 			`MERGE (s:Song {song_id: $song_id}) SET s.title = $title, s.duration = $duration`,
-			map[string]interface{}{
+			map[string]any{
 				"song_id":  song.SongID,
 				"title":    song.Title,
 				"duration": song.Duration,
@@ -41,11 +41,11 @@ func (r *SongNodeRepository) Get(ctx context.Context, songID string) (*entities.
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (s:Song {song_id: $song_id}) RETURN s.song_id, s.title, s.duration`,
-			map[string]interface{}{"song_id": songID},
+			map[string]any{"song_id": songID},
 		)
 		if err != nil {
 			return nil, err
@@ -75,11 +75,11 @@ func (r *SongNodeRepository) Exists(ctx context.Context, songID string) (bool, e
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
-	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
 		res, err := tx.Run(
 			ctx,
 			`MATCH (s:Song {song_id: $song_id}) RETURN count(s) > 0 AS exists`,
-			map[string]interface{}{"song_id": songID},
+			map[string]any{"song_id": songID},
 		)
 		if err != nil {
 			return false, err
