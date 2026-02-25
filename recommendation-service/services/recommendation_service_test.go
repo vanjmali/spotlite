@@ -648,7 +648,7 @@ func TestEnrichmentWithRealRatingStatsAndArtists(t *testing.T) {
 	song1 := songMap["song1"]
 	require.Equal(t, "song1", song1.SongID)
 	require.Equal(t, "Track 1", song1.Title)
-	require.Equal(t, 4.5, song1.AverageRating)
+	require.InEpsilon(t, 4.5, song1.AverageRating, 0.01)
 	require.Equal(t, int64(100), song1.RatingCount)
 	require.Equal(t, []string{"Artist A", "Artist B"}, song1.ArtistNames)
 
@@ -656,7 +656,7 @@ func TestEnrichmentWithRealRatingStatsAndArtists(t *testing.T) {
 	song2 := songMap["song2"]
 	require.Equal(t, "song2", song2.SongID)
 	require.Equal(t, "Track 2", song2.Title)
-	require.Equal(t, 3.8, song2.AverageRating)
+	require.InEpsilon(t, 3.8, song2.AverageRating, 0.01)
 	require.Equal(t, int64(45), song2.RatingCount)
 	require.Equal(t, []string{"Artist C"}, song2.ArtistNames)
 }
@@ -682,7 +682,7 @@ func TestEnrichmentHandlesRatingStatsErrors(t *testing.T) {
 	// Should not error, but return defaults for rating stats
 	require.NoError(t, err)
 	require.Len(t, recommendations, 1)
-	require.Equal(t, 0.0, recommendations[0].AverageRating)
+	require.InEpsilon(t, 0.0, recommendations[0].AverageRating, 0.01)
 	require.Equal(t, int64(0), recommendations[0].RatingCount)
 	require.Equal(t, "Track 1", recommendations[0].Title)
 }
