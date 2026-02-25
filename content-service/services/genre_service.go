@@ -3,8 +3,11 @@ package services
 import (
 	"context"
 	"errors"
+	"time"
 
+	"github.com/avast/retry-go"
 	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/content/dtos"
@@ -21,14 +24,15 @@ import (
 var ErrGenreNotFound = errors.New("genre not found")
 
 type GenreService struct {
-	r  *repositories.GenreRepository
-	tr trace.Tracer
+	r   *repositories.GenreRepository
+	jsc *events.JetStreamClient
+	tr  trace.Tracer
 }
 
 // NewArtistService builds a ArtistService with repository.
-func NewGenreService(r repositories.GenreRepository) *GenreService {
+func NewGenreService(r repositories.GenreRepository, jsc events.JetStreamClient) *GenreService {
 	tr := otel.Tracer("content-service/genre-service")
-	s := GenreService{r: &r, tr: tr}
+	s := GenreService{r: &r, jsc: &jsc, tr: tr}
 
 	return &s
 }
@@ -81,13 +85,27 @@ func (s *GenreService) FindGenreByID(ctx context.Context, idStr string) (*entiti
 }
 
 func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.UpdateGenreDto) (*entities.Genre, error) {
-	ctx, span := s.tr.Start(ctx, "genre.update")
-	defer span.End()
+	updateCtx, updateSpan := s.tr.Start(ctx, "genre.update")
+	defer updateSpan.End()
 
 	id, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
-		span.RecordError(err)
+		updateSpan.RecordError(err)
 		return nil, ErrObjectIdCastFailed
+	}
+
+	// fetches current state of the genre for potential roll back
+	getCtx, getSpan := s.tr.Start(updateCtx, "genre.update.get_current_state")
+	defer getSpan.End()
+
+	currentGenre, err := s.r.FindByID(getCtx, id)
+	if err != nil {
+		switch {
+		case errors.Is(err, mongo.ErrNoDocuments):
+			return nil, ErrGenreNotFound
+		default:
+			return nil, err
+		}
 	}
 
 	update := make(map[string]any)
@@ -97,18 +115,62 @@ func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.U
 
 	if len(update) == 0 {
 		err := errors.New("no fields to update")
-		span.RecordError(err)
+		updateSpan.RecordError(err)
 		return nil, err
 	}
 
-	genre, err := s.r.UpdateByID(ctx, id, update)
+	genre, err := s.r.UpdateByID(updateCtx, id, update)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			span.RecordError(err)
+			updateSpan.RecordError(err)
 			return nil, ErrGenreNotFound
 		}
-		span.RecordError(err)
+		updateSpan.RecordError(err)
 		return nil, err
+	}
+
+	eventCtx, eventSpan := s.tr.Start(updateCtx, "genre.update.update_event")
+	defer eventSpan.End()
+
+	// prepare payload
+	aep := toGenreUpdatedEvent(genre.ID.Hex(), genre.Name)
+
+	// attempts broadcasting event
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_ENTITY_UPDATED, aep)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+
+	// if event couldn't be published rollback to previous genre state
+	if err != nil {
+		logging.Errorf(eventCtx, "failed to publish entity updated event: %v", err)
+		eventSpan.RecordError(err)
+
+		var errs []error
+
+		errs = append(errs, err)
+
+		rbCtx, rbSpan := s.tr.Start(updateCtx, "genre.update.rollback")
+		defer rbSpan.End()
+
+		// set param to previous genre state name
+		rbUpdate := make(map[string]any)
+		if dto.Name != nil {
+			rbUpdate["name"] = currentGenre.Name
+		}
+
+		_, err := s.r.UpdateByID(rbCtx, id, rbUpdate)
+		if err != nil {
+			rbSpan.RecordError(err)
+			errs = append(errs, err)
+		}
+
+		return nil, errors.Join(errs...)
 	}
 
 	return genre, nil
@@ -178,4 +240,11 @@ func (s *GenreService) Exists(ctx context.Context, genreIDstr string) (bool, err
 	}
 
 	return exists, nil
+}
+
+func toGenreUpdatedEvent(genreID string, genreName string) *events.EntityUpdatedEventPayload {
+	return &events.EntityUpdatedEventPayload{
+		EntityID:   genreID,
+		EntityName: genreName,
+	}
 }
