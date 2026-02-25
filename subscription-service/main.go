@@ -78,7 +78,11 @@ var (
 				return nil, nil, err
 			}
 
-			err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBSCRIPTIONS_STREAM, events.SUBJECT_ENTITY_UPDATED})
+			err = jsc.EnsureStream(
+				ctx,
+				events.CONTENT_STREAM,
+				[]string{events.SUBJECT_ENTITY_CREATED, events.SUBSCRIPTIONS_STREAM, events.SUBJECT_ENTITY_UPDATED},
+			)
 			if err != nil {
 				err = fmt.Errorf("failed to ensure NATS stream: %w", err)
 				return h, shutdown, err
@@ -305,5 +309,4 @@ func generateCreds() (credentials.TransportCredentials, error) {
 		MinVersion: tls.VersionTLS13,
 	}
 	return credentials.NewTLS(tlsConfig), nil
-
 }

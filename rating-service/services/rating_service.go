@@ -106,13 +106,12 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 		}
 		return name, nil
 	})
-
 	if err != nil {
-		if err == gobreaker.ErrOpenState {
+		if errors.Is(err, gobreaker.ErrOpenState) {
 			return ErrUpstreamUnavailable
 		}
 
-		if err == gobreaker.ErrTooManyRequests {
+		if errors.Is(err, gobreaker.ErrTooManyRequests) {
 			return ErrUpstreamThrottled
 		}
 
@@ -310,7 +309,7 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 	}
 
 	repoCtx, repoSpan := s.tr.Start(ctx, "rating.update.repo")
-	defer findSpan.End()
+	defer repoSpan.End()
 
 	rating, err := s.rr.UpdateByID(repoCtx, ratingID, userID, update)
 	if err != nil {

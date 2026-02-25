@@ -132,13 +132,12 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 		}
 		return name, nil
 	})
-
 	if err != nil {
-		if err == gobreaker.ErrOpenState {
+		if errors.Is(err, gobreaker.ErrOpenState) {
 			return ErrUpstreamUnavailable
 		}
 
-		if err == gobreaker.ErrTooManyRequests {
+		if errors.Is(err, gobreaker.ErrTooManyRequests) {
 			return ErrUpstreamThrottled
 		}
 
