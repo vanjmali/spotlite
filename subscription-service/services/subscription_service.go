@@ -53,7 +53,7 @@ type ContentEntityGetter interface {
 }
 
 type EventPublisher interface {
-	Publish(ctx context.Context, subject string, payload interface{}) error
+	Publish(ctx context.Context, subject string, payload any) error
 }
 
 type SubscriptionService struct {
@@ -181,9 +181,10 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 
 	// Publish subscription created event with retry for reliability
 	entityType := ""
-	if se.Type == subscription.ArtistSubscription {
+	switch se.Type {
+	case subscription.ArtistSubscription:
 		entityType = "ARTIST"
-	} else if se.Type == subscription.GenreSubscription {
+	case subscription.GenreSubscription:
 		entityType = "GENRE"
 	}
 
@@ -263,9 +264,10 @@ func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx conte
 
 	// Publish subscription deleted event with retry for reliability
 	entityType := ""
-	if existing.Type == subscription.ArtistSubscription {
+	switch existing.Type {
+	case subscription.ArtistSubscription:
 		entityType = "ARTIST"
-	} else if existing.Type == subscription.GenreSubscription {
+	case subscription.GenreSubscription:
 		entityType = "GENRE"
 	}
 

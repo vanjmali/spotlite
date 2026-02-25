@@ -23,7 +23,7 @@ import (
 
 var ErrNotSubscribed = errors.New("subscription not found")
 
-// fakeEventPublisher is a test double for EventPublisher
+// fakeEventPublisher is a test double for EventPublisher.
 type fakeEventPublisher struct {
 	published []interface{}
 	subjects  []string

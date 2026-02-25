@@ -24,18 +24,18 @@ import (
 )
 
 var (
-	ErrSongNotFound       = errors.New("song couldn't be found")
-	ErrInvalidSongID      = errors.New("error has ocurred while parsing song ID")
-	ErrUpstreamFailure    = errors.New("error has ocurred while fetching song")
-	ErrUpstreamTimeout    = errors.New("upstream service request timed out")
+	ErrSongNotFound        = errors.New("song couldn't be found")
+	ErrInvalidSongID       = errors.New("error has ocurred while parsing song ID")
+	ErrUpstreamFailure     = errors.New("error has ocurred while fetching song")
+	ErrUpstreamTimeout     = errors.New("upstream service request timed out")
 	ErrUpstreamUnavailable = errors.New("upstream service is temporarily unavailable")
-	ErrUpstreamThrottled  = errors.New("upstream throttled")
-	ErrRatingNotFound     = errors.New("rating not found")
-	ErrRatingForbidden    = errors.New("rating does not belong to user")
-	ErrNoFieldsToUpdate   = errors.New("no fields to update")
-	ErrObjectIdCastFailed = errors.New("failed to convert hex to objectID")
-	ErrEntityNotFound     = ErrSongNotFound
-	ErrInvalidEntityID    = ErrInvalidSongID
+	ErrUpstreamThrottled   = errors.New("upstream throttled")
+	ErrRatingNotFound      = errors.New("rating not found")
+	ErrRatingForbidden     = errors.New("rating does not belong to user")
+	ErrNoFieldsToUpdate    = errors.New("no fields to update")
+	ErrObjectIdCastFailed  = errors.New("failed to convert hex to objectID")
+	ErrEntityNotFound      = ErrSongNotFound
+	ErrInvalidEntityID     = ErrInvalidSongID
 )
 
 type RatingRepository interface {

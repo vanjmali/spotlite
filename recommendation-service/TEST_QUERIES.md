@@ -1,13 +1,13 @@
 # Neo4j Query Testing Guide
 
-Ovaj fajl sadrži test queries za verifikaciju svih repository metoda.
+This file contains test queries for verifying all repository methods.
 
 ## Setup test data
 
-Prvo pokreni ove queries u Neo4j Browser (http://localhost:7474):
+First, run these queries in Neo4j Browser (`http://localhost:7474`):
 
 ```cypher
-// 1. Kreiraj test nodes
+// 1. Create test nodes
 CREATE (u1:User {user_id: "user1", username: "Alice"})
 CREATE (u2:User {user_id: "user2", username: "Bob"})
 CREATE (a1:Artist {artist_id: "artist1", name: "Queen"})
@@ -17,7 +17,7 @@ CREATE (s1:Song {song_id: "song1", title: "Bohemian Rhapsody", duration: 354})
 CREATE (s2:Song {song_id: "song2", title: "Love of My Life", duration: 218})
 CREATE (s3:Song {song_id: "song3", title: "We Will Rock You", duration: 122})
 
-// 2. Kreiraj relationships
+// 2. Create relationships
 CREATE (u1)-[:RATED {rating: 5}]->(s1)
 CREATE (u1)-[:RATED {rating: 4}]->(s2)
 CREATE (u2)-[:RATED {rating: 5}]->(s1)
@@ -45,7 +45,7 @@ MATCH (u:User {user_id: "user1"})-[r:RATED]->(s:Song)
 RETURN u.user_id, s.song_id, r.rating
 ```
 
-**Expected:** 2 rows (song1=5, song2=4)
+**Expected:** 2 rows (`song1=5`, `song2=4`)
 
 ### 2. GetUserListenHistory
 
@@ -55,7 +55,7 @@ RETURN s.song_id
 LIMIT 10
 ```
 
-**Expected:** 2 rows (song1, song2)
+**Expected:** 2 rows (`song1`, `song2`)
 
 ### 3. GetUserArtistSubscriptions
 
@@ -64,7 +64,7 @@ MATCH (u:User {user_id: "user1"})-[:SUBSCRIBED]->(a:Artist)
 RETURN a.artist_id
 ```
 
-**Expected:** 1 row (artist1)
+**Expected:** 1 row (`artist1`)
 
 ### 4. GetUserGenreSubscriptions
 
@@ -73,7 +73,7 @@ MATCH (u:User {user_id: "user1"})-[:SUBSCRIBED_GENRE]->(g:Genre)
 RETURN g.genre_id
 ```
 
-**Expected:** 1 row (genre1)
+**Expected:** 1 row (`genre1`)
 
 ### 5. GetSongsByGenre
 
@@ -83,7 +83,7 @@ RETURN s.song_id
 LIMIT 10
 ```
 
-**Expected:** 2 rows (song1, song2)
+**Expected:** 3 rows (`song1`, `song2`, `song3`)
 
 ### 6. GetSongsByArtist
 
@@ -93,7 +93,7 @@ RETURN s.song_id
 LIMIT 10
 ```
 
-**Expected:** 2 rows (song1, song2)
+**Expected:** 2 rows (`song1`, `song2`)
 
 ### 7. GetSongsByAlbum
 
@@ -102,7 +102,7 @@ MATCH (s:Song)-[:BELONGS_TO]->(a:Album {album_id: "album1"})
 RETURN s.song_id
 ```
 
-**Expected:** 2 rows (song1, song2)
+**Expected:** 2 rows (`song1`, `song2`)
 
 ### 8. GetHighlyRatedSongs
 
@@ -115,7 +115,7 @@ ORDER BY avg_rating DESC, rating_count DESC
 LIMIT 10
 ```
 
-**Expected:** 2 rows (song1 avg=5.0, song2 avg=4.0)
+**Expected:** at least 2 rows (`song1` avg=5.0, `song2` avg=4.0)
 
 ### 9. GetRecommendedSongsForUser
 
@@ -137,7 +137,7 @@ ORDER BY avg_rating DESC, rating_count DESC
 LIMIT 10
 ```
 
-**Expected:** Trebalo bi da preporuči song3 (user1 ga nije ocenio/slušao)
+**Expected:** should recommend `song3` (`user1` has not rated/listened to it).
 
 ### 10. GetSimilarUsers
 
@@ -151,7 +151,7 @@ ORDER BY common_songs DESC, avg_diff ASC
 LIMIT 10
 ```
 
-**Expected:** 1 row (user2, jer oba ocenjuju song1)
+**Expected:** 1 row (`user2`, because both users rated `song1` similarly).
 
 ### 11. GetCollaborativeRecommendations
 
@@ -167,11 +167,11 @@ ORDER BY similar_user_count DESC, avg_rating DESC
 LIMIT 10
 ```
 
-**Expected:** Može vratiti song3 (user2 ga je ocenio)
+**Expected:** may return `song3` (`user2` rated it highly).
 
 ## Cleanup test data
 
-Nakon testiranja, obriši test podatke:
+After testing, delete the test data:
 
 ```cypher
 MATCH (n)
