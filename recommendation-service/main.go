@@ -68,7 +68,7 @@ var (
 			}
 
 			ur, sr, ar, gr, abr, rr := createRepositories(dbc)
-			ss, rs := createServices(ur, sr, ar, gr, abr, rr)
+			_, rs := createServices(ur, sr, ar, gr, abr, rr)
 			h = createHandlers(rs)
 			c := createConsumers(ur, sr, ar, gr, abr, rr)
 
