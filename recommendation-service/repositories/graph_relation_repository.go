@@ -633,3 +633,71 @@ LIMIT $limit`,
 
 	return result.([]string), nil
 }
+
+// GetSongRatingStats retrieves average rating and count for a specific song.
+func (r *GraphRelationRepository) GetSongRatingStats(ctx context.Context, songID string) (avgRating float64, ratingCount int64, err error) {
+	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	defer session.Close(ctx)
+
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+		res, err := tx.Run(
+			ctx,
+			`MATCH (s:Song {song_id: $song_id})<-[r:RATED]-()
+WITH avg(r.rating) as avg_rating, count(r) as rating_count
+RETURN COALESCE(avg_rating, 0.0) as avg_rating, rating_count`,
+			map[string]interface{}{"song_id": songID},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		if res.Next(ctx) {
+			record := res.Record()
+			avg := record.Values[0].(float64)
+			count := record.Values[1].(int64)
+			return map[string]interface{}{"avg": avg, "count": count}, nil
+		}
+
+		// No ratings found
+		return map[string]interface{}{"avg": 0.0, "count": int64(0)}, nil
+	})
+
+	if err != nil {
+		return 0.0, 0, err
+	}
+
+	stats := result.(map[string]interface{})
+	return stats["avg"].(float64), stats["count"].(int64), nil
+}
+
+// GetSongArtists retrieves all artists for a specific song.
+func (r *GraphRelationRepository) GetSongArtists(ctx context.Context, songID string) ([]string, error) {
+	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	defer session.Close(ctx)
+
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (interface{}, error) {
+		res, err := tx.Run(
+			ctx,
+			`MATCH (s:Song {song_id: $song_id})-[:BY]->(a:Artist)
+RETURN a.name`,
+			map[string]interface{}{"song_id": songID},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		var artistNames []string
+		for res.Next(ctx) {
+			record := res.Record()
+			artistNames = append(artistNames, record.Values[0].(string))
+		}
+
+		return artistNames, nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return result.([]string), nil
+}
