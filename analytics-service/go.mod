@@ -4,7 +4,6 @@ go 1.25.5
 
 require (
 	github.com/go-playground/validator/v10 v10.30.1
-	github.com/gorilla/mux v1.8.1
 	github.com/nats-io/nats.go v1.48.0
 	github.com/vanjmali/spotlite/common-lib v0.0.0
 	go.mongodb.org/mongo-driver v1.17.9
@@ -25,6 +24,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.7 // indirect
 	github.com/klauspost/compress v1.18.3 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
