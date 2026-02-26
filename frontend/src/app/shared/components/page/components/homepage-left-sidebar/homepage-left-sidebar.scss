@@ -58,23 +58,22 @@
 
   &__item,
   &__stat {
-    border: 1px solid $color-border-primary;
-    border-radius: 10px;
     padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.02);
   }
 
   &__item {
+    @include m.selectable-surface(10px);
     text-decoration: none;
     display: grid;
     grid-template-columns: 34px minmax(0, 1fr);
     gap: 8px;
     align-items: center;
+  }
 
-    &:hover {
-      border-color: $color-primary;
-      background: $color-primary-transparent-10;
-    }
+  &__stat {
+    border: 1px solid $color-border-primary;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.02);
   }
 
   &__cover {

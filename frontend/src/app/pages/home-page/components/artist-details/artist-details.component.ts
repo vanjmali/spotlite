@@ -1,4 +1,4 @@
-import { Component, inject, signal, effect } from '@angular/core';
+import { Component, computed, inject, signal, effect } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -29,6 +29,9 @@ export class ArtistDetailsComponent {
   readonly artistIdSg = signal<string>('');
   readonly artistErrorSg = signal<string>('');
   readonly albumsErrorSg = signal<string>('');
+  readonly activeAlbumIdSg = computed(
+    () => this.playback.currentAlbumSg()?.id ?? this.playback.currentTrackSg()?.albumId ?? ''
+  );
 
   constructor() {
     effect(() => {

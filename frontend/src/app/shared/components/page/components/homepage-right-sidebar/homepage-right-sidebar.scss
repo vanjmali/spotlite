@@ -88,8 +88,7 @@
   }
 
   &__song {
-    border: 1px solid transparent;
-    border-radius: 8px;
+    @include m.selectable-surface(8px, transparent, rgba(255, 255, 255, 0.01));
     padding: 8px;
     background: rgba(255, 255, 255, 0.01);
     display: grid;
@@ -101,15 +100,10 @@
     text-align: left;
     cursor: pointer;
 
-    &:hover {
-      border-color: $color-primary-transparent-30;
-      background: $color-primary-transparent-10;
-    }
   }
 
   &__song--active {
-    border-color: $color-primary;
-    background: $color-primary-transparent-10;
+    @include m.selectable-active($color-primary, $color-primary-transparent-10);
   }
 
   &__song-index {
@@ -174,8 +168,8 @@
   &__stat {
     border: 1px solid $color-border-primary;
     border-radius: 10px;
-    padding: 8px 10px;
     background: rgba(255, 255, 255, 0.02);
+    padding: 8px 10px;
     display: flex;
     align-items: center;
     justify-content: space-between;

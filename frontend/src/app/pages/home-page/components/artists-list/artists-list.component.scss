@@ -1,4 +1,5 @@
 @use 'variables/colors' as *;
+@use 'mixins' as m;
 
 :host {
   display: block;
@@ -60,8 +61,7 @@
   }
 
   &__artist-card {
-    border: 1px solid $color-border-primary;
-    border-radius: 12px;
+    @include m.selectable-surface(12px);
     padding: 10px;
     display: grid;
     grid-template-columns: 60px minmax(0, 1fr);
@@ -69,10 +69,6 @@
     text-decoration: none;
     align-items: center;
 
-    &:hover {
-      border-color: $color-primary;
-      background: $color-primary-transparent-10;
-    }
   }
 
   &__artist-card--skeleton {
@@ -111,18 +107,13 @@
   }
 
   &__album-card {
-    border: 1px solid $color-border-primary;
-    border-radius: 12px;
+    @include m.selectable-surface(12px);
     padding: 10px;
     display: flex;
     flex-direction: column;
     gap: 8px;
     text-decoration: none;
 
-    &:hover {
-      border-color: $color-primary;
-      background: $color-primary-transparent-10;
-    }
   }
 
   &__album-card--skeleton {
@@ -137,15 +128,12 @@
   }
 
   &__genre-chip {
-    border: 1px solid $color-border-primary;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.05);
+    @include m.selectable-surface(999px, $color-border-primary, rgba(255, 255, 255, 0.05));
     color: $color-text-secondary;
     padding: 6px 10px;
     cursor: pointer;
 
     &:hover {
-      border-color: $color-primary;
       color: $color-primary-light;
     }
   }
@@ -157,9 +145,7 @@
   }
 
   &__song {
-    border: 1px solid $color-border-primary;
-    border-radius: 10px;
-    background: transparent;
+    @include m.selectable-surface(10px, $color-border-primary, transparent);
     padding: 8px 10px;
     text-align: left;
     cursor: pointer;
@@ -167,10 +153,6 @@
     flex-direction: column;
     gap: 2px;
 
-    &:hover {
-      border-color: $color-primary;
-      background: $color-primary-transparent-10;
-    }
   }
 
   &__song--skeleton {

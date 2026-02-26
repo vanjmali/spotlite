@@ -48,17 +48,17 @@
           <div class="artist-details__albums-grid">
             @for (album of albumsSg(); track album.id) {
               <div class="artist-details__album-card" (click)="onAlbumClick(album)">
-                <div class="artist-details__album-header">
-                  <h3 class="artist-details__album-title">{{ album.title }}</h3>
-                  <button
-                    type="button"
-                    class="artist-details__album-play"
-                    (click)="$event.stopPropagation(); playAlbum(album)"
-                  >
-                    <mat-icon>play_arrow</mat-icon>
-                  </button>
-                </div>
-                <div class="artist-details__album-content">
+                <app-cover-art
+                  class="artist-details__album-cover"
+                  [name]="album.title"
+                  [square]="true"
+                  [size]="78"
+                  [fontSize]="20"
+                />
+                <div class="artist-details__album-main">
+                  <div class="artist-details__album-header">
+                    <h3 class="artist-details__album-title">{{ album.title }}</h3>
+                  </div>
                   <p class="artist-details__album-date">
                     {{ formatDate(album.releaseDate) }}
                   </p>
@@ -72,7 +72,17 @@
                     {{ album.songs.length }} songs
                   </p>
                 </div>
-              </div>
+                    <button
+                      type="button"
+                      class="artist-details__album-play"
+                      [class.artist-details__album-play--active]="album.id === activeAlbumIdSg()"
+                      (click)="$event.stopPropagation(); playAlbum(album)"
+                    >
+                      <mat-icon>{{
+                        album.id === activeAlbumIdSg() ? 'graphic_eq' : 'play_arrow'
+                      }}</mat-icon>
+                    </button>
+                  </div>
             }
           </div>
         }

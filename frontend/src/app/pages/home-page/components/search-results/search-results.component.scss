@@ -34,18 +34,12 @@
 
   &__artist-card,
   &__album-card {
-    border: 1px solid $color-border-primary;
-    border-radius: 12px;
+    @include m.selectable-surface(12px);
     padding: 10px;
     display: flex;
     gap: 8px;
     align-items: center;
     text-decoration: none;
-
-    &:hover {
-      border-color: $color-primary;
-      background: $color-primary-transparent-10;
-    }
   }
 
   &__album-grid {
@@ -109,11 +103,9 @@
   }
 
   &__genre-chip {
-    border: 1px solid $color-border-primary;
-    border-radius: 999px;
+    @include m.selectable-surface(999px, $color-border-primary, rgba(255, 255, 255, 0.03));
     padding: 6px 10px;
     color: $color-text-secondary;
-    background: rgba(255, 255, 255, 0.03);
   }
 
   &__empty {

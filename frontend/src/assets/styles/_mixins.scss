@@ -38,3 +38,39 @@
     }
   }
 }
+
+@mixin selectable-surface(
+  $radius: 10px,
+  $border-color: $color-border-primary,
+  $background: rgba(255, 255, 255, 0.02),
+  $hover-border-color: $color-primary,
+  $hover-background: $color-primary-transparent-10
+) {
+  border: 1px solid $border-color;
+  border-radius: $radius;
+  background: $background;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+
+  &:hover {
+    border-color: $hover-border-color;
+    background: $hover-background;
+  }
+
+  &:focus-visible {
+    outline: none;
+    border-color: $color-primary-light;
+    box-shadow: 0 0 0 2px rgba($color-primary, 0.24);
+  }
+}
+
+@mixin selectable-active(
+  $border-color: $color-primary,
+  $background: $color-primary-transparent-10
+) {
+  border-color: $border-color;
+  background: $background;
+}
