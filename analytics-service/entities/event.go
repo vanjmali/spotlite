@@ -97,9 +97,4 @@ type Event struct {
 	// Timestamp is when the event occurred in UTC
 	// Used for temporal queries and sorting events
 	Timestamp time.Time `bson:"timestamp" json:"timestamp" validate:"required"`
-
-	// TraceID enables distributed tracing across service boundaries
-	// Correlates this event with other operations in the same transaction
-	// Passed through to NATS and downstream services for observability
-	TraceID string `bson:"trace_id" json:"trace_id"`
 }

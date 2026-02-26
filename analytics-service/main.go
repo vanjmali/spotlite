@@ -52,6 +52,13 @@ var (
 				return h, shutdown, err
 			}
 
+			// Initialize read model indexes
+			err = initializeReadModelIndexes(ctx, mc)
+			if err != nil {
+				err = fmt.Errorf("failed to initialize read model indexes: %w", err)
+				return h, shutdown, err
+			}
+
 			// Initialize NATS stream for analytics events
 			err = jsc.EnsureStream(
 				ctx,
@@ -200,6 +207,24 @@ func initializeEventStoreIndexes(ctx context.Context, mongoClient *mongodriver.C
 	dbName := utils.MustGetEnv("DB_NAME")
 	esr := repositories.NewEventStoreRepository(dbName, "events", mongoClient)
 	return esr.EnsureIndexes(ctx)
+}
+
+func initializeReadModelIndexes(ctx context.Context, mongoClient *mongodriver.Client) error {
+	dbName := utils.MustGetEnv("DB_NAME")
+
+	// Initialize user analytics read model indexes
+	uar := repositories.NewUserAnalyticsRepository(dbName, "user_analytics", mongoClient)
+	if err := uar.EnsureIndexes(ctx); err != nil {
+		return fmt.Errorf("failed to initialize user analytics indexes: %w", err)
+	}
+
+	// Initialize user activity history read model indexes
+	uahr := repositories.NewUserActivityHistoryRepository(dbName, "user_activity_history", mongoClient)
+	if err := uahr.EnsureIndexes(ctx); err != nil {
+		return fmt.Errorf("failed to initialize user activity history indexes: %w", err)
+	}
+
+	return nil
 }
 
 func createConsumers() *consumers.AnalyticsConsumer {

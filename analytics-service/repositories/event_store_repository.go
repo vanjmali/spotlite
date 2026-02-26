@@ -40,7 +40,6 @@ func NewEventStoreRepository(dbName string, collName string, c *mongo.Client) *E
 // Indexes support the following query patterns:
 // - Find events by user and event type for read model projection
 // - Time-range queries on events
-// - Distributed tracing correlation
 func (r *EventStoreRepository) EnsureIndexes(ctx context.Context) error {
 	c := r.getCollection()
 
@@ -55,10 +54,6 @@ func (r *EventStoreRepository) EnsureIndexes(ctx context.Context) error {
 		{
 			Keys:    bson.D{{Key: "timestamp", Value: 1}},
 			Options: options.Index().SetName("event_store_timestamp_idx"),
-		},
-		{
-			Keys:    bson.D{{Key: "trace_id", Value: 1}},
-			Options: options.Index().SetName("event_store_trace_id_idx"),
 		},
 	}
 

@@ -105,8 +105,7 @@ Immutable event log - every state change in the analytics domain
   "user_id": "string",
   "event_type": "string (song_played, rating_created, etc)",
   "data": {},
-  "timestamp": "timestamp",
-  "trace_id": "string"
+  "timestamp": "timestamp"
 }
 ```
 
@@ -126,7 +125,6 @@ Event-specific `data` fields:
     <li>default document ID index</li>
     <li>compound index on (user_id, event_type) for filtering events by user and type during read model projection</li>
     <li>timestamp index for time-range queries</li>
-    <li>trace_id index for distributed tracing correlation</li>
 </ul>
 
 #### `user_analytics` Collection
