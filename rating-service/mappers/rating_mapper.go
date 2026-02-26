@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/vanjmali/spotlite/common-lib/types"
 	"github.com/vanjmali/spotlite/rating-service/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -32,5 +33,6 @@ func ToRatingEntity(songIDStr string, userIDStr string, ratingValue int, usernam
 		Username:  username,
 		CreatedAt: now,
 		IsEdited:  false,
+		Status:    types.StatusActive,
 	}, nil
 }

@@ -1,8 +1,8 @@
 package types
 
-type SongStatus string
+type EntityStatus string
 
 const (
-	StatusDeletionInProgress SongStatus = "DELETION_IN_PROGRESS"
-	StatusActive             SongStatus = "ACTIVE"
+	StatusDeletionInProgress EntityStatus = "DELETION_IN_PROGRESS"
+	StatusActive             EntityStatus = "ACTIVE"
 )
