@@ -22,7 +22,9 @@
             </p>
             <div class="album-details__genres">
               @for (genre of albumSg()!.genres; track genre.id) {
-                <span class="album-details__genre-tag">{{ genre.name }}</span>
+                <a class="album-details__genre-tag" [routerLink]="['/genre', genre.id]">{{
+                  genre.name
+                }}</a>
               }
             </div>
             <div class="album-details__artists">
@@ -82,7 +84,9 @@
                     }
                     @if (song.genres && song.genres.length > 0) {
                       @for (genre of song.genres; track genre.id) {
-                        <span class="album-details__song-genre">{{ genre.name }}</span>
+                        <a class="album-details__song-genre" [routerLink]="['/genre', genre.id]">{{
+                          genre.name
+                        }}</a>
                       }
                     }
                   </div>

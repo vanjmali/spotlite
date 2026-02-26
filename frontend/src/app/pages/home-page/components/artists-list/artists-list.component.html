@@ -147,8 +147,18 @@
         <div class="recommendations__songs">
           @for (song of recommendedSongsSg(); track song.id) {
             <button type="button" class="recommendations__song" (click)="playSong(song)">
-              <span class="recommendations__song-title">{{ song.title }}</span>
-              <span class="recommendations__song-artists">{{ artistNames(song.artists) }}</span>
+              <app-cover-art
+                class="recommendations__song-cover"
+                [name]="song.title"
+                [size]="30"
+                [fontSize]="10"
+                [square]="true"
+                [pattern]="false"
+              />
+              <span class="recommendations__song-main">
+                <span class="recommendations__song-title">{{ song.title }}</span>
+                <span class="recommendations__song-artists">{{ artistNames(song.artists) }}</span>
+              </span>
             </button>
           }
         </div>

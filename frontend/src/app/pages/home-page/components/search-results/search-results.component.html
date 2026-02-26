@@ -55,8 +55,18 @@
         <div class="search-results__song-list">
           @for (song of resultsSg().songs; track song.id) {
             <article class="search-results__song-item">
-              <span class="search-results__song-title">{{ song.title }}</span>
-              <span class="search-results__song-meta">{{ artistNames(song.artists) }}</span>
+              <app-cover-art
+                class="search-results__song-cover"
+                [name]="song.title"
+                [size]="28"
+                [fontSize]="10"
+                [square]="true"
+                [pattern]="false"
+              />
+              <span class="search-results__song-main">
+                <span class="search-results__song-title">{{ song.title }}</span>
+                <span class="search-results__song-meta">{{ artistNames(song.artists) }}</span>
+              </span>
             </article>
           }
         </div>
@@ -68,7 +78,9 @@
         <h2>Genres</h2>
         <div class="search-results__genre-list">
           @for (genre of resultsSg().genres; track genre.id) {
-            <span class="search-results__genre-chip">{{ genre.name }}</span>
+            <a class="search-results__genre-chip" [routerLink]="['/genre', genre.id]">{{
+              genre.name
+            }}</a>
           }
         </div>
       </section>

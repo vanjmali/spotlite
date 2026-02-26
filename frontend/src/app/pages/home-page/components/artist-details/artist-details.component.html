@@ -25,7 +25,9 @@
             @if (artistSg()!.genres && artistSg()!.genres.length > 0) {
               <div class="artist-details__genres">
                 @for (genre of artistSg()!.genres; track genre.id) {
-                  <span class="artist-details__genre-tag">{{ genre.name }}</span>
+                  <a class="artist-details__genre-tag" [routerLink]="['/genre', genre.id]">{{
+                    genre.name
+                  }}</a>
                 }
               </div>
             }
@@ -64,7 +66,9 @@
                   </p>
                   <div class="artist-details__album-genres">
                     @for (genre of album.genres; track genre.id) {
-                      <span class="artist-details__album-genre">{{ genre.name }}</span>
+                      <a class="artist-details__album-genre" [routerLink]="['/genre', genre.id]">{{
+                        genre.name
+                      }}</a>
                     }
                   </div>
                   <p class="artist-details__album-songs">

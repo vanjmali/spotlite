@@ -100,7 +100,7 @@ export class ArtistsListComponent {
   }
 
   openGenre(genre: Genre): void {
-    this.router.navigate(['/search'], { queryParams: { q: genre.name } });
+    this.router.navigate(['/genre', genre.id]);
   }
 
   artistNames(artists: Artist[] | undefined): string {

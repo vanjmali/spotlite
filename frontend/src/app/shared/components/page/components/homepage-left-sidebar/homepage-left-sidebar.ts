@@ -69,7 +69,7 @@ export class HomepageLeftSidebarComponent {
               .filter((entry) => entry.sub_type === 'GENRE')
               .map((entry) => ({
                 label: entry.entity_name || 'Unknown genre',
-                href: `/search?q=${encodeURIComponent(entry.entity_name || '')}`,
+                href: `/genre/${entry.entity_id}`,
               }))
           );
         },

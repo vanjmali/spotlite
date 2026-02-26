@@ -149,10 +149,22 @@
     padding: 8px 10px;
     text-align: left;
     cursor: pointer;
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+  }
+
+  &__song-cover {
+    display: block;
+    flex-shrink: 0;
+  }
+
+  &__song-main {
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 2px;
-
   }
 
   &__song--skeleton {

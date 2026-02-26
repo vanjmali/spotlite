@@ -149,6 +149,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'genre/:id',
+        loadComponent: () =>
+          import('./pages/home-page/components/genre-details/genre-details.component').then(
+            (m) => m.GenreDetailsComponent
+          ),
+      },
+      {
         path: 'search',
         loadComponent: () =>
           import('./pages/home-page/components/search-results/search-results.component').then(
@@ -163,6 +170,11 @@ export const routes: Routes = [
       {
         path: 'albums/:id',
         redirectTo: 'album/:id',
+        pathMatch: 'full',
+      },
+      {
+        path: 'genres/:id',
+        redirectTo: 'genre/:id',
         pathMatch: 'full',
       },
     ],

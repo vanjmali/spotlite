@@ -1,0 +1,65 @@
+<div class="genre-details">
+  @if (isLoadingSg()) {
+    <p class="genre-details__loading">Loading genre...</p>
+  } @else if (errorSg()) {
+    <app-message [message]="errorSg()" type="error" />
+  } @else if (!genreSg()) {
+    <p class="genre-details__empty">Genre not found</p>
+  } @else {
+    <app-widget [title]="genreSg()!.name">
+      <div content class="genre-details__header">
+        <app-cover-art [name]="genreSg()!.name" [size]="96" [fontSize]="32" />
+        <div class="genre-details__meta">
+          <p class="genre-details__subtitle">Songs in this genre</p>
+          <p class="genre-details__count">{{ songsSg().length }} songs</p>
+        </div>
+      </div>
+    </app-widget>
+
+    <app-widget title="Songs">
+      <div content class="genre-details__songs">
+        @if (songsSg().length === 0) {
+          <p class="genre-details__empty">No songs in this genre yet.</p>
+        } @else {
+          <div class="genre-details__songs-list">
+            @for (row of songsSg(); track row.songId + ':' + row.albumId) {
+              <button
+                type="button"
+                class="genre-details__song-item"
+                [class.genre-details__song-item--active]="row.songId === activeSongIdSg()"
+                (click)="playFromRow(row.songId, row.albumId)"
+              >
+                <div class="genre-details__song-index">
+                  @if (row.songId === activeSongIdSg()) {
+                    <mat-icon class="genre-details__song-index-icon">graphic_eq</mat-icon>
+                  } @else {
+                    <mat-icon class="genre-details__song-index-icon">music_note</mat-icon>
+                  }
+                </div>
+                <app-cover-art
+                  class="genre-details__song-cover"
+                  [name]="row.songTitle"
+                  [size]="30"
+                  [fontSize]="10"
+                  [square]="true"
+                  [pattern]="false"
+                />
+                <div class="genre-details__song-main">
+                  <p class="genre-details__song-title">{{ row.songTitle }}</p>
+                  <p class="genre-details__song-artist">{{ row.artistsText }}</p>
+                </div>
+                <a
+                  class="genre-details__song-album"
+                  [routerLink]="['/album', row.albumId]"
+                  (click)="$event.stopPropagation()"
+                >
+                  {{ row.albumTitle }}
+                </a>
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </app-widget>
+  }
+</div>

@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal, effect } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { WidgetComponent } from '@app/shared/components/widget/widget.component';
@@ -12,7 +12,14 @@ import { MessageComponent } from '@app/shared/components/message';
 @Component({
   selector: 'app-artist-details',
   standalone: true,
-  imports: [CommonModule, MatIconModule, WidgetComponent, CoverArtComponent, MessageComponent],
+  imports: [
+    CommonModule,
+    MatIconModule,
+    WidgetComponent,
+    CoverArtComponent,
+    MessageComponent,
+    RouterLink,
+  ],
   templateUrl: './artist-details.component.html',
   styleUrl: './artist-details.component.scss',
 })
