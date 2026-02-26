@@ -21,14 +21,6 @@ type SongNodeRepository interface {
 	Get(ctx context.Context, songID string) (*entities.SongNode, error)
 }
 
-type Services struct {
-	userNodeRepository   *repositories.UserNodeRepository
-	songNodeRepository   SongNodeRepository
-	artistNodeRepository *repositories.ArtistNodeRepository
-	genreNodeRepository  *repositories.GenreNodeRepository
-	albumNodeRepository  *repositories.AlbumNodeRepository
-	relationRepository   GraphRelationRepository
-}
 
 func NewServices(
 	ur *repositories.UserNodeRepository,
@@ -37,8 +29,8 @@ func NewServices(
 	gr *repositories.GenreNodeRepository,
 	ab *repositories.AlbumNodeRepository,
 	rr GraphRelationRepository,
-) *Services {
-	return &Services{
+) *Repositories {
+	return &Repositories{
 		userNodeRepository:   ur,
 		songNodeRepository:   sr,
 		artistNodeRepository: ar,

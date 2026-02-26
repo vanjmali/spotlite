@@ -81,7 +81,19 @@ var (
 			// make sure stream is already initialized
 			err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBJECT_ENTITY_UPDATED})
 			if err != nil {
-				err = fmt.Errorf("failed to ensure NATS stream: %w", err)
+				err = fmt.Errorf("failed to ensure content stream: %w", err)
+				return h, shutdown, err
+			}
+
+			err = jsc.EnsureStream(ctx, events.SONGS_STREAM, []string{events.SUBJECT_SONG_CREATED})
+			if err != nil {
+				err = fmt.Errorf("failed to ensure song stream: %w", err)
+				return h, shutdown, err
+			}
+
+			err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_CREATED})
+			if err != nil {
+				err = fmt.Errorf("failed to ensure genre stream: %w", err)
 				return h, shutdown, err
 			}
 

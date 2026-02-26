@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/vanjmali/spotlite/common-lib/account"
 	"github.com/vanjmali/spotlite/common-lib/clock"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
@@ -145,6 +146,10 @@ func (f *fakeUserRepo) ExistsByEmail(ctx context.Context, email string) (bool, e
 	return false, nil
 }
 
+func (f *fakeUserRepo) Delete(ctx context.Context, userID primitive.ObjectID) error {
+	return nil
+}
+
 type fakeMailService struct {
 	sendVerificationFn       func(string, string) error
 	sendLoginOtpFn           func(string, string) error
@@ -196,7 +201,8 @@ func TestUserServiceRegisterUsernameTaken(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, mail, jsc)
 
 	err := svc.Register(context.Background(), &dtos.UserRegistrationDto{
 		Username:  "taken",
@@ -221,7 +227,8 @@ func TestUserServiceRegisterEmailTaken(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, mail, jsc)
 
 	err := svc.Register(context.Background(), &dtos.UserRegistrationDto{
 		Username:  "unique",
@@ -243,7 +250,8 @@ func TestUserServiceRegisterEmailSendFails(t *testing.T) {
 			return errors.New("smtp down")
 		},
 	}
-	svc := NewUserService(repo, mail)
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, mail, jsc)
 
 	err := svc.Register(context.Background(), &dtos.UserRegistrationDto{
 		Username:  "unique",
@@ -261,7 +269,8 @@ func TestUserServiceRegisterEmailSendFails(t *testing.T) {
 func TestUserServiceRegisterSuccess(t *testing.T) {
 	repo := &fakeUserRepo{}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, mail, jsc)
 
 	dto := &dtos.UserRegistrationDto{
 		Username:  "unique",
@@ -294,7 +303,8 @@ func TestUserServiceLoginInactive(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, mail, jsc)
 
 	err := svc.Login(context.Background(), &dtos.UserLoginDto{
 		Email:    "user@example.com",
@@ -319,7 +329,8 @@ func TestUserServiceLoginInactiveInvalidPassword(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, mail, jsc)
 
 	err := svc.Login(context.Background(), &dtos.UserLoginDto{
 		Email:    "user@example.com",
@@ -342,7 +353,8 @@ func TestUserServiceLoginExpiredPassword(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewUserService(repo, &fakeMailService{})
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, &fakeMailService{}, jsc)
 
 	err := svc.Login(context.Background(), &dtos.UserLoginDto{
 		Email:    "user@example.com",
@@ -363,7 +375,8 @@ func TestUserServiceLoginInvalidPassword(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewUserService(repo, &fakeMailService{})
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, &fakeMailService{}, jsc)
 
 	err := svc.Login(context.Background(), &dtos.UserLoginDto{
 		Email:    "user@example.com",
@@ -388,7 +401,8 @@ func TestUserServiceLoginSuccess(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, mail, jsc)
 
 	start := time.Now()
 	err := svc.Login(context.Background(), &dtos.UserLoginDto{
@@ -423,7 +437,8 @@ func TestUserServiceVerifyLoginOtpExpired(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewUserService(repo, &fakeMailService{})
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, &fakeMailService{}, jsc)
 
 	_, err := svc.VerifyLoginOtp(context.Background(), &dtos.VerifyLoginOtpDto{
 		Email: "user@example.com",
@@ -448,7 +463,8 @@ func TestUserServiceVerifyLoginOtpInvalid(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewUserService(repo, &fakeMailService{})
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, &fakeMailService{}, jsc)
 
 	_, err := svc.VerifyLoginOtp(context.Background(), &dtos.VerifyLoginOtpDto{
 		Email: "user@example.com",
@@ -474,7 +490,8 @@ func TestUserServiceVerifyLoginOtpSuccess(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewUserService(repo, &fakeMailService{})
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, &fakeMailService{}, jsc)
 
 	user, err := svc.VerifyLoginOtp(context.Background(), &dtos.VerifyLoginOtpDto{
 		Email: "user@example.com",
@@ -494,7 +511,8 @@ func TestUserServiceResendLoginOtpNotFound(t *testing.T) {
 			return nil, repositories.ErrUserNotFound
 		},
 	}
-	svc := NewUserService(repo, &fakeMailService{})
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, &fakeMailService{}, jsc)
 
 	err := svc.ResendLoginOtp(context.Background(), "user@example.com")
 
@@ -507,7 +525,8 @@ func TestUserServiceResendLoginOtpInactive(t *testing.T) {
 			return &entities.User{AccountStatus: account.StatusInactive}, nil
 		},
 	}
-	svc := NewUserService(repo, &fakeMailService{})
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, &fakeMailService{}, jsc)
 
 	err := svc.ResendLoginOtp(context.Background(), "user@example.com")
 
@@ -527,7 +546,8 @@ func TestUserServiceResendLoginOtpSuccess(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, mail, jsc)
 
 	err := svc.ResendLoginOtp(context.Background(), "user@example.com")
 
@@ -549,8 +569,8 @@ func TestUserServiceCreateNewToken(t *testing.T) {
 	require.NoError(t, keyFile.Sync())
 
 	t.Setenv("JWT_PRIVATE_KEY_PATH", keyFile.Name())
-
-	svc := NewUserService(&fakeUserRepo{}, &fakeMailService{})
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(&fakeUserRepo{}, &fakeMailService{}, jsc)
 	fixed := time.Date(2025, time.January, 2, 15, 4, 5, 0, time.UTC)
 	svc.c = clock.NewFixedClock(fixed)
 	user := &entities.User{
@@ -618,7 +638,8 @@ func TestChangePasswordInvalidCurrentPassword(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, mail, jsc)
 
 	ctx := contextWithUserID(context.Background(), userID)
 	dto := &dtos.ChangePasswordDto{
@@ -645,7 +666,8 @@ func TestChangePasswordTooFrequent(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, mail, jsc)
 
 	ctx := contextWithUserID(context.Background(), userID)
 	dto := &dtos.ChangePasswordDto{
@@ -680,7 +702,8 @@ func TestChangePasswordSuccess(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, mail, jsc)
 
 	ctx := contextWithUserID(context.Background(), userID)
 	dto := &dtos.ChangePasswordDto{

@@ -45,11 +45,6 @@ var (
 				_ = dbc.Close(ctx)
 			}()
 
-			if err = jsc.EnsureStream(ctx, events.ARTISTS_STREAM, []string{events.SUBJECT_ARTIST_CREATED}); err != nil {
-				err = fmt.Errorf("failed to ensure artists stream: %w", err)
-				return h, shutdown, err
-			}
-
 			if err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_SUBSCRIBED, events.SUBJECT_GENRE_CREATED}); err != nil {
 				err = fmt.Errorf("failed to ensure genres stream: %w", err)
 				return h, shutdown, err
@@ -68,7 +63,7 @@ var (
 			ur, sr, ar, gr, abr, rr := createRepositories(dbc)
 			_, rs := createServices(ur, sr, ar, gr, abr, rr)
 			h = createHandlers(rs)
-			c := createConsumers(ur, sr, ar, gr, abr, rr)
+			c := createConsumers(rs)
 
 			// Start consumers in background.
 			consumerCtx, consumerCancel := context.WithCancel(ctx)
@@ -76,31 +71,21 @@ var (
 			consumerErrCh := make(chan error, 6)
 
 			startConsumer := func(stream, subject, durable, label string, handler events.SubscribeHandler) {
-				consumerWg.Add(1)
-				go func() {
-					defer consumerWg.Done()
+				consumerWg.Go(func() {
 					err := jsc.StartConsumer(consumerCtx, stream, subject, durable, handler)
 					if err != nil && !errors.Is(err, context.Canceled) {
 						logging.Errorf(ctx, "%s consumer error: %v", label, err)
 						consumerErrCh <- fmt.Errorf("%s consumer error: %w", label, err)
 					}
-				}()
+				})
 			}
-
-			startConsumer(
-				events.ARTISTS_STREAM,
-				events.SUBJECT_ARTIST_CREATED,
-				events.ARTIST_DURABLE,
-				"artist created",
-				c.HandleRatingCreated,
-			)
 
 			startConsumer(
 				events.GENRES_STREAM,
 				events.SUBJECT_GENRE_CREATED,
 				events.GENRE_DURABLE,
 				"genre created",
-				c.HandleRatingCreated,
+				c.HandleUserRegistration,
 			)
 
 			startConsumer(
@@ -108,7 +93,7 @@ var (
 				events.SUBJECT_GENRE_SUBSCRIBED,
 				events.GENRE_DURABLE,
 				"genre subscription created",
-				c.HandleRatingCreated,
+				c.HandleUserRegistration,
 			)
 
 			startConsumer(
@@ -116,7 +101,7 @@ var (
 				events.SUBJECT_SONG_CREATED,
 				events.SONG_DURABLE,
 				"song created",
-				c.HandleRatingCreated,
+				c.HandleUserRegistration,
 			)
 
 			startConsumer(
@@ -124,7 +109,7 @@ var (
 				events.SUBJECT_SONG_RATED,
 				events.SONG_DURABLE,
 				"song rating created",
-				c.HandleRatingCreated,
+				c.HandleUserRegistration,
 			)
 
 			startConsumer(
@@ -132,7 +117,7 @@ var (
 				events.SUBJECT_USER_CREATED,
 				events.USER_DURABLE,
 				"user created",
-				c.HandleRatingCreated,
+				c.HandleUserRegistration,
 			)
 
 			shutdown = func() error {
@@ -181,6 +166,34 @@ func main() {
 	}
 }
 
+func ensureConstraints(ctx context.Context, d neo4j.DriverWithContext) error {
+	session := d.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+
+	// a list of constraints to apply
+	queries := []string{
+		"CREATE CONSTRAINT user_id_unique IF NOT EXISTS FOR (u:User) REQUIRE u.user_id IS UNIQUE",
+		"CREATE CONSTRAINT genre_id_unique IF NOT EXISTS FOR (g:Genre) REQUIRE g.genre_id IS UNIQUE",
+		"CREATE CONSTRAINT song_id_unique IF NOT EXISTS FOR (s:Song) REQUIRE s.song_id IS UNIQUE",
+	}
+
+	for _, query := range queries {
+		_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+			result, err := tx.Run(ctx, query, nil)
+			if err != nil {
+				return nil, err
+			}
+			return result.Consume(ctx)
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to apply constraint [%s]: %w", query, err)
+		}
+	}
+
+	return nil
+}
+
 func createClients() (neo4j.DriverWithContext, *events.JetStreamClient, error) {
 	neoUri := utils.MustGetEnv("NEO4J_URI")
 	neoUser := utils.MustGetEnv("NEO4J_USER")
@@ -189,6 +202,11 @@ func createClients() (neo4j.DriverWithContext, *events.JetStreamClient, error) {
 	dbc, err := neo4j.NewDriverWithContext(neoUri, neo4j.BasicAuth(neoUser, neoPass, ""))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create Neo4j driver: %w", err)
+	}
+
+	err = ensureConstraints(context.Background(), dbc)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to ensure constraints: %w", err)
 	}
 
 	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
@@ -224,21 +242,16 @@ func createServices(
 	gr *repositories.GenreNodeRepository,
 	abr *repositories.AlbumNodeRepository,
 	rr *repositories.GraphRelationRepository,
-) (*services.Services, *services.RecommendationService) {
+) (*services.Repositories, *services.RecommendationService) {
 	baseServices := services.NewServices(ur, sr, ar, gr, abr, rr)
 	recommendationService := services.NewRecommendationService(baseServices)
 	return baseServices, recommendationService
 }
 
 func createConsumers(
-	ur *repositories.UserNodeRepository,
-	sr *repositories.SongNodeRepository,
-	ar *repositories.ArtistNodeRepository,
-	gr *repositories.GenreNodeRepository,
-	abr *repositories.AlbumNodeRepository,
-	rr *repositories.GraphRelationRepository,
+	rs *services.RecommendationService,
 ) *consumers.RecommendationConsumer {
-	return consumers.NewRecommendationConsumer(ur, sr, ar, gr, abr, rr)
+	return consumers.NewRecommendationConsumer(rs)
 }
 
 func createHandlers(rs *services.RecommendationService) http.Handler {

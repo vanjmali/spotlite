@@ -78,20 +78,13 @@ var (
 				return nil, nil, err
 			}
 
-			err = jsc.EnsureStream(
-				ctx,
-				events.CONTENT_STREAM,
-				[]string{events.SUBJECT_ENTITY_CREATED, events.SUBJECT_ENTITY_UPDATED},
-			)
-			if err != nil {
-				err = fmt.Errorf("failed to ensure NATS stream: %w", err)
+			if err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBJECT_ENTITY_UPDATED}); err != nil {
+				err = fmt.Errorf("failed to ensure genres stream: %w", err)
 				return h, shutdown, err
 			}
 
-			// Ensure subscriptions stream for publishing subscription events
-			err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_SUBSCRIBED})
-			if err != nil {
-				err = fmt.Errorf("failed to ensure subscriptions stream: %w", err)
+			if err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_SUBSCRIBED}); err != nil {
+				err = fmt.Errorf("failed to ensure genres stream: %w", err)
 				return h, shutdown, err
 			}
 

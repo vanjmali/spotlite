@@ -6,10 +6,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/vanjmali/spotlite/common-lib/account"
 	"github.com/vanjmali/spotlite/common-lib/clock"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/utils"
@@ -55,21 +57,23 @@ type UserRepository interface {
 	FindUserByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error)
 	ExistsByUsername(ctx context.Context, username string) (bool, error)
 	ExistsByEmail(ctx context.Context, email string) (bool, error)
+	Delete(ctx context.Context, userID primitive.ObjectID) error
 }
 
 // UserService contains business logic for user onboarding, login and account maintenance.
 type UserService struct {
-	r  UserRepository
-	ms MailSender
-	c  clock.Clock
+	r   UserRepository
+	ms  MailSender
+	jsc *events.JetStreamClient
+	c   clock.Clock
 
 	tr trace.Tracer
 }
 
 // NewUserService builds a UserService with repository and mail dependencies.
-func NewUserService(r UserRepository, ms MailSender) *UserService {
+func NewUserService(r UserRepository, ms MailSender, jsc *events.JetStreamClient) *UserService {
 	tr := otel.Tracer("user-service/user-service")
-	s := UserService{r: r, ms: ms, c: clock.RealClock{}, tr: tr}
+	s := UserService{r: r, ms: ms, c: clock.RealClock{}, jsc: jsc, tr: tr}
 
 	return &s
 }
@@ -77,20 +81,19 @@ func NewUserService(r UserRepository, ms MailSender) *UserService {
 // Register func, handles registration business logic such as username, email existence validation,
 // sending verification mails.
 func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistrationDto) error {
-	ctx, span := s.tr.Start(ctx, "user.register")
-	defer span.End()
+	registerCtx, registerSpan := s.tr.Start(ctx, "user.register")
+	defer registerSpan.End()
 
-	lookupCtx, lookupSpan := s.tr.Start(ctx, "user.register.lookup_unique")
+	lookupCtx, lookupSpan := s.tr.Start(registerCtx, "user.register.lookup_unique")
+	defer lookupSpan.End()
 	// checks if the username is already taken,
 	exists, err := s.r.ExistsByUsername(lookupCtx, reqDto.Username)
 	if err != nil {
 		lookupSpan.RecordError(err)
-		lookupSpan.End()
 		return err
 	}
 
 	if exists {
-		lookupSpan.End()
 		return ErrUsernameTaken
 	}
 
@@ -98,39 +101,24 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	exists, err = s.r.ExistsByEmail(lookupCtx, reqDto.Email)
 	if err != nil {
 		lookupSpan.RecordError(err)
-		lookupSpan.End()
 		return err
 	}
 
 	if exists {
-		lookupSpan.End()
 		return ErrEmailTaken
 	}
 
-	lookupSpan.End()
-
-	createCtx, createSpan := s.tr.Start(ctx, "user.register.create_user")
+	createCtx, createSpan := s.tr.Start(registerCtx, "user.register.create_user")
+	defer createSpan.End()
 	// if both the username and email are unique we convert the dto into the user entity,
 	// the mapper method does all the heavy lifting and sets the default field values and
 	// hashes the password,
 	userEntity, err := mappers.ToUserEntity(reqDto)
 	if err != nil {
 		createSpan.RecordError(err)
-		createSpan.End()
 		logging.Errorf(ctx, "error converting to user entity: %v", err)
 		return err
 	}
-
-	_, mailSpan := s.tr.Start(ctx, "user.register.send_verification_email")
-	// sends account verification email BEFORE saving to database
-	// if email fails, we don't save the user
-	if err := s.ms.SendAccountVerificationEmail(reqDto.Email, userEntity.EmailVerification.Token); err != nil {
-		mailSpan.RecordError(err)
-		mailSpan.End()
-		logging.Errorf(ctx, "failed to send verification email: %v", err)
-		return err
-	}
-	mailSpan.End()
 
 	// insert the user in the database,
 	err = s.r.Create(createCtx, *userEntity)
@@ -142,11 +130,57 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 			err = ErrEmailTaken
 		}
 		createSpan.RecordError(err)
-		createSpan.End()
 		logging.Errorf(ctx, "error creating user in database: %v", err)
 		return err
 	}
-	createSpan.End()
+
+	timeoutCtx, cancel := context.WithTimeout(registerCtx, 4*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "user.register.event")
+	defer eventSpan.End()
+
+	urp := toUserRegisteredPayload(userEntity.Username, userEntity.ID.Hex())
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_USER_CREATED, urp)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second*1),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+	if err != nil {
+		logging.Errorf(eventCtx, "failed to publish user created event: %v", err)
+		eventSpan.RecordError(err)
+
+		var errs []error
+
+		errs = append(errs, err)
+
+		rbCtx, rbSpan := s.tr.Start(registerCtx, "user.register.rollback")
+		defer rbSpan.End()
+
+		err := s.r.Delete(rbCtx, userEntity.ID)
+		if err != nil {
+			logging.Errorf(rbCtx, "rollback failed:  %v", err)
+			rbSpan.RecordError(err)
+
+			errs = append(errs, err)
+		}
+
+		return errors.Join(errs...)
+	}
+
+	_, mailSpan := s.tr.Start(registerCtx, "user.register.send_verification_email")
+	defer mailSpan.End()
+
+	if err := s.ms.SendAccountVerificationEmail(reqDto.Email, userEntity.EmailVerification.Token); err != nil {
+		mailSpan.RecordError(err)
+		logging.Errorf(registerCtx, "failed to send verification email: %v", err)
+		return err
+	}
 
 	return nil
 }
@@ -468,4 +502,12 @@ func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswo
 
 	passwordSpan.End()
 	return nil
+}
+
+func toUserRegisteredPayload(username string, userID string) events.UserRegistrationPayload {
+	return events.UserRegistrationPayload{
+		UserID:   userID,
+		Username: username,
+		EventID:  primitive.NewObjectID().Hex(),
+	}
 }

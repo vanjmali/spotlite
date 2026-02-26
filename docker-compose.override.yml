@@ -175,6 +175,7 @@ services:
     environment:
       JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      ROOT_CERT_PATH: /certs/rootCA.crt
       CERT_PATH: /certs/user-service.crt
       KEY_PATH: /certs/user-service.key
     depends_on:

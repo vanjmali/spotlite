@@ -36,9 +36,6 @@ const (
 	SUBJECT_SONG_CREATED = "songs.created"
 	SUBJECT_SONG_RATED   = "songs.rating.created"
 	SONG_DURABLE         = "SONG_PROCESSOR"
-
-	SUBJECT_ARTIST_CREATED = "artist.created"
-	ARTIST_DURABLE         = "ARTIST_PROCESSOR"
 )
 
 type SubscriptionEntityType string
@@ -71,25 +68,8 @@ type SubscribersBatchEventPayload struct {
 	EventID       string     `json:"event_id"`
 }
 
-type RatingEventPayload struct {
-	UserID    string    `json:"user_id"`
-	SongID    string    `json:"song_id"`
-	Rating    int       `json:"rating"`
-	EventID   string    `json:"event_id"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-type ListenEventPayload struct {
-	UserID    string    `json:"user_id"`
-	SongID    string    `json:"song_id"`
-	EventID   string    `json:"event_id"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-type SubscriptionEventPayload struct {
-	UserID     string                 `json:"user_id"`
-	EntityID   string                 `json:"entity_id"`
-	EntityType SubscriptionEntityType `json:"entity_type"`
-	EventID    string                 `json:"event_id"`
-	CreatedAt  time.Time              `json:"created_at"`
+type UserRegistrationPayload struct {
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+	EventID  string `json:"event_id"`
 }

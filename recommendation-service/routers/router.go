@@ -17,9 +17,5 @@ func HandleRequests(h *handlers.RecommendationHandler) http.Handler {
 	api := r.PathPrefix("/").Subrouter()
 	telemetry.AttachMuxTracing(api, "recommendation-service")
 
-	api.Handle("/api/recommendations", middlewares.RequireAuthenticated(http.HandlerFunc(h.HandleGetRecommendations))).Methods("GET")
-
-	api.Handle("/api/recommendations/trending", http.HandlerFunc(h.HandleGetTrendingSongs)).Methods("GET")
-
 	return r
 }
