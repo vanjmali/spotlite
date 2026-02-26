@@ -9,6 +9,7 @@ import (
 
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
+	"github.com/vanjmali/spotlite/common-lib/types"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
@@ -435,6 +436,8 @@ func (s *SongService) GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongLis
 		}
 		filter["artists._id"] = artistId
 	}
+
+	filter["status"] = bson.M{"$ne": types.StatusDeletionInProgress}
 
 	p := pagination.NewPagination(q.Page, q.Size)
 	items, total, err := s.songRepo.FindAll(ctx, filter, p.Skip(), p.Limit())

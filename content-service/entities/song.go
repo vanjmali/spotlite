@@ -1,6 +1,7 @@
 package entities
 
 import (
+	"github.com/vanjmali/spotlite/common-lib/types"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -15,4 +16,5 @@ type Song struct {
 	AudioSize     int64              `bson:"audio_size,omitempty" json:"audioSize,omitempty"`
 	AudioMimeType string             `bson:"audio_mime_type,omitempty" json:"audioMimeType,omitempty"`
 	AudioChecksum string             `bson:"audio_checksum,omitempty" json:"audioChecksum,omitempty"`
+	Status        types.SongStatus   `bson:"status" json:"status"`
 }

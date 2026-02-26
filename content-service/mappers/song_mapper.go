@@ -1,6 +1,7 @@
 package mappers
 
 import (
+	"github.com/vanjmali/spotlite/common-lib/types"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -13,5 +14,6 @@ func ToSongEntity(a *dtos.SongDto, genres []entities.Genre, artists []entities.A
 		Title:   a.Title,
 		Genres:  genres,
 		Artists: artists,
+		Status:  types.StatusActive,
 	}, nil
 }

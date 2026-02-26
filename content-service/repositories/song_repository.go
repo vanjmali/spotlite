@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 
+	"github.com/vanjmali/spotlite/common-lib/types"
 	"github.com/vanjmali/spotlite/content/entities"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -48,8 +49,8 @@ func (r *SongRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*
 	c := r.getCollection()
 
 	var song entities.Song
-
-	if err := c.FindOne(ctx, bson.M{"_id": id}).Decode(&song); err != nil {
+	filter := bson.M{"_id": id, "status": bson.M{"$ne": types.StatusDeletionInProgress}}
+	if err := c.FindOne(ctx, filter).Decode(&song); err != nil {
 		return nil, err
 	}
 	return &song, nil
@@ -59,7 +60,7 @@ func (r *SongRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*
 func (r *SongRepository) UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]any) (*entities.Song, error) {
 	c := r.getCollection()
 
-	filter := bson.M{"_id": id}
+	filter := bson.M{"_id": id, "status": bson.M{"$ne": types.StatusDeletionInProgress}}
 	updateDoc := bson.M{"$set": update}
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
