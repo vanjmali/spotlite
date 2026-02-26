@@ -138,6 +138,21 @@
   }
 }
 
+.control-bar__mini-loader {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  border-top-color: rgba(255, 255, 255, 0.95);
+  border-radius: 50%;
+  animation: control-bar-spin 0.8s linear infinite;
+}
+
+@keyframes control-bar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .control-bar__meta {
   min-width: 0;
 }

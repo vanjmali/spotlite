@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, HostListener, computed, inject, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { PlaybackService } from '@app/services/playback.service';
@@ -29,6 +29,7 @@ export class ControlBarComponent {
   );
   readonly currentVolumePercentSg = computed(() => Math.round(this.playback.volumeSg() * 100));
   readonly isMutedSg = computed(() => this.playback.mutedSg());
+  readonly isLoadingSg = computed(() => this.playback.isLoadingSg());
 
   previous(): void {
     this.playback.previous();
@@ -64,5 +65,91 @@ export class ControlBarComponent {
       return 'volume_down';
     }
     return 'volume_up';
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onWindowKeydown(event: KeyboardEvent): void {
+    const action = this.mediaActionFromKey(event);
+    if (!action) {
+      return;
+    }
+
+    if (event.defaultPrevented || this.isInteractiveTarget(event.target)) {
+      return;
+    }
+
+    if (!this.hasTrackSg()) {
+      return;
+    }
+
+    event.preventDefault();
+    switch (action) {
+      case 'toggle':
+        this.togglePlayback();
+        break;
+      case 'play':
+        if (!this.playback.isPlayingSg()) {
+          this.togglePlayback();
+        }
+        break;
+      case 'pause':
+      case 'stop':
+        if (this.playback.isPlayingSg()) {
+          this.togglePlayback();
+        }
+        break;
+      case 'next':
+        this.next();
+        break;
+      case 'previous':
+        this.previous();
+        break;
+      default:
+        break;
+    }
+  }
+
+  private mediaActionFromKey(
+    event: KeyboardEvent
+  ): 'toggle' | 'play' | 'pause' | 'next' | 'previous' | 'stop' | null {
+    if (event.code === 'Space' || event.key === ' ') {
+      return 'toggle';
+    }
+
+    const mediaCode = event.code || event.key;
+    switch (mediaCode) {
+      case 'MediaPlayPause':
+        return 'toggle';
+      case 'MediaPlay':
+        return 'play';
+      case 'MediaPause':
+        return 'pause';
+      case 'MediaTrackNext':
+        return 'next';
+      case 'MediaTrackPrevious':
+        return 'previous';
+      case 'MediaStop':
+        return 'stop';
+      default:
+        return null;
+    }
+  }
+
+  private isInteractiveTarget(target: EventTarget | null): boolean {
+    const el = target as HTMLElement | null;
+    if (!el) {
+      return false;
+    }
+
+    if (el.isContentEditable) {
+      return true;
+    }
+
+    const tag = el.tagName?.toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'button') {
+      return true;
+    }
+
+    return Boolean(el.closest('input, textarea, select, button, [contenteditable="true"]'));
   }
 }

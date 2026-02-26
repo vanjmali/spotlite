@@ -61,6 +61,7 @@ export class PlaybackService {
   readonly currentIndexSg = signal<number>(-1);
 
   readonly isPlayingSg = signal(false);
+  readonly isLoadingSg = signal(false);
   readonly currentTimeSg = signal(0);
   readonly durationSg = signal(0);
   readonly volumeSg = signal(DEFAULT_VOLUME);
@@ -104,9 +105,13 @@ export class PlaybackService {
       this.currentTimeSg.set(this.audio.currentTime || 0);
     });
 
-    this.audio.addEventListener('play', () => this.isPlayingSg.set(true));
+    this.audio.addEventListener('play', () => {
+      this.isPlayingSg.set(true);
+      this.isLoadingSg.set(false);
+    });
     this.audio.addEventListener('pause', () => this.isPlayingSg.set(false));
     this.audio.addEventListener('ended', () => this.next());
+    this.setupMediaSessionHandlers();
 
     effect(() => {
       this.audio.volume = this.volumeSg();
@@ -116,6 +121,10 @@ export class PlaybackService {
 
     effect(() => {
       this.persistPlaybackState();
+    });
+
+    effect(() => {
+      this.syncMediaSessionMetadata();
     });
 
     effect(() => {
@@ -162,6 +171,7 @@ export class PlaybackService {
     this.durationSg.set(track.lengthSeconds ?? 0);
     this.currentTimeSg.set(0);
     this.isPlayingSg.set(false);
+    this.isLoadingSg.set(true);
 
     const loadId = ++this.streamLoadId;
     this.clearAudioSource();
@@ -178,6 +188,7 @@ export class PlaybackService {
         this.setAudioSource(objectUrl);
         void this.audio.play().catch(() => {
           this.isPlayingSg.set(false);
+          this.isLoadingSg.set(false);
         });
       },
       error: () => {
@@ -186,6 +197,7 @@ export class PlaybackService {
         }
         this.clearAudioSource();
         this.isPlayingSg.set(false);
+        this.isLoadingSg.set(false);
       },
     });
 
@@ -208,12 +220,18 @@ export class PlaybackService {
             : queue.findIndex((track) => track.id === currentTrack.id);
         if (playIndex >= 0) {
           this.playFromQueue(playIndex);
+        } else {
+          // Recover gracefully from stale/restored state where queue/index is missing.
+          this.queueSg.set([currentTrack]);
+          this.currentIndexSg.set(0);
+          this.playFromQueue(0);
         }
         return;
       }
 
       void this.audio.play().catch(() => {
         this.isPlayingSg.set(false);
+        this.isLoadingSg.set(false);
       });
       return;
     }
@@ -441,6 +459,73 @@ export class PlaybackService {
       albumId: album.id,
       albumTitle: album.title,
     };
+  }
+
+  private setupMediaSessionHandlers(): void {
+    const mediaSession = this.getMediaSession();
+    if (!mediaSession) {
+      return;
+    }
+
+    const safeSet = (
+      action: 'play' | 'pause' | 'previoustrack' | 'nexttrack' | 'stop',
+      handler: (() => void) | null
+    ) => {
+      try {
+        mediaSession.setActionHandler(action, handler);
+      } catch {
+        // Some browsers/platforms may not support all actions.
+      }
+    };
+
+    safeSet('play', () => {
+      if (!this.isPlayingSg()) {
+        this.togglePlayPause();
+      }
+    });
+    safeSet('pause', () => {
+      if (this.isPlayingSg()) {
+        this.togglePlayPause();
+      }
+    });
+    safeSet('previoustrack', () => this.previous());
+    safeSet('nexttrack', () => this.next());
+    safeSet('stop', () => {
+      if (this.isPlayingSg()) {
+        this.togglePlayPause();
+      }
+    });
+  }
+
+  private syncMediaSessionMetadata(): void {
+    const mediaSession = this.getMediaSession();
+    if (!mediaSession) {
+      return;
+    }
+
+    const currentTrack = this.currentTrackSg();
+    if (!currentTrack) {
+      mediaSession.playbackState = 'none';
+      return;
+    }
+
+    mediaSession.playbackState = this.isPlayingSg() ? 'playing' : 'paused';
+
+    if (typeof MediaMetadata !== 'undefined') {
+      mediaSession.metadata = new MediaMetadata({
+        title: currentTrack.title,
+        artist: currentTrack.artists.map((artist) => artist.name).join(', '),
+        album: currentTrack.albumTitle,
+      });
+    }
+  }
+
+  private getMediaSession(): MediaSession | null {
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) {
+      return null;
+    }
+
+    return navigator.mediaSession;
   }
 
   private restoreAudioState(): void {

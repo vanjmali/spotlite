@@ -42,7 +42,11 @@
                 [disabled]="!hasTrackSg()"
                 (click)="togglePlayback()"
               >
-                <mat-icon>{{ playback.isPlayingSg() ? 'pause' : 'play_arrow' }}</mat-icon>
+                @if (isLoadingSg()) {
+                  <span class="control-bar__mini-loader" aria-hidden="true"></span>
+                } @else {
+                  <mat-icon>{{ playback.isPlayingSg() ? 'pause' : 'play_arrow' }}</mat-icon>
+                }
               </button>
             </app-cover-art>
             <button
