@@ -55,14 +55,6 @@ const (
 	EventTypeSongDeleted = "song_deleted"
 )
 
-// AggregateType constants represent the types of entities that events relate to
-const (
-	AggregateTypeSong         = "song"
-	AggregateTypeRating       = "rating"
-	AggregateTypeSubscription = "subscription"
-	AggregateTypeUser         = "user"
-)
-
 // SubscriptionType represents the granularity of a subscription event
 // Users can subscribe to specific artists or entire genres
 type SubscriptionType string
@@ -86,16 +78,6 @@ type Event struct {
 	// UserID is the ID of the user who triggered this event
 	UserID string `bson:"user_id" json:"user_id" validate:"required"`
 
-	// AggregateID is the ID of the entity this event relates to
-	// For SongPlayedEvent: the song ID
-	// For RatingCreatedEvent: the song ID being rated
-	// For SubscriptionCreatedEvent: the artist or genre ID
-	AggregateID string `bson:"aggregate_id" json:"aggregate_id" validate:"required"`
-
-	// AggregateType indicates what kind of entity this event relates to
-	// Values: "song", "rating", "subscription", "user"
-	AggregateType string `bson:"aggregate_type" json:"aggregate_type" validate:"required,oneof=song rating subscription user"`
-
 	// EventType is the specific type of event that occurred
 	// Values: song_played, rating_created, rating_updated, rating_deleted,
 	//         subscription_created, subscription_deleted, song_deleted
@@ -112,11 +94,6 @@ type Event struct {
 	// - SongDeletedEvent: {songID, deletedAt}
 	Data map[string]interface{} `bson:"data" json:"data"`
 
-	// Version is a sequential counter for ordering events from the same aggregate
-	// Starts at 1 for the first event of an aggregate and increments
-	// Used together with Timestamp for deterministic ordering
-	Version int64 `bson:"version" json:"version" validate:"required,min=1"`
-
 	// Timestamp is when the event occurred in UTC
 	// Used for temporal queries and sorting events
 	Timestamp time.Time `bson:"timestamp" json:"timestamp" validate:"required"`
@@ -125,67 +102,4 @@ type Event struct {
 	// Correlates this event with other operations in the same transaction
 	// Passed through to NATS and downstream services for observability
 	TraceID string `bson:"trace_id" json:"trace_id"`
-
-	// SpanID enables distributed tracing within a single service
-	// Identifies this specific operation in the trace context
-	SpanID string `bson:"span_id" json:"span_id"`
-
-	// Metadata contains additional context about how/where this event originated
-	// Examples: {"source": "mobile-app", "ip": "192.168.1.1", "user_agent": "..."}
-	// Can be used for analytics segmentation and debugging
-	Metadata map[string]string `bson:"metadata" json:"metadata"`
-
-	// CreatedAt is the server timestamp when this event was recorded
-	// Set automatically by the repository layer, different from Timestamp
-	// which is when the activity actually occurred
-	CreatedAt time.Time `bson:"created_at" json:"created_at"`
-}
-
-// NewEvent creates a new Event with required fields and timestamp
-// The caller must set Data, AggregateID, and AggregateType
-// Version and Timestamp are managed by the repository layer
-func NewEvent(userID, eventType string) *Event {
-	return &Event{
-		UserID:    userID,
-		EventType: eventType,
-		Data:      make(map[string]interface{}),
-		Metadata:  make(map[string]string),
-		Version:   1,
-		Timestamp: time.Now().UTC(),
-		CreatedAt: time.Now().UTC(),
-	}
-}
-
-// SetData is a convenience method for setting single key-value pairs in event data
-func (e *Event) SetData(key string, value interface{}) {
-	if e.Data == nil {
-		e.Data = make(map[string]interface{})
-	}
-	e.Data[key] = value
-}
-
-// SetMetadata is a convenience method for setting single metadata key-value pairs
-func (e *Event) SetMetadata(key, value string) {
-	if e.Metadata == nil {
-		e.Metadata = make(map[string]string)
-	}
-	e.Metadata[key] = value
-}
-
-// GetData retrieves a value from event data with type assertion support
-// Returns nil if key doesn't exist
-func (e *Event) GetData(key string) interface{} {
-	if e.Data == nil {
-		return nil
-	}
-	return e.Data[key]
-}
-
-// GetMetadata retrieves a value from metadata
-// Returns empty string if key doesn't exist
-func (e *Event) GetMetadata(key string) string {
-	if e.Metadata == nil {
-		return ""
-	}
-	return e.Metadata[key]
 }

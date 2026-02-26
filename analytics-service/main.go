@@ -12,6 +12,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/vanjmali/spotlite/analytics-service/consumers"
 	"github.com/vanjmali/spotlite/analytics-service/infrastructure/mongo"
+	"github.com/vanjmali/spotlite/analytics-service/repositories"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/server"
@@ -43,6 +44,13 @@ var (
 				_ = mc.Disconnect(ctx)
 				jsc.Close()
 			}()
+
+			// Initialize event store indexes
+			err = initializeEventStoreIndexes(ctx, mc)
+			if err != nil {
+				err = fmt.Errorf("failed to initialize event store indexes: %w", err)
+				return h, shutdown, err
+			}
 
 			// Initialize NATS stream for analytics events
 			err = jsc.EnsureStream(
@@ -186,6 +194,12 @@ func createClients() (*mongodriver.Client, *events.JetStreamClient, error) {
 	}
 
 	return mc, jsc, nil
+}
+
+func initializeEventStoreIndexes(ctx context.Context, mongoClient *mongodriver.Client) error {
+	dbName := utils.MustGetEnv("DB_NAME")
+	esr := repositories.NewEventStoreRepository(dbName, "events", mongoClient)
+	return esr.EnsureIndexes(ctx)
 }
 
 func createConsumers() *consumers.AnalyticsConsumer {
