@@ -28,10 +28,12 @@
   }
 
   &__cover {
-    width: 100%;
+    width: min(100%, 260px);
+    max-height: 260px;
     aspect-ratio: 1 / 1;
     border-radius: 10px;
     margin-bottom: 8px;
+    align-self: center;
   }
 
   &__empty-cover-icon {
@@ -91,7 +93,7 @@
     padding: 8px;
     background: rgba(255, 255, 255, 0.01);
     display: grid;
-    grid-template-columns: 18px minmax(0, 1fr);
+    grid-template-columns: 18px 28px minmax(0, 1fr);
     gap: 8px;
     align-items: center;
     text-decoration: none;
@@ -113,7 +115,17 @@
   &__song-index {
     color: $color-text-tertiary;
     font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
+  }
+
+  &__song-index-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    color: $color-primary-light;
   }
 
   &__song-title {
@@ -122,6 +134,11 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  &__song-cover {
+    display: block;
+    flex-shrink: 0;
   }
 
   &__stats-wrap {

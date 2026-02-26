@@ -52,8 +52,19 @@
         } @else {
           <div class="album-details__songs-list">
             @for (song of albumSg()!.songs; track song.id) {
-              <button type="button" class="album-details__song-item" (click)="playSong($index)">
-                <div class="album-details__song-index">{{ $index + 1 }}</div>
+              <button
+                type="button"
+                class="album-details__song-item"
+                [class.album-details__song-item--active]="song.id === activeSongIdSg()"
+                (click)="playSong($index)"
+              >
+                <div class="album-details__song-index">
+                  @if (song.id === activeSongIdSg()) {
+                    <mat-icon class="album-details__song-index-icon">graphic_eq</mat-icon>
+                  } @else {
+                    {{ $index + 1 }}
+                  }
+                </div>
                 <app-cover-art
                   class="album-details__song-cover"
                   [name]="song.title"

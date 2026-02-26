@@ -31,7 +31,7 @@
             </button>
             <app-cover-art
               class="control-bar__cover"
-              [name]="currentAlbumTitleSg()"
+              [name]="currentTrackSg()?.title ?? currentAlbumTitleSg()"
               [square]="true"
               [size]="44"
             >
@@ -114,8 +114,8 @@
           <button
             type="button"
             class="control-bar__volume-btn"
-            [attr.aria-label]="currentVolumePercentSg() === 0 ? 'Unmute' : 'Mute'"
-            [attr.aria-pressed]="currentVolumePercentSg() === 0"
+            [attr.aria-label]="isMutedSg() ? 'Unmute' : 'Mute'"
+            [attr.aria-pressed]="isMutedSg()"
             (click)="toggleMute()"
           >
             <mat-icon>{{ volumeIcon() }}</mat-icon>

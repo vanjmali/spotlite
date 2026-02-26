@@ -40,7 +40,21 @@
             [class.homepage-right-sidebar__song--active]="song.id === activeSongIdSg()"
             (click)="playQueueIndex($index)"
           >
-            <span class="homepage-right-sidebar__song-index">{{ $index + 1 }}</span>
+            <span class="homepage-right-sidebar__song-index">
+              @if (song.id === activeSongIdSg()) {
+                <mat-icon class="homepage-right-sidebar__song-index-icon">graphic_eq</mat-icon>
+              } @else {
+                {{ $index + 1 }}
+              }
+            </span>
+            <app-cover-art
+              class="homepage-right-sidebar__song-cover"
+              [name]="song.title"
+              [size]="28"
+              [fontSize]="10"
+              [square]="true"
+              [pattern]="false"
+            />
             <span class="homepage-right-sidebar__song-title">{{ song.title }}</span>
           </button>
         }
