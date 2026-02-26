@@ -33,3 +33,17 @@ func (c *RecommendationConsumer) HandleUserRegistration(ctx context.Context, msg
 
 	return nil
 }
+
+func (c *RecommendationConsumer) HandleGenreCreation(ctx context.Context, msg jetstream.Msg) error {
+	var p events.GenreCreationPayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		logging.Errorf(ctx, "critical: failed to unmarshal GenreCreationPayload: %v", err)
+		return nil
+	}
+
+	if err := c.rs.CreateGenre(p, ctx); err != nil {
+		return err
+	}
+
+	return nil
+}

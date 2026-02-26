@@ -13,12 +13,6 @@ type SongNode struct {
 	Duration int
 }
 
-// ArtistNode represents an artist node in the recommendation graph.
-type ArtistNode struct {
-	ArtistID string
-	Name     string
-}
-
 // GenreNode represents a genre node in the recommendation graph.
 type GenreNode struct {
 	GenreID string

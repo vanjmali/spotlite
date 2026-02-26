@@ -19,12 +19,11 @@ var (
 )
 
 type Repositories struct {
-	userNodeRepository   *repositories.UserNodeRepository
-	songNodeRepository   SongNodeRepository
-	artistNodeRepository *repositories.ArtistNodeRepository
-	genreNodeRepository  *repositories.GenreNodeRepository
-	albumNodeRepository  *repositories.AlbumNodeRepository
-	relationRepository   GraphRelationRepository
+	userNodeRepository  *repositories.UserNodeRepository
+	songNodeRepository  SongNodeRepository
+	genreNodeRepository *repositories.GenreNodeRepository
+	albumNodeRepository *repositories.AlbumNodeRepository
+	relationRepository  GraphRelationRepository
 }
 
 // RecommendationService provides recommendation-related business logic
@@ -48,6 +47,20 @@ func (rs *RecommendationService) CreateUser(u events.UserRegistrationPayload, ct
 	un := entities.UserNode{UserID: u.UserID, Username: u.Username}
 
 	err := rs.r.userNodeRepository.Create(createCtx, un)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (rs *RecommendationService) CreateGenre(g events.GenreCreationPayload, ctx context.Context) error {
+	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.user.create")
+	defer createSpan.End()
+
+	gn := entities.GenreNode{GenreID: g.GenreID, Name: g.GenreName}
+
+	err := rs.r.genreNodeRepository.Create(createCtx, gn)
 	if err != nil {
 		return err
 	}

@@ -60,8 +60,8 @@ var (
 				return h, shutdown, err
 			}
 
-			ur, sr, ar, gr, abr, rr := createRepositories(dbc)
-			_, rs := createServices(ur, sr, ar, gr, abr, rr)
+			ur, sr, gr, abr, rr := createRepositories(dbc)
+			_, rs := createServices(ur, sr, gr, abr, rr)
 			h = createHandlers(rs)
 			c := createConsumers(rs)
 
@@ -85,7 +85,7 @@ var (
 				events.SUBJECT_GENRE_CREATED,
 				events.GENRE_DURABLE,
 				"genre created",
-				c.HandleUserRegistration,
+				c.HandleGenreCreation,
 			)
 
 			startConsumer(
@@ -220,30 +220,27 @@ func createClients() (neo4j.DriverWithContext, *events.JetStreamClient, error) {
 func createRepositories(driver neo4j.DriverWithContext) (
 	*repositories.UserNodeRepository,
 	*repositories.SongNodeRepository,
-	*repositories.ArtistNodeRepository,
 	*repositories.GenreNodeRepository,
 	*repositories.AlbumNodeRepository,
 	*repositories.GraphRelationRepository,
 ) {
 	ur := repositories.NewUserNodeRepository(driver)
 	sr := repositories.NewSongNodeRepository(driver)
-	ar := repositories.NewArtistNodeRepository(driver)
 	gr := repositories.NewGenreNodeRepository(driver)
 	abr := repositories.NewAlbumNodeRepository(driver)
 	rr := repositories.NewGraphRelationRepository(driver)
 
-	return ur, sr, ar, gr, abr, rr
+	return ur, sr, gr, abr, rr
 }
 
 func createServices(
 	ur *repositories.UserNodeRepository,
 	sr *repositories.SongNodeRepository,
-	ar *repositories.ArtistNodeRepository,
 	gr *repositories.GenreNodeRepository,
 	abr *repositories.AlbumNodeRepository,
 	rr *repositories.GraphRelationRepository,
 ) (*services.Repositories, *services.RecommendationService) {
-	baseServices := services.NewServices(ur, sr, ar, gr, abr, rr)
+	baseServices := services.NewServices(ur, sr, gr, abr, rr)
 	recommendationService := services.NewRecommendationService(baseServices)
 	return baseServices, recommendationService
 }

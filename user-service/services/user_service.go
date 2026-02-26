@@ -508,6 +508,5 @@ func toUserRegisteredPayload(username string, userID string) events.UserRegistra
 	return events.UserRegistrationPayload{
 		UserID:   userID,
 		Username: username,
-		EventID:  primitive.NewObjectID().Hex(),
 	}
 }

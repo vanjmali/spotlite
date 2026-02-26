@@ -46,24 +46,19 @@ func NewClient(url string, opts ...nats.Option) (*JetStreamClient, error) {
 // EnsureStream function allows services (both subscribers and publishers) to initialize a stream, it is
 // going to be done only once by the service which gets up first and relies on this stream.
 func (c *JetStreamClient) EnsureStream(ctx context.Context, streamName string, subjects []string) error {
-	// tries fetching the stream
-	_, err := c.js.Stream(ctx, streamName)
-	// if stream already exists there won't be errors and we want to stop right there
-	if err == nil {
-		return nil
+	// CreateOrUpdateStream is idempotent.
+	// If the stream exists, it updates it. If it doesn't, it creates it.
+	_, err := c.js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
+		Name:     streamName,
+		Subjects: subjects,
+		Storage:  jetstream.FileStorage,
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to ensure stream %s: %w", streamName, err)
 	}
 
-	// check if the stream didn't exist or it was any other type of error
-	if errors.Is(err, jetstream.ErrStreamNotFound) {
-		// the stream isn't assigned anywhere and is accessed via the jetstream instance
-		_, err = c.js.CreateStream(ctx, jetstream.StreamConfig{
-			Name:     streamName,
-			Subjects: subjects,
-			Storage:  jetstream.FileStorage,
-		})
-	}
-
-	return err
+	return nil
 }
 
 // Publish function is used by.

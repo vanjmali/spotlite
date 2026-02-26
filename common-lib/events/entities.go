@@ -71,5 +71,9 @@ type SubscribersBatchEventPayload struct {
 type UserRegistrationPayload struct {
 	UserID   string `json:"user_id"`
 	Username string `json:"username"`
-	EventID  string `json:"event_id"`
+}
+
+type GenreCreationPayload struct {
+	GenreID   string `json:"genre_id"`
+	GenreName string `json:"genre_name"`
 }

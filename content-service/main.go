@@ -91,9 +91,8 @@ var (
 				return h, shutdown, err
 			}
 
-			err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_CREATED})
-			if err != nil {
-				err = fmt.Errorf("failed to ensure genre stream: %w", err)
+			if err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_SUBSCRIBED, events.SUBJECT_GENRE_CREATED}); err != nil {
+				err = fmt.Errorf("failed to ensure genres stream: %w", err)
 				return h, shutdown, err
 			}
 

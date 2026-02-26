@@ -21,21 +21,18 @@ type SongNodeRepository interface {
 	Get(ctx context.Context, songID string) (*entities.SongNode, error)
 }
 
-
 func NewServices(
 	ur *repositories.UserNodeRepository,
 	sr SongNodeRepository,
-	ar *repositories.ArtistNodeRepository,
 	gr *repositories.GenreNodeRepository,
 	ab *repositories.AlbumNodeRepository,
 	rr GraphRelationRepository,
 ) *Repositories {
 	return &Repositories{
-		userNodeRepository:   ur,
-		songNodeRepository:   sr,
-		artistNodeRepository: ar,
-		genreNodeRepository:  gr,
-		albumNodeRepository:  ab,
-		relationRepository:   rr,
+		userNodeRepository:  ur,
+		songNodeRepository:  sr,
+		genreNodeRepository: gr,
+		albumNodeRepository: ab,
+		relationRepository:  rr,
 	}
 }
