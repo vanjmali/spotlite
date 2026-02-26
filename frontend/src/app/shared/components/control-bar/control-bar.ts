@@ -19,7 +19,6 @@ export class ControlBarComponent {
   readonly playback = inject(PlaybackService);
 
   readonly stars = [1, 2, 3, 4, 5];
-  private previousVolumePercent = 75;
   readonly hasTrackSg = computed(() => !!this.playback.currentTrackSg());
   readonly currentTrackSg = computed(() => this.playback.currentTrackSg());
   readonly currentAlbumTitleSg = computed(
@@ -29,6 +28,7 @@ export class ControlBarComponent {
       'No album'
   );
   readonly currentVolumePercentSg = computed(() => Math.round(this.playback.volumeSg() * 100));
+  readonly isMutedSg = computed(() => this.playback.mutedSg());
 
   previous(): void {
     this.playback.previous();
@@ -48,27 +48,18 @@ export class ControlBarComponent {
 
   onVolumeInput(rawValue: string): void {
     const volume = Number(rawValue);
-    if (volume > 0) {
-      this.previousVolumePercent = volume;
-    }
     this.playback.setVolume(volume / 100);
   }
 
   toggleMute(): void {
-    const current = this.currentVolumePercentSg();
-    if (current === 0) {
-      this.playback.setVolume((this.previousVolumePercent || 75) / 100);
-      return;
-    }
-    this.previousVolumePercent = current;
-    this.playback.setVolume(0);
+    this.playback.toggleMute();
   }
 
   volumeIcon(): string {
-    const volume = this.currentVolumePercentSg();
-    if (volume === 0) {
+    if (this.isMutedSg()) {
       return 'volume_off';
     }
+    const volume = this.currentVolumePercentSg();
     if (volume <= 50) {
       return 'volume_down';
     }
