@@ -79,11 +79,11 @@ var (
 			}
 
 			if err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBJECT_ENTITY_UPDATED}); err != nil {
-				err = fmt.Errorf("failed to ensure genres stream: %w", err)
+				err = fmt.Errorf("failed to ensure content stream: %w", err)
 				return h, shutdown, err
 			}
 
-			if err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_SUBSCRIBED}); err != nil {
+			if err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_SUBSCRIBED, events.SUBJECT_GENRE_CREATED}); err != nil {
 				err = fmt.Errorf("failed to ensure genres stream: %w", err)
 				return h, shutdown, err
 			}
