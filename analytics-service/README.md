@@ -22,7 +22,7 @@ The purpose of this service is to:
 
 <ul>
     <li>Track all user listening activities (song plays, ratings, subscriptions)</li>
-    <li>Build analytics summaries (listening time, top artists/songs, genre preferences)</li>
+  <li>Build analytics summaries (top artists, genre preferences)</li>
     <li>Provide user activity timeline and history</li>
     <li>Support query-optimized read models for fast analytics retrieval</li>
     <li>Maintain immutable event log for audit trail and replay capability</li>
@@ -57,23 +57,23 @@ The Analytics Service consumes events from the following NATS JetStream streams 
 **Additional Events (to be emitted by other services or defined in analytics-service):**
 
 <ul>
-    <li><strong>SongPlayedEvent</strong> - Fired when a user plays a song (from content-service or user interaction)</li>
-    <li><strong>RatingCreatedEvent</strong> - Fired when a user creates a rating (from rating-service)</li>
-    <li><strong>RatingUpdatedEvent</strong> - Fired when a user updates a rating (from rating-service)</li>
-    <li><strong>RatingDeletedEvent</strong> - Fired when a user deletes a rating (from rating-service)</li>
-    <li><strong>SubscriptionCreatedEvent</strong> - Fired when a user subscribes to an artist or genre. Includes subscription_type ("artist" or "genre") and target_id.</li>
-    <li><strong>SubscriptionDeletedEvent</strong> - Fired when a subscription is cancelled. Includes subscription_type and target_id to identify which subscription was removed.</li>
-    <li><strong>SongDeletedEvent</strong> - Fired when a song is removed from the platform (from content-service)</li>
+    <li><strong>song_played</strong> - Fired when a user plays a song (from content-service or user interaction)</li>
+    <li><strong>rating_created</strong> - Fired when a user creates a rating (from rating-service)</li>
+    <li><strong>rating_updated</strong> - Fired when a user updates a rating (from rating-service)</li>
+    <li><strong>rating_deleted</strong> - Fired when a user deletes a rating (from rating-service)</li>
+    <li><strong>subscription_created</strong> - Fired when a user subscribes to an artist or genre. Includes subscriptionType ("artist" or "genre") and targetID.</li>
+    <li><strong>subscription_deleted</strong> - Fired when a subscription is cancelled. Includes subscriptionType and targetID to identify which subscription was removed.</li>
+    <li><strong>song_deleted</strong> - Fired when a song is removed from the platform (from content-service)</li>
 </ul>
 
 ### Subscription Types
 
 The Analytics Service tracks two types of subscriptions via events:
 
-- **Artist Subscriptions**: User subscribes to content from a specific artist. `subscription_type: "artist"`, `target_id: artist_id`
-- **Genre Subscriptions**: User subscribes to content from a specific genre. `subscription_type: "genre"`, `target_id: genre_id`
+- **Artist Subscriptions**: User subscribes to content from a specific artist. `subscriptionType: "artist"`, `targetID: artist_id`
+- **Genre Subscriptions**: User subscribes to content from a specific genre. `subscriptionType: "genre"`, `targetID: genre_id`
 
-Both subscription types generate `SubscriptionCreatedEvent` and `SubscriptionDeletedEvent` with the type and target information included in the event data.
+Both subscription types generate `subscription_created` and `subscription_deleted` events with the type and target information included in the event data.
 
 ### The Idea Behind Event Sourcing & CQRS
 
@@ -103,18 +103,10 @@ Immutable event log - every state change in the analytics domain
 {
   "_id": "ObjectID",
   "user_id": "string",
-  "event_type": "string (song.played, rating.created, etc)",
+  "event_type": "string (song_played, rating_created, etc)",
   "aggregate_id": "string",
   "aggregate_type": "string",
-  "data": {
-    "song_id": "string (for song.played events)",
-    "duration_seconds": "number (for song.played events)",
-    "genre": "string (for song.played events)",
-    "rating_value": "number (for rating.* events)",
-    "subscription_type": "string 'artist' or 'genre' (for subscription.* events)",
-    "target_id": "string (for subscription.* events - artist_id or genre_id)",
-    "...": "event-type specific fields"
-  },
+  "data": {},
   "version": "number",
   "timestamp": "timestamp",
   "trace_id": "string",
@@ -122,6 +114,16 @@ Immutable event log - every state change in the analytics domain
   "metadata": {}
 }
 ```
+
+Event-specific `data` fields:
+
+- `song_played`: `songID`, `artistID`, `albumID`, `genreID`, `durationMS`, `playedAt`
+- `rating_created`: `songID`, `rating`, `createdAt`
+- `rating_updated`: `songID`, `oldRating`, `newRating`, `updatedAt`
+- `rating_deleted`: `songID`, `deletedRating`, `deletedAt`
+- `subscription_created`: `subscriptionType`, `targetID`, `createdAt`
+- `subscription_deleted`: `subscriptionType`, `targetID`, `deletedAt`
+- `song_deleted`: `songID`, `deletedAt`
 
 **Indexes:**
 
@@ -141,29 +143,18 @@ Denormalized read model with aggregated user statistics
 {
   "_id": "ObjectID",
   "user_id": "string",
-  "total_songs_listened": "number",
-  "total_play_count": "number",
-  "average_play_duration": "number",
-  "total_listening_time_seconds": "number",
-  "ratings_count": "number",
+  "total_songs_played": "number",
   "average_rating": "number",
-  "top_genres": {"rock": 150, "pop": 98, ...},
-  "top_5_artists": [{artist_id, name, play_count, last_played_at}],
-  "top_5_songs": [{song_id, title, artist_name, play_count, user_rating}],
-  "active_subscription_count": "number",
-  "subscription_history": [{subscription_id, subscription_type, target_id, target_name, start_date, end_date, is_active}],
-  "first_activity_date": "timestamp",
-  "last_activity_date": "timestamp",
-  "updated_at": "timestamp",
-  "version": "number"
+  "songs_by_genre": {"genre_id": 12, "genre_id_2": 4, ...},
+  "top_artists": [{"artist_id": "string", "artist_name": "string", "play_count": 5}],
+  "subscribed_artists_count": "number"
 }
 ```
 
 **Indexes:**
 
 <ul>
-    <li>user_id (primary lookup key)</li>
-    <li>last_activity_date (for identifying dormant users)</li>
+  <li>user_id (primary lookup key)</li>
 </ul>
 
 #### `user_activity_history` Collection
@@ -174,20 +165,17 @@ Individual activity records for user activity timeline
 {
   "_id": "ObjectID",
   "user_id": "string",
-  "activity_type": "string (song_played, rating_created, etc)",
-  "activity_description": "string",
-  "related_entity_id": "string",
-  "related_entity_type": "string",
-  "metadata": {},
-  "occurred_at": "timestamp",
-  "trace_id": "string",
-  "created_at": "timestamp"
+  "activities": [
+    {
+      "activity_type": "string (song_played, rating_created, etc)",
+      "timestamp": "timestamp"
+    }
+  ]
 }
 ```
 
 **Indexes:**
 
 <ul>
-    <li>compound index on (user_id, occurred_at) for efficient activity timeline queries</li>
-    <li>trace_id for distributed tracing</li>
+  <li>compound index on (user_id, activities.timestamp) for activity timeline queries</li>
 </ul>
