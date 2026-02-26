@@ -574,9 +574,8 @@ export class PlaybackService {
       return;
     }
 
-    const queue = saved.queue.filter(
-      (track): track is PlaybackTrack =>
-        Boolean(track?.id && track?.title && track?.albumId && track?.albumTitle)
+    const queue = saved.queue.filter((track): track is PlaybackTrack =>
+      Boolean(track?.id && track?.title && track?.albumId && track?.albumTitle)
     );
     if (queue.length === 0) {
       return;
