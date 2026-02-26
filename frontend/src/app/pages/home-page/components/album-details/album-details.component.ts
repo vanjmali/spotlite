@@ -26,7 +26,7 @@ import { MessageComponent } from '@app/shared/components/message';
 export class AlbumDetailsComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly albumService = inject(AlbumService);
-  private readonly playback = inject(PlaybackService);
+  readonly playback = inject(PlaybackService);
 
   readonly albumSg = signal<Album | null>(null);
   readonly isLoadingSg = signal(false);
@@ -78,5 +78,16 @@ export class AlbumDetailsComponent {
     }
 
     this.playback.playAlbum(album, album.songs[index].id);
+  }
+
+  toggleSongPlayback(songId: string, index: number, event: Event): void {
+    event.stopPropagation();
+    const isActiveSong = songId === this.activeSongIdSg();
+    if (isActiveSong) {
+      this.playback.togglePlayPause();
+      return;
+    }
+
+    this.playSong(index);
   }
 }

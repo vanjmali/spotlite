@@ -80,10 +80,10 @@
                       type="button"
                       class="artist-details__album-play"
                       [class.artist-details__album-play--active]="album.id === activeAlbumIdSg()"
-                      (click)="$event.stopPropagation(); playAlbum(album)"
+                      (click)="toggleAlbumPlayback(album, $event)"
                     >
                       <mat-icon>{{
-                        album.id === activeAlbumIdSg() ? 'graphic_eq' : 'play_arrow'
+                        album.id === activeAlbumIdSg() && playback.isPlayingSg() ? 'pause' : 'play_arrow'
                       }}</mat-icon>
                     </button>
                   </div>

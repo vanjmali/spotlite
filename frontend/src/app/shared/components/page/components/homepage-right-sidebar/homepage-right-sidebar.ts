@@ -62,6 +62,15 @@ export class HomepageRightSidebarComponent {
     this.playback.playFromQueue(index);
   }
 
+  toggleQueueSongPlayback(songId: string, index: number, event: Event): void {
+    event.stopPropagation();
+    if (songId === this.activeSongIdSg()) {
+      this.playback.togglePlayPause();
+      return;
+    }
+    this.playQueueIndex(index);
+  }
+
   private loadStats(userId: string): void {
     this.subscriptionService
       .getMySubscriptions(1, 200)

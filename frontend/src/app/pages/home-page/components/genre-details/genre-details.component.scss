@@ -74,6 +74,26 @@
     color: $color-primary-light;
   }
 
+  &__song-toggle {
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1px rgba(216, 180, 254, 0);
+    transition:
+      box-shadow 0.22s ease,
+      background-color 0.22s ease;
+
+    &:hover,
+    &:focus-visible {
+      box-shadow: inset 0 0 0 1px rgba(216, 180, 254, 0.65);
+      background: rgba(168, 85, 247, 0.12);
+    }
+  }
+
   &__song-main {
     min-width: 0;
   }

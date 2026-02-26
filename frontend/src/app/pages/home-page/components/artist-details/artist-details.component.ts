@@ -28,7 +28,7 @@ export class ArtistDetailsComponent {
   private readonly router = inject(Router);
   private readonly artistService = inject(ArtistService);
   private readonly albumService = inject(AlbumService);
-  private readonly playback = inject(PlaybackService);
+  readonly playback = inject(PlaybackService);
 
   readonly artistSg = signal<Artist | null>(null);
   readonly albumsSg = signal<Album[]>([]);
@@ -90,6 +90,15 @@ export class ArtistDetailsComponent {
 
   playAlbum(album: Album): void {
     this.playback.playAlbum(album);
+  }
+
+  toggleAlbumPlayback(album: Album, event: Event): void {
+    event.stopPropagation();
+    if (album.id === this.activeAlbumIdSg()) {
+      this.playback.togglePlayPause();
+      return;
+    }
+    this.playAlbum(album);
   }
 
   // goBack(): void {

@@ -62,7 +62,19 @@
               >
                 <div class="album-details__song-index">
                   @if (song.id === activeSongIdSg()) {
-                    <mat-icon class="album-details__song-index-icon">graphic_eq</mat-icon>
+                    <span
+                      class="album-details__song-toggle"
+                      role="button"
+                      tabindex="0"
+                      aria-label="Toggle playback"
+                      (click)="toggleSongPlayback(song.id, $index, $event)"
+                      (keydown.enter)="toggleSongPlayback(song.id, $index, $event)"
+                      (keydown.space)="$event.preventDefault(); toggleSongPlayback(song.id, $index, $event)"
+                    >
+                      <mat-icon class="album-details__song-index-icon">{{
+                        playback.isPlayingSg() ? 'pause' : 'play_arrow'
+                      }}</mat-icon>
+                    </span>
                   } @else {
                     {{ $index + 1 }}
                   }

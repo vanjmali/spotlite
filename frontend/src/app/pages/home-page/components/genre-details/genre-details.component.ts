@@ -35,7 +35,7 @@ export class GenreDetailsComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly genreService = inject(GenreService);
   private readonly albumService = inject(AlbumService);
-  private readonly playback = inject(PlaybackService);
+  readonly playback = inject(PlaybackService);
 
   readonly genreSg = signal<Genre | null>(null);
   readonly isLoadingSg = signal(false);
@@ -76,6 +76,15 @@ export class GenreDetailsComponent {
     this.playback.playAlbum(album, songId);
   }
 
+  toggleRowPlayback(songId: string, albumId: string, event: Event): void {
+    event.stopPropagation();
+    if (songId === this.activeSongIdSg()) {
+      this.playback.togglePlayPause();
+      return;
+    }
+    this.playFromRow(songId, albumId);
+  }
+
   private load(genreId: string): void {
     this.isLoadingSg.set(true);
     this.errorSg.set('');
@@ -102,4 +111,3 @@ export class GenreDetailsComponent {
     });
   }
 }
-
