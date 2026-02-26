@@ -55,15 +55,6 @@ const (
 	EventTypeSongDeleted = "song_deleted"
 )
 
-// SubscriptionType represents the granularity of a subscription event
-// Users can subscribe to specific artists or entire genres
-type SubscriptionType string
-
-const (
-	SubscriptionTypeArtist SubscriptionType = "artist"
-	SubscriptionTypeGenre  SubscriptionType = "genre"
-)
-
 // Event represents an immutable event in the event sourcing log.
 // Events are the primary persistence mechanism for the analytics service.
 // Each event is written once and never modified, forming an append-only log.

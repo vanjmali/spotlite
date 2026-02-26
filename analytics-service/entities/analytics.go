@@ -3,6 +3,7 @@ package entities
 import (
 	"time"
 
+	"github.com/vanjmali/spotlite/common-lib/subscription"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -168,15 +169,15 @@ func (u *UserAnalyticsReadModel) AddSongPlayed(genreID, artistID string) {
 }
 
 // AddSubscription updates subscription counts
-func (u *UserAnalyticsReadModel) AddSubscription(subscriptionType SubscriptionType) {
-	if subscriptionType == SubscriptionTypeArtist {
+func (u *UserAnalyticsReadModel) AddSubscription(subscriptionType subscription.SubscriptionType) {
+	if subscriptionType == subscription.ArtistSubscription {
 		u.SubscribedArtistsCount++
 	}
 }
 
 // DeleteSubscription updates subscription counts
-func (u *UserAnalyticsReadModel) DeleteSubscription(subscriptionType SubscriptionType) {
-	if subscriptionType == SubscriptionTypeArtist && u.SubscribedArtistsCount > 0 {
+func (u *UserAnalyticsReadModel) DeleteSubscription(subscriptionType subscription.SubscriptionType) {
+	if subscriptionType == subscription.ArtistSubscription && u.SubscribedArtistsCount > 0 {
 		u.SubscribedArtistsCount--
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/vanjmali/spotlite/analytics-service/entities"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
+	"github.com/vanjmali/spotlite/common-lib/subscription"
 )
 
 // AnalyticsService defines the interface for analytics business logic operations
@@ -16,7 +17,7 @@ type AnalyticsService interface {
 	StoreEvent(ctx context.Context, event *entities.Event) error
 	ProjectSongPlayedEvent(ctx context.Context, userID, genreID, artistID string, timestamp time.Time) error
 	ProjectRatingEvent(ctx context.Context, userID string, eventType string, rating int, oldRating int, timestamp time.Time) error
-	ProjectSubscriptionEvent(ctx context.Context, userID string, eventType string, subscriptionType entities.SubscriptionType, timestamp time.Time) error
+	ProjectSubscriptionEvent(ctx context.Context, userID string, eventType string, subscriptionType subscription.SubscriptionType, timestamp time.Time) error
 }
 
 // AnalyticsConsumer handles events from NATS JetStream and projects them into read models
@@ -206,7 +207,14 @@ func (h *AnalyticsConsumer) HandleSubscriptionCreated(ctx context.Context, msg j
 		return nil
 	}
 
-	if p.SubscriptionType != "artist" && p.SubscriptionType != "genre" {
+	// Convert string from event payload to type-safe enum at boundary
+	var subType subscription.SubscriptionType
+	switch p.SubscriptionType {
+	case string(subscription.ArtistSubscription):
+		subType = subscription.ArtistSubscription
+	case string(subscription.GenreSubscription):
+		subType = subscription.GenreSubscription
+	default:
 		logging.Errorf(ctx, "critical: invalid subscription type: %s", p.SubscriptionType)
 		return nil
 	}
@@ -226,14 +234,6 @@ func (h *AnalyticsConsumer) HandleSubscriptionCreated(ctx context.Context, msg j
 	if err := h.analyticsService.StoreEvent(ctx, event); err != nil {
 		logging.Errorf(ctx, "failed to store subscription created event: %v", err)
 		return err
-	}
-
-	// Convert subscription type string to entity type
-	var subType entities.SubscriptionType
-	if p.SubscriptionType == "artist" {
-		subType = entities.SubscriptionTypeArtist
-	} else {
-		subType = entities.SubscriptionTypeGenre
 	}
 
 	// Project event to read models
@@ -259,7 +259,14 @@ func (h *AnalyticsConsumer) HandleSubscriptionDeleted(ctx context.Context, msg j
 		return nil
 	}
 
-	if p.SubscriptionType != "artist" && p.SubscriptionType != "genre" {
+	// Convert string from event payload to type-safe enum at boundary
+	var subType subscription.SubscriptionType
+	switch p.SubscriptionType {
+	case string(subscription.ArtistSubscription):
+		subType = subscription.ArtistSubscription
+	case string(subscription.GenreSubscription):
+		subType = subscription.GenreSubscription
+	default:
 		logging.Errorf(ctx, "critical: invalid subscription type: %s", p.SubscriptionType)
 		return nil
 	}
@@ -279,14 +286,6 @@ func (h *AnalyticsConsumer) HandleSubscriptionDeleted(ctx context.Context, msg j
 	if err := h.analyticsService.StoreEvent(ctx, event); err != nil {
 		logging.Errorf(ctx, "failed to store subscription deleted event: %v", err)
 		return err
-	}
-
-	// Convert subscription type string to entity type
-	var subType entities.SubscriptionType
-	if p.SubscriptionType == "artist" {
-		subType = entities.SubscriptionTypeArtist
-	} else {
-		subType = entities.SubscriptionTypeGenre
 	}
 
 	// Project event to read models

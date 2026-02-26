@@ -8,6 +8,7 @@ import (
 
 	"github.com/vanjmali/spotlite/analytics-service/entities"
 	"github.com/vanjmali/spotlite/analytics-service/repositories"
+	"github.com/vanjmali/spotlite/common-lib/subscription"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -232,7 +233,7 @@ func (s *AnalyticsService) ProjectSubscriptionEvent(
 	ctx context.Context,
 	userID string,
 	eventType string,
-	subscriptionType entities.SubscriptionType,
+	subscriptionType subscription.SubscriptionType,
 	timestamp time.Time,
 ) error {
 	ctx, span := s.tracer.Start(ctx, "AnalyticsService.ProjectSubscriptionEvent")
