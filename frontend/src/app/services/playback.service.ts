@@ -114,6 +114,21 @@ export class PlaybackService {
       this.isLoadingSg.set(false);
     });
     this.audio.addEventListener('pause', () => this.isPlayingSg.set(false));
+    this.audio.addEventListener('waiting', () => {
+      if (this.currentTrackSg() && !this.audio.paused) {
+        this.isLoadingSg.set(true);
+      }
+    });
+    this.audio.addEventListener('stalled', () => {
+      if (this.currentTrackSg() && !this.audio.paused) {
+        this.isLoadingSg.set(true);
+      }
+    });
+    this.audio.addEventListener('canplay', () => {
+      if (!this.audio.paused) {
+        this.isLoadingSg.set(false);
+      }
+    });
     this.audio.addEventListener('ended', () => this.next());
     this.setupMediaSessionHandlers();
 
