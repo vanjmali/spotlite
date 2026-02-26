@@ -325,6 +325,36 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 	return updatedSong, nil
 }
 
+func (s *SongService) UpdateSongDeletionStatus(ctx context.Context, idStr string, status types.EntityStatus) error {
+	ctx, span := s.tr.Start(ctx, "song.update_deletion_status")
+	defer span.End()
+
+	_, parseSpan := s.tr.Start(ctx, "song.update_deletion_status.parse_id")
+	defer parseSpan.End()
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		parseSpan.RecordError(err)
+		return ErrObjectIdCastFailed
+	}
+
+	update := map[string]any{
+		"status": status,
+	}
+
+	repoCtx, repoSpan := s.tr.Start(ctx, "song.")
+	defer repoSpan.End()
+	_, err = s.songRepo.UpdateByID(repoCtx, id, update)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			repoSpan.RecordError(err)
+			return ErrSongNotFound
+		}
+		repoSpan.RecordError(err)
+		return err
+	}
+	return nil
+}
+
 // DeleteSong deletes a song by its ID.
 func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
 	ctx, span := s.tr.Start(ctx, "song.delete_song")

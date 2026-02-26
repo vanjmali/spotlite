@@ -60,7 +60,7 @@ func (r *SongRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*
 func (r *SongRepository) UpdateByID(ctx context.Context, id primitive.ObjectID, update map[string]any) (*entities.Song, error) {
 	c := r.getCollection()
 
-	filter := bson.M{"_id": id, "status": bson.M{"$ne": types.StatusDeletionInProgress}}
+	filter := bson.M{"_id": id}
 	updateDoc := bson.M{"$set": update}
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
