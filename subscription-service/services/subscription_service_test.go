@@ -7,6 +7,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/sony/gobreaker"
 	"github.com/stretchr/testify/require"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
@@ -114,6 +115,10 @@ func (f *fakeSubscriptionRepo) FindEntitySubscriberCount(ctx context.Context, en
 	}
 
 	return count, nil
+}
+
+func (r *fakeSubscriptionRepo) UpdateSubscriptionsByEntityID(ctx context.Context, entityID primitive.ObjectID, entityName string) error {
+	return nil
 }
 
 type fakeContentGetter struct {
@@ -509,6 +514,66 @@ func TestSubscribeUpstreamFailure(t *testing.T) {
 	err := svc.Subscribe(req, contextWithUserID(context.Background(), primitive.NewObjectID()))
 
 	require.ErrorIs(t, err, ErrUpstreamFailure)
+	require.False(t, repo.createCalled)
+}
+
+func TestSubscribeUpstreamTimeout(t *testing.T) {
+	repo := &fakeSubscriptionRepo{}
+	getter := &fakeContentGetter{
+		getEntityFn: func(context.Context, string, subscription.SubscriptionType) (string, error) {
+			return "", status.Error(codes.DeadlineExceeded, "timeout")
+		},
+	}
+	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
+
+	req := &dtos.CreateSubscriptionDto{
+		EntityID: primitive.NewObjectID().Hex(),
+		Type:     subscription.ArtistSubscription,
+	}
+
+	err := svc.Subscribe(req, contextWithUserID(context.Background(), primitive.NewObjectID()))
+
+	require.ErrorIs(t, err, ErrUpstreamTimeout)
+	require.False(t, repo.createCalled)
+}
+
+func TestSubscribeUpstreamUnavailable(t *testing.T) {
+	repo := &fakeSubscriptionRepo{}
+	getter := &fakeContentGetter{
+		getEntityFn: func(context.Context, string, subscription.SubscriptionType) (string, error) {
+			return "", gobreaker.ErrOpenState
+		},
+	}
+	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
+
+	req := &dtos.CreateSubscriptionDto{
+		EntityID: primitive.NewObjectID().Hex(),
+		Type:     subscription.ArtistSubscription,
+	}
+
+	err := svc.Subscribe(req, contextWithUserID(context.Background(), primitive.NewObjectID()))
+
+	require.ErrorIs(t, err, ErrUpstreamUnavailable)
+	require.False(t, repo.createCalled)
+}
+
+func TestSubscribeUpstreamThrottled(t *testing.T) {
+	repo := &fakeSubscriptionRepo{}
+	getter := &fakeContentGetter{
+		getEntityFn: func(context.Context, string, subscription.SubscriptionType) (string, error) {
+			return "", gobreaker.ErrTooManyRequests
+		},
+	}
+	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
+
+	req := &dtos.CreateSubscriptionDto{
+		EntityID: primitive.NewObjectID().Hex(),
+		Type:     subscription.ArtistSubscription,
+	}
+
+	err := svc.Subscribe(req, contextWithUserID(context.Background(), primitive.NewObjectID()))
+
+	require.ErrorIs(t, err, ErrUpstreamThrottled)
 	require.False(t, repo.createCalled)
 }
 

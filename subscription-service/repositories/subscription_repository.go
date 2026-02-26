@@ -180,3 +180,20 @@ func (r *SubscriptionRepository) FindEntitySubscriberCount(ctx context.Context, 
 
 	return count, nil
 }
+
+func (r *SubscriptionRepository) UpdateSubscriptionsByEntityID(ctx context.Context, entityID primitive.ObjectID, entityName string) error {
+	c := r.getCollection()
+
+	filter := bson.M{
+		"entity_id": entityID,
+	}
+
+	update := bson.M{
+		"$set": bson.M{
+			"entity_name": entityName,
+		},
+	}
+
+	_, err := c.UpdateMany(ctx, filter, update)
+	return err
+}

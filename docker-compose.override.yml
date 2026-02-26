@@ -144,6 +144,28 @@ services:
       - NG_CLI_ANALYTICS=false # disable telemetry
       - API_BASE_URL=${APP_API_BASE_URL?}
 
+  # --- Recommendation Service ---
+  recommendation-service:
+    volumes:
+      - ./logs/recommendation-service:/app/logs
+      - certs:/certs
+    environment:
+      ROOT_CERT_PATH: /certs/rootCA.crt
+      CERT_PATH: /certs/recommendation-service.crt
+      KEY_PATH: /certs/recommendation-service.key
+    depends_on:
+      logs-init:
+        condition: service_completed_successfully
+      cert-gen:
+        condition: service_completed_successfully
+      key-gen:
+        condition: service_completed_successfully
+
+  recommendation-neo4j:
+    ports:
+      - "7474:7474" # Neo4j Browser UI
+      - "7687:7687" # Neo4j Bolt protocol
+
   # --- User Service ---
 
   # in the development environment we want the user service to depend on the key-gen, because
