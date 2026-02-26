@@ -44,6 +44,18 @@ const SONG_SPECS = [
       'Loopable happy light fluffy piece with bright flutes and a bunch of pizzicato strings.\nAttribution Code\n"Monkeys Spinning Monkeys" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/',
     url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Monkeys%20Spinning%20Monkeys.mp3',
   },
+  {
+    title: 'Merry Go',
+    description:
+      'Comedic and playful, this rag-time ditty has a strong melody, and is heavy in the bass chords. The second minute features flighty finger-work, as if an energetic bee is flying up and down the scales. The last thirty seconds is a refrain of the introduction, and the piece ends with an invigorating flourish.\nInstruments: Piano\nAttribution Code\n"Merry Go" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/',
+    url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Merry%20Go.mp3',
+  },
+  {
+    title: 'Spazzmatica Polka',
+    description:
+      'Boisterous and nearly obnoxious, this piece will lodge itself in your brain and make you think you?re trapped in an arcade. The polka rhythm is quick and the melody is spastic. Right into the second minute the rhythm drops out and introduces a crazed, comedic melody that continues throughout until the abrupt end.\nInstruments: Synths\nAttribution Code\n"Spazzmatica Polka" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/',
+    url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Spazzmatica%20Polka.mp3',
+  },
 ];
 
 const FIXED_CONTENT = {
