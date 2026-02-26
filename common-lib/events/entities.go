@@ -77,3 +77,10 @@ type GenreCreationPayload struct {
 	GenreID   string `json:"genre_id"`
 	GenreName string `json:"genre_name"`
 }
+
+type SongCreationPayload struct {
+	SongID    string   `json:"song_id"`
+	SongTitle string   `json:"song_title"`
+	Duration  int      `json:"duration"`
+	GenreIDs  []string `json:"genre_ids"`
+}

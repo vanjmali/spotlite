@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/recommendation-service/entities"
 )
 
@@ -38,41 +39,39 @@ SET r.rating = $rating`,
 	return err
 }
 
-// CreateListened creates a LISTENED relationship between a user and a song.
-func (r *GraphRelationRepository) CreateListened(ctx context.Context, listened entities.Listened) error {
-	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+// SaveSongWithGenres saves a song and links it to its genres.
+func (r *GraphRelationRepository) SaveSongWithGenres(ctx context.Context, e events.SongCreationPayload) error {
+
+	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{
+		AccessMode: neo4j.AccessModeWrite,
+	})
 	defer session.Close(ctx)
 
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		return tx.Run(
-			ctx,
-			`MATCH (u:User {user_id: $user_id}), (s:Song {song_id: $song_id})
-MERGE (u)-[:LISTENED]->(s)`,
-			map[string]any{
-				"user_id": listened.UserID,
-				"song_id": listened.SongID,
-			},
-		)
-	})
-	return err
-}
+	query := `
+		MERGE (s:Song {song_id: $songId})
+		SET s.title = $title, s.duration = $duration
+		WITH s
+		UNWIND $genreIds AS genreId
+		MATCH (g:Genre {genre_id: genreId})
+		MERGE (s)-[:BELONGS_TO]->(g)
+	`
 
-// CreateArtistSubscription creates a SUBSCRIBED relationship between a user and an artist.
-func (r *GraphRelationRepository) CreateArtistSubscription(ctx context.Context, sub entities.ArtistSubscription) error {
-	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
-	defer session.Close(ctx)
+	params := map[string]any{
+		"songId":   e.SongID,
+		"title":    e.SongTitle,
+		"duration": e.Duration,
+		"genreIds": e.GenreIDs,
+	}
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		return tx.Run(
-			ctx,
-			`MATCH (u:User {user_id: $user_id}), (a:Artist {artist_id: $artist_id})
-MERGE (u)-[:SUBSCRIBED]->(a)`,
-			map[string]any{
-				"user_id":   sub.UserID,
-				"artist_id": sub.ArtistID,
-			},
-		)
+		result, err := tx.Run(ctx, query, params)
+		if err != nil {
+			return nil, err
+		}
+
+		return result.Consume(ctx)
 	})
+
 	return err
 }
 
@@ -108,117 +107,6 @@ MERGE (s)-[:BELONGS_TO]->(a)`,
 			map[string]any{
 				"song_id":  songID,
 				"album_id": albumID,
-			},
-		)
-	})
-	return err
-}
-
-// CreateSongHasGenre creates a HAS_GENRE relationship between a song and a genre.
-func (r *GraphRelationRepository) CreateSongHasGenre(ctx context.Context, songID string, genreID string) error {
-	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
-	defer session.Close(ctx)
-
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		return tx.Run(
-			ctx,
-			`MATCH (s:Song {song_id: $song_id}), (g:Genre {genre_id: $genre_id})
-MERGE (s)-[:HAS_GENRE]->(g)`,
-			map[string]any{
-				"song_id":  songID,
-				"genre_id": genreID,
-			},
-		)
-	})
-	return err
-}
-
-// CreateSongByArtist creates a BY relationship between a song and an artist.
-func (r *GraphRelationRepository) CreateSongByArtist(ctx context.Context, songID string, artistID string) error {
-	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
-	defer session.Close(ctx)
-
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		return tx.Run(
-			ctx,
-			`MATCH (s:Song {song_id: $song_id}), (a:Artist {artist_id: $artist_id})
-MERGE (s)-[:BY]->(a)`,
-			map[string]any{
-				"song_id":   songID,
-				"artist_id": artistID,
-			},
-		)
-	})
-	return err
-}
-
-// CreateArtistHasGenre creates a HAS_GENRE relationship between an artist and a genre.
-func (r *GraphRelationRepository) CreateArtistHasGenre(ctx context.Context, artistID string, genreID string) error {
-	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
-	defer session.Close(ctx)
-
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		return tx.Run(
-			ctx,
-			`MATCH (a:Artist {artist_id: $artist_id}), (g:Genre {genre_id: $genre_id})
-MERGE (a)-[:HAS_GENRE]->(g)`,
-			map[string]any{
-				"artist_id": artistID,
-				"genre_id":  genreID,
-			},
-		)
-	})
-	return err
-}
-
-// DeleteRating deletes a RATED relationship between a user and a song.
-func (r *GraphRelationRepository) DeleteRating(ctx context.Context, userID string, songID string) error {
-	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
-	defer session.Close(ctx)
-
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		return tx.Run(
-			ctx,
-			`MATCH (u:User {user_id: $user_id})-[r:RATED]->(s:Song {song_id: $song_id}) DELETE r`,
-			map[string]any{
-				"user_id": userID,
-				"song_id": songID,
-			},
-		)
-	})
-	return err
-}
-
-// DeleteArtistSubscription deletes a SUBSCRIBED relationship between a user and an artist.
-func (r *GraphRelationRepository) DeleteArtistSubscription(ctx context.Context, userID string, artistID string) error {
-	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
-	defer session.Close(ctx)
-
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		return tx.Run(
-			ctx,
-			`MATCH (u:User {user_id: $user_id})-[r:SUBSCRIBED]->(a:Artist {artist_id: $artist_id}) DELETE r`,
-			map[string]any{
-				"user_id":   userID,
-				"artist_id": artistID,
-			},
-		)
-	})
-	return err
-}
-
-// DeleteGenreSubscription deletes a SUBSCRIBED_GENRE relationship between a user and a genre.
-func (r *GraphRelationRepository) DeleteGenreSubscription(ctx context.Context, userID string, genreID string) error {
-	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
-	defer session.Close(ctx)
-
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		return tx.Run(
-			ctx,
-			`MATCH (u:User {user_id: $user_id})-[r:SUBSCRIBED_GENRE]->(g:Genre {genre_id: $genre_id}) DELETE r`,
-			map[string]any{
-				"user_id":  userID,
-				"genre_id": genreID,
 			},
 		)
 	})

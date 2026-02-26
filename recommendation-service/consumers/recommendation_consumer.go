@@ -42,6 +42,22 @@ func (c *RecommendationConsumer) HandleGenreCreation(ctx context.Context, msg je
 	}
 
 	if err := c.rs.CreateGenre(p, ctx); err != nil {
+		logging.Errorf(ctx, "critical: an error has occured while handling genre creation event: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *RecommendationConsumer) HandleSongCreation(ctx context.Context, msg jetstream.Msg) error {
+	var p events.SongCreationPayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		logging.Errorf(ctx, "critical: failed to unmarshal SongCreationPayload: %v", err)
+		return nil
+	}
+
+	if err := c.rs.CreateSong(p, ctx); err != nil {
+		logging.Errorf(ctx, "critical: an error has occured while handling song creation event: %v", err)
 		return err
 	}
 

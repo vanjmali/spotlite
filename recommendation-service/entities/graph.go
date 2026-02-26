@@ -19,12 +19,6 @@ type GenreNode struct {
 	Name    string
 }
 
-// AlbumNode represents an album node in the recommendation graph.
-type AlbumNode struct {
-	AlbumID string
-	Title   string
-}
-
 // Rating represents a RATED relationship in the graph.
 type Rating struct {
 	UserID string

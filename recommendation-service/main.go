@@ -60,8 +60,8 @@ var (
 				return h, shutdown, err
 			}
 
-			ur, sr, gr, abr, rr := createRepositories(dbc)
-			_, rs := createServices(ur, sr, gr, abr, rr)
+			ur, sr, gr, rr := createRepositories(dbc)
+			_, rs := createServices(ur, sr, gr, rr)
 			h = createHandlers(rs)
 			c := createConsumers(rs)
 
@@ -88,29 +88,29 @@ var (
 				c.HandleGenreCreation,
 			)
 
-			startConsumer(
-				events.GENRES_STREAM,
-				events.SUBJECT_GENRE_SUBSCRIBED,
-				events.GENRE_DURABLE,
-				"genre subscription created",
-				c.HandleUserRegistration,
-			)
+			// startConsumer(
+			// 	events.GENRES_STREAM,
+			// 	events.SUBJECT_GENRE_SUBSCRIBED,
+			// 	events.GENRE_DURABLE,
+			// 	"genre subscription created",
+			// 	c.HandleUserRegistration,
+			// )
 
 			startConsumer(
 				events.SONGS_STREAM,
 				events.SUBJECT_SONG_CREATED,
 				events.SONG_DURABLE,
 				"song created",
-				c.HandleUserRegistration,
+				c.HandleSongCreation,
 			)
 
-			startConsumer(
-				events.SONGS_STREAM,
-				events.SUBJECT_SONG_RATED,
-				events.SONG_DURABLE,
-				"song rating created",
-				c.HandleUserRegistration,
-			)
+			// startConsumer(
+			// 	events.SONGS_STREAM,
+			// 	events.SUBJECT_SONG_RATED,
+			// 	events.SONG_DURABLE,
+			// 	"song rating created",
+			// 	c.HandleUserRegistration,
+			// )
 
 			startConsumer(
 				events.USERS_STREAM,
@@ -221,26 +221,23 @@ func createRepositories(driver neo4j.DriverWithContext) (
 	*repositories.UserNodeRepository,
 	*repositories.SongNodeRepository,
 	*repositories.GenreNodeRepository,
-	*repositories.AlbumNodeRepository,
 	*repositories.GraphRelationRepository,
 ) {
 	ur := repositories.NewUserNodeRepository(driver)
 	sr := repositories.NewSongNodeRepository(driver)
 	gr := repositories.NewGenreNodeRepository(driver)
-	abr := repositories.NewAlbumNodeRepository(driver)
 	rr := repositories.NewGraphRelationRepository(driver)
 
-	return ur, sr, gr, abr, rr
+	return ur, sr, gr, rr
 }
 
 func createServices(
 	ur *repositories.UserNodeRepository,
 	sr *repositories.SongNodeRepository,
 	gr *repositories.GenreNodeRepository,
-	abr *repositories.AlbumNodeRepository,
 	rr *repositories.GraphRelationRepository,
 ) (*services.Repositories, *services.RecommendationService) {
-	baseServices := services.NewServices(ur, sr, gr, abr, rr)
+	baseServices := services.NewServices(ur, sr, gr, rr)
 	recommendationService := services.NewRecommendationService(baseServices)
 	return baseServices, recommendationService
 }

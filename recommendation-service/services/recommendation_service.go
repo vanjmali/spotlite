@@ -22,7 +22,6 @@ type Repositories struct {
 	userNodeRepository  *repositories.UserNodeRepository
 	songNodeRepository  SongNodeRepository
 	genreNodeRepository *repositories.GenreNodeRepository
-	albumNodeRepository *repositories.AlbumNodeRepository
 	relationRepository  GraphRelationRepository
 }
 
@@ -61,6 +60,18 @@ func (rs *RecommendationService) CreateGenre(g events.GenreCreationPayload, ctx 
 	gn := entities.GenreNode{GenreID: g.GenreID, Name: g.GenreName}
 
 	err := rs.r.genreNodeRepository.Create(createCtx, gn)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (rs *RecommendationService) CreateSong(e events.SongCreationPayload, ctx context.Context) error {
+	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.song.create")
+	defer createSpan.End()
+
+	err := rs.r.relationRepository.SaveSongWithGenres(createCtx, e)
 	if err != nil {
 		return err
 	}
