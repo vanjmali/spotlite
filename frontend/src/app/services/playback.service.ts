@@ -1,4 +1,5 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Album } from './album.service';
 import { Artist } from './artist.service';
 import { Song } from './song.service';
@@ -28,8 +29,11 @@ export interface PlaybackTrack {
 })
 export class PlaybackService {
   private readonly audio = new Audio();
+  private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly ratingService = inject(RatingService);
+  private activeAudioObjectUrl: string | null = null;
+  private streamLoadId = 0;
 
   readonly currentTrackSg = signal<PlaybackTrack | null>(null);
   readonly currentAlbumSg = signal<Album | null>(null);
@@ -122,10 +126,32 @@ export class PlaybackService {
     this.currentTrackSg.set(track);
     this.durationSg.set(track.lengthSeconds ?? 0);
     this.currentTimeSg.set(0);
+    this.isPlayingSg.set(false);
 
-    this.audio.src = this.streamUrl(track.id);
-    void this.audio.play().catch(() => {
-      this.isPlayingSg.set(false);
+    const loadId = ++this.streamLoadId;
+    this.clearAudioSource();
+
+    this.http.get(this.streamUrl(track.id), { responseType: 'blob' }).subscribe({
+      next: (audioBlob) => {
+        const objectUrl = URL.createObjectURL(audioBlob);
+
+        if (loadId !== this.streamLoadId) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+
+        this.setAudioSource(objectUrl);
+        void this.audio.play().catch(() => {
+          this.isPlayingSg.set(false);
+        });
+      },
+      error: () => {
+        if (loadId !== this.streamLoadId) {
+          return;
+        }
+        this.clearAudioSource();
+        this.isPlayingSg.set(false);
+      },
     });
 
     this.recordPlay(track);
@@ -239,6 +265,23 @@ export class PlaybackService {
 
   private streamUrl(songId: string): string {
     return `/api/content/songs/${songId}/audio`;
+  }
+
+  private setAudioSource(objectUrl: string): void {
+    this.clearAudioSource();
+    this.activeAudioObjectUrl = objectUrl;
+    this.audio.src = objectUrl;
+  }
+
+  private clearAudioSource(): void {
+    this.audio.pause();
+    this.audio.removeAttribute('src');
+    this.audio.load();
+
+    if (this.activeAudioObjectUrl) {
+      URL.revokeObjectURL(this.activeAudioObjectUrl);
+      this.activeAudioObjectUrl = null;
+    }
   }
 
   private recordPlay(track: PlaybackTrack): void {
