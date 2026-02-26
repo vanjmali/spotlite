@@ -51,7 +51,7 @@ EOF
 
 
 # generate certs for all services
-SERVICES="api-gateway user-service notification-service subscription-service content-service rating-service recommendation-service frontend nats"
+SERVICES="api-gateway user-service notification-service subscription-service content-service rating-service recommendation-service analytics-service frontend nats"
 
 # repeat for every service
 for SERVICE in $SERVICES; do
@@ -64,7 +64,6 @@ for SERVICE in $SERVICES; do
 done
 
 echo "Certificates generated successfully!"
-
 
 chmod 644 $CERT_DIR/*.key
 chmod 644 $CERT_DIR/*.crt
