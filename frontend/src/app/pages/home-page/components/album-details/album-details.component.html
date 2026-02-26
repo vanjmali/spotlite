@@ -54,6 +54,13 @@
             @for (song of albumSg()!.songs; track song.id) {
               <button type="button" class="album-details__song-item" (click)="playSong($index)">
                 <div class="album-details__song-index">{{ $index + 1 }}</div>
+                <app-cover-art
+                  class="album-details__song-cover"
+                  [name]="song.title"
+                  [size]="42"
+                  [fontSize]="14"
+                  [square]="true"
+                />
                 <div class="album-details__song-info">
                   <p class="album-details__song-title">{{ song.title }}</p>
                   <div class="album-details__song-meta">

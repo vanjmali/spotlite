@@ -1,10 +1,14 @@
 export function initialsFromName(name: string, maxChars: number = 2): string {
-  const trimmed = name.trim();
-  if (!trimmed) {
+  const cleaned = name
+    .trim()
+    .replace(/[^0-9A-Za-z]+/g, ' ')
+    .trim();
+
+  if (!cleaned) {
     return '?';
   }
 
-  const parts = trimmed.split(/\s+/).filter(Boolean);
+  const parts = cleaned.split(/\s+/).filter(Boolean);
   if (parts.length === 1) {
     return parts[0].slice(0, maxChars).toUpperCase();
   }
