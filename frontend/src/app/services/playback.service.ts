@@ -39,6 +39,11 @@ type PersistedAudioState = {
   muted: boolean;
 };
 
+type SignedAudioUrlResponse = {
+  url: string;
+  expires_at: string;
+};
+
 const PLAYBACK_STATE_STORAGE_KEY = 'spotlite.playback.state.v1';
 const PLAYBACK_AUDIO_STORAGE_KEY = 'spotlite.playback.audio.v1';
 const DEFAULT_VOLUME = 0.85;
@@ -51,7 +56,6 @@ export class PlaybackService {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
   private readonly ratingService = inject(RatingService);
-  private activeAudioObjectUrl: string | null = null;
   private streamLoadId = 0;
   private lastVolumeBeforeMute = DEFAULT_VOLUME;
 
@@ -176,16 +180,18 @@ export class PlaybackService {
     const loadId = ++this.streamLoadId;
     this.clearAudioSource();
 
-    this.http.get(this.streamUrl(track.id), { responseType: 'blob' }).subscribe({
-      next: (audioBlob) => {
-        const objectUrl = URL.createObjectURL(audioBlob);
-
+    this.http.get<SignedAudioUrlResponse>(this.signedStreamUrl(track.id)).subscribe({
+      next: (res) => {
         if (loadId !== this.streamLoadId) {
-          URL.revokeObjectURL(objectUrl);
           return;
         }
 
-        this.setAudioSource(objectUrl);
+        if (!res?.url) {
+          this.isLoadingSg.set(false);
+          return;
+        }
+
+        this.setAudioSource(res.url);
         void this.audio.play().catch(() => {
           this.isPlayingSg.set(false);
           this.isLoadingSg.set(false);
@@ -351,21 +357,19 @@ export class PlaybackService {
     return `/api/content/songs/${songId}/audio`;
   }
 
-  private setAudioSource(objectUrl: string): void {
+  private signedStreamUrl(songId: string): string {
+    return `${this.streamUrl(songId)}/signed-url`;
+  }
+
+  private setAudioSource(url: string): void {
     this.clearAudioSource();
-    this.activeAudioObjectUrl = objectUrl;
-    this.audio.src = objectUrl;
+    this.audio.src = url;
   }
 
   private clearAudioSource(): void {
     this.audio.pause();
     this.audio.removeAttribute('src');
     this.audio.load();
-
-    if (this.activeAudioObjectUrl) {
-      URL.revokeObjectURL(this.activeAudioObjectUrl);
-      this.activeAudioObjectUrl = null;
-    }
   }
 
   private recordPlay(track: PlaybackTrack): void {

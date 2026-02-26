@@ -228,6 +228,7 @@ services:
       - certs:/certs
     environment:
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       ROOT_CERT_PATH: /certs/rootCA.crt
       CERT_PATH: /certs/content-service.crt
       KEY_PATH: /certs/content-service.key
