@@ -137,8 +137,10 @@ Denormalized read model with aggregated user statistics
   "user_id": "string",
   "total_songs_played": "number",
   "average_rating": "number",
+  "rating_sum": "number",
+  "ratings_count": "number",
   "songs_by_genre": {"genre_id": 12, "genre_id_2": 4, ...},
-  "top_artists": [{"artist_id": "string", "artist_name": "string", "play_count": 5}],
+  "top_artists": [{"artist_id": "string", "play_count": 5}],
   "subscribed_artists_count": "number"
 }
 ```

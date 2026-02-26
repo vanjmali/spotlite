@@ -12,9 +12,7 @@ import (
 )
 
 var (
-	ErrEventStoreFailed = errors.New("failed to store event")
-	ErrEventNotFound    = errors.New("event not found")
-	ErrInvalidEvent     = errors.New("invalid event data")
+	ErrInvalidEvent = errors.New("invalid event data")
 )
 
 // EventStoreRepository provides data access helpers for immutable event log.
@@ -81,32 +79,4 @@ func (r *EventStoreRepository) StoreEvent(ctx context.Context, event *entities.E
 	}
 
 	return nil
-}
-
-// GetEventsByUser retrieves all events for a specific user.
-// Used by read model projections to build analytics for a user.
-// Returns events sorted by timestamp (most recent last) for sequential processing.
-func (r *EventStoreRepository) GetEventsByUser(
-	ctx context.Context,
-	userID string,
-) ([]*entities.Event, error) {
-	c := r.getCollection()
-
-	filter := bson.M{"user_id": userID}
-
-	// Sort by timestamp to process events in order
-	opts := options.Find().SetSort(bson.M{"timestamp": 1})
-
-	cursor, err := c.Find(ctx, filter, opts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query user events: %w", err)
-	}
-	defer cursor.Close(ctx)
-
-	var events []*entities.Event
-	if err = cursor.All(ctx, &events); err != nil {
-		return nil, fmt.Errorf("failed to decode user events: %w", err)
-	}
-
-	return events, nil
 }

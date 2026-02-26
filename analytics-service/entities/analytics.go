@@ -43,8 +43,19 @@ type UserAnalyticsReadModel struct {
 	TotalSongsPlayed int `bson:"total_songs_played" json:"total_songs_played"`
 
 	// AverageRating is the average of all ratings the user has given to songs
+	// Calculated from RatingSum / RatingsCount
 	// Updated by projection from rating events
 	AverageRating float64 `bson:"average_rating" json:"average_rating"`
+
+	// RatingSum is the sum of all ratings given by the user
+	// Used to calculate AverageRating incrementally
+	// Updated on: EventTypeRatingCreated, EventTypeRatingUpdated, EventTypeRatingDeleted
+	RatingSum int `bson:"rating_sum" json:"rating_sum"`
+
+	// RatingsCount is the total number of ratings given by the user
+	// Used to calculate AverageRating incrementally
+	// Updated on: EventTypeRatingCreated, EventTypeRatingDeleted
+	RatingsCount int `bson:"ratings_count" json:"ratings_count"`
 
 	// SongsByGenre tracks the number of songs played per genre
 	// Key: genre ID, Value: play count
@@ -66,10 +77,6 @@ type UserAnalyticsReadModel struct {
 type ArtistPlayCount struct {
 	// ArtistID is the unique identifier of the artist
 	ArtistID string `bson:"artist_id" json:"artist_id"`
-
-	// ArtistName is the name of the artist (denormalized from content service via CQRS)
-	// Cached to avoid repeated calls to content service
-	ArtistName string `bson:"artist_name" json:"artist_name"`
 
 	// PlayCount is how many times the user has listened to songs by this artist
 	PlayCount int `bson:"play_count" json:"play_count"`
@@ -111,6 +118,8 @@ func NewUserAnalyticsReadModel(userID string) *UserAnalyticsReadModel {
 		UserID:                 userID,
 		TotalSongsPlayed:       0,
 		AverageRating:          0.0,
+		RatingSum:              0,
+		RatingsCount:           0,
 		SongsByGenre:           make(map[string]int),
 		TopArtists:             []ArtistPlayCount{},
 		SubscribedArtistsCount: 0,
@@ -127,7 +136,7 @@ func NewUserActivityHistory(userID string) *UserActivityHistory {
 
 // AddSongPlayed updates analytics when a song is played
 // Updates: TotalSongsPlayed, SongsByGenre, TopArtists
-func (u *UserAnalyticsReadModel) AddSongPlayed(genreID, artistID, artistName string) {
+func (u *UserAnalyticsReadModel) AddSongPlayed(genreID, artistID string) {
 	u.TotalSongsPlayed++
 
 	// Update genre play count
@@ -147,9 +156,8 @@ func (u *UserAnalyticsReadModel) AddSongPlayed(genreID, artistID, artistName str
 		}
 		if !updated {
 			u.TopArtists = append(u.TopArtists, ArtistPlayCount{
-				ArtistID:   artistID,
-				ArtistName: artistName,
-				PlayCount:  1,
+				ArtistID:  artistID,
+				PlayCount: 1,
 			})
 		}
 
@@ -170,6 +178,40 @@ func (u *UserAnalyticsReadModel) AddSubscription(subscriptionType SubscriptionTy
 func (u *UserAnalyticsReadModel) DeleteSubscription(subscriptionType SubscriptionType) {
 	if subscriptionType == SubscriptionTypeArtist && u.SubscribedArtistsCount > 0 {
 		u.SubscribedArtistsCount--
+	}
+}
+
+// AddRating updates rating statistics when a new rating is created
+// Updates: RatingSum, RatingsCount, AverageRating
+func (u *UserAnalyticsReadModel) AddRating(rating int) {
+	u.RatingSum += rating
+	u.RatingsCount++
+	u.calculateAverageRating()
+}
+
+// UpdateRating updates rating statistics when an existing rating is changed
+// Updates: RatingSum, AverageRating (RatingsCount stays the same)
+func (u *UserAnalyticsReadModel) UpdateRating(oldRating int, newRating int) {
+	u.RatingSum = u.RatingSum - oldRating + newRating
+	u.calculateAverageRating()
+}
+
+// DeleteRating updates rating statistics when a rating is removed
+// Updates: RatingSum, RatingsCount, AverageRating
+func (u *UserAnalyticsReadModel) DeleteRating(rating int) {
+	if u.RatingsCount > 0 {
+		u.RatingSum -= rating
+		u.RatingsCount--
+		u.calculateAverageRating()
+	}
+}
+
+// calculateAverageRating recalculates the average rating from sum and count
+func (u *UserAnalyticsReadModel) calculateAverageRating() {
+	if u.RatingsCount == 0 {
+		u.AverageRating = 0.0
+	} else {
+		u.AverageRating = float64(u.RatingSum) / float64(u.RatingsCount)
 	}
 }
 
@@ -200,12 +242,4 @@ func (h *UserActivityHistory) AddActivity(activity ActivitySummary) {
 	if len(h.Activities) > 1000 {
 		h.Activities = h.Activities[:1000]
 	}
-}
-
-// GetRecentActivities returns the N most recent activities
-func (h *UserActivityHistory) GetRecentActivities(limit int) []ActivitySummary {
-	if limit > len(h.Activities) {
-		limit = len(h.Activities)
-	}
-	return h.Activities[:limit]
 }

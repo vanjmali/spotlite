@@ -12,9 +12,7 @@ import (
 )
 
 var (
-	ErrReadModelFailed       = errors.New("failed to update read model")
-	ErrReadModelNotFound     = errors.New("read model not found")
-	ErrActivityHistoryFailed = errors.New("failed to update activity history")
+	ErrReadModelNotFound = errors.New("read model not found")
 )
 
 // UserAnalyticsRepository provides data access helpers for CQRS read models.

@@ -15,9 +15,8 @@ type UserAnalyticsResponseDto struct {
 
 // TopArtistDto represents an artist and play count for top artists analytics.
 type TopArtistDto struct {
-	ArtistID   string `json:"artist_id"`
-	ArtistName string `json:"artist_name"`
-	PlayCount  int    `json:"play_count"`
+	ArtistID  string `json:"artist_id"`
+	PlayCount int    `json:"play_count"`
 }
 
 // UserActivityHistoryResponseDto represents the activity history for a user.

@@ -13,6 +13,7 @@ import (
 	"github.com/vanjmali/spotlite/analytics-service/consumers"
 	"github.com/vanjmali/spotlite/analytics-service/infrastructure/mongo"
 	"github.com/vanjmali/spotlite/analytics-service/repositories"
+	"github.com/vanjmali/spotlite/analytics-service/services"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/server"
@@ -78,7 +79,7 @@ var (
 				return h, shutdown, err
 			}
 
-			c := createConsumers()
+			c := createConsumers(mc)
 
 			// Setup consumer goroutines
 			consumerCtx, consumerCancel := context.WithCancel(ctx)
@@ -227,8 +228,19 @@ func initializeReadModelIndexes(ctx context.Context, mongoClient *mongodriver.Cl
 	return nil
 }
 
-func createConsumers() *consumers.AnalyticsConsumer {
-	return consumers.NewConsumer()
+func createConsumers(mongoClient *mongodriver.Client) *consumers.AnalyticsConsumer {
+	dbName := utils.MustGetEnv("DB_NAME")
+
+	// Create repositories
+	eventStoreRepo := repositories.NewEventStoreRepository(dbName, "events", mongoClient)
+	analyticsRepo := repositories.NewUserAnalyticsRepository(dbName, "user_analytics", mongoClient)
+	historyRepo := repositories.NewUserActivityHistoryRepository(dbName, "user_activity_history", mongoClient)
+
+	// Create analytics service
+	analyticsService := services.NewAnalyticsService(eventStoreRepo, analyticsRepo, historyRepo)
+
+	// Create consumer with service
+	return consumers.NewConsumer(analyticsService)
 }
 
 func main() {
