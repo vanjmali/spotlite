@@ -4,6 +4,7 @@ go 1.25.5
 
 require (
 	github.com/go-playground/validator/v10 v10.30.1
+	github.com/nats-io/nats.go v1.48.0
 	github.com/vanjmali/spotlite/common-lib v0.0.0
 	go.mongodb.org/mongo-driver v1.17.9
 	go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo v0.65.0
@@ -26,6 +27,8 @@ require (
 	github.com/klauspost/compress v1.18.3 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
+	github.com/nats-io/nkeys v0.4.11 // indirect
+	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.2.0 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
