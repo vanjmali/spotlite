@@ -306,7 +306,13 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	defer streamReader.Close()
-
+	// Publish song played event for analytics tracking (non-blocking)
+	go func() {
+		if err := h.s.TrackSongPlay(r.Context(), id); err != nil {
+			logging.Warnf(r.Context(), "failed to track song play: %v", err)
+			// Don't fail the request - tracking is non-critical
+		}
+	}()
 	setSongAudioResponseHeaders(w, song.AudioSize, song.AudioMimeType)
 
 	_, _ = io.Copy(w, streamReader)
@@ -584,18 +590,6 @@ func setSongAudioResponseHeaders(w http.ResponseWriter, size int64, mime string)
 	}
 
 	w.Header().Set("Content-Type", "audio/mpeg")
-}
-
-// HandleTrackSongPlay handles POST requests to track when a user plays a song.
-func (h *SongHandler) HandleTrackSongPlay(w http.ResponseWriter, r *http.Request) {
-	id := mux.Vars(r)["id"]
-
-	if err := h.s.TrackSongPlay(r.Context(), id); err != nil {
-		logging.Warnf(r.Context(), "failed to track song play: %v", err)
-		// Don't fail the request - tracking is non-critical
-	}
-
-	respond.NoContent(w)
 }
 
 func logSecurityEvent(ctx context.Context, event string, details string) {
