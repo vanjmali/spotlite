@@ -17,6 +17,16 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+type Client interface {
+	EnsureStream(ctx context.Context, streamName string, subjects []string) error
+	Publish(ctx context.Context, subject string, payload interface{}) error
+	StartConsumer(ctx context.Context, streamName string, subject string, durableName string, handler SubscribeHandler) error
+	Close()
+}
+
+// SubscriberHandler function signature.
+type SubscribeHandler func(ctx context.Context, msg jetstream.Msg) error
+
 type JetStreamClient struct {
 	nc     *nats.Conn
 	js     jetstream.JetStream
@@ -91,9 +101,6 @@ func (c *JetStreamClient) Publish(ctx context.Context, subject string, payload i
 	}
 	return err // return the publishing error (if any) or return nil if everything went successfully
 }
-
-// SubscriberHandler function signature.
-type SubscribeHandler func(ctx context.Context, msg jetstream.Msg) error
 
 type ConsumerConfig struct {
 	Stream  string

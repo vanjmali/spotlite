@@ -64,14 +64,14 @@ type UserRepository interface {
 type UserService struct {
 	r   UserRepository
 	ms  MailSender
-	jsc *events.JetStreamClient
+	jsc events.Client
 	c   clock.Clock
 
 	tr trace.Tracer
 }
 
 // NewUserService builds a UserService with repository and mail dependencies.
-func NewUserService(r UserRepository, ms MailSender, jsc *events.JetStreamClient) *UserService {
+func NewUserService(r UserRepository, ms MailSender, jsc events.Client) *UserService {
 	tr := otel.Tracer("user-service/user-service")
 	s := UserService{r: r, ms: ms, c: clock.RealClock{}, jsc: jsc, tr: tr}
 
