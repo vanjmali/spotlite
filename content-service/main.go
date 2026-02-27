@@ -14,6 +14,7 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	pb "github.com/vanjmali/spotlite/common-lib/proto/content_service"
+	ratingpb "github.com/vanjmali/spotlite/common-lib/proto/rating_service"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
@@ -52,6 +53,8 @@ var (
 			return nil
 		},
 		CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
+			var ratingConn *grpc.ClientConn
+
 			dbc, jsc, rc, err := createClients(ctx)
 			if err != nil {
 				err = fmt.Errorf("failed to create clients: %w", err)
@@ -79,6 +82,9 @@ var (
 				_ = dbc.Disconnect(ctx)
 				_ = rc.Close()
 				_ = hdfsStore.Close()
+				if ratingConn != nil {
+					_ = ratingConn.Close()
+				}
 			}()
 
 			// make sure stream is already initialized
@@ -90,7 +96,11 @@ var (
 
 			ar, sr, alr, gr := createRepositories(dbc)
 			gs, as, ss, als, glss := createServices(ar, sr, alr, gr, jsc, hdfsStore)
-			h = createHandlers(v, as, ss, als, gs, glss, rc)
+			ratingClient, ratingConn, err := infragrpc.NewRatingSummaryClient()
+			if err != nil {
+				return h, shutdown, fmt.Errorf("failed to create rating grpc client: %w", err)
+			}
+			h = createHandlers(v, as, ss, als, gs, glss, rc, ratingClient)
 
 			// configures grpc server
 			grpcPort := utils.GetEnv("GRPC_PORT", "50051")
@@ -126,6 +136,9 @@ var (
 				}
 
 				jsc.Close()
+				if err := ratingConn.Close(); err != nil {
+					return fmt.Errorf("failed to close rating grpc connection: %w", err)
+				}
 
 				return nil
 			}
@@ -217,12 +230,16 @@ func createHandlers(
 	gs *services.GenreService,
 	glss *services.GlobalSearchService,
 	rc *redis.Client,
+	ratingClient ratingpb.GetSongRatingClient,
 ) http.Handler {
+	ttl := utils.MustGetDurationEnv("SONG_RATING_CACHE_TTL_SECONDS", time.Second)
+	src := handlers.NewRedisSongRatingCache(rc, ttl)
+
 	ah := handlers.NewArtistHandler(*as, *v)
-	sh := handlers.NewSongHandler(*ss, rc, *v)
-	alh := handlers.NewAlbumHandler(*als, *v)
+	sh := handlers.NewSongHandler(*ss, rc, ratingClient, src, *v)
+	alh := handlers.NewAlbumHandler(*als, ratingClient, src, *v)
 	gh := handlers.NewGenreHandler(*gs, *v)
-	gsh := handlers.NewGlobalSearchHandler(glss)
+	gsh := handlers.NewGlobalSearchHandler(glss, ratingClient, src)
 
 	return routers.HandleRequests(ah, sh, alh, gh, gsh)
 }

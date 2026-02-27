@@ -26,6 +26,7 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
+	pb "github.com/vanjmali/spotlite/common-lib/proto/rating_service"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/common-lib/telemetry"
@@ -36,9 +37,11 @@ import (
 
 // SongHandler wires HTTP handlers to the song service and validators.
 type SongHandler struct {
-	s  *services.SongService
-	rc *redis.Client
-	v  *validator.Validate
+	s            *services.SongService
+	rc           *redis.Client
+	ratingClient pb.GetSongRatingClient
+	src          SongRatingCache
+	v            *validator.Validate
 }
 
 const (
@@ -68,8 +71,14 @@ var (
 var audioDurationDetector = detectAudioDurationSeconds
 
 // NewSongHandler creates and returns a new SongHandler with the provided service and validator.
-func NewSongHandler(s services.SongService, rc *redis.Client, v validator.Validate) *SongHandler {
-	h := SongHandler{s: &s, rc: rc, v: &v}
+func NewSongHandler(
+	s services.SongService,
+	rc *redis.Client,
+	ratingClient pb.GetSongRatingClient,
+	src SongRatingCache,
+	v validator.Validate,
+) *SongHandler {
+	h := SongHandler{s: &s, rc: rc, ratingClient: ratingClient, src: src, v: &v}
 	return &h
 }
 
@@ -131,7 +140,7 @@ func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
-	getSongRating(r.Context(), song)
+	getSongRating(h.ratingClient, h.src, r.Context(), song)
 
 	if err := respond.OkJson(w, song); err != nil {
 		logging.Errorf(r.Context(), "failed to write get song response: %v", err)
@@ -223,7 +232,7 @@ func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 			return nil, err
 		}
 
-		getSongRatings(ctx, result.Items)
+		getSongRatings(h.ratingClient, h.src, ctx, result.Items)
 		return result, nil
 	})
 }
@@ -352,6 +361,7 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 		_ = respond.InternalServerError(w)
 		return
 	}
+
 	if int64(len(audioBytes)) < maxSongAudioCacheBytes {
 		err = h.rc.Set(r.Context(), cacheKey, audioBytes, 24*time.Hour).Err()
 		if err != nil {

@@ -2,34 +2,74 @@ package handlers
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
-	"fmt"
-	"os"
+	"encoding/json"
 	"sync"
 	"time"
 
+	"github.com/redis/go-redis/v9"
 	pb "github.com/vanjmali/spotlite/common-lib/proto/rating_service"
-	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/content/entities"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
-var (
-	ratingSummaryClientOnce sync.Once
-	ratingSummaryClient     pb.GetSongRatingClient
-	ratingSummaryClientErr  error
-	ratingGrpcAddress       = utils.GetEnv("RATING_GRPC_ADDRESS", "rating-service:50052")
-)
+type songRatingCacheEntry struct {
+	Average float64 `json:"average"`
+	Count   int64   `json:"count"`
+}
 
-func getSongRatings(ctx context.Context, songs []entities.Song) {
-	if len(songs) == 0 {
-		return
+type SongRatingCache interface {
+	GetSummary(ctx context.Context, songID string) (float64, int64, bool, error)
+	SetSummary(ctx context.Context, songID string, average float64, count int64) error
+}
+
+type RedisSongRatingCache struct {
+	client *redis.Client
+	ttl    time.Duration
+}
+
+func NewRedisSongRatingCache(client *redis.Client, ttl time.Duration) *RedisSongRatingCache {
+	return &RedisSongRatingCache{
+		client: client,
+		ttl:    ttl,
+	}
+}
+
+func (c *RedisSongRatingCache) GetSummary(ctx context.Context, songID string) (float64, int64, bool, error) {
+	if c == nil || c.client == nil {
+		return 0, 0, false, nil
 	}
 
-	client, err := getRatingSummaryClient()
+	raw, err := c.client.Get(ctx, songRatingCacheKey(songID)).Result()
+	if err != nil || raw == "" {
+		return 0, 0, false, nil
+	}
+
+	var entry songRatingCacheEntry
+	if err := json.Unmarshal([]byte(raw), &entry); err != nil {
+		return 0, 0, false, nil
+	}
+
+	return entry.Average, entry.Count, true, nil
+}
+
+func (c *RedisSongRatingCache) SetSummary(ctx context.Context, songID string, average float64, count int64) error {
+	if c == nil || c.client == nil {
+		return nil
+	}
+
+	payload, err := json.Marshal(songRatingCacheEntry{
+		Average: average,
+		Count:   count,
+	})
+
 	if err != nil {
+		return err
+	}
+
+	return c.client.Set(ctx, songRatingCacheKey(songID), payload, c.ttl).Err()
+}
+
+func getSongRatings(client pb.GetSongRatingClient, cache SongRatingCache, ctx context.Context, songs []entities.Song) {
+	if len(songs) == 0 || client == nil {
 		return
 	}
 
@@ -44,7 +84,7 @@ func getSongRatings(ctx context.Context, songs []entities.Song) {
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			avg, count, ok := fetchSongSummary(ctx, client, songs[i].ID.Hex())
+			avg, count, ok := fetchSongRatings(client, cache, ctx, songs[i].ID.Hex())
 			if !ok {
 				return
 			}
@@ -58,66 +98,35 @@ func getSongRatings(ctx context.Context, songs []entities.Song) {
 	wg.Wait()
 }
 
-func getSongRating(ctx context.Context, song *entities.Song) {
-	if song == nil {
+func getSongRating(client pb.GetSongRatingClient, cache SongRatingCache, ctx context.Context, song *entities.Song) {
+	if song == nil || client == nil {
 		return
 	}
 
-	client, err := getRatingSummaryClient()
-	if err != nil {
-		return
-	}
-
-	avg, count, ok := fetchSongSummary(ctx, client, song.ID.Hex())
+	avg, count, ok := fetchSongRatings(client, cache, ctx, song.ID.Hex())
 	if !ok {
 		return
 	}
+
 	song.Rating = &entities.SongRating{
 		Average: avg,
 		Count:   count,
 	}
 }
 
-func getRatingSummaryClient() (pb.GetSongRatingClient, error) {
-	ratingSummaryClientOnce.Do(func() {
-		rootPath := utils.MustGetEnv("ROOT_CERT_PATH")
-		pool := x509.NewCertPool()
-		rootPEM, err := os.ReadFile(rootPath)
-		if err != nil {
-			ratingSummaryClientErr = fmt.Errorf("failed to read root cert: %w", err)
-			return
-		}
-		if ok := pool.AppendCertsFromPEM(rootPEM); !ok {
-			ratingSummaryClientErr = fmt.Errorf("failed to parse root cert at %s", rootPath)
-			return
-		}
-
-		tlsConfig := &tls.Config{
-			RootCAs:    pool,
-			ServerName: "rating-service",
-			MinVersion: tls.VersionTLS13,
-		}
-
-		conn, err := grpc.NewClient(
-			ratingGrpcAddress,
-			grpc.WithTransportCredentials(credentials.NewTLS(tlsConfig)),
-		)
-		if err != nil {
-			ratingSummaryClientErr = fmt.Errorf("failed to connect to rating grpc: %w", err)
-			return
-		}
-
-		ratingSummaryClient = pb.NewGetSongRatingClient(conn)
-	})
-
-	return ratingSummaryClient, ratingSummaryClientErr
-}
-
-func fetchSongSummary(
-	ctx context.Context,
+func fetchSongRatings(
 	client pb.GetSongRatingClient,
+	cache SongRatingCache,
+	ctx context.Context,
 	songID string,
 ) (float64, int64, bool) {
+	if cache != nil {
+		avg, count, ok, err := cache.GetSummary(ctx, songID)
+		if err == nil && ok {
+			return avg, count, true
+		}
+	}
+
 	reqCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 
@@ -128,5 +137,15 @@ func fetchSongSummary(
 		return 0, 0, false
 	}
 
-	return summary.GetAverage(), summary.GetCount(), true
+	avg := summary.GetAverage()
+	count := summary.GetCount()
+	if cache != nil {
+		_ = cache.SetSummary(ctx, songID, avg, count)
+	}
+
+	return avg, count, true
+}
+
+func songRatingCacheKey(songID string) string {
+	return "song_rating_summary:" + songID
 }

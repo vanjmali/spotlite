@@ -69,7 +69,7 @@ var (
 			if err != nil {
 				return h, shutdown, fmt.Errorf("failed to create grpc server: %w", err)
 			}
-			grpcPort := utils.GetEnv("GRPC_PORT", "50052")
+			grpcPort := utils.GetEnv("GRPC_PORT", "50051")
 			lis, err := net.Listen("tcp", ":"+grpcPort)
 			if err != nil {
 				return h, shutdown, fmt.Errorf("failed to listen on grpc port: %w", err)

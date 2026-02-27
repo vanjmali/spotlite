@@ -10,6 +10,7 @@ import (
 	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
+	pb "github.com/vanjmali/spotlite/common-lib/proto/rating_service"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 	"github.com/vanjmali/spotlite/content/dtos"
@@ -18,13 +19,20 @@ import (
 
 // AlbumHandler wires HTTP handlers to the album service and validators.
 type AlbumHandler struct {
-	s *services.AlbumService
-	v *validator.Validate
+	s            *services.AlbumService
+	ratingClient pb.GetSongRatingClient
+	ratingCache  SongRatingCache
+	v            *validator.Validate
 }
 
 // NewAlbumHandler creates and returns a new AlbumHandler with the provided service and validator.
-func NewAlbumHandler(s services.AlbumService, v validator.Validate) *AlbumHandler {
-	h := AlbumHandler{s: &s, v: &v}
+func NewAlbumHandler(
+	s services.AlbumService,
+	ratingClient pb.GetSongRatingClient,
+	ratingCache SongRatingCache,
+	v validator.Validate,
+) *AlbumHandler {
+	h := AlbumHandler{s: &s, ratingClient: ratingClient, ratingCache: ratingCache, v: &v}
 	return &h
 }
 
@@ -82,7 +90,7 @@ func (h *AlbumHandler) HandleGetAlbumById(w http.ResponseWriter, r *http.Request
 			return
 		}
 	}
-	getSongRatings(r.Context(), album.Songs)
+	getSongRatings(h.ratingClient, h.ratingCache, r.Context(), album.Songs)
 	if err := respond.OkJson(w, album); err != nil {
 		logging.Errorf(r.Context(), "failed to write get album response: %v", err)
 	}
@@ -118,7 +126,7 @@ func (h *AlbumHandler) HandleAddAlbumSongs(w http.ResponseWriter, r *http.Reques
 		_ = respond.InternalServerError(w)
 		return
 	}
-	getSongRatings(r.Context(), updatedAlbum.Songs)
+	getSongRatings(h.ratingClient, h.ratingCache, r.Context(), updatedAlbum.Songs)
 
 	if err := respond.OkJson(w, updatedAlbum); err != nil {
 		logging.Errorf(r.Context(), "failed to write add album songs response: %v", err)
@@ -145,7 +153,7 @@ func (h *AlbumHandler) HandleGetAlbumSongs(w http.ResponseWriter, r *http.Reques
 		_ = respond.InternalServerError(w)
 		return
 	}
-	getSongRatings(r.Context(), songs)
+	getSongRatings(h.ratingClient, h.ratingCache, r.Context(), songs)
 
 	if err := respond.OkJson(w, songs); err != nil {
 		logging.Errorf(r.Context(), "failed to write album songs response: %v", err)
@@ -210,7 +218,7 @@ func (h *AlbumHandler) HandleUpdateAlbum(w http.ResponseWriter, r *http.Request)
 		_ = respond.InternalServerError(w)
 		return
 	}
-	getSongRatings(r.Context(), updatedAlbum.Songs)
+	getSongRatings(h.ratingClient, h.ratingCache, r.Context(), updatedAlbum.Songs)
 
 	if err := respond.OkJson(w, updatedAlbum); err != nil {
 		logging.Errorf(r.Context(), "failed to write update album response: %v", err)
@@ -263,7 +271,7 @@ func (h *AlbumHandler) HandleGetAlbums(w http.ResponseWriter, r *http.Request) {
 			return nil, err
 		}
 		for i := range result.Items {
-			getSongRatings(ctx, result.Items[i].Songs)
+			getSongRatings(h.ratingClient, h.ratingCache, ctx, result.Items[i].Songs)
 		}
 		return result, nil
 	})

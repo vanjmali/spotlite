@@ -269,7 +269,7 @@ services:
 
   content-redis:
     ports:
-      - "${CONTENT_REDIS_PORT}:6379"
+      - "6381:6379"
 
   content-redis-ui:
     image: rediscommander/redis-commander:latest
