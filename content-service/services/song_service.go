@@ -540,7 +540,7 @@ func (s *SongService) UploadAudio(ctx context.Context, p SongPayload, r io.Reade
 			rbSpan.RecordError(deleteErr)
 			logging.Errorf(rbCtx, "critical: failed to rollback song creation for song_id=%s: %v", id.Hex(), deleteErr)
 		}
-		return nil, err
+		return nil, errors.Join(errs...)
 	}
 	return updated, nil
 }

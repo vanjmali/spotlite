@@ -12,7 +12,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// Error types for recommendation service
+// Error types for recommendation service.
 var (
 	ErrGraphDatabaseUnavailable = errors.New("graph database is currently unavailable")
 	ErrLimitOutOfRange          = errors.New("limit must be between 1 and 50")
@@ -21,18 +21,17 @@ var (
 
 type Repositories struct {
 	userNodeRepository  *repositories.UserNodeRepository
-	songNodeRepository  SongNodeRepository
 	genreNodeRepository *repositories.GenreNodeRepository
 	relationRepository  GraphRelationRepository
 }
 
-// RecommendationService provides recommendation-related business logic
+// RecommendationService provides recommendation-related business logic.
 type RecommendationService struct {
 	r  *Repositories
 	tr trace.Tracer
 }
 
-// NewRecommendationService constructs a RecommendationService
+// NewRecommendationService constructs a RecommendationService.
 func NewRecommendationService(r *Repositories) *RecommendationService {
 	return &RecommendationService{
 		r:  r,
@@ -108,6 +107,6 @@ func (rs *RecommendationService) CreateRating(e events.SongRatingPayload, ctx co
 		logging.Errorf(createCtx, "critical: an error has occured while creating rating relationship: %v", err)
 		return err
 	}
-	
+
 	return nil
 }

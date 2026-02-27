@@ -60,8 +60,8 @@ var (
 				return h, shutdown, err
 			}
 
-			ur, sr, gr, rr := createRepositories(dbc)
-			_, rs := createServices(ur, sr, gr, rr)
+			ur, gr, rr := createRepositories(dbc)
+			_, rs := createServices(ur, gr, rr)
 			h = createHandlers(rs)
 			c := createConsumers(rs)
 
@@ -125,9 +125,9 @@ var (
 
 				consumerCancel()
 				consumerWg.Wait()
-				
+
 				close(consumerErrCh)
-				
+
 				for consumerErr := range consumerErrCh {
 					errs = append(errs, consumerErr)
 				}
@@ -187,7 +187,6 @@ func ensureConstraints(ctx context.Context, d neo4j.DriverWithContext) error {
 			}
 			return result.Consume(ctx)
 		})
-
 		if err != nil {
 			return fmt.Errorf("failed to apply constraint [%s]: %w", query, err)
 		}
@@ -221,25 +220,22 @@ func createClients() (neo4j.DriverWithContext, *events.JetStreamClient, error) {
 
 func createRepositories(driver neo4j.DriverWithContext) (
 	*repositories.UserNodeRepository,
-	*repositories.SongNodeRepository,
 	*repositories.GenreNodeRepository,
 	*repositories.GraphRelationRepository,
 ) {
 	ur := repositories.NewUserNodeRepository(driver)
-	sr := repositories.NewSongNodeRepository(driver)
 	gr := repositories.NewGenreNodeRepository(driver)
 	rr := repositories.NewGraphRelationRepository(driver)
 
-	return ur, sr, gr, rr
+	return ur, gr, rr
 }
 
 func createServices(
 	ur *repositories.UserNodeRepository,
-	sr *repositories.SongNodeRepository,
 	gr *repositories.GenreNodeRepository,
 	rr *repositories.GraphRelationRepository,
 ) (*services.Repositories, *services.RecommendationService) {
-	baseServices := services.NewServices(ur, sr, gr, rr)
+	baseServices := services.NewServices(ur, gr, rr)
 	recommendationService := services.NewRecommendationService(baseServices)
 	return baseServices, recommendationService
 }

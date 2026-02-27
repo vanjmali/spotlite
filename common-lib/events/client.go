@@ -53,7 +53,6 @@ func (c *JetStreamClient) EnsureStream(ctx context.Context, streamName string, s
 		Subjects: subjects,
 		Storage:  jetstream.FileStorage,
 	})
-
 	if err != nil {
 		return fmt.Errorf("failed to ensure stream %s: %w", streamName, err)
 	}
