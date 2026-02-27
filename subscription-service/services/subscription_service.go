@@ -175,6 +175,23 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 		return err
 	}
 
+	// Publish subscription created event
+	publishCtx, publishSpan := s.tr.Start(ctx, "subscription.subscribe.publish")
+	defer publishSpan.End()
+
+	subPayload := events.SubscriptionCreatedEventPayload{
+		UserID:           se.SubscriberID.Hex(),
+		TargetID:         se.EntityID.Hex(),
+		SubscriptionType: string(se.Type),
+		CreatedAt:        se.SubscribedAt,
+	}
+
+	if err := s.jsc.Publish(publishCtx, events.SUBJECT_SUBSCRIPTION_CREATED, subPayload); err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish subscription created event: %v", err)
+		// Continue even if publish fails - subscription was created successfully
+	}
+
 	return nil
 }
 
@@ -201,6 +218,25 @@ func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx conte
 
 	if ddc != 1 {
 		return ErrSubscriptionNotFound
+	}
+
+	// Publish subscription deleted event
+	publishCtx, publishSpan := s.tr.Start(ctx, "subscription.unsubscribe.publish")
+	defer publishSpan.End()
+
+	// We need to fetch subscription info to get the subscription type
+	// For simplicity in the event, we'll construct with available data
+	subPayload := events.SubscriptionDeletedEventPayload{
+		UserID:           userID.Hex(),
+		TargetID:         entityId.Hex(),
+		SubscriptionType: "", // Type not readily available after deletion
+		DeletedAt:        time.Now(),
+	}
+
+	if err := s.jsc.Publish(publishCtx, events.SUBJECT_SUBSCRIPTION_DELETED, subPayload); err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish subscription deleted event: %v", err)
+		// Continue even if publish fails - subscription was deleted successfully
 	}
 
 	return nil

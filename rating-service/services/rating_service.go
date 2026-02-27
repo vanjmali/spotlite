@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/sony/gobreaker"
+	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/rating-service/dtos"
@@ -49,12 +51,13 @@ type ContentEntityGetter interface {
 type RatingService struct {
 	rr  RatingRepository
 	gcc ContentEntityGetter
+	jsc events.JetStreamClient
 	cb  *gobreaker.CircuitBreaker
 	tr  trace.Tracer
 }
 
-// NewRatingService creates and returns a new RatingService with the provided repository and content entity getter.
-func NewRatingService(rr RatingRepository, gcc ContentEntityGetter) *RatingService {
+// NewRatingService creates and returns a new RatingService with the provided repository, content entity getter, and NATS JetStream client.
+func NewRatingService(rr RatingRepository, gcc ContentEntityGetter, jsc events.JetStreamClient) *RatingService {
 	tr := otel.Tracer("rating-service/rating-service")
 
 	settings := gobreaker.Settings{
@@ -83,7 +86,7 @@ func NewRatingService(rr RatingRepository, gcc ContentEntityGetter) *RatingServi
 			// fmt.Print("circuit breaker state changed: ", to.String())
 		},
 	}
-	s := RatingService{rr: rr, gcc: gcc, cb: gobreaker.NewCircuitBreaker(settings), tr: tr}
+	s := RatingService{rr: rr, gcc: gcc, jsc: jsc, cb: gobreaker.NewCircuitBreaker(settings), tr: tr}
 
 	return &s
 }
@@ -150,6 +153,23 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 		return err
 	}
 
+	// Publish rating created event
+	publishCtx, publishSpan := s.tr.Start(ratingCtx, "rating.create.publish")
+	defer publishSpan.End()
+
+	ratingPayload := events.RatingCreatedEventPayload{
+		UserID:    ratingEntity.UserID.Hex(),
+		SongID:    ratingEntity.SongID.Hex(),
+		Rating:    ratingEntity.Value,
+		CreatedAt: ratingEntity.CreatedAt,
+	}
+
+	if err := s.jsc.Publish(publishCtx, events.SUBJECT_RATING_CREATED, ratingPayload); err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish rating created event: %v", err)
+		// Continue even if publish fails - rating was created successfully
+	}
+
 	return nil
 }
 
@@ -191,6 +211,23 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 
 	if deletedCount != 1 {
 		return ErrRatingNotFound
+	}
+
+	// Publish rating deleted event
+	publishCtx, publishSpan := s.tr.Start(ctx, "rating.delete.publish")
+	defer publishSpan.End()
+
+	ratingPayload := events.RatingDeletedEventPayload{
+		UserID:        existing.UserID.Hex(),
+		SongID:        existing.SongID.Hex(),
+		DeletedRating: existing.Value,
+		DeletedAt:     time.Now(),
+	}
+
+	if err := s.jsc.Publish(publishCtx, events.SUBJECT_RATING_DELETED, ratingPayload); err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish rating deleted event: %v", err)
+		// Continue even if publish fails - rating was deleted successfully
 	}
 
 	return nil
@@ -318,6 +355,24 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 			return nil, ErrRatingNotFound
 		}
 		return nil, err
+	}
+
+	// Publish rating updated event
+	publishCtx, publishSpan := s.tr.Start(ctx, "rating.update.publish")
+	defer publishSpan.End()
+
+	ratingPayload := events.RatingUpdatedEventPayload{
+		UserID:    rating.UserID.Hex(),
+		SongID:    rating.SongID.Hex(),
+		OldRating: existing.Value,
+		NewRating: rating.Value,
+		UpdatedAt: time.Now(),
+	}
+
+	if err := s.jsc.Publish(publishCtx, events.SUBJECT_RATING_UPDATED, ratingPayload); err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish rating updated event: %v", err)
+		// Continue even if publish fails - rating was updated successfully
 	}
 
 	return rating, nil

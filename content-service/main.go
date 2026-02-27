@@ -78,8 +78,15 @@ var (
 				_ = hdfsStore.Close()
 			}()
 
-			// make sure stream is already initialized
+			// Ensure CONTENT_STREAM for publishing entity events
 			err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBJECT_ENTITY_UPDATED})
+			if err != nil {
+				err = fmt.Errorf("failed to ensure NATS stream: %w", err)
+				return h, shutdown, err
+			}
+
+			// Ensure ANALYTICS_STREAM for publishing song play and deletion events
+			err = jsc.EnsureStream(ctx, events.ANALYTICS_STREAM, []string{events.SUBJECT_SONG_PLAYED, events.SUBJECT_SONG_DELETED})
 			if err != nil {
 				err = fmt.Errorf("failed to ensure NATS stream: %w", err)
 				return h, shutdown, err
@@ -195,7 +202,7 @@ func createServices(
 	gs := services.NewGenreService(*gr, *jsc)
 	as := services.NewArtistService(*ar, *gs, *jsc)
 	als := services.NewAlbumService(*alr, *as, *sr, *gs, *jsc)
-	ss := services.NewSongService(*sr, *as, *gs, als, hdfsStore)
+	ss := services.NewSongService(*sr, *as, *gs, als, hdfsStore, *jsc)
 	glss := services.NewGlobalSearchService(gs, ss, als, as)
 
 	return gs, as, ss, als, glss

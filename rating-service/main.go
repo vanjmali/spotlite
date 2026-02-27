@@ -41,7 +41,7 @@ var (
 			return nil
 		},
 		CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
-			dbc, gc, err := createClients()
+			dbc, gc, jsc, err := createClients()
 			if err != nil {
 				err = fmt.Errorf("failed to create clients: %w", err)
 				return h, shutdown, err
@@ -53,6 +53,7 @@ var (
 					return
 				}
 				_ = dbc.Disconnect(ctx)
+				jsc.Close()
 			}()
 
 			err = initializeRatingIndexes(ctx, dbc)
@@ -60,9 +61,23 @@ var (
 				return nil, nil, err
 			}
 
+			err = jsc.EnsureStream(
+				ctx,
+				events.ANALYTICS_STREAM,
+				[]string{
+					events.SUBJECT_RATING_CREATED,
+					events.SUBJECT_RATING_UPDATED,
+					events.SUBJECT_RATING_DELETED,
+				},
+			)
+			if err != nil {
+				err = fmt.Errorf("failed to ensure NATS stream: %w", err)
+				return h, shutdown, err
+			}
+
 			gcc := createAdapters(gc)
 			rr := createRepositories(dbc)
-			rs := createServices(rr, gcc)
+			rs := createServices(rr, gcc, jsc)
 			h = createHandlers(v, rs)
 			shutdown = func() error {
 				var errs []error
@@ -77,6 +92,8 @@ var (
 				if err := dbc.Disconnect(shutdownCtx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
 					errs = append(errs, fmt.Errorf("failed to disconnect mongo client: %w", err))
 				}
+
+				jsc.Close()
 
 				return errors.Join(errs...)
 			}
@@ -102,15 +119,15 @@ func main() {
 	}
 }
 
-func createClients() (*mongodriver.Client, *grpc.ClientConn, error) {
+func createClients() (*mongodriver.Client, *grpc.ClientConn, *events.JetStreamClient, error) {
 	dbc, err := mongo.InitMongoClient()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
 	}
 
 	creds, err := generateCreds()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	grpcTarget := utils.MustGetEnv("CONTENT_GRPC_ADDRESS")
@@ -121,10 +138,17 @@ func createClients() (*mongodriver.Client, *grpc.ClientConn, error) {
 		grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to establish a RPC connection with the content-service: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to establish a RPC connection with the content-service: %w", err)
 	}
 
-	return dbc, gc, nil
+	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
+	if err != nil {
+		_ = dbc.Disconnect(context.Background())
+		_ = gc.Close()
+		return nil, nil, nil, fmt.Errorf("failed to initialize NATS JetStream client: %w", err)
+	}
+
+	return dbc, gc, jsc, nil
 }
 
 func initializeRatingIndexes(ctx context.Context, c *mongodriver.Client) error {
@@ -173,8 +197,9 @@ func createRepositories(dbc *mongodriver.Client) *repositories.RatingRepository 
 func createServices(
 	sr *repositories.RatingRepository,
 	gcc *adapters.GrpcContentEntityGetter,
+	jsc *events.JetStreamClient,
 ) *services.RatingService {
-	rs := services.NewRatingService(sr, gcc)
+	rs := services.NewRatingService(sr, gcc, jsc)
 
 	return rs
 }

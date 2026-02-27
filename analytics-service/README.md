@@ -173,3 +173,120 @@ Individual activity records for user activity timeline
 <ul>
   <li>compound index on (user_id, activities.timestamp) for activity timeline queries</li>
 </ul>
+
+## API Endpoints
+
+All endpoints require authentication via JWT token (Bearer token in Authorization header). The API Gateway routes requests to the analytics-service at `/api/analytics/*`.
+
+### Analytics
+
+#### Get User Analytics
+
+Retrieves aggregated analytics data for a specific user including listening statistics, top artists, genre preferences, and subscription counts.
+
+```
+GET /analytics/:userID
+```
+
+**Authentication:** Required (JWT Bearer token)
+
+**Path Parameters:**
+
+- `userID` (string, required) - The unique identifier of the user
+
+**Response (200 OK):**
+
+```json
+{
+  "user_id": "507f1f77bcf86cd799439011",
+  "total_songs_played": 42,
+  "average_rating": 4.2,
+  "songs_by_genre": {
+    "rock": 15,
+    "jazz": 12,
+    "pop": 8,
+    "classical": 7
+  },
+  "top_artists": [
+    {
+      "artist_id": "507f191e810c19729de860ea",
+      "play_count": 18
+    },
+    {
+      "artist_id": "507f191e810c19729de860eb",
+      "play_count": 12
+    }
+  ],
+  "subscribed_artists_count": 5
+}
+```
+
+**Error Responses:**
+
+- `400 Bad Request` - Invalid userID format
+- `401 Unauthorized` - Missing or invalid authentication token
+- `404 Not Found` - Analytics not found for the specified user
+- `500 Internal Server Error` - Server-side error
+
+### Activity History
+
+#### Get User Activity History
+
+Retrieves the chronological activity timeline for a specific user showing recent listening, rating, and subscription events.
+
+```
+GET /activity-history/:userID
+```
+
+**Authentication:** Required (JWT Bearer token)
+
+**Path Parameters:**
+
+- `userID` (string, required) - The unique identifier of the user
+
+**Response (200 OK):**
+
+```json
+{
+  "user_id": "507f1f77bcf86cd799439011",
+  "activities": [
+    {
+      "activity_type": "song_played",
+      "timestamp": "2026-02-27T14:30:00Z"
+    },
+    {
+      "activity_type": "rating_created",
+      "timestamp": "2026-02-27T14:25:00Z"
+    },
+    {
+      "activity_type": "subscription_created",
+      "timestamp": "2026-02-27T14:20:00Z"
+    }
+  ]
+}
+```
+
+**Activity Types:**
+
+- `song_played` - User listened to a song
+- `rating_created` - User created a new rating
+- `rating_updated` - User updated an existing rating
+- `rating_deleted` - User deleted a rating
+- `subscription_created` - User subscribed to an artist or genre
+- `subscription_deleted` - User unsubscribed from an artist or genre
+
+**Error Responses:**
+
+- `400 Bad Request` - Invalid userID format
+- `401 Unauthorized` - Missing or invalid authentication token
+- `404 Not Found` - Activity history not found for the specified user
+- `500 Internal Server Error` - Server-side error
+
+### Notes
+
+- Both endpoints return denormalized read models optimized for fast retrieval
+- Analytics data is eventually consistent with the event store
+- Activity history is limited to the most recent 1000 activities per user
+- All timestamps are in ISO 8601 format (UTC)
+- The `songs_by_genre` map returns only genres with at least one play
+- The `top_artists` array is sorted by play count (descending) and limited to top 5 artists

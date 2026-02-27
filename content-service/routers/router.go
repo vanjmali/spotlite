@@ -40,6 +40,7 @@ func HandleRequests(
 	api.Handle("/songs/{id}", middlewares.RequireAdmin(sh.HandleDeleteSong)).Methods("DELETE")
 	api.Handle("/songs/{id}/audio", middlewares.RequireAdmin(sh.HandleUploadSongAudio)).Methods("POST")
 	api.Handle("/songs/{id}/audio", middlewares.RequireAuthenticated(sh.HandleStreamSongAudio)).Methods("GET")
+	api.Handle("/songs/{id}/play", middlewares.RequireAuthenticated(sh.HandleTrackSongPlay)).Methods("POST")
 
 	// Albums endpoints
 	api.Handle("/albums", middlewares.RequireAuthenticated(alh.HandleGetAlbums)).Methods("GET")

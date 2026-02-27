@@ -143,3 +143,4 @@ We chose MongoDB for its document-oriented nature, which is ideal for music cont
 - `GET /songs` - List songs with pagination and filtering
 - `PATCH /songs/:id` - Update song (partial)
 - `DELETE /songs/:id` - Delete song
+- `POST /songs/:id/play` - Track song play (publishes analytics event, requires authentication)

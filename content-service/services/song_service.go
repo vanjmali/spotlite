@@ -6,8 +6,11 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"time"
 
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
+	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
@@ -69,19 +72,21 @@ type SongService struct {
 	genreService  genreFinder
 	albumService  albumSongManager
 	hdfs          audioStore
+	jsc           events.JetStreamClient
 	tr            trace.Tracer
 }
 
-// NewSongService creates and returns a new SongService with the provided repository and artist service.
+// NewSongService creates and returns a new SongService with the provided repository, services, HDFS storage, and NATS JetStream client.
 func NewSongService(
 	songRepo repositories.SongRepository,
 	artistService ArtistService,
 	genreService GenreService,
 	albumService *AlbumService,
 	hdfs *storage.HDFSStorage,
+	jsc events.JetStreamClient,
 ) *SongService {
 	tr := otel.Tracer("content-service/song-service")
-	s := SongService{songRepo: &songRepo, artistService: &artistService, genreService: &genreService, albumService: albumService, hdfs: hdfs, tr: tr}
+	s := SongService{songRepo: &songRepo, artistService: &artistService, genreService: &genreService, albumService: albumService, hdfs: hdfs, jsc: jsc, tr: tr}
 
 	return &s
 }
@@ -324,6 +329,67 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 	return updatedSong, nil
 }
 
+// TrackSongPlay publishes a SONG_PLAYED event for analytics tracking.
+func (s *SongService) TrackSongPlay(ctx context.Context, idStr string) error {
+	ctx, span := s.tr.Start(ctx, "song.track_play")
+	defer span.End()
+
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		span.RecordError(err)
+		return ErrObjectIdCastFailed
+	}
+
+	// Fetch song details
+	findCtx, findSpan := s.tr.Start(ctx, "song.track_play.find")
+	song, err := s.songRepo.FindByID(findCtx, id)
+	findSpan.End()
+	if err != nil {
+		span.RecordError(err)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return ErrSongNotFound
+		}
+		return err
+	}
+
+	// Extract genre IDs from embedded genres
+	var genreID string
+	if len(song.Genres) > 0 {
+		genreID = song.Genres[0].ID.Hex()
+	}
+
+	// Extract artist ID from embedded artists
+	var artistID string
+	if len(song.Artists) > 0 {
+		artistID = song.Artists[0].ID.Hex()
+	}
+
+	// Get user ID from context
+	userID := middlewares.GetUserIdFromContext(ctx)
+
+	// Publish SONG_PLAYED event
+	publishCtx, publishSpan := s.tr.Start(ctx, "song.track_play.publish")
+	defer publishSpan.End()
+
+	songPlayedPayload := events.SongPlayedEventPayload{
+		UserID:     userID,
+		SongID:     song.ID.Hex(),
+		ArtistID:   artistID,
+		AlbumID:    "", // Song entity doesn't store album ID directly
+		GenreID:    genreID,
+		DurationMS: song.LengthSeconds * 1000, // Convert seconds to milliseconds
+		PlayedAt:   time.Now(),
+	}
+
+	if err := s.jsc.Publish(publishCtx, events.SUBJECT_SONG_PLAYED, songPlayedPayload); err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish song played event: %v", err)
+		// Don't return error - tracking failure shouldn't block the response
+	}
+
+	return nil
+}
+
 // DeleteSong deletes a song by its ID.
 func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
 	ctx, span := s.tr.Start(ctx, "song.delete_song")
@@ -381,6 +447,21 @@ func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
 			logging.Errorf(cleanupCtx, "failed to delete audio file at path %s: %v", song.AudioPath, err)
 		}
 		cleanupSpan.End()
+	}
+
+	// Publish song deleted event
+	publishCtx, publishSpan := s.tr.Start(ctx, "song.delete_song.publish")
+	defer publishSpan.End()
+
+	songDeletedPayload := events.SongDeletedEventPayload{
+		SongID:    id.Hex(),
+		DeletedAt: time.Now(),
+	}
+
+	if err := s.jsc.Publish(publishCtx, events.SUBJECT_SONG_DELETED, songDeletedPayload); err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish song deleted event: %v", err)
+		// Continue even if publish fails - song was deleted successfully
 	}
 
 	return nil
