@@ -20,6 +20,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/h2non/filetype"
+	"github.com/redis/go-redis/v9"
 	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
@@ -32,13 +33,15 @@ import (
 
 // SongHandler wires HTTP handlers to the song service and validators.
 type SongHandler struct {
-	s *services.SongService
-	v *validator.Validate
+	s  *services.SongService
+	rc *redis.Client
+	v  *validator.Validate
 }
 
 const (
 	maxSongAudioUploadBytes   = 100 << 20
 	maxSongAudioUploadMessage = "payload too large (max 100MB)"
+	maxSongAudioCacheBytes    = 10 << 20
 )
 
 var allowedSongAudioMimes = map[string]string{
@@ -61,8 +64,8 @@ var (
 var audioDurationDetector = detectAudioDurationSeconds
 
 // NewSongHandler creates and returns a new SongHandler with the provided service and validator.
-func NewSongHandler(s services.SongService, v validator.Validate) *SongHandler {
-	h := SongHandler{s: &s, v: &v}
+func NewSongHandler(s services.SongService, rc *redis.Client, v validator.Validate) *SongHandler {
+	h := SongHandler{s: &s, rc: rc, v: &v}
 	return &h
 }
 
@@ -256,12 +259,20 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
+	cacheKey := "audio:" + id
+	err = h.rc.Del(r.Context(), cacheKey).Err()
+	if err != nil {
+		logging.Errorf(r.Context(), "failed to invalidate cache for song %s after audio upload: %v", id, err)
+	} else {
+		logging.Infof(r.Context(), "successfully invalidated cache for song: %s after audio upload", id)
+	}
 
 	_ = respond.OkJson(w, updated)
 }
 
 func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
+	cacheKey := "audio:" + id
 
 	song, err := h.s.FindSongById(r.Context(), id)
 	if err != nil {
@@ -285,6 +296,17 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	cachedAudio, err := h.rc.Get(r.Context(), cacheKey).Bytes()
+	if err == nil && len(cachedAudio) > 0 {
+		logging.Infof(r.Context(), "Cache HIT song: %s", id)
+		setSongAudioResponseHeaders(w, int64(len(cachedAudio)), song.AudioMimeType)
+
+		_, _ = w.Write(cachedAudio)
+		return
+	}
+
+	logging.Infof(r.Context(), "Cache MISS for song: %s. Fetching from HDFS...", id)
+
 	rc, err := h.s.OpenAudio(r.Context(), song.AudioPath)
 	if err != nil {
 		logging.Errorf(r.Context(), "failed to open audio file at path %s: %v", song.AudioPath, err)
@@ -307,9 +329,24 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 	}
 	defer streamReader.Close()
 
-	setSongAudioResponseHeaders(w, song.AudioSize, song.AudioMimeType)
+	audioBytes, err := io.ReadAll(streamReader)
+	if err != nil {
+		logging.Errorf(r.Context(), "failed to read audio stream for song %s: %v", id, err)
+		_ = respond.InternalServerError(w)
+		return
+	}
+	if int64(len(audioBytes)) < maxSongAudioCacheBytes {
+		err = h.rc.Set(r.Context(), cacheKey, audioBytes, 24*time.Hour).Err()
+		if err != nil {
+			logging.Errorf(r.Context(), "failed to cache audio for song %s: %v", id, err)
+		} else {
+			logging.Infof(r.Context(), "successfully cached audio for song: %s", id)
+		}
+	}
 
-	_, _ = io.Copy(w, streamReader)
+	setSongAudioResponseHeaders(w, int64(len(audioBytes)), song.AudioMimeType)
+
+	_, _ = w.Write(audioBytes)
 }
 
 func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.Request) {
