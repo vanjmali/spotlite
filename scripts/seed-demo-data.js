@@ -436,41 +436,58 @@ async function ensureSongWithAudio(token, songMeta, fileName, audioBuffer) {
     (song) => normalize(song.title) === normalize(songMeta.title)
   );
 
-  if (!existingSong) {
-    debug(`Song "${songMeta.title}" missing in album, creating with audio...`);
-    const fd = new FormData();
-    fd.append(
-      'meta',
-      JSON.stringify({
-        title: songMeta.title,
-        album_id: songMeta.albumId,
-        genre_ids: songMeta.genreIds,
-        artist_ids: songMeta.artistIds,
-      })
-    );
-    fd.append('file', new Blob([audioBuffer], { type: 'audio/mpeg' }), fileName);
-
-    const create = await authedJson(`${cfg.apiBaseUrl}/content/songs`, token, {
-      method: 'POST',
-      body: fd,
+  if (existingSong) {
+    debug(`Song exists (${existingSong.id}), deleting so it is recreated with meta+audio in one request...`);
+    const remove = await authedJson(`${cfg.apiBaseUrl}/content/songs/${existingSong.id}`, token, {
+      method: 'DELETE',
+      allowError: true,
     });
-
-    if (!create.ok) {
-      throw error(`Failed creating song "${songMeta.title}": ${create.status} ${create.text}`);
+    if (!remove.ok && remove.status !== 404) {
+      throw error(
+        `[seed] Failed deleting existing song "${songMeta.title}" (${existingSong.id}): ${remove.status} ${remove.text}`
+      );
     }
-    return;
   }
 
-  debug(`Song exists (${existingSong.id}), uploading/replacing audio...`);
   const fd = new FormData();
+  fd.append(
+    'meta',
+    JSON.stringify({
+      title: songMeta.title,
+      album_id: songMeta.albumId,
+      genre_ids: songMeta.genreIds,
+      artist_ids: songMeta.artistIds,
+    })
+  );
   fd.append('file', new Blob([audioBuffer], { type: 'audio/mpeg' }), fileName);
-  const upload = await authedJson(`${cfg.apiBaseUrl}/content/songs/${existingSong.id}/audio`, token, {
+
+  debug(`Creating song "${songMeta.title}" with meta+audio...`);
+  const create = await authedJson(`${cfg.apiBaseUrl}/content/songs`, token, {
     method: 'POST',
     body: fd,
   });
-  if (!upload.ok) {
+
+  if (!create.ok || !create.json?.id) {
     throw error(
-      `[seed] Failed uploading audio for "${songMeta.title}" (${existingSong.id}): ${upload.status} ${upload.text}`
+      `[seed] Failed creating song "${songMeta.title}" with audio: ${create.status} ${create.text}`
+    );
+  }
+
+  await refreshAlbumSongEmbed(token, songMeta.albumId, create.json.id);
+}
+
+async function refreshAlbumSongEmbed(token, albumId, songId) {
+  debug(`Refreshing album embed for song ${songId} in album ${albumId}...`);
+  const refresh = await authedJson(`${cfg.apiBaseUrl}/content/albums/${albumId}/songs`, token, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids: [songId] }),
+    allowError: true,
+  });
+
+  if (!refresh.ok) {
+    throw error(
+      `[seed] Failed refreshing album embed for song ${songId} in album ${albumId}: ${refresh.status} ${refresh.text}`
     );
   }
 }
