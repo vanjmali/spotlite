@@ -1,25 +1,16 @@
 import { Component, signal, output, inject, viewChild, input, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import {
-  applyFieldErrors,
-  DialogComponent,
-  PasswordInputComponent,
-  MessageComponent,
-  VALIDATION_MESSAGES,
-} from '../../shared';
-import { AuthService } from '../../services/auth.service';
+import { applyFieldErrors, VALIDATION_MESSAGES } from '@app/shared/validation';
+import { DialogComponent } from '@app/shared/components/dialog';
+import { PasswordInputComponent } from '@app/shared/components/input/password';
+import { MessageComponent } from '@app/shared/components/message';
+import { AuthService } from '@app/services/auth.service';
 
 @Component({
   selector: 'app-change-password-dialog',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    DialogComponent,
-    PasswordInputComponent,
-    MessageComponent,
-  ],
+  imports: [CommonModule, FormsModule, DialogComponent, PasswordInputComponent, MessageComponent],
   templateUrl: './change-password-dialog.html',
   styleUrls: ['./change-password-dialog.scss'],
 })

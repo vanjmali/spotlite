@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { CanMatchFn, Routes } from '@angular/router';
-import { CheckEmailPage, RegistrationPage, ProfilePage } from './pages';
+import { CheckEmailPage, RegistrationPage } from './pages';
 
 import { HomePage } from './pages/home-page';
 import { ResetPasswordPage } from './pages/reset-password-page/reset-password-page';
@@ -25,16 +25,6 @@ const adminOnlyMatch: CanMatchFn = async () => {
   }
 
   return authService.isAdminSg();
-};
-
-const authenticatedMatch: CanMatchFn = async () => {
-  const authService = inject(AuthService);
-
-  if (authService.isAuthenticatedSg()) {
-    return true;
-  }
-
-  return authService.refreshAccessToken();
 };
 
 export const routes: Routes = [
@@ -71,11 +61,6 @@ export const routes: Routes = [
   {
     path: 'check-email',
     component: CheckEmailPage,
-  },
-  {
-    path: 'profile',
-    component: ProfilePage,
-    canMatch: [authenticatedMatch],
   },
   {
     path: 'admin',

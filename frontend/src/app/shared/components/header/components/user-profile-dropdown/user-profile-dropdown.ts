@@ -15,13 +15,21 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '@app/services/auth.service';
 import { Notification, NotificationService } from '@app/services/notification.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
+import { ProfileEditorDialogComponent } from '@app/dialogs/profile-editor-dialog/profile-editor-dialog';
+import { ChangePasswordDialogComponent } from '@app/dialogs/change-password-dialog/change-password-dialog';
 
 type NotificationFilter = 'all' | 'artists' | 'albums';
 
 @Component({
   selector: 'app-user-profile-dropdown',
   standalone: true,
-  imports: [CommonModule, MatIconModule, CoverArtComponent],
+  imports: [
+    CommonModule,
+    MatIconModule,
+    CoverArtComponent,
+    ProfileEditorDialogComponent,
+    ChangePasswordDialogComponent,
+  ],
   templateUrl: './user-profile-dropdown.html',
   styleUrls: ['./user-profile-dropdown.scss'],
 })
@@ -35,6 +43,9 @@ export class UserProfileDropdownComponent implements OnDestroy {
   private flashTimeout: ReturnType<typeof setTimeout> | null = null;
 
   readonly menuOpenSg = signal(false);
+  readonly profileMenuOpenSg = signal(false);
+  readonly profileDialogOpenSg = signal(false);
+  readonly changePasswordDialogOpenSg = signal(false);
   readonly filterSg = signal<NotificationFilter>('all');
   readonly notificationsSg = signal<Notification[]>([]);
   readonly dismissingIdsSg = signal<Set<string>>(new Set());
@@ -72,7 +83,7 @@ export class UserProfileDropdownComponent implements OnDestroy {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
-    if (!this.menuOpenSg()) {
+    if (!this.menuOpenSg() && !this.profileMenuOpenSg()) {
       return;
     }
 
@@ -83,6 +94,7 @@ export class UserProfileDropdownComponent implements OnDestroy {
 
     if (!this.hostRef.nativeElement.contains(target)) {
       this.menuOpenSg.set(false);
+      this.profileMenuOpenSg.set(false);
     }
   }
 
@@ -94,11 +106,17 @@ export class UserProfileDropdownComponent implements OnDestroy {
   }
 
   toggleNotificationsMenu(): void {
+    this.profileMenuOpenSg.set(false);
     this.menuOpenSg.set(!this.menuOpenSg());
     if (this.menuOpenSg()) {
       this.notificationService.markAllAsSeen();
       this.shouldFlashBadgeSg.set(false);
     }
+  }
+
+  toggleProfileMenu(): void {
+    this.menuOpenSg.set(false);
+    this.profileMenuOpenSg.set(!this.profileMenuOpenSg());
   }
 
   setFilter(filter: NotificationFilter): void {
@@ -179,11 +197,6 @@ export class UserProfileDropdownComponent implements OnDestroy {
     }
   }
 
-  navigateToProfile(): void {
-    this.menuOpenSg.set(false);
-    this.router.navigate(['/profile']);
-  }
-
   navigateToAdmin(): void {
     this.menuOpenSg.set(false);
     this.router.navigate(['/admin']);
@@ -194,11 +207,11 @@ export class UserProfileDropdownComponent implements OnDestroy {
   }
 
   isProfileActive(): boolean {
-    return this.router.url.startsWith('/profile');
+    return this.profileMenuOpenSg();
   }
 
   profileCoverName(): string {
-    return this.authService.currentEmailSg() || 'Spotlite User';
+    return this.authService.profileAvatarNameSg();
   }
 
   trackNotification(_: number, item: Notification): string {
@@ -207,6 +220,31 @@ export class UserProfileDropdownComponent implements OnDestroy {
 
   trackFilter(_: number, filter: NotificationFilter): string {
     return filter;
+  }
+
+  openProfileDialog(): void {
+    this.profileMenuOpenSg.set(false);
+    this.profileDialogOpenSg.set(true);
+  }
+
+  closeProfileDialog(): void {
+    this.profileDialogOpenSg.set(false);
+  }
+
+  openChangePasswordDialog(): void {
+    this.profileMenuOpenSg.set(false);
+    this.changePasswordDialogOpenSg.set(true);
+  }
+
+  closeChangePasswordDialog(): void {
+    this.changePasswordDialogOpenSg.set(false);
+  }
+
+  logout(): void {
+    this.menuOpenSg.set(false);
+    this.profileMenuOpenSg.set(false);
+    this.authService.logout();
+    this.router.navigate(['/']);
   }
 
   isDismissing(id: string): boolean {

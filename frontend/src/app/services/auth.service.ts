@@ -63,6 +63,48 @@ export class AuthService {
 
     return candidate ? candidate.charAt(0).toUpperCase() : 'U';
   });
+  readonly profileDisplayNameSg = computed(() => {
+    const claims = this.getTokenClaims(this.accessTokenSg());
+    const firstName = claims?.first_name?.trim() ?? '';
+    const lastName = claims?.last_name?.trim() ?? '';
+    const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+    if (fullName.length > 0) {
+      return fullName;
+    }
+
+    const byName = claims?.name?.trim() ?? '';
+    if (byName.length > 0) {
+      return byName;
+    }
+
+    const byEmail = this.currentEmailSg()?.trim() ?? '';
+    if (byEmail.length > 0) {
+      return byEmail;
+    }
+
+    return 'User';
+  });
+  readonly profileAvatarNameSg = computed(() => {
+    const claims = this.getTokenClaims(this.accessTokenSg());
+    const firstName = claims?.first_name?.trim() ?? '';
+    const lastName = claims?.last_name?.trim() ?? '';
+    const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+    if (fullName.length > 0) {
+      return fullName;
+    }
+
+    const byName = claims?.name?.trim() ?? '';
+    if (byName.length > 0) {
+      return byName;
+    }
+
+    const byEmail = this.currentEmailSg()?.trim() ?? '';
+    if (byEmail.length > 0) {
+      return byEmail;
+    }
+
+    return 'User';
+  });
 
   readonly notificationService = inject(NotificationService);
 
@@ -295,6 +337,8 @@ export class AuthService {
 
   private getTokenClaims(token: string | null): {
     name?: string;
+    first_name?: string;
+    last_name?: string;
     username?: string;
     email?: string;
     sub?: string | { $oid?: string } | Record<string, unknown>;

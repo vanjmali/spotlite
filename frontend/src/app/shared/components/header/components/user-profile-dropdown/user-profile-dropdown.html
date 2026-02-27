@@ -94,10 +94,40 @@
   <button
     class="user-profile__avatar"
     [class.user-profile__avatar--active]="isProfileActive()"
-    (click)="navigateToProfile()"
+    (click)="toggleProfileMenu()"
     [attr.aria-label]="'Profile settings for ' + (authService.currentEmailSg() || 'user')"
     type="button"
   >
     <app-cover-art [name]="profileCoverName()" [size]="34" [fontSize]="12" [pattern]="false" />
   </button>
+
+  @if (profileMenuOpenSg()) {
+    <div class="user-profile__profile-menu">
+      <div class="user-profile__profile-title">{{ authService.profileDisplayNameSg() }}</div>
+      <button type="button" class="user-profile__profile-item" (click)="openProfileDialog()">
+        <mat-icon aria-hidden="true">person</mat-icon>
+        <span>Personal Info</span>
+      </button>
+      <button type="button" class="user-profile__profile-item" (click)="openChangePasswordDialog()">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        <span>Change Password</span>
+      </button>
+      <button
+        type="button"
+        class="user-profile__profile-item user-profile__profile-item--danger"
+        (click)="logout()"
+      >
+        <mat-icon aria-hidden="true">logout</mat-icon>
+        <span>Logout</span>
+      </button>
+    </div>
+  }
 </div>
+
+@if (profileDialogOpenSg()) {
+  <app-profile-editor-dialog (closed)="closeProfileDialog()" />
+}
+
+@if (changePasswordDialogOpenSg()) {
+  <app-change-password-dialog (closed)="closeChangePasswordDialog()" />
+}

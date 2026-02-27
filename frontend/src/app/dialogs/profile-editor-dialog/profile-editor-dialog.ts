@@ -3,11 +3,11 @@ import {
   USERNAME_PATTERN,
   VALIDATION_MESSAGES,
   applyFieldErrors,
-  DialogComponent,
-  LoaderComponent,
-  MessageComponent,
-  TextInputComponent,
-} from '@app/shared';
+} from '@app/shared/validation';
+import { DialogComponent } from '@app/shared/components/dialog';
+import { LoaderComponent } from '@app/shared/components/loader';
+import { MessageComponent } from '@app/shared/components/message';
+import { TextInputComponent } from '@app/shared/components/input/text';
 import {
   Component,
   ElementRef,

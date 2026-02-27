@@ -39,6 +39,7 @@ export class PageComponent implements OnDestroy {
 
   titleSg = input<string | undefined>();
   showSidebarsSg = input<boolean>(false, { alias: 'showSidebars' });
+  showControlBarSg = input<boolean>(false, { alias: 'showControlBar' });
   readonly authService = inject(AuthService);
   readonly leftSidebarWidthSg = signal(PageComponent.LEFT_DEFAULT);
   readonly rightSidebarWidthSg = signal(PageComponent.RIGHT_DEFAULT);

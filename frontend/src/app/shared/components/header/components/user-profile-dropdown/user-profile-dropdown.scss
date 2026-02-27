@@ -295,6 +295,73 @@
       border-radius: 50%;
     }
   }
+
+  &__profile-menu {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: min(260px, 80vw);
+    background: linear-gradient(180deg, #131722 0%, #0f121b 100%);
+    border: 1px solid $color-border-primary;
+    border-radius: 12px;
+    box-shadow: 0 16px 30px rgba(0, 0, 0, 0.45);
+    z-index: 40;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 6px;
+  }
+
+  &__profile-title {
+    padding: 8px 10px 10px;
+    margin: 0 2px 4px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: $color-text-primary;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__profile-item {
+    width: 100%;
+    border: none;
+    background: transparent;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    color: $color-text-secondary;
+    border-radius: 8px;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease;
+
+    mat-icon {
+      width: 16px;
+      height: 16px;
+      font-size: 16px;
+    }
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.07);
+      color: $color-text-primary;
+    }
+
+    &--danger {
+      color: #fca5a5;
+
+      &:hover {
+        color: #fecaca;
+        background: rgba(244, 63, 94, 0.14);
+      }
+    }
+  }
 }
 
 @keyframes notificationButtonFlash {

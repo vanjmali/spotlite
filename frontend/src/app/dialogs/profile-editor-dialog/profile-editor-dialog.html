@@ -23,11 +23,15 @@
         @if (usernameStatusSg() === 'checking') {
           <p class="profile-editor-dialog__username-hint">Checking username availability...</p>
         } @else if (usernameStatusSg() === 'available') {
-          <p class="profile-editor-dialog__username-hint profile-editor-dialog__username-hint--available">
+          <p
+            class="profile-editor-dialog__username-hint profile-editor-dialog__username-hint--available"
+          >
             Username is available.
           </p>
         } @else if (usernameStatusSg() === 'taken') {
-          <p class="profile-editor-dialog__username-hint profile-editor-dialog__username-hint--taken">
+          <p
+            class="profile-editor-dialog__username-hint profile-editor-dialog__username-hint--taken"
+          >
             Username is already taken.
           </p>
         } @else if (usernameStatusSg() === 'error') {
@@ -110,7 +114,9 @@
       @if (usernameStatusSg() === 'checking') {
         <p class="profile-editor-dialog__username-hint">Checking username availability...</p>
       } @else if (usernameStatusSg() === 'available') {
-        <p class="profile-editor-dialog__username-hint profile-editor-dialog__username-hint--available">
+        <p
+          class="profile-editor-dialog__username-hint profile-editor-dialog__username-hint--available"
+        >
           Username is available.
         </p>
       } @else if (usernameStatusSg() === 'taken') {

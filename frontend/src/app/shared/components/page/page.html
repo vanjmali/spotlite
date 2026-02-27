@@ -43,7 +43,7 @@
   }
 
   <footer class="page__footer">
-    @if (showSidebarsSg() && authService.isAuthenticatedSg()) {
+    @if (showControlBarSg() && authService.isAuthenticatedSg()) {
       <app-control-bar [homepageMode]="true" />
     } @else {
       <app-site-footer />
