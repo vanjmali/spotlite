@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/nats-io/nats.go"
+	"github.com/redis/go-redis/v9"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	pb "github.com/vanjmali/spotlite/common-lib/proto/content_service"
@@ -18,6 +19,7 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	commonvalid "github.com/vanjmali/spotlite/common-lib/validations"
 	"github.com/vanjmali/spotlite/content/handlers"
+	"github.com/vanjmali/spotlite/content/infrastructure"
 	infragrpc "github.com/vanjmali/spotlite/content/infrastructure/grpc"
 	"github.com/vanjmali/spotlite/content/infrastructure/mongo"
 	"github.com/vanjmali/spotlite/content/repositories"
@@ -50,7 +52,7 @@ var (
 			return nil
 		},
 		CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
-			dbc, jsc, err := createClients()
+			dbc, jsc, rc, err := createClients(ctx)
 			if err != nil {
 				err = fmt.Errorf("failed to create clients: %w", err)
 				return h, shutdown, err
@@ -75,6 +77,7 @@ var (
 					return
 				}
 				_ = dbc.Disconnect(ctx)
+				_ = rc.Close()
 				_ = hdfsStore.Close()
 			}()
 
@@ -94,7 +97,7 @@ var (
 
 			ar, sr, alr, gr := createRepositories(dbc)
 			gs, as, ss, als, glss := createServices(ar, sr, alr, gr, jsc, hdfsStore)
-			h = createHandlers(v, as, ss, als, gs, glss)
+			h = createHandlers(v, as, ss, als, gs, glss, rc)
 
 			// configures grpc server
 			grpcPort := utils.GetEnv("GRPC_PORT", "50051")
@@ -156,18 +159,23 @@ func main() {
 	}
 }
 
-func createClients() (*mongodriver.Client, *events.JetStreamClient, error) {
+func createClients(ctx context.Context) (*mongodriver.Client, *events.JetStreamClient, *redis.Client, error) {
 	dbc, err := mongo.InitMongoClient()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
 	}
 
 	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialized NATS jets teram client: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to initialized NATS jets teram client: %w", err)
 	}
 
-	return dbc, jsc, nil
+	rc, err := infrastructure.InitRedis(ctx)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to initialize redis: %w", err)
+	}
+
+	return dbc, jsc, rc, nil
 }
 
 func createRepositories(dbc *mongodriver.Client) (
@@ -215,9 +223,10 @@ func createHandlers(
 	als *services.AlbumService,
 	gs *services.GenreService,
 	glss *services.GlobalSearchService,
+	rc *redis.Client,
 ) http.Handler {
 	ah := handlers.NewArtistHandler(*as, *v)
-	sh := handlers.NewSongHandler(*ss, *v)
+	sh := handlers.NewSongHandler(*ss, rc, *v)
 	alh := handlers.NewAlbumHandler(*als, *v)
 	gh := handlers.NewGenreHandler(*gs, *v)
 	gsh := handlers.NewGlobalSearchHandler(glss)
