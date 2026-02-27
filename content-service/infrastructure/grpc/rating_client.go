@@ -17,6 +17,7 @@ func NewRatingSummaryClient() (pb.GetSongRatingClient, *grpc.ClientConn, error) 
 	rootPath := utils.MustGetEnv("ROOT_CERT_PATH")
 
 	pool := x509.NewCertPool()
+	// #nosec G304 -- rootPath comes from required service configuration (ROOT_CERT_PATH).
 	rootPEM, err := os.ReadFile(rootPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to read root cert: %w", err)

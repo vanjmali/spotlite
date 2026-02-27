@@ -39,13 +39,19 @@ func (c *RedisSongRatingCache) GetSummary(ctx context.Context, songID string) (f
 	}
 
 	raw, err := c.client.Get(ctx, songRatingCacheKey(songID)).Result()
-	if err != nil || raw == "" {
+	if err != nil {
+		if err == redis.Nil {
+			return 0, 0, false, nil
+		}
+		return 0, 0, false, err
+	}
+	if raw == "" {
 		return 0, 0, false, nil
 	}
 
 	var entry songRatingCacheEntry
 	if err := json.Unmarshal([]byte(raw), &entry); err != nil {
-		return 0, 0, false, nil
+		return 0, 0, false, err
 	}
 
 	return entry.Average, entry.Count, true, nil
