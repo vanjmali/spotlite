@@ -1,13 +1,11 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { signal } from '@angular/core';
-import { PageComponent } from '../../shared';
+import { MessageComponent, PageComponent } from '../../shared';
 import { WidgetComponent } from '@app/shared/components/widget';
-import { ChangePasswordDialogComponent } from '../../dialogs';
-import { ProfileSuccessCalloutComponent } from './components/profile-success-callout';
+import { ChangePasswordDialogComponent, ProfileEditorDialogComponent } from '../../dialogs';
 import { AuthService } from '@app/services/auth.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-profile-page',
@@ -15,10 +13,11 @@ import { AuthService } from '@app/services/auth.service';
   imports: [
     CommonModule,
     PageComponent,
+    MessageComponent,
     MatIconModule,
     WidgetComponent,
     ChangePasswordDialogComponent,
-    ProfileSuccessCalloutComponent,
+    ProfileEditorDialogComponent,
   ],
   templateUrl: './profile-page.html',
   styleUrls: ['./profile-page.scss'],
@@ -26,15 +25,17 @@ import { AuthService } from '@app/services/auth.service';
 export class ProfilePage {
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
+
+  readonly profileUpdateSuccessSg = signal<string>('');
   readonly isChangePasswordDialogOpenSg = signal<boolean>(false);
   readonly passwordUpdateSuccessSg = signal<string>('');
 
-  navigateToEditProfile(): void {
-    // TODO: Implement edit profile navigation when component is created
-    console.log('Navigate to edit profile');
+  onProfileSaved(): void {
+    this.profileUpdateSuccessSg.set('Profile successfully updated.');
+    setTimeout(() => this.profileUpdateSuccessSg.set(''), 3000);
   }
 
-  navigateToChangePassword(): void {
+  openChangePasswordDialog(): void {
     this.isChangePasswordDialogOpenSg.set(true);
   }
 
@@ -44,10 +45,7 @@ export class ProfilePage {
 
   onPasswordSaved(): void {
     this.passwordUpdateSuccessSg.set('Password successfully updated.');
-  }
-
-  dismissPasswordSaved(): void {
-    this.passwordUpdateSuccessSg.set('');
+    setTimeout(() => this.passwordUpdateSuccessSg.set(''), 3000);
   }
 
   logout(): void {

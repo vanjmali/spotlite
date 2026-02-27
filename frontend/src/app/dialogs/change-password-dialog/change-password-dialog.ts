@@ -1,7 +1,6 @@
-import { Component, signal, output, inject, viewChild } from '@angular/core';
+import { Component, signal, output, inject, viewChild, input, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
 import {
   applyFieldErrors,
   DialogComponent,
@@ -17,7 +16,6 @@ import { AuthService } from '../../services/auth.service';
   imports: [
     CommonModule,
     FormsModule,
-    MatIconModule,
     DialogComponent,
     PasswordInputComponent,
     MessageComponent,
@@ -26,10 +24,12 @@ import { AuthService } from '../../services/auth.service';
   styleUrls: ['./change-password-dialog.scss'],
 })
 export class ChangePasswordDialogComponent {
+  readonly embeddedSg = input<boolean>(false, { alias: 'embedded' });
   readonly currentPasswordSg = signal<string>('');
   readonly newPasswordSg = signal<string>('');
   readonly confirmPasswordSg = signal<string>('');
   readonly errorSg = signal<string>('');
+  readonly successSg = signal<string>('');
   readonly loadingSg = signal<boolean>(false);
   readonly currentPasswordInputSg = viewChild('currentPasswordInput', {
     read: PasswordInputComponent,
@@ -39,7 +39,13 @@ export class ChangePasswordDialogComponent {
     read: PasswordInputComponent,
   });
 
-  // Output event
+  readonly isValidSg = computed(
+    () =>
+      this.currentPasswordSg().trim().length > 0 &&
+      this.newPasswordSg().trim().length > 0 &&
+      this.confirmPasswordSg().trim().length > 0
+  );
+
   readonly closed = output<void>();
   readonly saved = output<void>();
 
@@ -69,44 +75,61 @@ export class ChangePasswordDialogComponent {
 
     this.loadingSg.set(true);
     this.errorSg.set('');
+    this.successSg.set('');
 
-    // Call the change password service
     this.authService
       .changePassword(this.currentPasswordSg(), this.newPasswordSg())
       .subscribe((result) => {
         this.loadingSg.set(false);
         if (result.success) {
           this.saved.emit();
-          // Close dialog on success
+
+          if (this.embeddedSg()) {
+            this.currentPasswordSg.set('');
+            this.newPasswordSg.set('');
+            this.confirmPasswordSg.set('');
+            this.successSg.set('Password successfully changed.');
+            return;
+          }
+
           this.cancel();
-        } else {
-          if (result.code === 'invalid_current_password') {
-            currentPasswordInput.setExternalError(result.error || 'Invalid current password.');
-            return;
-          }
-
-          if (result.code === 'password_same_as_current') {
-            newPasswordInput.setExternalError(
-              result.error || 'New password must be different from current password.'
-            );
-            return;
-          }
-
-          if (result.fields) {
-            applyFieldErrors(result.fields, {
-              current_password: (msg) => currentPasswordInput.setExternalError(msg),
-              new_password: (msg) => newPasswordInput.setExternalError(msg),
-              confirm_password: (msg) => confirmPasswordInput.setExternalError(msg),
-            });
-            return;
-          }
-
-          this.errorSg.set(result.error || 'Failed to change password');
+          return;
         }
+
+        if (result.code === 'invalid_current_password') {
+          currentPasswordInput.setExternalError(result.error || 'Invalid current password.');
+          return;
+        }
+
+        if (result.code === 'password_same_as_current') {
+          newPasswordInput.setExternalError(
+            result.error || 'New password must be different from current password.'
+          );
+          return;
+        }
+
+        if (result.fields) {
+          applyFieldErrors(result.fields, {
+            current_password: (msg) => currentPasswordInput.setExternalError(msg),
+            new_password: (msg) => newPasswordInput.setExternalError(msg),
+            confirm_password: (msg) => confirmPasswordInput.setExternalError(msg),
+          });
+          return;
+        }
+
+        this.errorSg.set(result.error || 'Failed to change password');
       });
   }
 
   cancel(): void {
-    this.closed.emit();
+    this.currentPasswordSg.set('');
+    this.newPasswordSg.set('');
+    this.confirmPasswordSg.set('');
+    this.errorSg.set('');
+    this.successSg.set('');
+
+    if (!this.embeddedSg()) {
+      this.closed.emit();
+    }
   }
 }
