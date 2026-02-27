@@ -38,7 +38,9 @@
                       aria-label="Toggle playback"
                       (click)="toggleRowPlayback(row.songId, row.albumId, $event)"
                       (keydown.enter)="toggleRowPlayback(row.songId, row.albumId, $event)"
-                      (keydown.space)="$event.preventDefault(); toggleRowPlayback(row.songId, row.albumId, $event)"
+                      (keydown.space)="
+                        $event.preventDefault(); toggleRowPlayback(row.songId, row.albumId, $event)
+                      "
                     >
                       <mat-icon class="genre-details__song-index-icon">{{
                         playback.isPlayingSg() ? 'pause' : 'play_arrow'

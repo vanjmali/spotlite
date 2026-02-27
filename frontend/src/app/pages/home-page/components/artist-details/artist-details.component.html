@@ -76,17 +76,19 @@
                     {{ album.songs.length }} songs
                   </p>
                 </div>
-                    <button
-                      type="button"
-                      class="artist-details__album-play"
-                      [class.artist-details__album-play--active]="album.id === activeAlbumIdSg()"
-                      (click)="toggleAlbumPlayback(album, $event)"
-                    >
-                      <mat-icon>{{
-                        album.id === activeAlbumIdSg() && playback.isPlayingSg() ? 'pause' : 'play_arrow'
-                      }}</mat-icon>
-                    </button>
-                  </div>
+                <button
+                  type="button"
+                  class="artist-details__album-play"
+                  [class.artist-details__album-play--active]="album.id === activeAlbumIdSg()"
+                  (click)="toggleAlbumPlayback(album, $event)"
+                >
+                  <mat-icon>{{
+                    album.id === activeAlbumIdSg() && playback.isPlayingSg()
+                      ? 'pause'
+                      : 'play_arrow'
+                  }}</mat-icon>
+                </button>
+              </div>
             }
           </div>
         }

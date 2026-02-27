@@ -49,7 +49,9 @@
                   aria-label="Toggle playback"
                   (click)="toggleQueueSongPlayback(song.id, $index, $event)"
                   (keydown.enter)="toggleQueueSongPlayback(song.id, $index, $event)"
-                  (keydown.space)="$event.preventDefault(); toggleQueueSongPlayback(song.id, $index, $event)"
+                  (keydown.space)="
+                    $event.preventDefault(); toggleQueueSongPlayback(song.id, $index, $event)
+                  "
                 >
                   <mat-icon class="homepage-right-sidebar__song-index-icon">{{
                     playback.isPlayingSg() ? 'pause' : 'play_arrow'
