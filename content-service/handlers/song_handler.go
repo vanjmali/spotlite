@@ -41,6 +41,7 @@ type SongHandler struct {
 const (
 	maxSongAudioUploadBytes   = 100 << 20
 	maxSongAudioUploadMessage = "payload too large (max 100MB)"
+	maxSongAudioCacheBytes    = 10 << 20
 )
 
 var allowedSongAudioMimes = map[string]string{
@@ -258,6 +259,13 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
+	cacheKey := "audio:" + id
+	err = h.rc.Del(r.Context(), cacheKey).Err()
+	if err != nil {
+		logging.Errorf(r.Context(), "failed to invalidate cache for song %s after audio upload: %v", id, err)
+	} else {
+		logging.Infof(r.Context(), "successfully invalidated cache for song: %s after audio upload", id)
+	}
 
 	_ = respond.OkJson(w, updated)
 }
@@ -327,12 +335,13 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 		_ = respond.InternalServerError(w)
 		return
 	}
-
-	err = h.rc.Set(r.Context(), cacheKey, audioBytes, 24*time.Hour).Err()
-	if err != nil {
-		logging.Errorf(r.Context(), "failed to cache audio for song %s: %v", id, err)
-	} else {
-		logging.Infof(r.Context(), "successfully cached audio for song: %s", id)
+	if int64(len(audioBytes)) < maxSongAudioCacheBytes {
+		err = h.rc.Set(r.Context(), cacheKey, audioBytes, 24*time.Hour).Err()
+		if err != nil {
+			logging.Errorf(r.Context(), "failed to cache audio for song %s: %v", id, err)
+		} else {
+			logging.Infof(r.Context(), "successfully cached audio for song: %s", id)
+		}
 	}
 
 	setSongAudioResponseHeaders(w, int64(len(audioBytes)), song.AudioMimeType)
