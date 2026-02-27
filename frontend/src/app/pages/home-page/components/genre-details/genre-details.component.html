@@ -20,7 +20,7 @@
               (click)="toggleGenreSubscription()"
             >
               <mat-icon>{{ isSubscribedSg() ? 'check_circle' : 'add_circle' }}</mat-icon>
-              {{ isSubscribedSg() ? 'Following genre' : 'Follow genre' }}
+              {{ isSubscribedSg() ? 'Subscribed to genre' : 'Subscribe to genre' }}
             </button>
           }
           @if (subscribeErrorSg()) {

@@ -1,11 +1,11 @@
 <section class="homepage-left-sidebar">
   <div class="homepage-left-sidebar__top">
     <div class="homepage-left-sidebar__section">
-      <h3 class="homepage-left-sidebar__title">Following</h3>
+      <h3 class="homepage-left-sidebar__title">Subscriptions</h3>
       <h4 class="homepage-left-sidebar__subtitle">Artists</h4>
-      <nav class="homepage-left-sidebar__list" aria-label="Followed artists">
+      <nav class="homepage-left-sidebar__list" aria-label="Subscribed artists">
         @if (followedArtistsSg().length === 0) {
-          <p class="homepage-left-sidebar__item-note">No followed artists yet.</p>
+          <p class="homepage-left-sidebar__item-note">No subscribed artists yet.</p>
         } @else {
           @for (item of followedArtistsSg(); track item.href) {
             <a class="homepage-left-sidebar__item" [routerLink]="item.href">
@@ -23,9 +23,9 @@
         }
       </nav>
       <h4 class="homepage-left-sidebar__subtitle">Genres</h4>
-      <nav class="homepage-left-sidebar__genre-grid" aria-label="Followed genres">
+      <nav class="homepage-left-sidebar__genre-grid" aria-label="Subscribed genres">
         @if (followedGenresSg().length === 0) {
-          <p class="homepage-left-sidebar__item-note">No followed genres yet.</p>
+          <p class="homepage-left-sidebar__item-note">No subscribed genres yet.</p>
         } @else {
           @for (item of followedGenresSg(); track item.href) {
             <a class="homepage-left-sidebar__genre-pill" [routerLink]="item.href">
