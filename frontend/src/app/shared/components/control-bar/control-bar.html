@@ -86,24 +86,34 @@
           </div>
 
           <div class="control-bar__track-right">
-            <div class="control-bar__rating" aria-label="Song rating">
-              @for (star of stars; track star) {
-                <button
-                  type="button"
-                  class="control-bar__star"
-                  [class.control-bar__star--active]="star <= previewRatingSg()"
-                  [class.control-bar__star--hover-preview]="
-                    hoveredStarSg() > 0 && star <= hoveredStarSg()
-                  "
-                  aria-label="Rate {{ star }} star"
-                  [disabled]="!hasTrackSg()"
-                  (mouseenter)="onStarHover(star)"
-                  (mouseleave)="clearStarHover()"
-                  (click)="rate(star)"
-                >
-                  <mat-icon>star</mat-icon>
-                </button>
-              }
+            <div class="control-bar__rating-wrap">
+              <div class="control-bar__rating" aria-label="Song rating">
+                @for (star of stars; track star) {
+                  <button
+                    type="button"
+                    class="control-bar__star"
+                    [class.control-bar__star--active]="star <= previewRatingSg()"
+                    [class.control-bar__star--hover-preview]="
+                      hoveredStarSg() > 0 && star <= hoveredStarSg()
+                    "
+                    aria-label="Rate {{ star }} star"
+                    [disabled]="!hasTrackSg()"
+                    (mouseenter)="onStarHover(star)"
+                    (mouseleave)="clearStarHover()"
+                    (click)="rate(star)"
+                  >
+                    <mat-icon>star</mat-icon>
+                  </button>
+                }
+              </div>
+              <p class="control-bar__time-readout">
+                @if (hasTrackSg()) {
+                  {{ formatTime(playback.currentTimeSg()) }} /
+                  {{ formatTime(playback.durationSg()) }}
+                } @else {
+                  --:-- / --:--
+                }
+              </p>
             </div>
           </div>
 

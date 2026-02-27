@@ -68,6 +68,13 @@ export class ControlBarComponent {
     this.playback.toggleMute();
   }
 
+  formatTime(totalSeconds: number | null | undefined): string {
+    const seconds = Math.max(0, Math.floor(totalSeconds ?? 0));
+    const minutes = Math.floor(seconds / 60);
+    const remainder = seconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${remainder.toString().padStart(2, '0')}`;
+  }
+
   volumeIcon(): string {
     if (this.isMutedSg()) {
       return 'volume_off';
