@@ -294,6 +294,11 @@ export class PlaybackService {
     this.audio.pause();
   }
 
+  pause(): void {
+    this.audio.pause();
+    this.isLoadingSg.set(false);
+  }
+
   previous(): void {
     const queue = this.queueSg();
     if (queue.length === 0) {

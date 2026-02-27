@@ -15,8 +15,7 @@
   background-color: $color-bg-primary;
 
   app-header,
-  app-control-bar,
-  app-playback-bar {
+  app-control-bar {
     display: block;
     width: 100%;
   }
@@ -87,10 +86,6 @@
     &:hover {
       background: rgba(255, 255, 255, 0.12);
     }
-  }
-
-  &__player {
-    flex-shrink: 0;
   }
 
   &__footer {

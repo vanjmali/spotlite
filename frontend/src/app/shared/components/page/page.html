@@ -36,14 +36,8 @@
     }
   </div>
 
-  @if (authService.isAuthenticatedSg() && !showSidebarsSg()) {
-    <div class="page__player">
-      <app-playback-bar />
-    </div>
-  }
-
   <footer class="page__footer">
-    @if (showControlBarSg() && authService.isAuthenticatedSg()) {
+    @if (showControlBarSg() && showSidebarsSg() && authService.isAuthenticatedSg()) {
       <app-control-bar [homepageMode]="true" />
     } @else {
       <app-site-footer />

@@ -3,7 +3,6 @@ import { CommonModule } from '@angular/common';
 import { HeaderComponent } from '../header/header';
 import { ControlBarComponent } from '../control-bar';
 import { AuthService } from '@app/services/auth.service';
-import { PlaybackBarComponent } from '../playback-bar/playback-bar';
 import { SiteFooterComponent } from '../site-footer';
 import { HomepageLeftSidebarComponent, HomepageRightSidebarComponent } from './components';
 
@@ -17,7 +16,6 @@ type ResizeSide = 'left' | 'right';
     HeaderComponent,
     ControlBarComponent,
     SiteFooterComponent,
-    PlaybackBarComponent,
     HomepageLeftSidebarComponent,
     HomepageRightSidebarComponent,
   ],
