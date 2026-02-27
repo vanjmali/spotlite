@@ -126,19 +126,25 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 		return err
 	}
 
+	timeoutCtx, cancel := context.WithTimeout(createCtx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "album.create.event")
+	defer eventSpan.End()
+
 	aep := toAlbumCreatedEvent(artistIDs, albumEntity.ID.Hex(), albumEntity.Title)
 
 	err = retry.Do(
 		func() error {
-			return s.jsc.Publish(createAlCtx, events.SUBJECT_ENTITY_CREATED, aep)
+			return s.jsc.Publish(eventCtx, events.SUBJECT_ENTITY_CREATED, aep)
 		},
 		retry.Attempts(3),
 		retry.Delay(time.Second),
 		retry.DelayType(retry.BackOffDelay),
-		retry.Context(createCtx),
+		retry.Context(eventCtx),
 	)
 	if err != nil {
-		logging.Errorf(createAlCtx, "failed to publish entity created event: %v", err)
+		logging.Errorf(eventCtx, "failed to publish entity created event: %v", err)
 	}
 
 	return nil

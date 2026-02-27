@@ -163,7 +163,10 @@ func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.U
 		return nil, err
 	}
 
-	eventCtx, eventSpan := s.tr.Start(updateCtx, "genre.update.update_event")
+	timeoutCtx, cancel := context.WithTimeout(updateCtx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "genre.update.event")
 	defer eventSpan.End()
 
 	// prepare payload
