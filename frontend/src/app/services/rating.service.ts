@@ -1,5 +1,5 @@
 import { inject, Injectable, signal } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export interface Rating {
@@ -44,8 +44,7 @@ export class RatingService {
   }
 
   getAverageBySong(songId: string): Observable<SongRatingSummary> {
-    const params = new HttpParams().set('_', Date.now().toString());
-    return this.http.get<SongRatingSummary>(`${this.apiUrl}/songs/${songId}/average`, { params });
+    return this.http.get<SongRatingSummary>(`${this.apiUrl}/songs/${songId}/average`);
   }
 
   getLiveSummary(songId: string): SongRatingSummary | null {
