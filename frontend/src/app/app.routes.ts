@@ -8,7 +8,6 @@ import { AdminPage } from './pages/admin-page';
 import { CredentialsPage } from './pages/login/credentials-page';
 import { OtpPage } from './pages/login/otp-page';
 import { VerifyPage } from './pages/register/verify-page';
-import { InboxPage } from './pages/inbox-page';
 import { LoginStore } from './pages/login/store';
 import { NotFoundPage } from './pages/not-found-page';
 import { AuthService } from './services/auth.service';
@@ -72,11 +71,6 @@ export const routes: Routes = [
   {
     path: 'check-email',
     component: CheckEmailPage,
-  },
-  {
-    path: 'inbox',
-    component: InboxPage,
-    canMatch: [authenticatedMatch],
   },
   {
     path: 'profile',

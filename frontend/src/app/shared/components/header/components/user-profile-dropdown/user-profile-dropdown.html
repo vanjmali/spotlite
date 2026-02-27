@@ -1,14 +1,82 @@
 <div class="user-profile">
-  <button
-    class="user-profile__nav-button"
-    [class.user-profile__nav-button--active]="isInboxActive()"
-    (click)="navigateToInbox()"
-    type="button"
-    aria-label="Inbox"
-    title="Inbox"
-  >
-    <mat-icon aria-hidden="true">notifications</mat-icon>
-  </button>
+  <div class="user-profile__notifications">
+    <button
+      class="user-profile__nav-button"
+      [class.user-profile__nav-button--active]="menuOpenSg()"
+      [class.user-profile__nav-button--flash]="shouldFlashBadgeSg()"
+      (click)="toggleNotificationsMenu()"
+      type="button"
+      aria-label="Notifications"
+      title="Notifications"
+    >
+      <mat-icon aria-hidden="true">notifications</mat-icon>
+      @if (hasUnreadSg()) {
+        <span class="user-profile__notification-dot"></span>
+      }
+    </button>
+
+    @if (menuOpenSg()) {
+      <div class="user-profile__menu">
+        <div class="user-profile__menu-header">
+          <strong>Notifications</strong>
+          <button
+            type="button"
+            class="user-profile__menu-link user-profile__menu-link--danger"
+            (click)="clearAll($event)"
+          >
+            Dismiss all
+          </button>
+        </div>
+
+        <div class="user-profile__filters">
+          @for (filter of notificationFilters(); track trackFilter($index, filter)) {
+            <button
+              type="button"
+              class="user-profile__filter"
+              [class.user-profile__filter--active]="isFilterActive(filter)"
+              (click)="setFilter(filter)"
+            >
+              {{ filterLabel(filter) }}
+            </button>
+          }
+        </div>
+
+        <div class="user-profile__menu-list">
+          @if (filteredNotificationsSg().length === 0) {
+            <p class="user-profile__empty">No notifications.</p>
+          } @else {
+            @for (item of filteredNotificationsSg(); track trackNotification($index, item)) {
+              <button
+                type="button"
+                class="user-profile__item"
+                [class.user-profile__item--new]="item.is_new"
+                [class.user-profile__item--dismissing]="isDismissing(item.notification_id)"
+                (click)="openNotification(item)"
+              >
+                <span class="user-profile__item-main">
+                  <span class="user-profile__item-title">{{ notificationTitle(item) }}</span>
+                  <span class="user-profile__item-message">{{ item.entity_name }}</span>
+                </span>
+                <span class="user-profile__item-side">
+                  <span class="user-profile__item-time">{{ formatTimeAgo(item.created_at) }}</span>
+                  <span
+                    class="user-profile__item-dismiss"
+                    role="button"
+                    tabindex="0"
+                    aria-label="Dismiss notification"
+                    (click)="dismissNotification(item.notification_id, $event)"
+                    (keydown.enter)="dismissNotification(item.notification_id, $event)"
+                  >
+                    <mat-icon>close</mat-icon>
+                  </span>
+                </span>
+              </button>
+            }
+          }
+        </div>
+      </div>
+    }
+  </div>
 
   @if (authService.isAdminSg()) {
     <button
