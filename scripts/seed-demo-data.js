@@ -37,31 +37,53 @@ const SONG_SPECS = [
     description:
       'Comedic, free-wheeling fun! Attribution Code\n"The Builder" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/',
     url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/The%20Builder.mp3',
+    genre: 'Soundtrack',
+    album: 'Comedic (Film Scoring Moods)',
   },
   {
     title: 'Monkeys Spinning Monkeys',
     description:
       'Loopable happy light fluffy piece with bright flutes and a bunch of pizzicato strings.\nAttribution Code\n"Monkeys Spinning Monkeys" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/',
     url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Monkeys%20Spinning%20Monkeys.mp3',
-  },
-  {
-    title: 'Merry Go',
-    description:
-      'Comedic and playful, this rag-time ditty has a strong melody, and is heavy in the bass chords. The second minute features flighty finger-work, as if an energetic bee is flying up and down the scales. The last thirty seconds is a refrain of the introduction, and the piece ends with an invigorating flourish.\nInstruments: Piano\nAttribution Code\n"Merry Go" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/',
-    url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Merry%20Go.mp3',
+    genre: 'Soundtrack',
+    album: 'Comedic (Film Scoring Moods)',
   },
   {
     title: 'Spazzmatica Polka',
     description:
       'Boisterous and nearly obnoxious, this piece will lodge itself in your brain and make you think you?re trapped in an arcade. The polka rhythm is quick and the melody is spastic. Right into the second minute the rhythm drops out and introduces a crazed, comedic melody that continues throughout until the abrupt end.\nInstruments: Synths\nAttribution Code\n"Spazzmatica Polka" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/',
     url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Spazzmatica%20Polka.mp3',
+    genre: 'Polka',
+    album: 'Video Classica (Electronic and Rock)',
+  },
+  {
+    title: 'Exit the Premises',
+    description:
+      'Big drums start with piece to reveal that they were not establishing the downbeat. Tight synth percussion and 8-bit inspired synths make this piece downright danceable! And who does not like a giant 80s synth? Or a 90s chip tunes synth? Or a modern synth? We got them all!\nInstruments: Synths, Percussion\nAttribution Code\n"Exit the Premises" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/',
+    url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Exit%20the%20Premises.mp3',
+    genre: 'Electronica',
+    album: 'Hard Electronic (Electronic and Rock)',
+  },
+  {
+    title: 'Pinball Spring',
+    description:
+      'Triumphant and exuberant, this arcade groove is bright and perfect for retro games or humorous video content. It has a thumping beat that is light-hearted, and is easily looped for continuous play.\nInstruments: Synths\nAttribution Code\n"Pinball Spring" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/',
+    url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Pinball%20Spring.mp3',
+    genre: 'Electronica',
+    album: 'Video Classica (Electronic and Rock)',
+  },
+  {
+    title: 'Move Forward',
+    description:
+      'Mid-90s styled happy happy video game music.\nInstruments: Marimba, Organ, Flutes, Synths, Percussion\nAttribution Code\n"Move Forward" Kevin MacLeod (incompetech.com)\nLicensed under Creative Commons: By Attribution 4.0 License\nhttp://creativecommons.org/licenses/by/4.0/',
+    url: 'https://incompetech.com/music/royalty-free/mp3-royaltyfree/Move%20Forward.mp3',
+    genre: 'Electronica',
+    album: 'Video Classica (Electronic and Rock)',
   },
 ];
 
 const FIXED_CONTENT = {
-  genre: 'Soundtrack',
   artist: 'Kevin MacLeod',
-  album: 'Comedic (Film Scoring Moods)',
   artistDescription:
     'Composer known for royalty-free music used across film, games, streaming, and educational projects.',
 };
@@ -91,35 +113,38 @@ async function main() {
   await ensureAdminUser();
   const adminToken = await loginAsAdminAndGetToken();
 
-  const soundtrackGenre = await ensureGenre(adminToken, FIXED_CONTENT.genre);
+  const seedGenres = new Map();
+  const seedAlbums = new Map();
+  const primarySeedGenre = await ensureCachedGenre(adminToken, SONG_SPECS[0].genre, seedGenres);
   const kevinArtist = await ensureArtist(
     adminToken,
     FIXED_CONTENT.artist,
-    [soundtrackGenre.id],
+    [primarySeedGenre.id],
     FIXED_CONTENT.artistDescription
-  );
-  const comedicAlbum = await ensureAlbum(
-    adminToken,
-    FIXED_CONTENT.album,
-    randomReleaseDate(),
-    [soundtrackGenre.id],
-    [kevinArtist.id]
   );
 
   for (const songSpec of SONG_SPECS) {
+    const genre = await ensureCachedGenre(adminToken, songSpec.genre, seedGenres);
+    const album = await ensureCachedAlbum(
+      adminToken,
+      songSpec.album,
+      genre.id,
+      kevinArtist.id,
+      seedAlbums
+    );
     const audioBuffer = await getOrDownloadAudioBuffer(songSpec);
     await ensureSongWithAudio(
       adminToken,
       {
         title: songSpec.title,
-        albumId: comedicAlbum.id,
-        genreIds: [soundtrackGenre.id],
+        albumId: album.id,
+        genreIds: [genre.id],
         artistIds: [kevinArtist.id],
       },
       `${toSafeFilename(songSpec.title)}.mp3`,
       audioBuffer
     );
-    log(`Ensured song "${songSpec.title}" in album "${FIXED_CONTENT.album}"`);
+    log(`Ensured song "${songSpec.title}" in album "${songSpec.album}"`);
   }
 
   // Add extra entities so the app has browseable data.
@@ -311,6 +336,18 @@ async function ensureGenre(token, genreName) {
   return created;
 }
 
+async function ensureCachedGenre(token, genreName, cache) {
+  const key = normalize(genreName);
+  const cached = cache.get(key);
+  if (cached) {
+    return cached;
+  }
+
+  const genre = await ensureGenre(token, genreName);
+  cache.set(key, genre);
+  return genre;
+}
+
 async function ensureArtist(token, name, genreIds, description) {
   log(`Ensuring artist "${name}"...`);
   const existing = await findArtistByName(token, name);
@@ -371,6 +408,18 @@ async function ensureAlbum(token, title, releaseDate, genreIds, artistIds) {
     throw error(`Could not resolve album after create: ${title}`);
   }
   return created;
+}
+
+async function ensureCachedAlbum(token, title, genreId, artistId, cache) {
+  const key = `${normalize(title)}::${genreId}`;
+  const cached = cache.get(key);
+  if (cached) {
+    return cached;
+  }
+
+  const album = await ensureAlbum(token, title, randomReleaseDate(), [genreId], [artistId]);
+  cache.set(key, album);
+  return album;
 }
 
 async function ensureSongWithAudio(token, songMeta, fileName, audioBuffer) {
