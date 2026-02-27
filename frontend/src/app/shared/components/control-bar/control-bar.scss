@@ -257,7 +257,7 @@ a.control-bar__link:hover {
   &:not(:disabled):hover,
   &:not(:disabled):focus-visible {
     box-shadow: inset 0 0 0 1px rgba(216, 180, 254, 0.65);
-    background: rgba(168, 85, 247, 0.12);
+    background: transparent;
     color: #fef3c7;
   }
 
@@ -276,6 +276,11 @@ a.control-bar__link:hover {
 
 .control-bar__star--active {
   color: #fbbf24;
+}
+
+.control-bar__star--hover-preview {
+  box-shadow: inset 0 0 0 1px rgba(216, 180, 254, 0.65);
+  background: transparent;
 }
 
 .control-bar__volume {

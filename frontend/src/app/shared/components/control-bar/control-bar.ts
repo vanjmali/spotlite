@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, computed, inject, input } from '@angular/core';
+import { Component, HostListener, computed, inject, input, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { PlaybackService } from '@app/services/playback.service';
@@ -30,6 +30,10 @@ export class ControlBarComponent {
   readonly currentVolumePercentSg = computed(() => Math.round(this.playback.volumeSg() * 100));
   readonly isMutedSg = computed(() => this.playback.mutedSg());
   readonly isLoadingSg = computed(() => this.playback.isLoadingSg());
+  readonly hoveredStarSg = signal(0);
+  readonly previewRatingSg = computed(() =>
+    this.hoveredStarSg() > 0 ? this.hoveredStarSg() : this.playback.currentRatingSg()
+  );
 
   previous(): void {
     this.playback.previous();
@@ -45,6 +49,14 @@ export class ControlBarComponent {
 
   rate(star: number): void {
     this.playback.setRating(star);
+  }
+
+  onStarHover(star: number): void {
+    this.hoveredStarSg.set(star);
+  }
+
+  clearStarHover(): void {
+    this.hoveredStarSg.set(0);
   }
 
   onVolumeInput(rawValue: string): void {

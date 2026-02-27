@@ -91,9 +91,14 @@
                 <button
                   type="button"
                   class="control-bar__star"
-                  [class.control-bar__star--active]="star <= playback.currentRatingSg()"
+                  [class.control-bar__star--active]="star <= previewRatingSg()"
+                  [class.control-bar__star--hover-preview]="
+                    hoveredStarSg() > 0 && star <= hoveredStarSg()
+                  "
                   aria-label="Rate {{ star }} star"
                   [disabled]="!hasTrackSg()"
+                  (mouseenter)="onStarHover(star)"
+                  (mouseleave)="clearStarHover()"
                   (click)="rate(star)"
                 >
                   <mat-icon>star</mat-icon>
