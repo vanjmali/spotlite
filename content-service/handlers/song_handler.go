@@ -29,7 +29,6 @@ import (
 	pb "github.com/vanjmali/spotlite/common-lib/proto/rating_service"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/services"
@@ -675,14 +674,16 @@ func verifySongAudioChecksumFromReader(ctx context.Context, audioPath string, ex
 
 	hasher := sha256.New()
 	if _, err := io.Copy(hasher, r); err != nil {
-		return fmt.Errorf("failed to read audio for checksum path=%s trace_id=%s", audioPath, telemetry.TraceID(ctx))
+		logging.Errorf(ctx, "failed to read audio for checksum path=%s: %v", audioPath, err)
+		return fmt.Errorf("failed to read audio for checksum path=%s", audioPath)
 	}
 	computed := hex.EncodeToString(hasher.Sum(nil))
 	if computed == expected {
 		return nil
 	}
 
-	return fmt.Errorf("checksum mismatch path=%s trace_id=%s", audioPath, telemetry.TraceID(ctx))
+	logging.Securityf(ctx, "security_event=stream_rejected_integrity_check_failed path=%s", audioPath)
+	return fmt.Errorf("checksum mismatch path=%s", audioPath)
 }
 
 func (h *SongHandler) authorizeAudioStreamRequest(r *http.Request, songID string) bool {

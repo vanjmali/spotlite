@@ -315,13 +315,13 @@ func (h *UserHandler) HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		_ = respond.NotFound(w)
 		return
 	case err != nil:
-		log.Printf("trace_id=%s failed to get profile: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to get profile: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
 
 	if err := respond.OkJson(w, profile); err != nil {
-		log.Printf("trace_id=%s failed to write profile response: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to write profile response: %v", err)
 	}
 }
 
@@ -330,7 +330,7 @@ func (h *UserHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Request
 	var req dtos.UpdateProfileDto
 	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
 		if err != nil {
-			log.Printf("trace_id=%s failed to process update profile request: %v", telemetry.TraceID(r.Context()), err)
+			logging.Errorf(r.Context(), "failed to process update profile request: %v", err)
 		}
 		return
 	}
@@ -347,7 +347,7 @@ func (h *UserHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Request
 		_ = respond.Conflict(w, respond.ErrorMessageWithCode("Username is already taken.", "username_taken"))
 		return
 	case err != nil:
-		log.Printf("trace_id=%s failed to update profile: %v", telemetry.TraceID(r.Context()), err)
+		logging.Errorf(r.Context(), "failed to update profile: %v", err)
 		_ = respond.InternalServerError(w)
 		return
 	}
