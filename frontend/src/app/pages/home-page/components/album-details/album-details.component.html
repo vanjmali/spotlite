@@ -97,6 +97,7 @@
                       <span class="album-details__song-artist">Unknown Artist</span>
                     }
                     <app-song-rating-badge
+                      [songId]="song.id"
                       [average]="song.rating?.average"
                       [count]="song.rating?.count"
                     />

@@ -1,5 +1,5 @@
-import { inject, Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { inject, Injectable, signal } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export interface Rating {
@@ -35,13 +35,58 @@ export interface PaginatedRatingsResponse {
 export class RatingService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/ratings';
+  readonly summariesBySongSg = signal<Record<string, SongRatingSummary>>({});
+  private readonly loadingSummaryIds = new Set<string>();
+  private readonly queuedSummaryIds = new Set<string>();
 
   getRatingsBySong(songId: string): Observable<RatingsResponse> {
     return this.http.get<RatingsResponse>(`${this.apiUrl}/songs/${songId}`);
   }
 
   getAverageBySong(songId: string): Observable<SongRatingSummary> {
-    return this.http.get<SongRatingSummary>(`${this.apiUrl}/songs/${songId}/average`);
+    const params = new HttpParams().set('_', Date.now().toString());
+    return this.http.get<SongRatingSummary>(`${this.apiUrl}/songs/${songId}/average`, { params });
+  }
+
+  getLiveSummary(songId: string): SongRatingSummary | null {
+    return this.summariesBySongSg()[songId] ?? null;
+  }
+
+  refreshSongSummary(songId: string): void {
+    if (!songId) {
+      return;
+    }
+
+    if (this.loadingSummaryIds.has(songId)) {
+      console.debug('[rating] summary refresh queued', { songId });
+      this.queuedSummaryIds.add(songId);
+      return;
+    }
+
+    console.debug('[rating] summary refresh start', { songId });
+    this.loadingSummaryIds.add(songId);
+    const finish = () => {
+      this.loadingSummaryIds.delete(songId);
+      if (this.queuedSummaryIds.has(songId)) {
+        this.queuedSummaryIds.delete(songId);
+        this.refreshSongSummary(songId);
+      }
+    };
+
+    this.getAverageBySong(songId).subscribe({
+      next: (summary) => {
+        console.debug('[rating] summary refresh success', { songId, summary });
+        this.summariesBySongSg.set({
+          ...this.summariesBySongSg(),
+          [songId]: summary,
+        });
+      },
+      error: (error) => {
+        console.debug('[rating] summary refresh failed', { songId, error });
+        finish();
+      },
+      complete: () => finish(),
+    });
   }
 
   getRatingsByUser(

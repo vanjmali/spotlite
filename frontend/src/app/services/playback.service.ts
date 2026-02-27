@@ -381,6 +381,7 @@ export class PlaybackService {
       this.ratingService.deleteRating(existingRatingId).subscribe({
         next: () => {
           this.removeLocalRating(songId);
+          this.ratingService.refreshSongSummary(songId);
         },
       });
       return;
@@ -390,6 +391,7 @@ export class PlaybackService {
       this.ratingService.updateRating(existingRatingId, nextValue).subscribe({
         next: () => {
           this.upsertLocalRating(songId, nextValue, existingRatingId);
+          this.ratingService.refreshSongSummary(songId);
         },
       });
       return;
@@ -398,6 +400,7 @@ export class PlaybackService {
     this.ratingService.createRating(songId, nextValue).subscribe({
       next: () => {
         this.syncSongRatingFromApi(songId, nextValue);
+        this.ratingService.refreshSongSummary(songId);
       },
     });
   }

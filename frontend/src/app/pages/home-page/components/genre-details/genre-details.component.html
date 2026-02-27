@@ -69,6 +69,7 @@
                   <div class="genre-details__song-meta">
                     <p class="genre-details__song-artist">{{ row.artistsText }}</p>
                     <app-song-rating-badge
+                      [songId]="row.songId"
                       [average]="row.rating?.average"
                       [count]="row.rating?.count"
                     />
