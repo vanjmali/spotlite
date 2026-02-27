@@ -60,7 +60,6 @@ func (c *RedisSongRatingCache) SetSummary(ctx context.Context, songID string, av
 		Average: average,
 		Count:   count,
 	})
-
 	if err != nil {
 		return err
 	}
