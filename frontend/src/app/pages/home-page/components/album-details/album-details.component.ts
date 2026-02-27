@@ -1,27 +1,24 @@
 import { Component, computed, inject, signal, effect } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { MatIconModule } from '@angular/material/icon';
 import { WidgetComponent } from '@app/shared/components/widget/widget.component';
 import { AlbumService, type Album } from '../../../../services/album.service';
 import { RouterLink } from '@angular/router';
 import { PlaybackService } from '@app/services/playback.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 import { MessageComponent } from '@app/shared/components/message';
-import { SongRatingBadgeComponent } from '@app/shared/components/song-rating-badge/song-rating-badge';
-import { formatDuration } from '@app/shared/utils/display';
+import { SongRowComponent } from '@app/shared/components/song-row/song-row.component';
 
 @Component({
   selector: 'app-album-details',
   standalone: true,
   imports: [
     CommonModule,
-    MatIconModule,
     WidgetComponent,
     RouterLink,
     CoverArtComponent,
     MessageComponent,
-    SongRatingBadgeComponent,
+    SongRowComponent,
   ],
   templateUrl: './album-details.component.html',
   styleUrl: './album-details.component.scss',
@@ -63,10 +60,6 @@ export class AlbumDetailsComponent {
   formatDate(dateString: string): string {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-  }
-
-  formatSongDuration(seconds: number | null | undefined): string {
-    return formatDuration(seconds);
   }
 
   playAlbum(): void {

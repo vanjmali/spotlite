@@ -100,15 +100,7 @@
   }
 
   &__song-artists {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  &__song-duration {
-    color: $color-text-secondary;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
+    display: block;
   }
 
   &__song-artists-text {
@@ -162,26 +154,7 @@
   }
 
   &__song {
-    @include m.selectable-surface(10px, $color-border-primary, transparent);
-    padding: 8px 10px;
-    text-align: left;
-    cursor: pointer;
-    display: grid;
-    grid-template-columns: 30px minmax(0, 1fr);
-    gap: 8px;
-    align-items: center;
-  }
-
-  &__song-cover {
     display: block;
-    flex-shrink: 0;
-  }
-
-  &__song-main {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
   }
 
   &__song--skeleton {

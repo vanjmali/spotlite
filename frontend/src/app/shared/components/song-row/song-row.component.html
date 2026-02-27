@@ -1,0 +1,76 @@
+<button
+  type="button"
+  class="song-row"
+  [class.song-row--compact]="compactSg()"
+  [class.song-row--active]="activeSg()"
+  (click)="onRowClick()"
+>
+  @if (showIndexSg()) {
+    <div class="song-row__index">
+      @if (activeSg() && showToggleWhenActiveSg()) {
+        <span
+          class="song-row__toggle"
+          role="button"
+          tabindex="0"
+          aria-label="Toggle playback"
+          (click)="onToggle($event)"
+          (keydown.enter)="onToggle($event)"
+          (keydown.space)="$event.preventDefault(); onToggle($event)"
+        >
+          <mat-icon class="song-row__index-icon">{{
+            isPlayingSg() ? 'pause' : 'play_arrow'
+          }}</mat-icon>
+        </span>
+      } @else if (indexSg() !== null) {
+        {{ indexSg() }}
+      } @else {
+        <mat-icon class="song-row__index-icon">music_note</mat-icon>
+      }
+    </div>
+  }
+
+  <app-cover-art
+    class="song-row__cover"
+    [name]="songSg().title"
+    [size]="coverSizeSg()"
+    [fontSize]="coverFontSizeSg()"
+    [square]="true"
+  />
+
+  <span class="song-row__main">
+    <span class="song-row__title">{{ songSg().title }}</span>
+    <span class="song-row__meta">
+      @if (showArtistLinkSg() && (songSg().artists?.length ?? 0) > 0) {
+        <a
+          class="song-row__artist"
+          [routerLink]="['/artists', songSg().artists![0].id]"
+          (click)="$event.stopPropagation()"
+        >
+          {{ songSg().artists![0].name }}
+        </a>
+      } @else {
+        <span class="song-row__artist">{{ artistsTextSg() }}</span>
+      }
+
+      @if (showGenresSg() && (songSg().genres?.length ?? 0) > 0) {
+        @for (genre of songSg().genres!; track genre.id) {
+          <a
+            class="song-row__genre"
+            [routerLink]="['/genre', genre.id]"
+            (click)="$event.stopPropagation()"
+          >
+            {{ genre.name }}
+          </a>
+        }
+      }
+    </span>
+  </span>
+
+  <app-song-trailing-meta
+    class="song-row__right"
+    [songId]="songSg().id"
+    [average]="songSg().rating?.average"
+    [count]="songSg().rating?.count"
+    [durationSeconds]="songSg().lengthSeconds"
+  />
+</button>

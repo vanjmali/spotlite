@@ -54,68 +54,21 @@
         } @else {
           <div class="album-details__songs-list">
             @for (song of albumSg()!.songs; track song.id) {
-              <button
-                type="button"
+              <app-song-row
                 class="album-details__song-item"
-                [class.album-details__song-item--active]="song.id === activeSongIdSg()"
-                (click)="playSong($index)"
-              >
-                <div class="album-details__song-index">
-                  @if (song.id === activeSongIdSg()) {
-                    <span
-                      class="album-details__song-toggle"
-                      role="button"
-                      tabindex="0"
-                      aria-label="Toggle playback"
-                      (click)="toggleSongPlayback(song.id, $index, $event)"
-                      (keydown.enter)="toggleSongPlayback(song.id, $index, $event)"
-                      (keydown.space)="
-                        $event.preventDefault(); toggleSongPlayback(song.id, $index, $event)
-                      "
-                    >
-                      <mat-icon class="album-details__song-index-icon">{{
-                        playback.isPlayingSg() ? 'pause' : 'play_arrow'
-                      }}</mat-icon>
-                    </span>
-                  } @else {
-                    {{ $index + 1 }}
-                  }
-                </div>
-                <app-cover-art
-                  class="album-details__song-cover"
-                  [name]="song.title"
-                  [size]="42"
-                  [fontSize]="14"
-                  [square]="true"
-                />
-                <div class="album-details__song-info">
-                  <p class="album-details__song-title">{{ song.title }}</p>
-                  <div class="album-details__song-meta">
-                    @if (song.artists && song.artists.length > 0) {
-                      <span class="album-details__song-artist">{{ song.artists[0].name }}</span>
-                    } @else {
-                      <span class="album-details__song-artist">Unknown Artist</span>
-                    }
-                    @if (song.genres && song.genres.length > 0) {
-                      @for (genre of song.genres; track genre.id) {
-                        <a class="album-details__song-genre" [routerLink]="['/genre', genre.id]">{{
-                          genre.name
-                        }}</a>
-                      }
-                    }
-                  </div>
-                </div>
-                <span class="album-details__song-right">
-                  <app-song-rating-badge
-                    [songId]="song.id"
-                    [average]="song.rating?.average"
-                    [count]="song.rating?.count"
-                  />
-                  <span class="album-details__song-duration">{{
-                    formatSongDuration(song.lengthSeconds)
-                  }}</span>
-                </span>
-              </button>
+                [song]="song"
+                [showIndex]="true"
+                [showToggleWhenActive]="true"
+                [showGenres]="true"
+                [showArtistLink]="true"
+                [active]="song.id === activeSongIdSg()"
+                [isPlaying]="playback.isPlayingSg()"
+                [index]="$index + 1"
+                [coverSize]="42"
+                [coverFontSize]="14"
+                (rowClick)="playSong($index)"
+                (toggleClick)="toggleSongPlayback(song.id, $index, $event)"
+              />
             }
           </div>
         }
