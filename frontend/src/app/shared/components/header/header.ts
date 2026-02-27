@@ -40,7 +40,7 @@ export class HeaderComponent {
   constructor() {
     this.searchControl.valueChanges
       .pipe(
-        debounceTime(3000),
+        debounceTime(1500),
         distinctUntilChanged(),
         switchMap((query) => {
           const normalized = query.trim();

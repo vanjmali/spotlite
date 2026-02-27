@@ -1,0 +1,81 @@
+@use 'variables/colors' as *;
+@use 'mixins' as m;
+
+:host {
+  display: block;
+  width: 100%;
+}
+
+.album-card {
+  @include m.selectable-surface(12px);
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-decoration: none;
+  position: relative;
+}
+
+.album-card__play-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.45);
+  color: $color-text-primary;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+  opacity: 0;
+  transform: translateY(2px);
+  pointer-events: none;
+
+  mat-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+  }
+
+  &:hover,
+  &:focus-visible {
+    border-color: rgba(255, 255, 255, 0.55);
+    background: rgba(0, 0, 0, 0.65);
+  }
+}
+
+.album-card:hover .album-card__play-btn {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.album-card__cover {
+  width: 100%;
+  max-width: 100%;
+  display: block;
+}
+
+.album-card__title {
+  color: $color-text-primary;
+  font-weight: 700;
+}
+
+.album-card__artists {
+  color: $color-text-secondary;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -71,13 +71,17 @@ export class HomepageRightSidebarComponent {
     this.playback.playFromQueue(index);
   }
 
-  toggleQueueSongPlayback(songId: string, index: number, event: Event): void {
-    event.stopPropagation();
+  onQueueRowClick(songId: string, index: number): void {
     if (songId === this.activeSongIdSg()) {
       this.playback.togglePlayPause();
       return;
     }
     this.playQueueIndex(index);
+  }
+
+  toggleQueueSongPlayback(songId: string, index: number, event: Event): void {
+    event.stopPropagation();
+    this.onQueueRowClick(songId, index);
   }
 
   formatSongDuration(seconds: number | null | undefined): string {

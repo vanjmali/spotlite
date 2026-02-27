@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { MatIconModule } from '@angular/material/icon';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AlbumService, type Album } from '@app/services/album.service';
@@ -12,6 +11,7 @@ import { PlaybackService } from '@app/services/playback.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 import { MessageComponent } from '@app/shared/components/message';
 import { SongTrailingMetaComponent } from '@app/shared/components/song-trailing-meta/song-trailing-meta';
+import { AlbumCardComponent } from '@app/shared/components/album-card/album-card.component';
 
 @Component({
   selector: 'app-artists-list',
@@ -19,10 +19,10 @@ import { SongTrailingMetaComponent } from '@app/shared/components/song-trailing-
   imports: [
     CommonModule,
     RouterLink,
-    MatIconModule,
     CoverArtComponent,
     MessageComponent,
     SongTrailingMetaComponent,
+    AlbumCardComponent,
   ],
   templateUrl: './artists-list.component.html',
   styleUrl: './artists-list.component.scss',

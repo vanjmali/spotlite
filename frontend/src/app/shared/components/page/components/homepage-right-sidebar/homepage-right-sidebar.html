@@ -38,7 +38,7 @@
             type="button"
             class="homepage-right-sidebar__song"
             [class.homepage-right-sidebar__song--active]="song.id === activeSongIdSg()"
-            (click)="playQueueIndex($index)"
+            (click)="onQueueRowClick(song.id, $index)"
           >
             <span class="homepage-right-sidebar__song-index">
               @if (song.id === activeSongIdSg()) {
