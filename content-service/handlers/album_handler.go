@@ -82,6 +82,7 @@ func (h *AlbumHandler) HandleGetAlbumById(w http.ResponseWriter, r *http.Request
 			return
 		}
 	}
+	getSongRatings(r.Context(), album.Songs)
 	if err := respond.OkJson(w, album); err != nil {
 		logging.Errorf(r.Context(), "failed to write get album response: %v", err)
 	}
@@ -117,6 +118,7 @@ func (h *AlbumHandler) HandleAddAlbumSongs(w http.ResponseWriter, r *http.Reques
 		_ = respond.InternalServerError(w)
 		return
 	}
+	getSongRatings(r.Context(), updatedAlbum.Songs)
 
 	if err := respond.OkJson(w, updatedAlbum); err != nil {
 		logging.Errorf(r.Context(), "failed to write add album songs response: %v", err)
@@ -143,6 +145,7 @@ func (h *AlbumHandler) HandleGetAlbumSongs(w http.ResponseWriter, r *http.Reques
 		_ = respond.InternalServerError(w)
 		return
 	}
+	getSongRatings(r.Context(), songs)
 
 	if err := respond.OkJson(w, songs); err != nil {
 		logging.Errorf(r.Context(), "failed to write album songs response: %v", err)
@@ -207,6 +210,7 @@ func (h *AlbumHandler) HandleUpdateAlbum(w http.ResponseWriter, r *http.Request)
 		_ = respond.InternalServerError(w)
 		return
 	}
+	getSongRatings(r.Context(), updatedAlbum.Songs)
 
 	if err := respond.OkJson(w, updatedAlbum); err != nil {
 		logging.Errorf(r.Context(), "failed to write update album response: %v", err)
@@ -254,6 +258,13 @@ func (h *AlbumHandler) HandleGetAlbums(w http.ResponseWriter, r *http.Request) {
 	}
 
 	commondtos.HandleListResponse(w, r, "albums", func(ctx context.Context) (any, error) {
-		return h.s.GetAlbums(ctx, query)
+		result, err := h.s.GetAlbums(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+		for i := range result.Items {
+			getSongRatings(ctx, result.Items[i].Songs)
+		}
+		return result, nil
 	})
 }

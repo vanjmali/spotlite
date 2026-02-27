@@ -69,7 +69,10 @@
                   <span class="search-results__song-meta-text">{{
                     artistNames(song.artists)
                   }}</span>
-                  <app-song-rating-badge [songId]="song.id" />
+                  <app-song-rating-badge
+                    [average]="song.rating?.average"
+                    [count]="song.rating?.count"
+                  />
                 </span>
               </span>
             </article>

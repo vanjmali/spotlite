@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	pb "github.com/vanjmali/spotlite/common-lib/proto/rating_service"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/rating-service/handlers"
@@ -63,6 +65,22 @@ var (
 			gcc := createAdapters(gc)
 			rr := createRepositories(dbc)
 			rs := createServices(rr, gcc)
+			grpcServer, err := createGrpcServer(rs)
+			if err != nil {
+				return h, shutdown, fmt.Errorf("failed to create grpc server: %w", err)
+			}
+			grpcPort := utils.GetEnv("GRPC_PORT", "50052")
+			lis, err := net.Listen("tcp", ":"+grpcPort)
+			if err != nil {
+				return h, shutdown, fmt.Errorf("failed to listen on grpc port: %w", err)
+			}
+			go func() {
+				log.Printf("gRPC rating server listening on port %s", grpcPort)
+				if serveErr := grpcServer.Serve(lis); serveErr != nil {
+					log.Printf("failed to serve rating grpc: %v", serveErr)
+				}
+			}()
+
 			h = createHandlers(v, rs)
 			shutdown = func() error {
 				var errs []error
@@ -72,6 +90,10 @@ var (
 
 				if err := gc.Close(); err != nil {
 					errs = append(errs, fmt.Errorf("grpc close error: %w", err))
+				}
+				grpcServer.GracefulStop()
+				if err := lis.Close(); err != nil {
+					errs = append(errs, fmt.Errorf("grpc listener close error: %w", err))
 				}
 
 				if err := dbc.Disconnect(shutdownCtx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
@@ -185,6 +207,23 @@ func createHandlers(
 ) http.Handler {
 	rh := handlers.NewRatingHandler(*rs, *v)
 	return routers.HandleRequests(rh)
+}
+
+func createGrpcServer(rs *services.RatingService) (*grpc.Server, error) {
+	ratingGrpcServer := adapters.NewRatingServer(rs)
+
+	creds, err := credentials.NewServerTLSFromFile(certFilePath, keyFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load TLS keys: %w", err)
+	}
+
+	s := grpc.NewServer(
+		grpc.Creds(creds),
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+	)
+	pb.RegisterGetSongRatingServer(s, ratingGrpcServer)
+
+	return s, nil
 }
 
 func generateCreds() (credentials.TransportCredentials, error) {

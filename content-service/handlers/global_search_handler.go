@@ -34,6 +34,11 @@ func (h *GlobalSearchHandler) HandleGlobalSearch(w http.ResponseWriter, r *http.
 		return
 	}
 
+	getSongRatings(r.Context(), result.Songs)
+	for i := range result.Albums {
+		getSongRatings(r.Context(), result.Albums[i].Songs)
+	}
+
 	if err := respond.OkJson(w, result); err != nil {
 		logging.Errorf(r.Context(), "failed to write global search response: %v", err)
 	}

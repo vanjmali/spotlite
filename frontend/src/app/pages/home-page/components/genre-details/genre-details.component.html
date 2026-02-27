@@ -68,7 +68,10 @@
                   <p class="genre-details__song-title">{{ row.songTitle }}</p>
                   <div class="genre-details__song-meta">
                     <p class="genre-details__song-artist">{{ row.artistsText }}</p>
-                    <app-song-rating-badge [songId]="row.songId" />
+                    <app-song-rating-badge
+                      [average]="row.rating?.average"
+                      [count]="row.rating?.count"
+                    />
                   </div>
                 </div>
                 <a

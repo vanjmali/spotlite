@@ -128,6 +128,8 @@ func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	getSongRating(r.Context(), song)
+
 	if err := respond.OkJson(w, song); err != nil {
 		logging.Errorf(r.Context(), "failed to write get song response: %v", err)
 	}
@@ -213,7 +215,13 @@ func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	commondtos.HandleListResponse(w, r, "songs", func(ctx context.Context) (any, error) {
-		return h.s.GetSongs(ctx, query)
+		result, err := h.s.GetSongs(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+
+		getSongRatings(ctx, result.Items)
+		return result, nil
 	})
 }
 

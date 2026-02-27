@@ -71,7 +71,10 @@
             />
             <span class="homepage-right-sidebar__song-main">
               <span class="homepage-right-sidebar__song-title">{{ song.title }}</span>
-              <app-song-rating-badge [songId]="song.id" />
+              <app-song-rating-badge
+                [average]="song.rating?.average"
+                [count]="song.rating?.count"
+              />
             </span>
           </button>
         }

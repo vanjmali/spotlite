@@ -18,6 +18,10 @@ type GenreSongRow = {
   artistsText: string;
   albumId: string;
   albumTitle: string;
+  rating?: {
+    average: number;
+    count: number;
+  };
 };
 
 @Component({
@@ -61,6 +65,7 @@ export class GenreDetailsComponent {
             : 'Unknown artist',
         albumId: album.id,
         albumTitle: album.title,
+        rating: song.rating,
       }))
     );
   });

@@ -22,6 +22,10 @@ export interface PlaybackTrack {
   lengthSeconds?: number;
   albumId: string;
   albumTitle: string;
+  rating?: {
+    average: number;
+    count: number;
+  };
 }
 
 type PersistedPlaybackState = {
@@ -507,6 +511,7 @@ export class PlaybackService {
       lengthSeconds: song.lengthSeconds,
       albumId: album.id,
       albumTitle: album.title,
+      rating: song.rating,
     };
   }
 

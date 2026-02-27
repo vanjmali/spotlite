@@ -161,7 +161,10 @@
                   <span class="recommendations__song-artists-text">{{
                     artistNames(song.artists)
                   }}</span>
-                  <app-song-rating-badge [songId]="song.id" />
+                  <app-song-rating-badge
+                    [average]="song.rating?.average"
+                    [count]="song.rating?.count"
+                  />
                 </span>
               </span>
             </button>

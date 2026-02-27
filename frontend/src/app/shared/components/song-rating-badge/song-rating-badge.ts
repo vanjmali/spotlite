@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { PlaybackService } from '@app/services/playback.service';
 
 @Component({
   selector: 'app-song-rating-badge',
@@ -11,11 +10,20 @@ import { PlaybackService } from '@app/services/playback.service';
   styleUrl: './song-rating-badge.scss',
 })
 export class SongRatingBadgeComponent {
-  readonly songId = input.required<string>();
-  private readonly playback = inject(PlaybackService);
+  readonly average = input<number | null | undefined>(null);
+  readonly count = input<number | null | undefined>(null);
 
-  readonly ratingValueSg = computed(() => {
-    const id = this.songId();
-    return this.playback.ratingsBySongSg()[id] ?? 0;
+  readonly countSg = computed(() => {
+    const value = this.count();
+    return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+  });
+
+  readonly hasRatingsSg = computed(() => this.countSg() > 0);
+  readonly averageTextSg = computed(() => {
+    const value = this.average();
+    if (typeof value !== 'number' || !Number.isFinite(value)) {
+      return '-';
+    }
+    return value.toFixed(1);
   });
 }
