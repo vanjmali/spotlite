@@ -20,6 +20,7 @@ export class AuthService {
   // Public signals for reactive state
   readonly currentEmailSg = signal<string | null>(null);
   readonly accessTokenSg = signal<string | null>(null);
+  readonly authInitializedSg = signal(false);
   readonly isAuthenticatedSg = computed(() => !!this.accessTokenSg());
   readonly currentUserIdSg = computed(() => {
     const claims = this.getTokenClaims(this.accessTokenSg());
@@ -175,7 +176,10 @@ export class AuthService {
 
   // Initialize auth on app startup - refresh access token using httpOnly cookie
   initializeAuth(): void {
-    void this.refreshAccessToken();
+    this.authInitializedSg.set(false);
+    void this.refreshAccessToken().finally(() => {
+      this.authInitializedSg.set(true);
+    });
   }
 
   // Refresh access token using httpOnly refresh cookie

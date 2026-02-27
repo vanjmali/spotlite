@@ -58,6 +58,7 @@ export class PlaybackService {
   private readonly ratingService = inject(RatingService);
   private streamLoadId = 0;
   private lastVolumeBeforeMute = DEFAULT_VOLUME;
+  private lastAuthenticatedState = false;
 
   readonly currentTrackSg = signal<PlaybackTrack | null>(null);
   readonly currentAlbumSg = signal<Album | null>(null);
@@ -155,6 +156,28 @@ export class PlaybackService {
       }
       this.loadUserRatings(userId);
     });
+
+    effect(() => {
+      const isAuth = this.authService.isAuthenticatedSg();
+      const authInitialized = this.authService.authInitializedSg();
+
+      if (!isAuth) {
+        if (this.lastAuthenticatedState) {
+          this.stopAndResetPlayback();
+          this.clearPersistedPlaybackQueue();
+          this.lastAuthenticatedState = false;
+          return;
+        }
+
+        if (authInitialized) {
+          this.stopAndResetPlayback();
+          this.clearPersistedPlaybackQueue();
+        }
+        return;
+      }
+
+      this.lastAuthenticatedState = true;
+    });
   }
 
   playAlbum(album: Album, startSongId?: string): void {
@@ -202,7 +225,7 @@ export class PlaybackService {
         }
 
         if (!res?.url) {
-          this.isLoadingSg.set(false);
+          this.handleUnplayableTrack(index);
           return;
         }
 
@@ -212,10 +235,17 @@ export class PlaybackService {
           this.isLoadingSg.set(false);
         });
       },
-      error: () => {
+      error: (err: unknown) => {
         if (loadId !== this.streamLoadId) {
           return;
         }
+
+        const status = this.extractHttpStatus(err);
+        if (status === 401 || status === 403 || status === 404) {
+          this.handleUnplayableTrack(index);
+          return;
+        }
+
         this.clearAudioSource();
         this.isPlayingSg.set(false);
         this.isLoadingSg.set(false);
@@ -615,6 +645,11 @@ export class PlaybackService {
   }
 
   private persistPlaybackState(): void {
+    if (!this.authService.isAuthenticatedSg()) {
+      this.clearPersistedPlaybackQueue();
+      return;
+    }
+
     this.safeWriteStorage<PersistedPlaybackState>(PLAYBACK_STATE_STORAGE_KEY, {
       queue: this.queueSg(),
       currentIndex: this.currentIndexSg(),
@@ -646,5 +681,58 @@ export class PlaybackService {
     } catch {
       // Ignore storage write errors in private mode/quota edge cases.
     }
+  }
+
+  private safeRemoveStorage(key: string): void {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Ignore storage remove errors in private mode/quota edge cases.
+    }
+  }
+
+  private clearPersistedPlaybackQueue(): void {
+    this.safeRemoveStorage(PLAYBACK_STATE_STORAGE_KEY);
+  }
+
+  private stopAndResetPlayback(): void {
+    this.streamLoadId += 1;
+    this.clearAudioSource();
+    this.isPlayingSg.set(false);
+    this.isLoadingSg.set(false);
+    this.currentTimeSg.set(0);
+    this.durationSg.set(0);
+    this.currentTrackSg.set(null);
+    this.currentAlbumSg.set(null);
+    this.queueSg.set([]);
+    this.currentIndexSg.set(-1);
+    this.playHistorySg.set([]);
+  }
+
+  private handleUnplayableTrack(index: number): void {
+    const queue = this.queueSg();
+    if (index < 0 || index >= queue.length) {
+      this.isLoadingSg.set(false);
+      return;
+    }
+
+    const nextQueue = queue.filter((_, idx) => idx !== index);
+    if (nextQueue.length === 0) {
+      this.stopAndResetPlayback();
+      this.clearPersistedPlaybackQueue();
+      return;
+    }
+
+    this.queueSg.set(nextQueue);
+    const nextIndex = Math.min(index, nextQueue.length - 1);
+    this.playFromQueue(nextIndex);
+  }
+
+  private extractHttpStatus(error: unknown): number | null {
+    if (!error || typeof error !== 'object' || !('status' in error)) {
+      return null;
+    }
+    const status = (error as { status?: unknown }).status;
+    return typeof status === 'number' ? status : null;
   }
 }
