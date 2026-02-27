@@ -179,6 +179,52 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 		return err
 	}
 
+	if se.Type == subscription.GenreSubscription {
+		timeoutCtx, cancel := context.WithTimeout(createCtx, 5*time.Second)
+		defer cancel()
+
+		eventCtx, eventSpan := s.tr.Start(timeoutCtx, "subscription.subscribe.event")
+		defer eventSpan.End()
+
+		sep := toSubscriptionEvent(se.SubscriberID.Hex(), se.EntityID.Hex())
+
+		err = retry.Do(
+			func() error {
+				return s.jsc.Publish(eventCtx, events.SUBJECT_GENRE_SUBSCRIBED, sep)
+			},
+			retry.Attempts(3),
+			retry.Delay(time.Second*1),
+			retry.DelayType(retry.BackOffDelay),
+			retry.Context(eventCtx),
+		)
+		if err != nil {
+			logging.Errorf(eventCtx, "failed to publish subscription event: %v", err)
+			eventSpan.RecordError(err)
+
+			var errs []error
+
+			errs = append(errs, err)
+
+			rbCtx, rbSpan := s.tr.Start(ctx, "subscription.subscribe.rollback")
+			defer rbSpan.End()
+
+			ddc, err := s.sr.Delete(se.EntityID, se.SubscriberID, rbCtx)
+			if err != nil {
+				logging.Errorf(rbCtx, "rollback failed: %v", err)
+				rbSpan.RecordError(err)
+				errs = append(errs, err)
+			}
+
+			if ddc < 1 {
+				logging.Errorf(rbCtx, "rollback failed: %v", ErrSubscriptionNotFound)
+				rbSpan.RecordError(ErrSubscriptionNotFound)
+				errs = append(errs, ErrSubscriptionNotFound)
+			}
+
+			return errors.Join(errs...)
+		}
+	}
+
 	return nil
 }
 
@@ -342,4 +388,11 @@ func (s *SubscriptionService) UpdateSubscriptions(ctx context.Context, p events.
 	}
 
 	return nil
+}
+
+func toSubscriptionEvent(userID string, genreID string) *events.GenreSubscriptionEventPayload {
+	return &events.GenreSubscriptionEventPayload{
+		UserID:  userID,
+		GenreID: genreID,
+	}
 }

@@ -63,3 +63,20 @@ func (c *RecommendationConsumer) HandleSongCreation(ctx context.Context, msg jet
 
 	return nil
 }
+
+func (c *RecommendationConsumer) HandleGenreSubscription(ctx context.Context, msg jetstream.Msg) error {
+	var p events.GenreSubscriptionEventPayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		logging.Errorf(ctx, "critical: failed to unmarshal GenreSubscriptionEventPayload: %v", err)
+		return nil
+	}
+
+	logging.Infof(ctx, "%s", p)
+
+	if err := c.rs.CreateSubscription(p, ctx); err != nil {
+		logging.Errorf(ctx, "critical: an error has occured while handling genre subscription event: %v", err)
+		return err
+	}
+
+	return nil
+}

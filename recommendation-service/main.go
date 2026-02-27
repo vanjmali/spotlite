@@ -88,13 +88,13 @@ var (
 				c.HandleGenreCreation,
 			)
 
-			// startConsumer(
-			// 	events.GENRES_STREAM,
-			// 	events.SUBJECT_GENRE_SUBSCRIBED,
-			// 	events.GENRE_DURABLE,
-			// 	"genre subscription created",
-			// 	c.HandleUserRegistration,
-			// )
+			startConsumer(
+				events.GENRES_STREAM,
+				events.SUBJECT_GENRE_SUBSCRIBED,
+				events.GENRE_DURABLE,
+				"genre subscription created",
+				c.HandleGenreSubscription,
+			)
 
 			startConsumer(
 				events.SONGS_STREAM,

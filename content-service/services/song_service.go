@@ -92,7 +92,7 @@ func NewSongService(
 }
 
 // Create creates a new song with the provided data, resolving associated artists and genre.
-func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (SongPayload, error) {
+func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (*SongPayload, error) {
 	createCtx, createSpan := s.tr.Start(ctx, "song.create")
 	defer createSpan.End()
 
@@ -105,11 +105,11 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (SongPa
 
 		switch {
 		case errors.Is(err, ErrObjectIdCastFailed):
-			return SongPayload{SongID: primitive.NilObjectID.Hex(), Title: "", Duration: 0, GenreIDs: nil}, ErrObjectIdCastFailed
+			return nil, ErrObjectIdCastFailed
 		case errors.Is(err, ErrAlbumNotFound):
-			return SongPayload{SongID: primitive.NilObjectID.Hex(), Title: "", Duration: 0, GenreIDs: nil}, ErrAlbumNotFound
+			return nil, ErrAlbumNotFound
 		default:
-			return SongPayload{SongID: primitive.NilObjectID.Hex(), Title: "", Duration: 0, GenreIDs: nil}, err
+			return nil, err
 		}
 	}
 
@@ -125,11 +125,11 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (SongPa
 
 			switch {
 			case errors.Is(err, ErrObjectIdCastFailed):
-				return SongPayload{SongID: primitive.NilObjectID.Hex(), Title: "", Duration: 0, GenreIDs: nil}, ErrObjectIdCastFailed
+				return nil, ErrObjectIdCastFailed
 			case errors.Is(err, ErrGenreNotFound):
-				return SongPayload{SongID: primitive.NilObjectID.Hex(), Title: "", Duration: 0, GenreIDs: nil}, ErrGenreNotFound
+				return nil, ErrGenreNotFound
 			default:
-				return SongPayload{SongID: primitive.NilObjectID.Hex(), Title: "", Duration: 0, GenreIDs: nil}, err
+				return nil, err
 			}
 		}
 
@@ -152,11 +152,11 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (SongPa
 
 			switch {
 			case errors.Is(err, ErrObjectIdCastFailed):
-				return SongPayload{SongID: primitive.NilObjectID.Hex(), Title: "", Duration: 0, GenreIDs: nil}, ErrObjectIdCastFailed
+				return nil, ErrObjectIdCastFailed
 			case errors.Is(err, ErrArtistNotFound):
-				return SongPayload{SongID: primitive.NilObjectID.Hex(), Title: "", Duration: 0, GenreIDs: nil}, ErrArtistNotFound
+				return nil, ErrArtistNotFound
 			default:
-				return SongPayload{SongID: primitive.NilObjectID.Hex(), Title: "", Duration: 0, GenreIDs: nil}, err
+				return nil, err
 			}
 		}
 
@@ -174,7 +174,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (SongPa
 	if err != nil {
 		mapSpan.RecordError(err)
 		logging.Errorf(createCtx, "error converting to song entity: %v", err)
-		return SongPayload{SongID: primitive.NilObjectID.Hex(), Title: "", Duration: 0, GenreIDs: nil}, err
+		return nil, err
 	}
 
 	repoCtx, repoSpan := s.tr.Start(createCtx, "song.create.create_song")
@@ -184,7 +184,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (SongPa
 	if err != nil {
 		createSpan.RecordError(err)
 		logging.Errorf(repoCtx, "error creating song in database: %v", err)
-		return SongPayload{SongID: primitive.NilObjectID.Hex(), Title: "", Duration: 0, GenreIDs: nil}, err
+		return nil, err
 	}
 
 	addToAlbumCtx, addToAlbumSpan := s.tr.Start(createCtx, "song.create.add_to_album")
@@ -201,11 +201,11 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (SongPa
 		if deleteErr := s.DeleteSong(rollbackCtx, id.Hex()); deleteErr != nil {
 			rollbackSpan.RecordError(deleteErr)
 			logging.Errorf(rollbackCtx, "critical: failed to rollback song creation for song_id=%s: %v", id.Hex(), deleteErr)
+			return nil, err
 		}
-		return SongPayload{SongID: primitive.NilObjectID.Hex(), Title: "", Duration: 0, GenreIDs: nil}, err
 	}
 
-	return SongPayload{SongID: id.Hex(), Title: songEntity.Title, Duration: songEntity.LengthSeconds, GenreIDs: songDto.GenreIds}, nil
+	return &SongPayload{SongID: id.Hex(), Title: songEntity.Title, Duration: songEntity.LengthSeconds, GenreIDs: songDto.GenreIds}, nil
 }
 
 // FindSongById retrieves a single song by its ID.

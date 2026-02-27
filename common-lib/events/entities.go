@@ -84,3 +84,8 @@ type SongCreationPayload struct {
 	Duration  int      `json:"duration"`
 	GenreIDs  []string `json:"genre_ids"`
 }
+
+type GenreSubscriptionEventPayload struct {
+	GenreID string `json:"genre_id"`
+	UserID  string `json:"user_id"`
+}

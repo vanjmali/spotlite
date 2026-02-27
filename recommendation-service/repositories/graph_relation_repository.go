@@ -76,21 +76,27 @@ func (r *GraphRelationRepository) SaveSongWithGenres(ctx context.Context, e even
 }
 
 // CreateGenreSubscription creates a SUBSCRIBED_GENRE relationship between a user and a genre.
-func (r *GraphRelationRepository) CreateGenreSubscription(ctx context.Context, sub entities.GenreSubscription) error {
+func (r *GraphRelationRepository) CreateGenreSubscription(ctx context.Context, e events.GenreSubscriptionEventPayload) error {
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
 	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		return tx.Run(
+		result, err := tx.Run(
 			ctx,
-			`MATCH (u:User {user_id: $user_id}), (g:Genre {genre_id: $genre_id})
-MERGE (u)-[:SUBSCRIBED_GENRE]->(g)`,
+			`MATCH (u:User {user_id: $userId}), (g:Genre {genre_id: $genreId})
+             MERGE (u)-[:SUBSCRIBED_TO]->(g)`,
 			map[string]any{
-				"user_id":  sub.UserID,
-				"genre_id": sub.GenreID,
+				"userId":  e.UserID,
+				"genreId": e.GenreID,
 			},
 		)
+		if err != nil {
+			return nil, err
+		}
+
+		return result.Consume(ctx)
 	})
+
 	return err
 }
 

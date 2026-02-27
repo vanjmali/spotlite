@@ -362,7 +362,7 @@ func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.R
 	}
 
 	sp.Duration = *lengthSeconds
-	updated, err := h.s.UploadAudio(r.Context(), sp, reader, ext, mime, lengthSeconds)
+	updated, err := h.s.UploadAudio(r.Context(), *sp, reader, ext, mime, lengthSeconds)
 	if err != nil {
 		if rollbackErr := h.s.DeleteSong(r.Context(), sp.SongID); rollbackErr != nil {
 			logSecurityEvent(r.Context(), "create_with_audio_rollback_failed", fmt.Sprintf("song_id=%s error=%v", sp.SongID, rollbackErr))

@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/recommendation-service/entities"
 	"github.com/vanjmali/spotlite/recommendation-service/repositories"
 	"go.opentelemetry.io/otel"
@@ -61,6 +62,8 @@ func (rs *RecommendationService) CreateGenre(g events.GenreCreationPayload, ctx 
 
 	err := rs.r.genreNodeRepository.Create(createCtx, gn)
 	if err != nil {
+		createSpan.RecordError(err)
+		logging.Errorf(createCtx, "critical: an error has occured while creating genre: %v", err)
 		return err
 	}
 
@@ -73,6 +76,22 @@ func (rs *RecommendationService) CreateSong(e events.SongCreationPayload, ctx co
 
 	err := rs.r.relationRepository.SaveSongWithGenres(createCtx, e)
 	if err != nil {
+		createSpan.RecordError(err)
+		logging.Errorf(createCtx, "critical: an error has occured while creating song: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (rs *RecommendationService) CreateSubscription(e events.GenreSubscriptionEventPayload, ctx context.Context) error {
+	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.subscription.create")
+	defer createSpan.End()
+
+	err := rs.r.relationRepository.CreateGenreSubscription(createCtx, e)
+	if err != nil {
+		createSpan.RecordError(err)
+		logging.Errorf(createCtx, "critical: an error has occured while creating subscription relationship: %v", err)
 		return err
 	}
 
