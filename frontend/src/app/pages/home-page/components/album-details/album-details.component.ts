@@ -8,6 +8,7 @@ import { RouterLink } from '@angular/router';
 import { PlaybackService } from '@app/services/playback.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 import { MessageComponent } from '@app/shared/components/message';
+import { SongRatingBadgeComponent } from '@app/shared/components/song-rating-badge/song-rating-badge';
 
 @Component({
   selector: 'app-album-details',
@@ -19,6 +20,7 @@ import { MessageComponent } from '@app/shared/components/message';
     RouterLink,
     CoverArtComponent,
     MessageComponent,
+    SongRatingBadgeComponent,
   ],
   templateUrl: './album-details.component.html',
   styleUrl: './album-details.component.scss',

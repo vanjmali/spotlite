@@ -1,0 +1,16 @@
+<span
+  class="song-rating-badge"
+  [class.song-rating-badge--rated]="ratingValueSg() > 0"
+  [attr.aria-label]="
+    'Song rating: ' + (ratingValueSg() > 0 ? ratingValueSg() + ' out of 5' : 'not rated')
+  "
+>
+  <mat-icon class="song-rating-badge__icon">star</mat-icon>
+  <span class="song-rating-badge__value">
+    @if (ratingValueSg() > 0) {
+      {{ ratingValueSg() }}/5
+    } @else {
+      -
+    }
+  </span>
+</span>

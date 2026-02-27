@@ -8,6 +8,7 @@ import { PlaybackService } from '@app/services/playback.service';
 import { SubscriptionService } from '@app/services/subscription.service';
 import { AuthService } from '@app/services/auth.service';
 import { MessageComponent } from '@app/shared/components/message';
+import { SongRatingBadgeComponent } from '@app/shared/components/song-rating-badge/song-rating-badge';
 import { WidgetComponent } from '@app/shared/components/widget/widget.component';
 import { EMPTY, catchError, finalize, map, of } from 'rxjs';
 
@@ -27,6 +28,7 @@ type GenreSongRow = {
     RouterLink,
     MatIconModule,
     MessageComponent,
+    SongRatingBadgeComponent,
     WidgetComponent,
   ],
   templateUrl: './genre-details.component.html',

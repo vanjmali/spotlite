@@ -65,7 +65,12 @@
               />
               <span class="search-results__song-main">
                 <span class="search-results__song-title">{{ song.title }}</span>
-                <span class="search-results__song-meta">{{ artistNames(song.artists) }}</span>
+                <span class="search-results__song-meta">
+                  <span class="search-results__song-meta-text">{{
+                    artistNames(song.artists)
+                  }}</span>
+                  <app-song-rating-badge [songId]="song.id" />
+                </span>
               </span>
             </article>
           }

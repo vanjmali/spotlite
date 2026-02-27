@@ -10,11 +10,18 @@ import { SongService, type Song } from '@app/services/song.service';
 import { PlaybackService } from '@app/services/playback.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 import { MessageComponent } from '@app/shared/components/message';
+import { SongRatingBadgeComponent } from '@app/shared/components/song-rating-badge/song-rating-badge';
 
 @Component({
   selector: 'app-artists-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, CoverArtComponent, MessageComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    CoverArtComponent,
+    MessageComponent,
+    SongRatingBadgeComponent,
+  ],
   templateUrl: './artists-list.component.html',
   styleUrl: './artists-list.component.scss',
 })

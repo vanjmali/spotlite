@@ -85,6 +85,20 @@
     font-size: 12px;
   }
 
+  &__song-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  &__song-meta-text {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   &__song-list {
     display: flex;
     flex-direction: column;

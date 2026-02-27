@@ -69,7 +69,10 @@
               [square]="true"
               [pattern]="false"
             />
-            <span class="homepage-right-sidebar__song-title">{{ song.title }}</span>
+            <span class="homepage-right-sidebar__song-main">
+              <span class="homepage-right-sidebar__song-title">{{ song.title }}</span>
+              <app-song-rating-badge [songId]="song.id" />
+            </span>
           </button>
         }
       }

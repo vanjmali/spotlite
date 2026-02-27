@@ -147,11 +147,20 @@
   }
 
   &__song-artist {
+    flex: 1;
     color: $color-text-secondary;
     font-size: 12px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  &__song-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+    min-width: 0;
   }
 
   &__song-album {

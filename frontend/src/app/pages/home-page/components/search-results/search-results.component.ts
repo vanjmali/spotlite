@@ -6,11 +6,12 @@ import { Artist } from '@app/services/artist.service';
 import { debounceTime, distinctUntilChanged, map, of, switchMap, catchError } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
+import { SongRatingBadgeComponent } from '@app/shared/components/song-rating-badge/song-rating-badge';
 
 @Component({
   selector: 'app-search-results',
   standalone: true,
-  imports: [CommonModule, RouterLink, CoverArtComponent],
+  imports: [CommonModule, RouterLink, CoverArtComponent, SongRatingBadgeComponent],
   templateUrl: './search-results.component.html',
   styleUrl: './search-results.component.scss',
 })

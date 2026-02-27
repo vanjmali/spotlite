@@ -99,6 +99,19 @@
     white-space: nowrap;
   }
 
+  &__song-artists {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__song-artists-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   &__albums {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

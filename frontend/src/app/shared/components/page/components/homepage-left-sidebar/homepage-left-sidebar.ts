@@ -37,13 +37,11 @@ export class HomepageLeftSidebarComponent {
   );
 
   constructor() {
-    this.subscriptionService.changes$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        if (this.authService.currentUserIdSg()) {
-          this.loadSubscriptions();
-        }
-      });
+    this.subscriptionService.changes$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      if (this.authService.currentUserIdSg()) {
+        this.loadSubscriptions();
+      }
+    });
 
     effect(() => {
       const userId = this.authService.currentUserIdSg();

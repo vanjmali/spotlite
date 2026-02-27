@@ -96,6 +96,7 @@
                     } @else {
                       <span class="album-details__song-artist">Unknown Artist</span>
                     }
+                    <app-song-rating-badge [songId]="song.id" />
                     @if (song.genres && song.genres.length > 0) {
                       @for (genre of song.genres; track genre.id) {
                         <a class="album-details__song-genre" [routerLink]="['/genre', genre.id]">{{

@@ -60,7 +60,9 @@ export class SubscriptionService {
   }
 
   unsubscribe(entityId: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${entityId}`).pipe(tap(() => this.notifyChanged()));
+    return this.http
+      .delete<void>(`${this.apiUrl}/${entityId}`)
+      .pipe(tap(() => this.notifyChanged()));
   }
 
   getSubscriberCount(entityId: string): Observable<SubscriberCountResponse> {

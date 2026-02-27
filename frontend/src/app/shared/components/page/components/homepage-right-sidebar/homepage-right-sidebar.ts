@@ -8,13 +8,14 @@ import { PlaybackService } from '@app/services/playback.service';
 import { RatingService } from '@app/services/rating.service';
 import { SubscriptionService } from '@app/services/subscription.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
+import { SongRatingBadgeComponent } from '@app/shared/components/song-rating-badge/song-rating-badge';
 
 type SidebarStat = { label: string; value: string };
 
 @Component({
   selector: 'app-homepage-right-sidebar',
   standalone: true,
-  imports: [CommonModule, RouterLink, CoverArtComponent, MatIconModule],
+  imports: [CommonModule, RouterLink, CoverArtComponent, MatIconModule, SongRatingBadgeComponent],
   templateUrl: './homepage-right-sidebar.html',
   styleUrl: './homepage-right-sidebar.scss',
 })
@@ -45,14 +46,12 @@ export class HomepageRightSidebarComponent {
   ]);
 
   constructor() {
-    this.subscriptionService.changes$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        const userId = this.authService.currentUserIdSg();
-        if (userId) {
-          this.loadStats(userId);
-        }
-      });
+    this.subscriptionService.changes$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      const userId = this.authService.currentUserIdSg();
+      if (userId) {
+        this.loadStats(userId);
+      }
+    });
 
     effect(() => {
       const userId = this.authService.currentUserIdSg();
