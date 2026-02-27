@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/nats-io/nats.go"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/rating-service/handlers"
@@ -199,7 +201,7 @@ func createServices(
 	gcc *adapters.GrpcContentEntityGetter,
 	jsc *events.JetStreamClient,
 ) *services.RatingService {
-	rs := services.NewRatingService(sr, gcc, jsc)
+	rs := services.NewRatingService(sr, gcc, *jsc)
 
 	return rs
 }
