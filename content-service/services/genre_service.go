@@ -170,12 +170,12 @@ func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.U
 	defer eventSpan.End()
 
 	// prepare payload
-	aep := toGenreUpdatedEvent(genre.ID.Hex(), genre.Name)
+	gup := toGenreUpdatedEvent(genre.ID.Hex(), genre.Name)
 
 	// attempts broadcasting event
 	err = retry.Do(
 		func() error {
-			return s.jsc.Publish(eventCtx, events.SUBJECT_ENTITY_UPDATED, aep)
+			return s.jsc.Publish(eventCtx, events.SUBJECT_ENTITY_UPDATED, gup)
 		},
 		retry.Attempts(3),
 		retry.Delay(time.Second),
@@ -202,11 +202,35 @@ func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.U
 
 		_, err := s.r.UpdateByID(rbCtx, id, rbUpdate)
 		if err != nil {
+			logging.Errorf(rbCtx, "rollback failed: %s", err)
 			rbSpan.RecordError(err)
 			errs = append(errs, err)
 		}
 
 		return nil, errors.Join(errs...)
+	}
+
+	// recommendation graph CQRS update
+	timeoutCtx, cancel = context.WithTimeout(updateCtx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan = s.tr.Start(timeoutCtx, "genre.update.event")
+	defer eventSpan.End()
+
+	// attempts broadcasting event
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_GENRE_UPDATED, gup)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+	// TODO: extend rollback logic
+	if err != nil {
+		logging.Errorf(eventCtx, "failed to publish genre updated event: %v", err)
+		eventSpan.RecordError(err)
 	}
 
 	return genre, nil

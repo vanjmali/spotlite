@@ -153,7 +153,7 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 
 		err := s.DeleteRating(ratingEntity.ID, rbCtx)
 		if err != nil {
-			logging.Infof(rbCtx, "rollback failed: %s", err)
+			logging.Errorf(rbCtx, "rollback failed: %s", err)
 			rbSpan.RecordError(err)
 			errs = append(errs, err)
 		}

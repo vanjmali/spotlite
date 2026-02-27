@@ -230,19 +230,30 @@ func (s *SongService) FindSongById(ctx context.Context, idStr string) (*entities
 
 // UpdateSong updates an existing song with the provided partial data.
 func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.UpdateSongDto) (*entities.Song, error) {
-	ctx, span := s.tr.Start(ctx, "song.update_song")
-	defer span.End()
+	updateCtx, updateSpan := s.tr.Start(ctx, "song.update_song")
+	defer updateSpan.End()
 
-	_, parseSpan := s.tr.Start(ctx, "song.update_song.parse_id")
+	_, parseSpan := s.tr.Start(updateCtx, "song.update_song.parse_id")
+	defer parseSpan.End()
+
 	id, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
 		parseSpan.RecordError(err)
-		parseSpan.End()
 		return nil, ErrObjectIdCastFailed
 	}
-	parseSpan.End()
 
-	_, buildSpan := s.tr.Start(ctx, "song.update.build_update_doc")
+	findCtx, findSpan := s.tr.Start(updateCtx, "song.update.find")
+	defer findSpan.End()
+
+	currentState, err := s.songRepo.FindByID(findCtx, id)
+	if err != nil {
+		findSpan.RecordError(err)
+		return nil, ErrSongNotFound
+	}
+
+	buildCtx, buildSpan := s.tr.Start(updateCtx, "song.update.build_update_doc")
+	defer buildSpan.End()
+
 	update := make(map[string]any)
 
 	if dto.Title != nil {
@@ -251,10 +262,9 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 	if dto.GenreIds != nil {
 		embeddedGenres := make([]entities.Genre, 0)
 		for _, genreIdStr := range *dto.GenreIds {
-			genre, err := s.genreService.FindGenreByID(ctx, genreIdStr)
+			genre, err := s.genreService.FindGenreByID(buildCtx, genreIdStr)
 			if err != nil {
 				buildSpan.RecordError(err)
-				buildSpan.End()
 
 				switch {
 				case errors.Is(err, ErrObjectIdCastFailed):
@@ -276,7 +286,7 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 	if dto.ArtistIds != nil {
 		embeddedArtists := make([]entities.Artist, 0)
 		for _, artistIdStr := range *dto.ArtistIds {
-			artist, err := s.artistService.FindArtistByID(ctx, artistIdStr)
+			artist, err := s.artistService.FindArtistByID(buildCtx, artistIdStr)
 			if err != nil {
 				buildSpan.RecordError(err)
 				buildSpan.End()
@@ -304,24 +314,66 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 	if len(update) == 0 {
 		err := errors.New("no fields to update")
 		buildSpan.RecordError(err)
-		buildSpan.End()
 		return nil, err
 	}
-	buildSpan.End()
 
-	repoCtx, repoSpan := s.tr.Start(ctx, "song.update.repository_update")
+	repoCtx, repoSpan := s.tr.Start(updateCtx, "song.update.repository_update")
+	defer repoSpan.End()
+
 	updatedSong, err := s.songRepo.UpdateByID(repoCtx, id, update)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			repoSpan.RecordError(err)
-			repoSpan.End()
 			return nil, ErrSongNotFound
 		}
 		repoSpan.RecordError(err)
-		repoSpan.End()
 		return nil, err
 	}
-	repoSpan.End()
+
+	// recommendation graph CQRS update
+	timeoutCtx, cancel := context.WithTimeout(updateCtx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "song.update.event")
+	defer eventSpan.End()
+
+	sup := toSongUpdatedEvent(idStr, updatedSong.Title, updatedSong.LengthSeconds, *dto.GenreIds)
+
+	// attempts broadcasting event
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_SONG_UPDATED, sup)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+	if err != nil {
+		logging.Errorf(eventCtx, "failed to publish song updated event: %v", err)
+		eventSpan.RecordError(err)
+
+		var errs []error
+
+		errs = append(errs, err)
+
+		rbCtx, rbSpan := s.tr.Start(updateCtx, "song.update.rollback")
+		defer rbSpan.End()
+
+		rbUpdate := make(map[string]any)
+		rbUpdate["title"] = currentState.Title
+		rbUpdate["artists"] = currentState.Artists
+		rbUpdate["genres"] = currentState.Genres
+
+		_, err := s.songRepo.UpdateByID(rbCtx, id, rbUpdate)
+		if err != nil {
+			logging.Errorf(rbCtx, "rollback failed: %s", err)
+			rbSpan.RecordError(err)
+			errs = append(errs, err)
+		}
+
+		return nil, errors.Join(errs...)
+	}
 
 	return updatedSong, nil
 }
@@ -562,6 +614,15 @@ func (s *SongService) uploadAudioWithChecksum(songID string, r io.Reader, ext st
 
 func toSongCreatedEvent(songID string, songTitle string, duration int, genreIDs []string) *events.SongCreationPayload {
 	return &events.SongCreationPayload{
+		SongID:    songID,
+		SongTitle: songTitle,
+		Duration:  duration,
+		GenreIDs:  genreIDs,
+	}
+}
+
+func toSongUpdatedEvent(songID string, songTitle string, duration int, genreIDs []string) *events.SongUpdatePayload {
+	return &events.SongUpdatePayload{
 		SongID:    songID,
 		SongTitle: songTitle,
 		Duration:  duration,

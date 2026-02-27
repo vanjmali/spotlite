@@ -95,3 +95,35 @@ func (c *RecommendationConsumer) HandleSongRating(ctx context.Context, msg jetst
 
 	return nil
 }
+
+func (c *RecommendationConsumer) HandleGenreUpdate(ctx context.Context, msg jetstream.Msg) error {
+	var p events.EntityUpdatedEventPayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		logging.Errorf(ctx, "critical: failed to unmarshal EntityUpdatedEventPayload: %v", err)
+		return nil
+	}
+
+	if err := c.rs.UpdateGenre(p, ctx); err != nil {
+		logging.Errorf(ctx, "critical: an error has occured while handling genre update event: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *RecommendationConsumer) HandleSongUpdate(ctx context.Context, msg jetstream.Msg) error {
+	var p events.SongUpdatePayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		logging.Errorf(ctx, "critical: failed to unmarshal SongUpdatePayload: %v", err)
+		return nil
+	}
+
+	logging.Infof(ctx, "%s", p)
+
+	if err := c.rs.UpdateSong(p, ctx); err != nil {
+		logging.Errorf(ctx, "critical: an error has occured while handling song update event: %v", err)
+		return err
+	}
+
+	return nil
+}

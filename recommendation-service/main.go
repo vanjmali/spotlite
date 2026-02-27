@@ -45,18 +45,18 @@ var (
 				_ = dbc.Close(ctx)
 			}()
 
-			if err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_SUBSCRIBED, events.SUBJECT_GENRE_CREATED}); err != nil {
-				err = fmt.Errorf("failed to ensure genres stream: %w", err)
-				return h, shutdown, err
-			}
-
 			if err = jsc.EnsureStream(ctx, events.USERS_STREAM, []string{events.SUBJECT_USER_CREATED}); err != nil {
 				err = fmt.Errorf("failed to ensure users stream: %w", err)
 				return h, shutdown, err
 			}
 
-			if err = jsc.EnsureStream(ctx, events.SONGS_STREAM, []string{events.SUBJECT_SONG_CREATED, events.SUBJECT_SONG_RATED}); err != nil {
+			if err = jsc.EnsureStream(ctx, events.SONGS_STREAM, []string{events.SUBJECT_SONG_CREATED, events.SUBJECT_SONG_RATED, events.SUBJECT_SONG_UPDATED}); err != nil {
 				err = fmt.Errorf("failed to ensure songs stream: %w", err)
+				return h, shutdown, err
+			}
+
+			if err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_SUBSCRIBED, events.SUBJECT_GENRE_CREATED, events.SUBJECT_GENRE_UPDATED}); err != nil {
+				err = fmt.Errorf("failed to ensure genres stream: %w", err)
 				return h, shutdown, err
 			}
 
@@ -68,16 +68,18 @@ var (
 			// Start consumers in background.
 			consumerCtx, consumerCancel := context.WithCancel(ctx)
 			var consumerWg sync.WaitGroup
-			consumerErrCh := make(chan error, 6)
+			consumerErrCh := make(chan error, 7)
 
 			startConsumer := func(stream, subject, durable, label string, handler events.SubscribeHandler) {
-				consumerWg.Go(func() {
+				consumerWg.Add(1)
+				go func() {
+					defer consumerWg.Done()
 					err := jsc.StartConsumer(consumerCtx, stream, subject, durable, handler)
 					if err != nil && !errors.Is(err, context.Canceled) {
 						logging.Errorf(ctx, "%s consumer error: %v", label, err)
 						consumerErrCh <- fmt.Errorf("%s consumer error: %w", label, err)
 					}
-				})
+				}()
 			}
 
 			startConsumer(
@@ -94,6 +96,22 @@ var (
 				events.GENRE_SUB_DURABLE,
 				"genre subscription created",
 				c.HandleGenreSubscription,
+			)
+
+			startConsumer(
+				events.GENRES_STREAM,
+				events.SUBJECT_GENRE_UPDATED,
+				events.GENRE_UPDATE_DURABLE,
+				"genre updated",
+				c.HandleGenreUpdate,
+			)
+
+			startConsumer(
+				events.SONGS_STREAM,
+				events.SUBJECT_SONG_UPDATED,
+				events.SONG_UPDATE_DURABLE,
+				"song updated",
+				c.HandleSongUpdate,
 			)
 
 			startConsumer(

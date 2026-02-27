@@ -110,3 +110,31 @@ func (rs *RecommendationService) CreateRating(e events.SongRatingPayload, ctx co
 
 	return nil
 }
+
+func (rs *RecommendationService) UpdateSong(e events.SongUpdatePayload, ctx context.Context) error {
+	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.song.update")
+	defer createSpan.End()
+
+	err := rs.r.relationRepository.UpdateSongWithGenres(createCtx, e)
+	if err != nil {
+		createSpan.RecordError(err)
+		logging.Errorf(createCtx, "critical: an error has occured while updating song node and it's relationships: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (rs *RecommendationService) UpdateGenre(e events.EntityUpdatedEventPayload, ctx context.Context) error {
+	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.genre.update")
+	defer createSpan.End()
+
+	err := rs.r.relationRepository.UpdateGenre(createCtx, e)
+	if err != nil {
+		createSpan.RecordError(err)
+		logging.Errorf(createCtx, "critical: an error has occured while updating genre node and it's relationships: %v", err)
+		return err
+	}
+
+	return nil
+}
