@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AlbumService, type Album } from '@app/services/album.service';
@@ -10,12 +11,19 @@ import { SongService, type Song } from '@app/services/song.service';
 import { PlaybackService } from '@app/services/playback.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 import { MessageComponent } from '@app/shared/components/message';
-import { SongRowComponent } from '@app/shared/components/song-row/song-row.component';
+import { SongTrailingMetaComponent } from '@app/shared/components/song-trailing-meta/song-trailing-meta';
 
 @Component({
   selector: 'app-artists-list',
   standalone: true,
-  imports: [CommonModule, RouterLink, CoverArtComponent, MessageComponent, SongRowComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    MatIconModule,
+    CoverArtComponent,
+    MessageComponent,
+    SongTrailingMetaComponent,
+  ],
   templateUrl: './artists-list.component.html',
   styleUrl: './artists-list.component.scss',
 })
@@ -24,7 +32,7 @@ export class ArtistsListComponent {
   private readonly albumService = inject(AlbumService);
   private readonly genreService = inject(GenreService);
   private readonly songService = inject(SongService);
-  private readonly playback = inject(PlaybackService);
+  readonly playback = inject(PlaybackService);
   private readonly router = inject(Router);
 
   readonly isLoadingSg = signal(true);
@@ -121,6 +129,34 @@ export class ArtistsListComponent {
     }
 
     this.playback.playSingleSong(song, album);
+  }
+
+  playOrToggleSong(song: Song): void {
+    const currentTrack = this.playback.currentTrackSg();
+    if (currentTrack?.id === song.id) {
+      this.playback.togglePlayPause();
+      return;
+    }
+
+    this.playSong(song);
+  }
+
+  toggleAlbumPlayback(album: Album, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const currentTrack = this.playback.currentTrackSg();
+    if (currentTrack?.albumId === album.id) {
+      this.playback.togglePlayPause();
+      return;
+    }
+
+    this.playback.playAlbum(album);
+  }
+
+  isAlbumPlaying(album: Album): boolean {
+    const currentTrack = this.playback.currentTrackSg();
+    return currentTrack?.albumId === album.id && this.playback.isPlayingSg();
   }
 
   selectArtist(artist: Artist): void {

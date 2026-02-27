@@ -1,24 +1,26 @@
 import { Component, computed, inject, signal, effect } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { MatIconModule } from '@angular/material/icon';
 import { WidgetComponent } from '@app/shared/components/widget/widget.component';
 import { AlbumService, type Album } from '../../../../services/album.service';
 import { RouterLink } from '@angular/router';
 import { PlaybackService } from '@app/services/playback.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 import { MessageComponent } from '@app/shared/components/message';
-import { SongRowComponent } from '@app/shared/components/song-row/song-row.component';
+import { SongTrailingMetaComponent } from '@app/shared/components/song-trailing-meta/song-trailing-meta';
 
 @Component({
   selector: 'app-album-details',
   standalone: true,
   imports: [
     CommonModule,
+    MatIconModule,
     WidgetComponent,
     RouterLink,
     CoverArtComponent,
     MessageComponent,
-    SongRowComponent,
+    SongTrailingMetaComponent,
   ],
   templateUrl: './album-details.component.html',
   styleUrl: './album-details.component.scss',
@@ -80,8 +82,7 @@ export class AlbumDetailsComponent {
     this.playback.playAlbum(album, album.songs[index].id);
   }
 
-  toggleSongPlayback(songId: string, index: number, event: Event): void {
-    event.stopPropagation();
+  onSongRowClick(songId: string, index: number): void {
     const isActiveSong = songId === this.activeSongIdSg();
     if (isActiveSong) {
       this.playback.togglePlayPause();
@@ -89,5 +90,36 @@ export class AlbumDetailsComponent {
     }
 
     this.playSong(index);
+  }
+
+  toggleSongPlayback(songId: string, index: number, event: Event): void {
+    event.stopPropagation();
+    this.onSongRowClick(songId, index);
+  }
+
+  toggleAlbumPlayback(): void {
+    const album = this.albumSg();
+    if (!album) {
+      return;
+    }
+
+    const currentTrack = this.playback.currentTrackSg();
+    const isCurrentAlbum = currentTrack?.albumId === album.id;
+    if (isCurrentAlbum) {
+      this.playback.togglePlayPause();
+      return;
+    }
+
+    this.playback.playAlbum(album);
+  }
+
+  isCurrentAlbumPlaying(): boolean {
+    const album = this.albumSg();
+    if (!album) {
+      return false;
+    }
+
+    const currentTrack = this.playback.currentTrackSg();
+    return currentTrack?.albumId === album.id && this.playback.isPlayingSg();
   }
 }

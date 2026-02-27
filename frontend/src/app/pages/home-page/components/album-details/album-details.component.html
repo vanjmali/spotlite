@@ -37,8 +37,8 @@
                 }
               </div>
             </div>
-            <button type="button" class="album-details__play-all" (click)="playAlbum()">
-              <mat-icon>play_arrow</mat-icon>
+            <button type="button" class="album-details__play-all" (click)="toggleAlbumPlayback()">
+              <mat-icon>{{ isCurrentAlbumPlaying() ? 'pause' : 'play_arrow' }}</mat-icon>
               Play album
             </button>
           </div>
@@ -54,21 +54,70 @@
         } @else {
           <div class="album-details__songs-list">
             @for (song of albumSg()!.songs; track song.id) {
-              <app-song-row
+              <button
+                type="button"
                 class="album-details__song-item"
-                [song]="song"
-                [showIndex]="true"
-                [showToggleWhenActive]="true"
-                [showGenres]="true"
-                [showArtistLink]="true"
-                [active]="song.id === activeSongIdSg()"
-                [isPlaying]="playback.isPlayingSg()"
-                [index]="$index + 1"
-                [coverSize]="42"
-                [coverFontSize]="14"
-                (rowClick)="playSong($index)"
-                (toggleClick)="toggleSongPlayback(song.id, $index, $event)"
-              />
+                [class.album-details__song-item--active]="song.id === activeSongIdSg()"
+                (click)="onSongRowClick(song.id, $index)"
+              >
+                <div class="album-details__song-index">
+                  @if (song.id === activeSongIdSg()) {
+                    <span
+                      class="album-details__song-toggle"
+                      role="button"
+                      tabindex="0"
+                      aria-label="Toggle playback"
+                      (click)="toggleSongPlayback(song.id, $index, $event)"
+                      (keydown.enter)="toggleSongPlayback(song.id, $index, $event)"
+                      (keydown.space)="
+                        $event.preventDefault(); toggleSongPlayback(song.id, $index, $event)
+                      "
+                    >
+                      <mat-icon class="album-details__song-index-icon">{{
+                        playback.isPlayingSg() ? 'pause' : 'play_arrow'
+                      }}</mat-icon>
+                    </span>
+                  } @else {
+                    {{ $index + 1 }}
+                  }
+                </div>
+                <app-cover-art
+                  class="album-details__song-cover"
+                  [name]="song.title"
+                  [size]="42"
+                  [fontSize]="14"
+                  [square]="true"
+                />
+                <div class="album-details__song-info">
+                  <p class="album-details__song-title">{{ song.title }}</p>
+                  <div class="album-details__song-meta">
+                    @if (song.artists && song.artists.length > 0) {
+                      <a
+                        class="album-details__song-artist"
+                        [routerLink]="['/artists', song.artists[0].id]"
+                        (click)="$event.stopPropagation()"
+                        >{{ song.artists[0].name }}</a
+                      >
+                    } @else {
+                      <span class="album-details__song-artist">Unknown Artist</span>
+                    }
+                    @if (song.genres && song.genres.length > 0) {
+                      @for (genre of song.genres; track genre.id) {
+                        <a class="album-details__song-genre" [routerLink]="['/genre', genre.id]">{{
+                          genre.name
+                        }}</a>
+                      }
+                    }
+                  </div>
+                </div>
+                <app-song-trailing-meta
+                  class="album-details__song-right"
+                  [songId]="song.id"
+                  [average]="song.rating?.average"
+                  [count]="song.rating?.count"
+                  [durationSeconds]="song.lengthSeconds"
+                />
+              </button>
             }
           </div>
         }
