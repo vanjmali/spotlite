@@ -23,20 +23,7 @@ type GenreNode struct {
 type Rating struct {
 	UserID string
 	SongID string
-	// Value is a rating value from 1 to 5
-	Value int
-}
-
-// Listened represents a LISTENED relationship in the graph.
-type Listened struct {
-	UserID string
-	SongID string
-}
-
-// ArtistSubscription represents a SUBSCRIBED relationship in the graph.
-type ArtistSubscription struct {
-	UserID   string
-	ArtistID string
+	Value  int
 }
 
 // GenreSubscription represents a SUBSCRIBED_GENRE relationship in the graph.

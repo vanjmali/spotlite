@@ -5,6 +5,7 @@ go 1.25.5
 replace github.com/vanjmali/spotlite/common-lib => ../common-lib
 
 require (
+	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/go-playground/validator/v10 v10.30.1
 	github.com/gorilla/mux v1.8.1
 	github.com/nats-io/nats.go v1.48.0

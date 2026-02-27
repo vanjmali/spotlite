@@ -83,7 +83,7 @@ var (
 			startConsumer(
 				events.GENRES_STREAM,
 				events.SUBJECT_GENRE_CREATED,
-				events.GENRE_DURABLE,
+				events.GENRE_CREATE_DURABLE,
 				"genre created",
 				c.HandleGenreCreation,
 			)
@@ -91,7 +91,7 @@ var (
 			startConsumer(
 				events.GENRES_STREAM,
 				events.SUBJECT_GENRE_SUBSCRIBED,
-				events.GENRE_DURABLE,
+				events.GENRE_SUB_DURABLE,
 				"genre subscription created",
 				c.HandleGenreSubscription,
 			)
@@ -99,18 +99,18 @@ var (
 			startConsumer(
 				events.SONGS_STREAM,
 				events.SUBJECT_SONG_CREATED,
-				events.SONG_DURABLE,
+				events.SONG_CREATE_DURABLE,
 				"song created",
 				c.HandleSongCreation,
 			)
 
-			// startConsumer(
-			// 	events.SONGS_STREAM,
-			// 	events.SUBJECT_SONG_RATED,
-			// 	events.SONG_DURABLE,
-			// 	"song rating created",
-			// 	c.HandleUserRegistration,
-			// )
+			startConsumer(
+				events.SONGS_STREAM,
+				events.SUBJECT_SONG_RATED,
+				events.SONG_RATE_DURABLE,
+				"song rating created",
+				c.HandleSongRating,
+			)
 
 			startConsumer(
 				events.USERS_STREAM,
@@ -125,7 +125,9 @@ var (
 
 				consumerCancel()
 				consumerWg.Wait()
+				
 				close(consumerErrCh)
+				
 				for consumerErr := range consumerErrCh {
 					errs = append(errs, consumerErr)
 				}

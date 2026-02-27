@@ -17,6 +17,7 @@ type GraphRelationRepository interface {
 	GetSongArtists(ctx context.Context, songID string) ([]string, error)
 	SaveSongWithGenres(ctx context.Context, e events.SongCreationPayload) error
 	CreateGenreSubscription(ctx context.Context, e events.GenreSubscriptionEventPayload) error
+	CreateRating(ctx context.Context, e events.SongRatingPayload) error
 }
 
 // SongNodeRepository defines methods for accessing song nodes

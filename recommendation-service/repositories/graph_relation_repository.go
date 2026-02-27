@@ -18,27 +18,6 @@ func NewGraphRelationRepository(driver neo4j.DriverWithContext) *GraphRelationRe
 	return &GraphRelationRepository{Driver: driver}
 }
 
-// CreateRating creates or updates a RATED relationship between a user and a song.
-func (r *GraphRelationRepository) CreateRating(ctx context.Context, rating entities.Rating) error {
-	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
-	defer session.Close(ctx)
-
-	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
-		return tx.Run(
-			ctx,
-			`MATCH (u:User {user_id: $user_id}), (s:Song {song_id: $song_id})
-MERGE (u)-[r:RATED]->(s)
-SET r.rating = $rating`,
-			map[string]any{
-				"user_id": rating.UserID,
-				"song_id": rating.SongID,
-				"rating":  rating.Value,
-			},
-		)
-	})
-	return err
-}
-
 // SaveSongWithGenres saves a song and links it to its genres.
 func (r *GraphRelationRepository) SaveSongWithGenres(ctx context.Context, e events.SongCreationPayload) error {
 
@@ -88,6 +67,32 @@ func (r *GraphRelationRepository) CreateGenreSubscription(ctx context.Context, e
 			map[string]any{
 				"userId":  e.UserID,
 				"genreId": e.GenreID,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		return result.Consume(ctx)
+	})
+
+	return err
+}
+
+func (r *GraphRelationRepository) CreateRating(ctx context.Context, e events.SongRatingPayload) error {
+	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		result, err := tx.Run(
+			ctx,
+			`MATCH (u:User {user_id: $userId}), (s:Song {song_id: $songId})
+             MERGE (u)-[r:RATED]->(s)
+			 SET r.value = $value`,
+			map[string]any{
+				"userId": e.UserID,
+				"songId": e.SongID,
+				"value":  e.Value,
 			},
 		)
 		if err != nil {

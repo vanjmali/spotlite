@@ -65,11 +65,10 @@ var (
 				return nil, nil, err
 			}
 
-			if err = jsc.EnsureStream(ctx, events.SONGS_STREAM, []string{events.SUBJECT_SONG_RATED}); err != nil {
+			if err = jsc.EnsureStream(ctx, events.SONGS_STREAM, []string{events.SUBJECT_SONG_CREATED, events.SUBJECT_SONG_RATED}); err != nil {
 				err = fmt.Errorf("failed to ensure songs stream: %w", err)
 				return h, shutdown, err
 			}
-
 			gcc := createAdapters(gc)
 			rr := createRepositories(dbc)
 			rs := createServices(rr, gcc, jsc)

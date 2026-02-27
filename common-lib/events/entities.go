@@ -31,11 +31,13 @@ const (
 
 	SUBJECT_GENRE_CREATED    = "genre.created"
 	SUBJECT_GENRE_SUBSCRIBED = "genre.subscription.created"
-	GENRE_DURABLE            = "GENRE_PROCESSOR"
+	GENRE_CREATE_DURABLE     = "GENRE_CREATE_PROCESSOR"
+	GENRE_SUB_DURABLE        = "GENRE_SUB_PROCESSOR"
 
 	SUBJECT_SONG_CREATED = "songs.created"
 	SUBJECT_SONG_RATED   = "songs.rating.created"
-	SONG_DURABLE         = "SONG_PROCESSOR"
+	SONG_CREATE_DURABLE  = "SONG_CREATE_PROCESSOR"
+	SONG_RATE_DURABLE    = "SONG_RATE_PROCESSOR"
 )
 
 type SubscriptionEntityType string
@@ -88,4 +90,10 @@ type SongCreationPayload struct {
 type GenreSubscriptionEventPayload struct {
 	GenreID string `json:"genre_id"`
 	UserID  string `json:"user_id"`
+}
+
+type SongRatingPayload struct {
+	SongID string `json:"song_id"`
+	UserID string `json:"user_id"`
+	Value  int    `json:"value"`
 }

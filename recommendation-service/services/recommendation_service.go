@@ -97,3 +97,17 @@ func (rs *RecommendationService) CreateSubscription(e events.GenreSubscriptionEv
 
 	return nil
 }
+
+func (rs *RecommendationService) CreateRating(e events.SongRatingPayload, ctx context.Context) error {
+	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.rating.create")
+	defer createSpan.End()
+
+	err := rs.r.relationRepository.CreateRating(createCtx, e)
+	if err != nil {
+		createSpan.RecordError(err)
+		logging.Errorf(createCtx, "critical: an error has occured while creating rating relationship: %v", err)
+		return err
+	}
+	
+	return nil
+}

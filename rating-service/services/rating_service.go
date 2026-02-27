@@ -3,9 +3,12 @@ package services
 import (
 	"context"
 	"errors"
+	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/sony/gobreaker"
 	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/rating-service/dtos"
@@ -118,6 +121,44 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 	if err != nil {
 		createSpan.RecordError(err)
 		return err
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(createCtx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "rating.create.event")
+	defer eventSpan.End()
+
+	rcp := toRatingCreated(ratingEntity.UserID.Hex(), ratingEntity.SongID.Hex(), ratingEntity.Value)
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_SONG_RATED, rcp)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second*1),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+	if err != nil {
+		logging.Errorf(eventCtx, "failed to publish song rating event: %v", err)
+		eventSpan.RecordError(err)
+
+		var errs []error
+
+		errs = append(errs, err)
+
+		rbCtx, rbSpan := s.tr.Start(createCtx, "rating.create.rollback")
+		defer rbSpan.End()
+
+		err := s.DeleteRating(ratingEntity.ID, rbCtx)
+		if err != nil {
+			logging.Infof(rbCtx, "rollback failed: %s", err)
+			rbSpan.RecordError(err)
+			errs = append(errs, err)
+		}
+
+		return errors.Join(errs...)
 	}
 
 	return nil
@@ -311,4 +352,12 @@ func (s *RatingService) GetAverageRatingBySongID(ctx context.Context, songIDStr 
 	}
 
 	return summary, nil
+}
+
+func toRatingCreated(userID string, songID string, value int) *events.SongRatingPayload {
+	return &events.SongRatingPayload{
+		SongID: songID,
+		UserID: userID,
+		Value:  value,
+	}
 }

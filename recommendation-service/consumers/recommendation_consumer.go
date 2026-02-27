@@ -80,3 +80,18 @@ func (c *RecommendationConsumer) HandleGenreSubscription(ctx context.Context, ms
 
 	return nil
 }
+
+func (c *RecommendationConsumer) HandleSongRating(ctx context.Context, msg jetstream.Msg) error {
+	var p events.SongRatingPayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		logging.Errorf(ctx, "critical: failed to unmarshal SongRatingPayload: %v", err)
+		return nil
+	}
+
+	if err := c.rs.CreateRating(p, ctx); err != nil {
+		logging.Errorf(ctx, "critical: an error has occured while handling song rating event: %v", err)
+		return err
+	}
+
+	return nil
+}
