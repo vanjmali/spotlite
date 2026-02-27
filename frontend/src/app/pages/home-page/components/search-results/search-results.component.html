@@ -74,6 +74,9 @@
                     [average]="song.rating?.average"
                     [count]="song.rating?.count"
                   />
+                  <span class="search-results__song-duration">{{
+                    formatSongDuration(song.lengthSeconds)
+                  }}</span>
                 </span>
               </span>
             </article>

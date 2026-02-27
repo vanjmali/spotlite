@@ -96,11 +96,6 @@
                     } @else {
                       <span class="album-details__song-artist">Unknown Artist</span>
                     }
-                    <app-song-rating-badge
-                      [songId]="song.id"
-                      [average]="song.rating?.average"
-                      [count]="song.rating?.count"
-                    />
                     @if (song.genres && song.genres.length > 0) {
                       @for (genre of song.genres; track genre.id) {
                         <a class="album-details__song-genre" [routerLink]="['/genre', genre.id]">{{
@@ -110,6 +105,16 @@
                     }
                   </div>
                 </div>
+                <span class="album-details__song-right">
+                  <app-song-rating-badge
+                    [songId]="song.id"
+                    [average]="song.rating?.average"
+                    [count]="song.rating?.count"
+                  />
+                  <span class="album-details__song-duration">{{
+                    formatSongDuration(song.lengthSeconds)
+                  }}</span>
+                </span>
               </button>
             }
           </div>

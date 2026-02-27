@@ -59,6 +59,13 @@ export function angleFromName(name: string): number {
   return (hash % 44) - 22;
 }
 
+export function formatDuration(seconds: number | null | undefined): string {
+  const totalSeconds = Math.max(0, Math.floor(Number(seconds) || 0));
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
 function hashFromName(name: string): number | null {
   const input = name.trim().toLowerCase();
   if (!input) {

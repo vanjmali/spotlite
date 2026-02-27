@@ -251,6 +251,20 @@
     color: $color-gray-400;
   }
 
+  &__song-right {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  &__song-duration {
+    color: $color-gray-300;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
   &__song-genre {
     display: inline-block;
     padding: 0.2rem 0.5rem;

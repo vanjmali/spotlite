@@ -9,12 +9,14 @@ import { SubscriptionService } from '@app/services/subscription.service';
 import { AuthService } from '@app/services/auth.service';
 import { MessageComponent } from '@app/shared/components/message';
 import { SongRatingBadgeComponent } from '@app/shared/components/song-rating-badge/song-rating-badge';
+import { formatDuration } from '@app/shared/utils/display';
 import { WidgetComponent } from '@app/shared/components/widget/widget.component';
 import { EMPTY, catchError, finalize, map, of } from 'rxjs';
 
 type GenreSongRow = {
   songId: string;
   songTitle: string;
+  lengthSeconds: number;
   artistsText: string;
   albumId: string;
   albumTitle: string;
@@ -59,6 +61,7 @@ export class GenreDetailsComponent {
       (album.songs ?? []).map((song) => ({
         songId: song.id,
         songTitle: song.title,
+        lengthSeconds: song.lengthSeconds,
         artistsText:
           song.artists && song.artists.length > 0
             ? song.artists.map((artist) => artist.name).join(', ')
@@ -112,6 +115,10 @@ export class GenreDetailsComponent {
       return;
     }
     this.playFromRow(songId, albumId);
+  }
+
+  formatSongDuration(seconds: number | null | undefined): string {
+    return formatDuration(seconds);
   }
 
   toggleGenreSubscription(): void {

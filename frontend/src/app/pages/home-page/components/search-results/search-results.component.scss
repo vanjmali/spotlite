@@ -92,6 +92,12 @@
     min-width: 0;
   }
 
+  &__song-duration {
+    color: $color-text-secondary;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
   &__song-meta-text {
     min-width: 0;
     white-space: nowrap;

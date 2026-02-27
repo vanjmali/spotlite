@@ -9,6 +9,7 @@ import { PlaybackService } from '@app/services/playback.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 import { MessageComponent } from '@app/shared/components/message';
 import { SongRatingBadgeComponent } from '@app/shared/components/song-rating-badge/song-rating-badge';
+import { formatDuration } from '@app/shared/utils/display';
 
 @Component({
   selector: 'app-album-details',
@@ -62,6 +63,10 @@ export class AlbumDetailsComponent {
   formatDate(dateString: string): string {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  formatSongDuration(seconds: number | null | undefined): string {
+    return formatDuration(seconds);
   }
 
   playAlbum(): void {

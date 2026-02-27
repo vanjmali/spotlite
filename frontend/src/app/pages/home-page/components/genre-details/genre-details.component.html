@@ -74,6 +74,9 @@
                     [average]="row.rating?.average"
                     [count]="row.rating?.count"
                   />
+                  <span class="genre-details__song-duration">{{
+                    formatSongDuration(row.lengthSeconds)
+                  }}</span>
                   <a
                     class="genre-details__song-album"
                     [routerLink]="['/album', row.albumId]"

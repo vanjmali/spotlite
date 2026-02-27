@@ -76,6 +76,9 @@
                 [average]="song.rating?.average"
                 [count]="song.rating?.count"
               />
+              <span class="homepage-right-sidebar__song-duration">{{
+                formatSongDuration(song.lengthSeconds)
+              }}</span>
             </span>
           </button>
         }

@@ -163,6 +163,13 @@
     min-width: 0;
   }
 
+  &__song-duration {
+    color: $color-text-secondary;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
   &__song-album {
     color: $color-text-secondary;
     text-decoration: none;

@@ -9,6 +9,7 @@ import { RatingService } from '@app/services/rating.service';
 import { SubscriptionService } from '@app/services/subscription.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 import { SongRatingBadgeComponent } from '@app/shared/components/song-rating-badge/song-rating-badge';
+import { formatDuration } from '@app/shared/utils/display';
 
 type SidebarStat = { label: string; value: string };
 
@@ -77,6 +78,10 @@ export class HomepageRightSidebarComponent {
       return;
     }
     this.playQueueIndex(index);
+  }
+
+  formatSongDuration(seconds: number | null | undefined): string {
+    return formatDuration(seconds);
   }
 
   private loadStats(userId: string): void {

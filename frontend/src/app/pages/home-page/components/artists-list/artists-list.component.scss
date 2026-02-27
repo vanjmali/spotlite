@@ -105,6 +105,12 @@
     gap: 8px;
   }
 
+  &__song-duration {
+    color: $color-text-secondary;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
   &__song-artists-text {
     min-width: 0;
     overflow: hidden;

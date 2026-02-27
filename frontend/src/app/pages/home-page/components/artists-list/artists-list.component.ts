@@ -11,6 +11,7 @@ import { PlaybackService } from '@app/services/playback.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 import { MessageComponent } from '@app/shared/components/message';
 import { SongRatingBadgeComponent } from '@app/shared/components/song-rating-badge/song-rating-badge';
+import { formatDuration } from '@app/shared/utils/display';
 
 @Component({
   selector: 'app-artists-list',
@@ -116,6 +117,10 @@ export class ArtistsListComponent {
     }
 
     return artists.map((artist) => artist.name).join(', ');
+  }
+
+  formatSongDuration(seconds: number | null | undefined): string {
+    return formatDuration(seconds);
   }
 
   playSong(song: Song): void {

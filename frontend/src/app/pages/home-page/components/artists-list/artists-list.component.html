@@ -166,6 +166,9 @@
                     [average]="song.rating?.average"
                     [count]="song.rating?.count"
                   />
+                  <span class="recommendations__song-duration">{{
+                    formatSongDuration(song.lengthSeconds)
+                  }}</span>
                 </span>
               </span>
             </button>

@@ -7,6 +7,7 @@ import { debounceTime, distinctUntilChanged, map, of, switchMap, catchError } fr
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 import { SongRatingBadgeComponent } from '@app/shared/components/song-rating-badge/song-rating-badge';
+import { formatDuration } from '@app/shared/utils/display';
 
 @Component({
   selector: 'app-search-results',
@@ -70,5 +71,9 @@ export class SearchResultsComponent {
     }
 
     return artists.map((artist) => artist.name).join(', ');
+  }
+
+  formatSongDuration(seconds: number | null | undefined): string {
+    return formatDuration(seconds);
   }
 }
