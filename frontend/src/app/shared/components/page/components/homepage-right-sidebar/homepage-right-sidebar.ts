@@ -45,6 +45,15 @@ export class HomepageRightSidebarComponent {
   ]);
 
   constructor() {
+    this.subscriptionService.changes$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        const userId = this.authService.currentUserIdSg();
+        if (userId) {
+          this.loadStats(userId);
+        }
+      });
+
     effect(() => {
       const userId = this.authService.currentUserIdSg();
       if (!userId) {

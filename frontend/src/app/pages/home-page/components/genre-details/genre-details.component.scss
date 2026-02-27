@@ -39,6 +39,43 @@
     font-weight: 700;
   }
 
+  &__subscribe-btn {
+    width: fit-content;
+    margin-top: 6px;
+    border: 1px solid rgba($color-primary, 0.45);
+    border-radius: 999px;
+    background: rgba($color-primary, 0.14);
+    color: $color-primary-light;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
+
+    &:hover:not(:disabled) {
+      border-color: $color-primary-light;
+      background: rgba($color-primary, 0.25);
+    }
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: wait;
+    }
+
+    mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
+  }
+
+  &__subscribe-btn--active {
+    background: rgba($color-primary, 0.3);
+  }
+
   &__songs-list {
     display: flex;
     flex-direction: column;
@@ -48,7 +85,7 @@
   &__song-item {
     @include m.selectable-surface(10px, transparent, rgba($color-gray-900, 0.45));
     display: grid;
-    grid-template-columns: 30px 30px minmax(0, 1fr) auto;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
     gap: 10px;
     align-items: center;
     width: 100%;
@@ -96,11 +133,6 @@
 
   &__song-main {
     min-width: 0;
-  }
-
-  &__song-cover {
-    display: block;
-    flex-shrink: 0;
   }
 
   &__song-title,

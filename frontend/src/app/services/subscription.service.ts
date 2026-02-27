@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { Subject, tap } from 'rxjs';
 
 export type SubscriptionType = 'ARTIST' | 'GENRE';
 
@@ -30,6 +31,8 @@ export interface SubscriberCountResponse {
 export class SubscriptionService {
   private readonly http = inject(HttpClient);
   private readonly apiUrl = '/api/subscriptions';
+  private readonly changedSubject = new Subject<void>();
+  readonly changes$ = this.changedSubject.asObservable();
 
   getMySubscriptions(
     page: number = 1,
@@ -48,17 +51,23 @@ export class SubscriptionService {
   }
 
   subscribe(entityId: string, subType: SubscriptionType): Observable<void> {
-    return this.http.post<void>(`${this.apiUrl}/`, {
-      entity_id: entityId,
-      sub_type: subType,
-    });
+    return this.http
+      .post<void>(`${this.apiUrl}/`, {
+        entity_id: entityId,
+        sub_type: subType,
+      })
+      .pipe(tap(() => this.notifyChanged()));
   }
 
   unsubscribe(entityId: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/${entityId}`);
+    return this.http.delete<void>(`${this.apiUrl}/${entityId}`).pipe(tap(() => this.notifyChanged()));
   }
 
   getSubscriberCount(entityId: string): Observable<SubscriberCountResponse> {
     return this.http.get<SubscriberCountResponse>(`${this.apiUrl}/count/${entityId}`);
+  }
+
+  notifyChanged(): void {
+    this.changedSubject.next();
   }
 }

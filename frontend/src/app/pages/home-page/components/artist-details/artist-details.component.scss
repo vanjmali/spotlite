@@ -85,6 +85,42 @@
     gap: 1rem;
   }
 
+  &__subscribe-btn {
+    width: fit-content;
+    border: 1px solid rgba($color-primary, 0.45);
+    border-radius: 999px;
+    background: rgba($color-primary, 0.14);
+    color: $color-primary-light;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
+
+    &:hover:not(:disabled) {
+      border-color: $color-primary-light;
+      background: rgba($color-primary, 0.25);
+    }
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: wait;
+    }
+
+    mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
+  }
+
+  &__subscribe-btn--active {
+    background: rgba($color-primary, 0.3);
+  }
+
   &__genres {
     display: flex;
     flex-wrap: wrap;

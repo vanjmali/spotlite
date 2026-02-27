@@ -23,13 +23,13 @@
         }
       </nav>
       <h4 class="homepage-left-sidebar__subtitle">Genres</h4>
-      <nav class="homepage-left-sidebar__list" aria-label="Followed genres">
+      <nav class="homepage-left-sidebar__genre-grid" aria-label="Followed genres">
         @if (followedGenresSg().length === 0) {
           <p class="homepage-left-sidebar__item-note">No followed genres yet.</p>
         } @else {
           @for (item of followedGenresSg(); track item.href) {
-            <a class="homepage-left-sidebar__item" [routerLink]="item.href">
-              <span class="homepage-left-sidebar__item-label">{{ item.label }}</span>
+            <a class="homepage-left-sidebar__genre-pill" [routerLink]="item.href">
+              {{ item.label }}
             </a>
           }
         }

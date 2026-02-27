@@ -22,6 +22,18 @@
             [fontSize]="62"
           />
           <div class="artist-details__info">
+            @if (canManageSubscriptionSg()) {
+              <button
+                type="button"
+                class="artist-details__subscribe-btn"
+                [class.artist-details__subscribe-btn--active]="isSubscribedSg()"
+                [disabled]="isSubscribeBusySg()"
+                (click)="toggleArtistSubscription()"
+              >
+                <mat-icon>{{ isSubscribedSg() ? 'check_circle' : 'add_circle' }}</mat-icon>
+                {{ isSubscribedSg() ? 'Following artist' : 'Follow artist' }}
+              </button>
+            }
             @if (artistSg()!.genres && artistSg()!.genres.length > 0) {
               <div class="artist-details__genres">
                 @for (genre of artistSg()!.genres; track genre.id) {
@@ -33,6 +45,9 @@
             }
             @if (artistSg()!.description) {
               <p class="artist-details__description">{{ artistSg()!.description }}</p>
+            }
+            @if (subscribeErrorSg()) {
+              <app-message [message]="subscribeErrorSg()" type="error" />
             }
           </div>
         </div>

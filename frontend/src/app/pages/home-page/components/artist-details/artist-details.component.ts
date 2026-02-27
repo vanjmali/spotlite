@@ -8,6 +8,9 @@ import { AlbumService, type Album } from '../../../../services/album.service';
 import { PlaybackService } from '@app/services/playback.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 import { MessageComponent } from '@app/shared/components/message';
+import { AuthService } from '@app/services/auth.service';
+import { SubscriptionService } from '@app/services/subscription.service';
+import { EMPTY, catchError, finalize, map, of } from 'rxjs';
 
 @Component({
   selector: 'app-artist-details',
@@ -28,6 +31,8 @@ export class ArtistDetailsComponent {
   private readonly router = inject(Router);
   private readonly artistService = inject(ArtistService);
   private readonly albumService = inject(AlbumService);
+  private readonly authService = inject(AuthService);
+  private readonly subscriptionService = inject(SubscriptionService);
   readonly playback = inject(PlaybackService);
 
   readonly artistSg = signal<Artist | null>(null);
@@ -36,6 +41,10 @@ export class ArtistDetailsComponent {
   readonly artistIdSg = signal<string>('');
   readonly artistErrorSg = signal<string>('');
   readonly albumsErrorSg = signal<string>('');
+  readonly isSubscribedSg = signal(false);
+  readonly isSubscribeBusySg = signal(false);
+  readonly subscribeErrorSg = signal('');
+  readonly canManageSubscriptionSg = computed(() => this.authService.isAuthenticatedSg());
   readonly activeAlbumIdSg = computed(
     () => this.playback.currentAlbumSg()?.id ?? this.playback.currentTrackSg()?.albumId ?? ''
   );
@@ -47,7 +56,22 @@ export class ArtistDetailsComponent {
         this.artistIdSg.set(artistId);
         this.loadArtist(artistId);
         this.loadAlbums(artistId);
+        this.loadSubscriptionState(artistId);
       }
+    });
+
+    effect(() => {
+      const artistId = this.artistIdSg();
+      if (!artistId) {
+        return;
+      }
+
+      if (!this.authService.isAuthenticatedSg()) {
+        this.isSubscribedSg.set(false);
+        return;
+      }
+
+      this.loadSubscriptionState(artistId);
     });
   }
 
@@ -92,6 +116,31 @@ export class ArtistDetailsComponent {
     this.playback.playAlbum(album);
   }
 
+  toggleArtistSubscription(): void {
+    const artistId = this.artistIdSg();
+    if (!artistId || !this.canManageSubscriptionSg() || this.isSubscribeBusySg()) {
+      return;
+    }
+
+    this.isSubscribeBusySg.set(true);
+    this.subscribeErrorSg.set('');
+    const request$ = this.isSubscribedSg()
+      ? this.subscriptionService.unsubscribe(artistId).pipe(map(() => false))
+      : this.subscriptionService.subscribe(artistId, 'ARTIST').pipe(map(() => true));
+
+    request$
+      .pipe(
+        catchError(() => {
+          this.subscribeErrorSg.set('Could not update subscription right now.');
+          return EMPTY;
+        }),
+        finalize(() => this.isSubscribeBusySg.set(false))
+      )
+      .subscribe((nextState) => {
+        this.isSubscribedSg.set(nextState);
+      });
+  }
+
   toggleAlbumPlayback(album: Album, event: Event): void {
     event.stopPropagation();
     if (album.id === this.activeAlbumIdSg()) {
@@ -99,6 +148,21 @@ export class ArtistDetailsComponent {
       return;
     }
     this.playAlbum(album);
+  }
+
+  private loadSubscriptionState(artistId: string): void {
+    if (!this.canManageSubscriptionSg()) {
+      this.isSubscribedSg.set(false);
+      return;
+    }
+
+    this.subscriptionService
+      .isSubscribed(artistId)
+      .pipe(
+        map(() => true),
+        catchError(() => of(false))
+      )
+      .subscribe((value) => this.isSubscribedSg.set(value));
   }
 
   // goBack(): void {

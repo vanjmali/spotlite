@@ -56,6 +56,12 @@
     gap: 6px;
   }
 
+  &__genre-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
   &__item,
   &__stat {
     padding: 8px 10px;
@@ -74,6 +80,17 @@
     border: 1px solid $color-border-primary;
     border-radius: 10px;
     background: rgba(255, 255, 255, 0.02);
+  }
+
+  &__genre-pill {
+    @include m.selectable-surface(999px, rgba($color-primary, 0.22), rgba($color-primary, 0.08));
+    text-decoration: none;
+    color: $color-text-primary;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 10px;
+    line-height: 1.1;
+    white-space: nowrap;
   }
 
   &__cover {
