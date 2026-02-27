@@ -39,7 +39,7 @@ services:
       nats:
         condition: service_started
     networks:
-      - spotlite-api-gateway
+      - api-gateway
       - analytics-internal
 
   analytics-mongodb:
@@ -71,6 +71,6 @@ volumes:
   analytics-mongodb-data:
 
 networks:
-  spotlite-api-gateway:
-    external: true
+  api-gateway:
+    name: spotlite-api-gateway
   analytics-internal:

@@ -11,8 +11,10 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/nats-io/nats.go"
 	"github.com/vanjmali/spotlite/analytics-service/consumers"
+	"github.com/vanjmali/spotlite/analytics-service/handlers"
 	"github.com/vanjmali/spotlite/analytics-service/infrastructure/mongo"
 	"github.com/vanjmali/spotlite/analytics-service/repositories"
+	"github.com/vanjmali/spotlite/analytics-service/routers"
 	"github.com/vanjmali/spotlite/analytics-service/services"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
@@ -79,7 +81,15 @@ var (
 				return h, shutdown, err
 			}
 
-			c := createConsumers(mc)
+			// Create shared analytics service for both HTTP handlers and NATS consumers
+			analyticsService := createAnalyticsService(mc)
+
+			// Create HTTP handlers
+			ah := handlers.NewAnalyticsHandler(analyticsService, v)
+			h = routers.HandleRequests(ah)
+
+			// Create NATS consumers
+			c := consumers.NewConsumer(analyticsService)
 
 			// Setup consumer goroutines
 			consumerCtx, consumerCancel := context.WithCancel(ctx)
@@ -228,7 +238,9 @@ func initializeReadModelIndexes(ctx context.Context, mongoClient *mongodriver.Cl
 	return nil
 }
 
-func createConsumers(mongoClient *mongodriver.Client) *consumers.AnalyticsConsumer {
+// createAnalyticsService creates a shared analytics service instance
+// Used by both HTTP handlers and NATS event consumers
+func createAnalyticsService(mongoClient *mongodriver.Client) *services.AnalyticsService {
 	dbName := utils.MustGetEnv("DB_NAME")
 
 	// Create repositories
@@ -236,11 +248,8 @@ func createConsumers(mongoClient *mongodriver.Client) *consumers.AnalyticsConsum
 	analyticsRepo := repositories.NewUserAnalyticsRepository(dbName, "user_analytics", mongoClient)
 	historyRepo := repositories.NewUserActivityHistoryRepository(dbName, "user_activity_history", mongoClient)
 
-	// Create analytics service
-	analyticsService := services.NewAnalyticsService(eventStoreRepo, analyticsRepo, historyRepo)
-
-	// Create consumer with service
-	return consumers.NewConsumer(analyticsService)
+	// Create and return analytics service
+	return services.NewAnalyticsService(eventStoreRepo, analyticsRepo, historyRepo)
 }
 
 func main() {
