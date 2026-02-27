@@ -268,7 +268,7 @@ func TestProjectRatingCreatedEventUpdatesAnalytics(t *testing.T) {
 	require.NotNil(t, analyticsRepo.lastAnalytics)
 	require.Equal(t, 1, analyticsRepo.lastAnalytics.RatingsCount)
 	require.Equal(t, 5, analyticsRepo.lastAnalytics.RatingSum)
-	require.Equal(t, 5.0, analyticsRepo.lastAnalytics.AverageRating)
+	require.InEpsilon(t, 5.0, analyticsRepo.lastAnalytics.AverageRating, 0.0001)
 }
 
 func TestProjectRatingUpdatedEventUpdatesAverageCorrectly(t *testing.T) {
@@ -292,7 +292,7 @@ func TestProjectRatingUpdatedEventUpdatesAverageCorrectly(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, analyticsRepo.lastAnalytics.RatingsCount) // Count stays the same
 	require.Equal(t, 5, analyticsRepo.lastAnalytics.RatingSum)    // Sum: 4-4+5 = 5
-	require.Equal(t, 5.0, analyticsRepo.lastAnalytics.AverageRating)
+	require.InEpsilon(t, 5.0, analyticsRepo.lastAnalytics.AverageRating, 0.0001)
 }
 
 // Test ProjectSubscriptionEvent
