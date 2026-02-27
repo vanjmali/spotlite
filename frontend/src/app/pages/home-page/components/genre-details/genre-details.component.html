@@ -66,22 +66,22 @@
                 </div>
                 <div class="genre-details__song-main">
                   <p class="genre-details__song-title">{{ row.songTitle }}</p>
-                  <div class="genre-details__song-meta">
-                    <p class="genre-details__song-artist">{{ row.artistsText }}</p>
-                    <app-song-rating-badge
-                      [songId]="row.songId"
-                      [average]="row.rating?.average"
-                      [count]="row.rating?.count"
-                    />
-                  </div>
+                  <p class="genre-details__song-artist">{{ row.artistsText }}</p>
                 </div>
-                <a
-                  class="genre-details__song-album"
-                  [routerLink]="['/album', row.albumId]"
-                  (click)="$event.stopPropagation()"
-                >
-                  {{ row.albumTitle }}
-                </a>
+                <div class="genre-details__song-meta">
+                  <app-song-rating-badge
+                    [songId]="row.songId"
+                    [average]="row.rating?.average"
+                    [count]="row.rating?.count"
+                  />
+                  <a
+                    class="genre-details__song-album"
+                    [routerLink]="['/album', row.albumId]"
+                    (click)="$event.stopPropagation()"
+                  >
+                    {{ row.albumTitle }}
+                  </a>
+                </div>
               </button>
             }
           </div>

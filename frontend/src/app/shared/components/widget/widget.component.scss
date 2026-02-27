@@ -4,7 +4,7 @@
 .widget {
   width: 100%;
   min-width: 0;
-  padding: 12px;
+  padding: 1rem;
   background-color: $color-gray-800;
   border-radius: 8px;
   height: 100%;
@@ -25,7 +25,7 @@
     font-size: 18px;
     font-weight: 600;
     color: $color-text-primary;
-    padding: 0 1rem;
+    padding: 0;
   }
 
   &__actions {
