@@ -9,9 +9,9 @@ For education purposes only.
 - `api-gateway` – Traefik-based edge for routing, TLS termination, and service discovery.
 - `user-service` – Authentication, authorization, and account management.
 - `content-service` – Catalog of artists, albums, songs, and genres.
-- `ratings-service` – Song rating endpoints and aggregation.
-- `subscriptions-service` – Manages user subscriptions to artists/genres.
-- `notifications-service` – Queues and delivers user notifications.
+- `rating-service` – Song rating endpoints and aggregation.
+- `subscription-service` – Manages user subscriptions to artists/genres.
+- `notification-service` – Queues and delivers user notifications.
 - `recommendation-service` – Personalized recommendations and feeds.
 - `analytics-service` – Activity tracking and analytics endpoints.
 - `common-lib` – Shared Go library for common utilities and types.
@@ -105,6 +105,8 @@ Dashboards and tools:
 - http://localhost:3000/dev/user-service - [Mongo Express](https://github.com/mongo-express/mongo-express) to User Service
 - http://localhost:3000/dev/content-service - [Mongo Express](https://github.com/mongo-express/mongo-express) to Content Service
 - http://localhost:3000/dev/subscription-service - [Mongo Express](https://github.com/mongo-express/mongo-express) to Subscription Service
+- http://localhost:7474 - Neo4j Browser UI for Recommendation Service (user: `neo4j`, pass: `password`)
+- bolt://localhost:7687 - Neo4j Bolt connection for Recommendation Service
 - http://localhost:9870 - HDFS NameNode web UI (Content Service development storage)
 
 Database connections for services:
