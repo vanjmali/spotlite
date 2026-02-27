@@ -7,6 +7,7 @@ services:
       dockerfile: ./Dockerfile
     environment:
       APP_PORT: 3000
+      REDIS_ADDR: ${CONTENT_REDIS_ADDR}
       DB_HOST: content-mongodb
       DB_PORT: 27017
       DB_USER: ${SRV_CONTENT_MONGO_USERNAME?}
@@ -40,6 +41,8 @@ services:
       traefik.http.routers.content-service.tls: true
     depends_on:
       content-mongodb:
+        condition: service_healthy
+      content-redis:
         condition: service_healthy
       content-hdfs-namenode:
         condition: service_healthy
@@ -128,6 +131,26 @@ services:
     networks:
       - content-internal
 
+  content-redis:
+    image: redis:8-alpine
+    command:
+      [
+        "redis-server",
+        "--maxmemory",
+        "512mb",
+        "--maxmemory-policy",
+        "allkeys-lfu",
+      ]
+    volumes:
+      - content-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - content-internal
+
 networks:
   api-gateway:
     name: spotlite-api-gateway
@@ -137,3 +160,4 @@ volumes:
   content-mongo-data:
   content-hdfs-namenode-data:
   content-hdfs-datanode-data:
+  content-redis-data:
