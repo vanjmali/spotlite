@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        API_BASE_URL: ${APP_API_BASE_URL?}
     networks:
       - api-gateway
     labels:
@@ -10,7 +12,6 @@ services:
       traefik.docker.network: spotlite-api-gateway
       traefik.http.routers.frontend.rule: PathPrefix(`/`)
       traefik.http.services.frontend.loadbalancer.server.port: '8080'
-
 networks:
   api-gateway:
     name: spotlite-api-gateway

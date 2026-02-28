@@ -1,0 +1,154 @@
+<div class="control-bar">
+  @if (homepageModeSg()) {
+    <section class="control-bar__layout" aria-label="Homepage control bar">
+      <div class="control-bar__left">
+        <p class="control-bar__copyright">
+          <span>&copy; {{ year }} Spotlite Demo</span>
+          <span>
+            Course project.
+            <a
+              href="https://github.com/vanjmali/spotlite"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              GitHub
+            </a></span
+          >
+        </p>
+      </div>
+
+      <div class="control-bar__center">
+        <div class="control-bar__track-card" [class.control-bar__track-card--active]="hasTrackSg()">
+          <div class="control-bar__track-left">
+            <button
+              type="button"
+              class="control-bar__icon-btn"
+              aria-label="Previous track"
+              [disabled]="!hasTrackSg()"
+              (click)="previous()"
+            >
+              <mat-icon>skip_previous</mat-icon>
+            </button>
+            <app-cover-art
+              class="control-bar__cover"
+              [name]="currentTrackSg()?.title ?? currentAlbumTitleSg()"
+              [square]="true"
+              [size]="44"
+            >
+              <button
+                type="button"
+                class="control-bar__icon-btn control-bar__icon-btn--cover"
+                aria-label="Play or pause"
+                [disabled]="!hasTrackSg()"
+                (click)="togglePlayback()"
+              >
+                @if (isLoadingSg()) {
+                  <span class="control-bar__mini-loader" aria-hidden="true"></span>
+                } @else {
+                  <mat-icon>{{ playback.isPlayingSg() ? 'pause' : 'play_arrow' }}</mat-icon>
+                }
+              </button>
+            </app-cover-art>
+            <button
+              type="button"
+              class="control-bar__icon-btn"
+              aria-label="Next track"
+              [disabled]="!hasTrackSg()"
+              (click)="next()"
+            >
+              <mat-icon>skip_next</mat-icon>
+            </button>
+          </div>
+
+          <div class="control-bar__meta">
+            @if (currentTrackSg(); as track) {
+              <a class="control-bar__title" [routerLink]="['/albums', track.albumId]">{{
+                track.title
+              }}</a>
+            } @else {
+              <span class="control-bar__title control-bar__title--inactive"
+                >Pick a song to start listening</span
+              >
+            }
+            @if (currentTrackSg(); as track) {
+              <div class="control-bar__subline">
+                @for (artist of track.artists; track artist.id) {
+                  <a class="control-bar__link" [routerLink]="['/artists', artist.id]">{{
+                    artist.name
+                  }}</a>
+                }
+                <span>•</span>
+                <a class="control-bar__link" [routerLink]="['/albums', track.albumId]">
+                  {{ currentAlbumTitleSg() }}
+                </a>
+              </div>
+            }
+          </div>
+
+          <div class="control-bar__track-right">
+            <div class="control-bar__rating-wrap">
+              <div class="control-bar__rating" aria-label="Song rating">
+                @for (star of stars; track star) {
+                  <button
+                    type="button"
+                    class="control-bar__star"
+                    [class.control-bar__star--active]="star <= previewRatingSg()"
+                    [class.control-bar__star--hover-preview]="
+                      hoveredStarSg() > 0 && star <= hoveredStarSg()
+                    "
+                    aria-label="Rate {{ star }} star"
+                    [disabled]="!hasTrackSg()"
+                    (mouseenter)="onStarHover(star)"
+                    (mouseleave)="clearStarHover()"
+                    (click)="rate(star)"
+                  >
+                    <mat-icon>star</mat-icon>
+                  </button>
+                }
+              </div>
+              <p class="control-bar__time-readout">
+                @if (hasTrackSg()) {
+                  {{ formatTime(playback.currentTimeSg()) }} /
+                  {{ formatTime(playback.durationSg()) }}
+                } @else {
+                  --:-- / --:--
+                }
+              </p>
+            </div>
+          </div>
+
+          <div class="control-bar__progress-wrap">
+            <div class="control-bar__progress">
+              <div
+                class="control-bar__progress-fill"
+                [style.width.%]="playback.progressPercentSg()"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control-bar__right">
+        <div class="control-bar__volume" aria-label="Volume controls">
+          <button
+            type="button"
+            class="control-bar__volume-btn"
+            [attr.aria-label]="isMutedSg() ? 'Unmute' : 'Mute'"
+            [attr.aria-pressed]="isMutedSg()"
+            (click)="toggleMute()"
+          >
+            <mat-icon>{{ volumeIcon() }}</mat-icon>
+          </button>
+          <input
+            #volumeRange
+            type="range"
+            min="0"
+            max="100"
+            [value]="currentVolumePercentSg()"
+            (input)="onVolumeInput(volumeRange.value)"
+          />
+        </div>
+      </div>
+    </section>
+  }
+</div>

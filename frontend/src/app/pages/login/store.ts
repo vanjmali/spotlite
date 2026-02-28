@@ -61,6 +61,7 @@ export class LoginStore {
 
     // Credentials valid, OTP sent to email
     this.emailSg.set(email);
+    this.passwordSg.set(password);
     this.errorSg.set(null);
     this.stepSg.set('otp');
     this.persistToSession();

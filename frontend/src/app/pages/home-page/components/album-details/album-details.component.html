@@ -6,6 +6,8 @@
 
   @if (isLoadingSg()) {
     <p class="album-details__loading">Loading album...</p>
+  } @else if (fetchErrorSg()) {
+    <app-message [message]="fetchErrorSg()" type="error" />
   } @else if (!albumSg()) {
     <p class="album-details__empty">Album not found</p>
   } @else {
@@ -13,23 +15,32 @@
     <app-widget [title]="albumSg()!.title">
       <div content class="album-details__widget-content">
         <div class="album-details__header">
+          <app-cover-art class="album-details__cover" [name]="albumSg()!.title" [square]="true" />
           <div class="album-details__info">
             <p class="album-details__release-date">
               Released: {{ formatDate(albumSg()!.releaseDate) }}
             </p>
             <div class="album-details__genres">
               @for (genre of albumSg()!.genres; track genre.id) {
-                <span class="album-details__genre-tag">{{ genre.name }}</span>
+                <a class="album-details__genre-tag" [routerLink]="['/genre', genre.id]">{{
+                  genre.name
+                }}</a>
               }
             </div>
             <div class="album-details__artists">
               <strong>Artists:</strong>
               <div class="album-details__artist-list">
                 @for (artist of albumSg()!.artists; track artist.id) {
-                  <span class="album-details__artist-tag">{{ artist.name }}</span>
+                  <a class="album-details__artist-tag" [routerLink]="['/artists', artist.id]">
+                    {{ artist.name }}
+                  </a>
                 }
               </div>
             </div>
+            <button type="button" class="album-details__play-all" (click)="toggleAlbumPlayback()">
+              <mat-icon>{{ isCurrentAlbumPlaying() ? 'pause' : 'play_arrow' }}</mat-icon>
+              Play album
+            </button>
           </div>
         </div>
       </div>
@@ -43,24 +54,70 @@
         } @else {
           <div class="album-details__songs-list">
             @for (song of albumSg()!.songs; track song.id) {
-              <div class="album-details__song-item">
-                <div class="album-details__song-index">{{ $index + 1 }}</div>
+              <button
+                type="button"
+                class="album-details__song-item"
+                [class.album-details__song-item--active]="song.id === activeSongIdSg()"
+                (click)="onSongRowClick(song.id, $index)"
+              >
+                <div class="album-details__song-index">
+                  @if (song.id === activeSongIdSg()) {
+                    <span
+                      class="album-details__song-toggle"
+                      role="button"
+                      tabindex="0"
+                      aria-label="Toggle playback"
+                      (click)="toggleSongPlayback(song.id, $index, $event)"
+                      (keydown.enter)="toggleSongPlayback(song.id, $index, $event)"
+                      (keydown.space)="
+                        $event.preventDefault(); toggleSongPlayback(song.id, $index, $event)
+                      "
+                    >
+                      <mat-icon class="album-details__song-index-icon">{{
+                        playback.isPlayingSg() ? 'pause' : 'play_arrow'
+                      }}</mat-icon>
+                    </span>
+                  } @else {
+                    {{ $index + 1 }}
+                  }
+                </div>
+                <app-cover-art
+                  class="album-details__song-cover"
+                  [name]="song.title"
+                  [size]="42"
+                  [fontSize]="14"
+                  [square]="true"
+                />
                 <div class="album-details__song-info">
                   <p class="album-details__song-title">{{ song.title }}</p>
                   <div class="album-details__song-meta">
                     @if (song.artists && song.artists.length > 0) {
-                      <span class="album-details__song-artist">{{ song.artists[0].name }}</span>
+                      <a
+                        class="album-details__song-artist"
+                        [routerLink]="['/artists', song.artists[0].id]"
+                        (click)="$event.stopPropagation()"
+                        >{{ song.artists[0].name }}</a
+                      >
                     } @else {
                       <span class="album-details__song-artist">Unknown Artist</span>
                     }
                     @if (song.genres && song.genres.length > 0) {
                       @for (genre of song.genres; track genre.id) {
-                        <span class="album-details__song-genre">{{ genre.name }}</span>
+                        <a class="album-details__song-genre" [routerLink]="['/genre', genre.id]">{{
+                          genre.name
+                        }}</a>
                       }
                     }
                   </div>
                 </div>
-              </div>
+                <app-song-trailing-meta
+                  class="album-details__song-right"
+                  [songId]="song.id"
+                  [average]="song.rating?.average"
+                  [count]="song.rating?.count"
+                  [durationSeconds]="song.lengthSeconds"
+                />
+              </button>
             }
           </div>
         }

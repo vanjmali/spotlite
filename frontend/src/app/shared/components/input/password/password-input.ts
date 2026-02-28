@@ -92,9 +92,6 @@ export class PasswordInputComponent {
       return { isValid: false, error };
     }
 
-    console.log('criteria check:', {
-      show: this.showCriteriaSg(),
-    });
     if (this.showCriteriaSg()) {
       if (/\s/.test(password)) {
         this.errorSg.set(VALIDATION_MESSAGES.PASSWORD_CRITERIA);

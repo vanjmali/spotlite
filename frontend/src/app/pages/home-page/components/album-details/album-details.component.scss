@@ -1,12 +1,23 @@
 @use 'variables/colors' as *;
+@use 'mixins' as m;
+
+:host {
+  display: block;
+  width: 100%;
+}
 
 .album-details {
-  padding: 32px 24px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
+  gap: 20px;
+  width: 100%;
+  box-sizing: border-box;
+
+  app-widget {
+    display: block;
+    width: 100%;
+  }
 
   &__back-button {
     display: flex;
@@ -47,12 +58,25 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1rem;
   }
 
   &__header {
     display: flex;
-    gap: 2rem;
+    gap: 1.5rem;
+  }
+
+  &__cover {
+    width: 180px;
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: $color-white;
+    font-size: 48px;
+    font-weight: 700;
+    flex-shrink: 0;
   }
 
   &__info {
@@ -82,6 +106,7 @@
     border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 500;
+    text-decoration: none;
   }
 
   &__artists {
@@ -109,6 +134,25 @@
     border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 500;
+    text-decoration: none;
+
+    &:hover {
+      color: $color-primary-light;
+      text-decoration: underline;
+    }
+  }
+
+  &__play-all {
+    border: 1px solid rgba($color-primary, 0.5);
+    border-radius: 999px;
+    width: fit-content;
+    padding: 8px 14px;
+    color: $color-primary-light;
+    background: rgba($color-primary, 0.15);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
   }
 
   &__songs {
@@ -122,17 +166,18 @@
   }
 
   &__song-item {
+    @include m.selectable-surface(0.375rem, transparent, rgba($color-gray-900, 0.5));
     display: flex;
     align-items: center;
     gap: 1rem;
     padding: 1rem;
-    border-radius: 0.375rem;
-    background-color: rgba($color-gray-900, 0.5);
-    transition: background-color 0.2s ease;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+  }
 
-    &:hover {
-      background-color: rgba($color-primary, 0.1);
-    }
+  &__song-item--active {
+    @include m.selectable-active(rgba($color-primary, 0.35), rgba($color-primary, 0.16));
   }
 
   &__song-index {
@@ -163,6 +208,37 @@
     font-weight: 500;
   }
 
+  &__song-cover {
+    flex-shrink: 0;
+  }
+
+  &__song-index-icon {
+    font-size: 1.05rem;
+    width: 1.05rem;
+    height: 1.05rem;
+    color: $color-primary-light;
+  }
+
+  &__song-toggle {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1px rgba(216, 180, 254, 0);
+    transition:
+      box-shadow 0.22s ease,
+      background-color 0.22s ease;
+
+    &:hover,
+    &:focus-visible {
+      box-shadow: inset 0 0 0 1px rgba(216, 180, 254, 0.65);
+      background: rgba(168, 85, 247, 0.12);
+    }
+  }
+
   &__song-meta {
     display: flex;
     gap: 0.75rem;
@@ -175,6 +251,20 @@
     color: $color-gray-400;
   }
 
+  &__song-right {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  &__song-duration {
+    color: $color-gray-300;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
   &__song-genre {
     display: inline-block;
     padding: 0.2rem 0.5rem;
@@ -182,5 +272,12 @@
     color: $color-primary;
     border-radius: 4px;
     font-weight: 500;
+    text-decoration: none;
+  }
+}
+
+@media (max-width: 800px) {
+  .album-details {
+    padding: 16px;
   }
 }
