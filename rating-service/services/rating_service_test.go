@@ -79,7 +79,7 @@ func TestCreateRatingMapsTimeout(t *testing.T) {
 			return "", status.Error(codes.DeadlineExceeded, "timeout")
 		},
 	}
-	jsc := events.JetStreamClient{}
+	jsc := &events.JetStreamClient{}
 	svc := NewRatingService(repo, getter, jsc)
 
 	err := svc.CreateRating(&dtos.CreateRatingDto{SongID: primitive.NewObjectID().Hex(), Value: 5}, context.Background())
@@ -95,7 +95,7 @@ func TestCreateRatingMapsUnavailable(t *testing.T) {
 			return "", gobreaker.ErrOpenState
 		},
 	}
-	jsc := events.JetStreamClient{}
+	jsc := &events.JetStreamClient{}
 	svc := NewRatingService(repo, getter, jsc)
 
 	err := svc.CreateRating(&dtos.CreateRatingDto{SongID: primitive.NewObjectID().Hex(), Value: 5}, context.Background())
@@ -111,7 +111,7 @@ func TestCreateRatingMapsThrottled(t *testing.T) {
 			return "", gobreaker.ErrTooManyRequests
 		},
 	}
-	jsc := events.JetStreamClient{}
+	jsc := &events.JetStreamClient{}
 	svc := NewRatingService(repo, getter, jsc)
 
 	err := svc.CreateRating(&dtos.CreateRatingDto{SongID: primitive.NewObjectID().Hex(), Value: 5}, context.Background())
