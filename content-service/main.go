@@ -37,6 +37,7 @@ var (
 	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
 	certFilePath       = utils.MustGetEnv("CERT_PATH")
 	keyFilePath        = utils.MustGetEnv("KEY_PATH")
+	natsURL            = utils.MustGetEnv("NATS_URL")
 	config             = server.ServerRunConfiguration{
 		TelemetryName: "content-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
@@ -158,7 +159,7 @@ func createClients(ctx context.Context) (*mongodriver.Client, *events.JetStreamC
 		return nil, nil, nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
 	}
 
-	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
+	jsc, err := events.NewClient(natsURL, nats.RootCAs(rootCACertFilePath))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to initialized NATS jets teram client: %w", err)
 	}
