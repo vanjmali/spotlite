@@ -23,6 +23,7 @@
   &__center {
     flex: 1;
     justify-content: center;
+    min-width: 0;
   }
 
   &__actions {
@@ -63,5 +64,96 @@
     font-weight: 700;
     letter-spacing: 0.02em;
     line-height: 1;
+
+    @media (max-width: 960px) {
+      display: none;
+    }
+  }
+
+  &__search {
+    width: min(760px, 100%);
+    position: relative;
+
+    input {
+      width: 100%;
+      border: 1px solid $color-border-primary;
+      background: rgba(255, 255, 255, 0.04);
+      color: $color-text-primary;
+      border-radius: 999px;
+      padding: 10px 42px;
+      font-size: 14px;
+      outline: none;
+      box-sizing: border-box;
+
+      &:focus {
+        border-color: $color-primary;
+        box-shadow: 0 0 0 3px $color-primary-transparent-20;
+      }
+    }
+  }
+
+  &__search-icon {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    transform: translateY(-50%);
+    color: $color-text-tertiary;
+    font-size: 20px;
+    line-height: 1;
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  &__search-dropdown {
+    position: absolute;
+    inset: calc(100% + 8px) 0 auto 0;
+    z-index: 20;
+    background: $color-gray-850;
+    border: 1px solid $color-border-primary;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+  }
+
+  &__search-empty {
+    color: $color-text-secondary;
+    padding: 12px;
+    font-size: 13px;
+  }
+
+  &__search-item {
+    border: none;
+    border-bottom: 1px solid $color-border-primary;
+    width: 100%;
+    background: transparent;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 12px;
+    cursor: pointer;
+
+    &:hover {
+      background: $color-primary-transparent-10;
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  &__search-item-title {
+    color: $color-text-primary;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  &__search-item-subtitle {
+    color: $color-text-secondary;
+    font-size: 12px;
   }
 }

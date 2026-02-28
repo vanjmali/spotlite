@@ -29,11 +29,6 @@
     padding: 24px 16px;
   }
 
-  &__logo {
-    padding-top: 48px;
-    margin-bottom: 12px;
-  }
-
   &__section {
     width: 100%;
     max-width: 380px;
@@ -68,6 +63,14 @@
     gap: 12px;
     align-items: center;
     line-height: 1;
+  }
+
+  &__header-logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
   }
 
   &__back {

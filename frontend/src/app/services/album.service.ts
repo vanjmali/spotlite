@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
 import { Artist } from './artist.service';
-import { Song } from './song.service';
+import { ApiSong, mapApiSong, Song } from './song.service';
 import { Genre } from './genre.service';
 
 // Album interfaces
@@ -12,6 +12,16 @@ export interface Album {
   releaseDate: string;
   genres: Genre[];
   songs: Song[];
+  artists: Artist[];
+}
+
+export interface ApiAlbum {
+  id: string;
+  title: string;
+  release_date?: string;
+  releaseDate?: string;
+  genres: Genre[];
+  songs: ApiSong[];
   artists: Artist[];
 }
 
@@ -39,6 +49,17 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   size: number;
+}
+
+export function mapApiAlbum(album: ApiAlbum): Album {
+  return {
+    id: album.id,
+    title: album.title,
+    releaseDate: album.release_date ?? album.releaseDate ?? '',
+    genres: album.genres ?? [],
+    songs: (album.songs ?? []).map(mapApiSong),
+    artists: album.artists ?? [],
+  };
 }
 
 @Injectable({
@@ -76,14 +97,19 @@ export class AlbumService {
       params = params.set('artist_id', filters.artist_id);
     }
 
-    return this.http.get<PaginatedResponse<Album>>(this.apiUrl, { params });
+    return this.http.get<PaginatedResponse<ApiAlbum>>(this.apiUrl, { params }).pipe(
+      map((response) => ({
+        ...response,
+        items: (response.items ?? []).map(mapApiAlbum),
+      }))
+    );
   }
 
   /**
    * Get single album by ID
    */
   getAlbumById(id: string): Observable<Album> {
-    return this.http.get<Album>(`${this.apiUrl}/${id}`);
+    return this.http.get<ApiAlbum>(`${this.apiUrl}/${id}`).pipe(map(mapApiAlbum));
   }
 
   /**
@@ -97,7 +123,7 @@ export class AlbumService {
    * Update existing album
    */
   updateAlbum(id: string, dto: UpdateAlbumDto): Observable<Album> {
-    return this.http.patch<Album>(`${this.apiUrl}/${id}`, dto);
+    return this.http.patch<ApiAlbum>(`${this.apiUrl}/${id}`, dto).pipe(map(mapApiAlbum));
   }
 
   /**
@@ -111,7 +137,9 @@ export class AlbumService {
    * Get songs in album
    */
   getAlbumSongs(id: string): Observable<Song[]> {
-    return this.http.get<Song[]>(`${this.apiUrl}/${id}/songs`);
+    return this.http
+      .get<ApiSong[]>(`${this.apiUrl}/${id}/songs`)
+      .pipe(map((songs) => (songs ?? []).map(mapApiSong)));
   }
 
   /**

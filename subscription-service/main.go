@@ -78,13 +78,13 @@ var (
 				return nil, nil, err
 			}
 
-			err = jsc.EnsureStream(
-				ctx,
-				events.CONTENT_STREAM,
-				[]string{events.SUBJECT_ENTITY_CREATED, events.SUBSCRIPTIONS_STREAM, events.SUBJECT_ENTITY_UPDATED},
-			)
-			if err != nil {
-				err = fmt.Errorf("failed to ensure NATS stream: %w", err)
+			if err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBJECT_ENTITY_UPDATED}); err != nil {
+				err = fmt.Errorf("failed to ensure content stream: %w", err)
+				return h, shutdown, err
+			}
+
+			if err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_SUBSCRIBED, events.SUBJECT_GENRE_CREATED}); err != nil {
+				err = fmt.Errorf("failed to ensure genres stream: %w", err)
 				return h, shutdown, err
 			}
 
@@ -268,7 +268,7 @@ func createServices(
 	gcc *adapters.GrpcContentEntityGetter,
 	jsc *events.JetStreamClient,
 ) *services.SubscriptionService {
-	ss := services.NewSubscriptionService(sr, gcc, *jsc)
+	ss := services.NewSubscriptionService(sr, gcc, jsc)
 
 	return ss
 }

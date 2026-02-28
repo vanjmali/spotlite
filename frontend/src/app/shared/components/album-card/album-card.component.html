@@ -1,0 +1,20 @@
+<a
+  class="album-card"
+  [class.album-card--clickable]="clickableSg()"
+  [routerLink]="clickableSg() ? ['/', linkPrefixSg(), albumSg().id] : null"
+>
+  @if (showPlayControlSg()) {
+    <button
+      type="button"
+      class="album-card__play-btn"
+      (click)="$event.preventDefault(); $event.stopPropagation(); onPlayToggle($event)"
+      [attr.aria-label]="isPlayingSg() ? 'Pause album' : 'Play album'"
+    >
+      <mat-icon>{{ isPlayingSg() ? 'pause' : 'play_arrow' }}</mat-icon>
+    </button>
+  }
+
+  <app-cover-art class="album-card__cover" [name]="albumSg().title" [square]="true" />
+  <span class="album-card__title">{{ albumSg().title }}</span>
+  <span class="album-card__artists">{{ artistNames(albumSg().artists) }}</span>
+</a>

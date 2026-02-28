@@ -10,14 +10,17 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/nats-io/nats.go"
+	"github.com/redis/go-redis/v9"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	pb "github.com/vanjmali/spotlite/common-lib/proto/content_service"
+	ratingpb "github.com/vanjmali/spotlite/common-lib/proto/rating_service"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	commonvalid "github.com/vanjmali/spotlite/common-lib/validations"
 	"github.com/vanjmali/spotlite/content/handlers"
+	"github.com/vanjmali/spotlite/content/infrastructure"
 	infragrpc "github.com/vanjmali/spotlite/content/infrastructure/grpc"
 	"github.com/vanjmali/spotlite/content/infrastructure/mongo"
 	"github.com/vanjmali/spotlite/content/repositories"
@@ -35,6 +38,7 @@ var (
 	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
 	certFilePath       = utils.MustGetEnv("CERT_PATH")
 	keyFilePath        = utils.MustGetEnv("KEY_PATH")
+	natsURL            = utils.MustGetEnv("NATS_URL")
 	config             = server.ServerRunConfiguration{
 		TelemetryName: "content-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
@@ -50,7 +54,9 @@ var (
 			return nil
 		},
 		CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
-			dbc, jsc, err := createClients()
+			var ratingConn *grpc.ClientConn
+
+			dbc, jsc, rc, err := createClients(ctx)
 			if err != nil {
 				err = fmt.Errorf("failed to create clients: %w", err)
 				return h, shutdown, err
@@ -75,19 +81,45 @@ var (
 					return
 				}
 				_ = dbc.Disconnect(ctx)
+				_ = rc.Close()
 				_ = hdfsStore.Close()
+				if ratingConn != nil {
+					_ = ratingConn.Close()
+				}
 			}()
 
 			// make sure stream is already initialized
 			err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBJECT_ENTITY_UPDATED})
 			if err != nil {
-				err = fmt.Errorf("failed to ensure NATS stream: %w", err)
+				err = fmt.Errorf("failed to ensure content stream: %w", err)
+				return h, shutdown, err
+			}
+
+			if err = jsc.EnsureStream(
+				ctx,
+				events.SONGS_STREAM,
+				[]string{events.SUBJECT_SONG_CREATED, events.SUBJECT_SONG_RATED, events.SUBJECT_SONG_UPDATED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure songs stream: %w", err)
+				return h, shutdown, err
+			}
+
+			if err = jsc.EnsureStream(
+				ctx,
+				events.GENRES_STREAM,
+				[]string{events.SUBJECT_GENRE_SUBSCRIBED, events.SUBJECT_GENRE_CREATED, events.SUBJECT_GENRE_UPDATED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure genres stream: %w", err)
 				return h, shutdown, err
 			}
 
 			ar, sr, alr, gr := createRepositories(dbc)
 			gs, as, ss, als, glss := createServices(ar, sr, alr, gr, jsc, hdfsStore)
-			h = createHandlers(v, as, ss, als, gs, glss)
+			ratingClient, ratingConn, err := infragrpc.NewRatingSummaryClient()
+			if err != nil {
+				return h, shutdown, fmt.Errorf("failed to create rating grpc client: %w", err)
+			}
+			h = createHandlers(v, as, ss, als, gs, glss, rc, ratingClient)
 
 			// configures grpc server
 			grpcPort := utils.GetEnv("GRPC_PORT", "50051")
@@ -123,6 +155,9 @@ var (
 				}
 
 				jsc.Close()
+				if err := ratingConn.Close(); err != nil {
+					return fmt.Errorf("failed to close rating grpc connection: %w", err)
+				}
 
 				return nil
 			}
@@ -149,18 +184,23 @@ func main() {
 	}
 }
 
-func createClients() (*mongodriver.Client, *events.JetStreamClient, error) {
+func createClients(ctx context.Context) (*mongodriver.Client, *events.JetStreamClient, *redis.Client, error) {
 	dbc, err := mongo.InitMongoClient()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
 	}
 
-	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
+	jsc, err := events.NewClient(natsURL, nats.RootCAs(rootCACertFilePath))
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialized NATS jets teram client: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to initialized NATS jets teram client: %w", err)
 	}
 
-	return dbc, jsc, nil
+	rc, err := infrastructure.InitRedis(ctx)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to initialize redis: %w", err)
+	}
+
+	return dbc, jsc, rc, nil
 }
 
 func createRepositories(dbc *mongodriver.Client) (
@@ -195,7 +235,7 @@ func createServices(
 	gs := services.NewGenreService(*gr, *jsc)
 	as := services.NewArtistService(*ar, *gs, *jsc)
 	als := services.NewAlbumService(*alr, *as, *sr, *gs, *jsc)
-	ss := services.NewSongService(*sr, *as, *gs, als, hdfsStore)
+	ss := services.NewSongService(*sr, *as, *gs, als, hdfsStore, jsc)
 	glss := services.NewGlobalSearchService(gs, ss, als, as)
 
 	return gs, as, ss, als, glss
@@ -208,12 +248,17 @@ func createHandlers(
 	als *services.AlbumService,
 	gs *services.GenreService,
 	glss *services.GlobalSearchService,
+	rc *redis.Client,
+	ratingClient ratingpb.GetSongRatingClient,
 ) http.Handler {
+	ttl := utils.MustGetDurationEnv("SONG_RATING_CACHE_TTL_SECONDS", time.Second)
+	src := handlers.NewRedisSongRatingCache(rc, ttl)
+
 	ah := handlers.NewArtistHandler(*as, *v)
-	sh := handlers.NewSongHandler(*ss, *v)
-	alh := handlers.NewAlbumHandler(*als, *v)
+	sh := handlers.NewSongHandler(*ss, rc, ratingClient, src, *v)
+	alh := handlers.NewAlbumHandler(*als, ratingClient, src, *v)
 	gh := handlers.NewGenreHandler(*gs, *v)
-	gsh := handlers.NewGlobalSearchHandler(glss)
+	gsh := handlers.NewGlobalSearchHandler(glss, ratingClient, src)
 
 	return routers.HandleRequests(ah, sh, alh, gh, gsh)
 }

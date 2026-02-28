@@ -120,15 +120,18 @@ services:
   # For hot reload
 
   frontend:
-    command: npm run start -- --host 0.0.0.0 --port 3000
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
     labels:
       traefik.enable: true
-      traefik.http.routers.frontend.rule: PathPrefix(`/`)
-      traefik.http.routers.frontend.entrypoints: websecure
-      traefik.http.routers.frontend.tls: true
+      traefik.http.routers.frontend-https.rule: PathPrefix(`/`)
+      traefik.http.routers.frontend-https.entrypoints: websecure
+      traefik.http.routers.frontend-https.tls: true
+      traefik.http.routers.frontend-https.service: frontend
+      traefik.http.routers.frontend-http.rule: PathPrefix(`/`)
+      traefik.http.routers.frontend-http.entrypoints: web
+      traefik.http.routers.frontend-http.service: frontend
       traefik.http.services.frontend.loadbalancer.server.port: "3000"
     volumes:
       - ./frontend/:/app
@@ -139,13 +142,16 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true # reliable file watching on Docker for Win/Mac
       - NG_CLI_ANALYTICS=false # disable telemetry
+      - API_BASE_URL=${APP_API_BASE_URL?}
 
   # --- Recommendation Service ---
   recommendation-service:
     volumes:
       - ./logs/recommendation-service:/app/logs
       - certs:/certs
+      - keys:/run/keys:ro
     environment:
+      JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
       ROOT_CERT_PATH: /certs/rootCA.crt
       CERT_PATH: /certs/recommendation-service.crt
       KEY_PATH: /certs/recommendation-service.key
@@ -175,6 +181,7 @@ services:
     environment:
       JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      ROOT_CERT_PATH: /certs/rootCA.crt
       CERT_PATH: /certs/user-service.crt
       KEY_PATH: /certs/user-service.key
     depends_on:
@@ -224,6 +231,7 @@ services:
       - certs:/certs
     environment:
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       ROOT_CERT_PATH: /certs/rootCA.crt
       CERT_PATH: /certs/content-service.crt
       KEY_PATH: /certs/content-service.key
@@ -261,6 +269,30 @@ services:
     networks:
       - api-gateway
       - content-internal
+
+  content-redis:
+    ports:
+      - "6381:6379"
+
+  content-redis-ui:
+    image: rediscommander/redis-commander:latest
+    container_name: content-redis-ui
+    environment:
+      - REDIS_HOSTS=local:content-redis:6379
+      - HTTP_USER=admin
+      - HTTP_PASSWORD=admin
+      - URL_PREFIX=/dev/content-redis
+    labels:
+      traefik.enable: true
+      traefik.docker.network: spotlite-api-gateway
+      traefik.http.routers.content-redis-ui.rule: PathPrefix(`/dev/content-redis`)
+      traefik.http.routers.content-redis-ui.entrypoints: web
+      traefik.http.services.content-redis-ui.loadbalancer.server.port: "8081"
+    networks:
+      - api-gateway
+      - content-internal
+    depends_on:
+      - content-redis
 
   content-hdfs-namenode:
     ports:

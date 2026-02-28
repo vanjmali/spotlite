@@ -52,15 +52,19 @@ type ContentEntityGetter interface {
 	GetEntity(ctx context.Context, entityID string, subType subscription.SubscriptionType) (string, error)
 }
 
+type EventPublisher interface {
+	Publish(ctx context.Context, subject string, payload any) error
+}
+
 type SubscriptionService struct {
 	sr  SubscriptionRepository
 	gcc ContentEntityGetter
-	jsc events.JetStreamClient
+	jsc EventPublisher
 	tr  trace.Tracer
 	cb  *gobreaker.CircuitBreaker
 }
 
-func NewSubscriptionService(sr SubscriptionRepository, gcc ContentEntityGetter, jsc events.JetStreamClient) *SubscriptionService {
+func NewSubscriptionService(sr SubscriptionRepository, gcc ContentEntityGetter, jsc EventPublisher) *SubscriptionService {
 	tr := otel.Tracer("subscription-service/subscription-service")
 
 	settings := gobreaker.Settings{
@@ -175,6 +179,52 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 		return err
 	}
 
+	if se.Type == subscription.GenreSubscription {
+		timeoutCtx, cancel := context.WithTimeout(createCtx, 5*time.Second)
+		defer cancel()
+
+		eventCtx, eventSpan := s.tr.Start(timeoutCtx, "subscription.subscribe.event")
+		defer eventSpan.End()
+
+		sep := toSubscriptionEvent(se.SubscriberID.Hex(), se.EntityID.Hex())
+
+		err = retry.Do(
+			func() error {
+				return s.jsc.Publish(eventCtx, events.SUBJECT_GENRE_SUBSCRIBED, sep)
+			},
+			retry.Attempts(3),
+			retry.Delay(time.Second*1),
+			retry.DelayType(retry.BackOffDelay),
+			retry.Context(eventCtx),
+		)
+		if err != nil {
+			logging.Errorf(eventCtx, "failed to publish subscription event: %v", err)
+			eventSpan.RecordError(err)
+
+			var errs []error
+
+			errs = append(errs, err)
+
+			rbCtx, rbSpan := s.tr.Start(ctx, "subscription.subscribe.rollback")
+			defer rbSpan.End()
+
+			ddc, err := s.sr.Delete(se.EntityID, se.SubscriberID, rbCtx)
+			if err != nil {
+				logging.Errorf(rbCtx, "rollback failed: %v", err)
+				rbSpan.RecordError(err)
+				errs = append(errs, err)
+			}
+
+			if ddc < 1 {
+				logging.Errorf(rbCtx, "rollback failed: %v", ErrSubscriptionNotFound)
+				rbSpan.RecordError(ErrSubscriptionNotFound)
+				errs = append(errs, ErrSubscriptionNotFound)
+			}
+
+			return errors.Join(errs...)
+		}
+	}
+
 	return nil
 }
 
@@ -190,7 +240,26 @@ func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx conte
 		return err
 	}
 
-	deleteCtx, deleteSpan := s.tr.Start(ctx, "subscription.unsubcribe.delete")
+	// Find the subscription first to get its details for event publishing
+	findCtx, findSpan := s.tr.Start(ctx, "subscription.unsubscribe.find")
+	defer findSpan.End()
+
+	filter := bson.M{
+		"entity_id":     entityId,
+		"subscriber_id": userID,
+	}
+
+	subs, _, err := s.sr.FindSubscriptionsByUserID(findCtx, filter, 0, 1)
+	if err != nil {
+		findSpan.RecordError(err)
+		return err
+	}
+
+	if len(subs) == 0 {
+		return ErrSubscriptionNotFound
+	}
+
+	deleteCtx, deleteSpan := s.tr.Start(ctx, "subscription.unsubscribe.delete")
 	defer deleteSpan.End()
 
 	ddc, err := s.sr.Delete(entityId, userID, deleteCtx)
@@ -319,4 +388,11 @@ func (s *SubscriptionService) UpdateSubscriptions(ctx context.Context, p events.
 	}
 
 	return nil
+}
+
+func toSubscriptionEvent(userID string, genreID string) *events.GenreSubscriptionEventPayload {
+	return &events.GenreSubscriptionEventPayload{
+		UserID:  userID,
+		GenreID: genreID,
+	}
 }

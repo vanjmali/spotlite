@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
 import { Artist } from './artist.service';
 import { Genre } from './genre.service';
 
@@ -11,6 +11,23 @@ export interface Song {
   genres: Genre[];
   lengthSeconds: number;
   artists: Artist[];
+  rating?: {
+    average: number;
+    count: number;
+  };
+}
+
+export interface ApiSong {
+  id: string;
+  title: string;
+  genres: Genre[];
+  length_seconds?: number;
+  lengthSeconds?: number;
+  artists: Artist[];
+  rating?: {
+    average: number;
+    count: number;
+  };
 }
 
 export interface CreateSongDto {
@@ -32,6 +49,17 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   size: number;
+}
+
+export function mapApiSong(song: ApiSong): Song {
+  return {
+    id: song.id,
+    title: song.title,
+    genres: song.genres ?? [],
+    lengthSeconds: song.length_seconds ?? song.lengthSeconds ?? 0,
+    artists: song.artists ?? [],
+    rating: song.rating,
+  };
 }
 
 @Injectable({
@@ -69,14 +97,19 @@ export class SongService {
       params = params.set('artist_id', filters.artist_id);
     }
 
-    return this.http.get<PaginatedResponse<Song>>(this.apiUrl, { params });
+    return this.http.get<PaginatedResponse<ApiSong>>(this.apiUrl, { params }).pipe(
+      map((response) => ({
+        ...response,
+        items: (response.items ?? []).map(mapApiSong),
+      }))
+    );
   }
 
   /**
    * Get single song by ID
    */
   getSongById(id: string): Observable<Song> {
-    return this.http.get<Song>(`${this.apiUrl}/${id}`);
+    return this.http.get<ApiSong>(`${this.apiUrl}/${id}`).pipe(map(mapApiSong));
   }
 
   /**
@@ -86,14 +119,14 @@ export class SongService {
     const formData = new FormData();
     formData.append('meta', JSON.stringify(song));
     formData.append('file', file);
-    return this.http.post<Song>(this.apiUrl, formData);
+    return this.http.post<ApiSong>(this.apiUrl, formData).pipe(map(mapApiSong));
   }
 
   /**
    * Update song
    */
   updateSong(id: string, song: UpdateSongDto): Observable<Song> {
-    return this.http.patch<Song>(`${this.apiUrl}/${id}`, song);
+    return this.http.patch<ApiSong>(`${this.apiUrl}/${id}`, song).pipe(map(mapApiSong));
   }
 
   /**
@@ -102,7 +135,7 @@ export class SongService {
   uploadSongAudio(id: string, file: File): Observable<Song> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.put<Song>(`${this.apiUrl}/${id}/audio`, formData);
+    return this.http.put<ApiSong>(`${this.apiUrl}/${id}/audio`, formData).pipe(map(mapApiSong));
   }
 
   /**
