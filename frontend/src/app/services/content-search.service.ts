@@ -1,15 +1,22 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
-import { Album } from './album.service';
+import { Album, ApiAlbum, mapApiAlbum } from './album.service';
 import { Artist } from './artist.service';
-import { Song } from './song.service';
+import { ApiSong, mapApiSong, Song } from './song.service';
 import { Genre } from './genre.service';
 
 export interface GlobalSearchResponse {
   songs: Song[];
   artists: Artist[];
   albums: Album[];
+  genres: Genre[];
+}
+
+interface ApiGlobalSearchResponse {
+  songs: ApiSong[];
+  artists: Artist[];
+  albums: ApiAlbum[];
   genres: Genre[];
 }
 
@@ -31,7 +38,14 @@ export class ContentSearchService {
 
   search(query: string): Observable<GlobalSearchResponse> {
     const params = new HttpParams().set('q', query);
-    return this.http.get<GlobalSearchResponse>(this.apiUrl, { params });
+    return this.http.get<ApiGlobalSearchResponse>(this.apiUrl, { params }).pipe(
+      map((result) => ({
+        songs: (result.songs ?? []).map(mapApiSong),
+        artists: result.artists ?? [],
+        albums: (result.albums ?? []).map(mapApiAlbum),
+        genres: result.genres ?? [],
+      }))
+    );
   }
 
   topSuggestions(query: string, max: number = 5): Observable<SearchSuggestion[]> {

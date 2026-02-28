@@ -44,10 +44,10 @@ type albumItem struct {
 type songResponse struct {
 	ID            string `json:"id"`
 	Title         string `json:"title"`
-	AudioPath     string `json:"audioPath"`
-	AudioSize     int64  `json:"audioSize"`
-	AudioMimeType string `json:"audioMimeType"`
-	AudioChecksum string `json:"audioChecksum"`
+	AudioPath     string `json:"audio_path"`
+	AudioSize     int64  `json:"audio_size"`
+	AudioMimeType string `json:"audio_mime_type"`
+	AudioChecksum string `json:"audio_checksum"`
 }
 
 func TestAudioFlowE2E(t *testing.T) {

@@ -160,7 +160,7 @@ func (h *RatingHandler) HandleGetRatingsBySongID(w http.ResponseWriter, r *http.
 	}
 
 	if nextCursor != "" {
-		response["nextCursor"] = nextCursor
+		response["next_cursor"] = nextCursor
 	}
 
 	_ = respond.OkJson(w, response)
