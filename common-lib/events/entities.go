@@ -16,6 +16,8 @@ const (
 	SONGS_STREAM         = "SONGS"
 	GENRES_STREAM        = "GENRES"
 	ARTISTS_STREAM       = "ARTISTS"
+	RATINGS_STREAM       = "RATINGS"
+	LISTENS_STREAM       = "LISTENS"
 
 	SUBJECT_ENTITY_CREATED = "content.created"
 	ENTITY_CREATE_DURABLE  = "ENTITY_CREATOR"
@@ -42,6 +44,18 @@ const (
 	SONG_CREATE_DURABLE  = "SONG_CREATE_PROCESSOR"
 	SONG_RATE_DURABLE    = "SONG_RATE_PROCESSOR"
 	SONG_UPDATE_DURABLE  = "SONG_UPDATE_PROCESSOR"
+
+	SUBJECT_RATING_CREATED = "rating.created"
+	SUBJECT_RATING_UPDATED = "rating.updated"
+	SUBJECT_RATING_DELETED = "rating.deleted"
+	RATING_DURABLE         = "RATING_PROCESSOR"
+
+	SUBJECT_LISTEN_CREATED = "listen.created"
+	LISTEN_DURABLE         = "LISTEN_PROCESSOR"
+
+	SUBJECT_SUBSCRIPTION_CREATED = "subscription.created"
+	SUBJECT_SUBSCRIPTION_DELETED = "subscription.deleted"
+	SUBSCRIPTION_DURABLE         = "SUBSCRIPTION_PROCESSOR"
 )
 
 type SubscriptionEntityType string
@@ -109,4 +123,27 @@ type SongUpdatePayload struct {
 	Duration    int      `json:"duration"`
 	GenreIDs    []string `json:"genre_ids"`
 	ArtistNames []string `json:"artist_names"`
+}
+
+type RatingEventPayload struct {
+	UserID    string    `json:"user_id"`
+	SongID    string    `json:"song_id"`
+	Rating    int       `json:"rating"`
+	EventID   string    `json:"event_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type ListenEventPayload struct {
+	UserID    string    `json:"user_id"`
+	SongID    string    `json:"song_id"`
+	EventID   string    `json:"event_id"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type SubscriptionEventPayload struct {
+	UserID     string                 `json:"user_id"`
+	EntityID   string                 `json:"entity_id"`
+	EntityType SubscriptionEntityType `json:"entity_type"`
+	EventID    string                 `json:"event_id"`
+	CreatedAt  time.Time              `json:"created_at"`
 }

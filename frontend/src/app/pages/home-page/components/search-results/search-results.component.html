@@ -1,0 +1,135 @@
+<section class="search-results">
+  <header class="search-results__header">
+    <h1>Search</h1>
+    <p>
+      Results for: <strong>{{ querySg() || '...' }}</strong>
+    </p>
+  </header>
+
+  @if (isLoadingSg()) {
+    <p class="search-results__empty">Searching...</p>
+  } @else if (
+    resultsSg().songs.length === 0 &&
+    resultsSg().artists.length === 0 &&
+    resultsSg().albums.length === 0 &&
+    resultsSg().genres.length === 0
+  ) {
+    <p class="search-results__empty">No content found.</p>
+  } @else {
+    @if (resultsSg().artists.length > 0) {
+      <section class="search-results__section">
+        <h2>Artists</h2>
+        <div class="search-results__artist-list">
+          @for (artist of resultsSg().artists; track artist.id) {
+            <a class="search-results__artist-card" [routerLink]="['/artist', artist.id]">
+              <app-cover-art class="search-results__avatar" [name]="artist.name" />
+              <span class="search-results__artist-main">
+                <span class="search-results__artist-name">{{ artist.name }}</span>
+                <span class="search-results__artist-desc">{{
+                  shortDescription(artist.description || 'No artist description available.', 100)
+                }}</span>
+              </span>
+            </a>
+          }
+        </div>
+      </section>
+    }
+
+    @if (resultsSg().albums.length > 0) {
+      <section class="search-results__section">
+        <h2>Albums</h2>
+        <div class="search-results__album-grid">
+          @for (album of resultsSg().albums; track album.id) {
+            <app-album-card
+              class="search-results__album-card"
+              [album]="album"
+              [linkPrefix]="'album'"
+              [showPlayControl]="true"
+              [isPlaying]="isAlbumPlaying(album)"
+              (playToggle)="toggleAlbumPlayback(album, $event)"
+            />
+          }
+        </div>
+      </section>
+    }
+
+    @if (resultsSg().songs.length > 0) {
+      <section class="search-results__section">
+        <h2>Songs</h2>
+        <div class="search-results__song-list">
+          @for (song of resultsSg().songs; track song.id) {
+            <div
+              class="search-results__song-item"
+              role="button"
+              tabindex="0"
+              (click)="openSong(song)"
+              (keydown.enter)="openSong(song)"
+              (keydown.space)="$event.preventDefault(); openSong(song)"
+            >
+              <span
+                class="search-results__song-cover-button"
+                role="button"
+                tabindex="0"
+                aria-label="Toggle playback"
+                (click)="toggleSongPlayback(song, $event)"
+                (keydown.enter)="toggleSongPlayback(song, $event)"
+                (keydown.space)="$event.preventDefault(); toggleSongPlayback(song, $event)"
+              >
+                <app-cover-art
+                  class="search-results__song-cover"
+                  [name]="song.title"
+                  [size]="42"
+                  [fontSize]="14"
+                  [square]="true"
+                >
+                  <mat-icon class="search-results__song-cover-icon">{{
+                    isSongPlaying(song.id) ? 'pause' : 'play_arrow'
+                  }}</mat-icon>
+                </app-cover-art>
+              </span>
+              <span class="search-results__song-main">
+                <span class="search-results__song-title">{{ song.title }}</span>
+                <span class="search-results__song-meta">
+                  <span class="search-results__song-meta-text">{{
+                    artistNames(song.artists)
+                  }}</span>
+                  @if (song.genres && song.genres.length > 0) {
+                    @for (genre of song.genres; track genre.id) {
+                      <a
+                        class="search-results__song-genre"
+                        [routerLink]="['/genre', genre.id]"
+                        (click)="$event.stopPropagation()"
+                      >
+                        {{ genre.name }}
+                      </a>
+                    }
+                  }
+                </span>
+              </span>
+              <app-song-trailing-meta
+                class="search-results__song-right"
+                [songId]="song.id"
+                [average]="song.rating?.average"
+                [count]="song.rating?.count"
+                [durationSeconds]="song.lengthSeconds"
+              />
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    @if (resultsSg().genres.length > 0) {
+      <section class="search-results__section">
+        <h2>Genres</h2>
+        <div class="search-results__genre-list">
+          @for (genre of resultsSg().genres; track genre.id) {
+            <a class="search-results__genre-chip" [routerLink]="['/genre', genre.id]">{{
+              genre.name
+            }}</a>
+          }
+        </div>
+      </section>
+    }
+  }
+</section>

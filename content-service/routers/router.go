@@ -39,7 +39,8 @@ func HandleRequests(
 	api.Handle("/songs/{id}", middlewares.RequireAdmin(sh.HandleUpdateSong)).Methods("PATCH")
 	api.Handle("/songs/{id}", middlewares.RequireAdmin(sh.HandleDeleteSong)).Methods("DELETE")
 	api.Handle("/songs/{id}/audio", middlewares.RequireAdmin(sh.HandleUploadSongAudio)).Methods("PUT")
-	api.Handle("/songs/{id}/audio", middlewares.RequireAuthenticated(sh.HandleStreamSongAudio)).Methods("GET")
+	api.Handle("/songs/{id}/audio/signed-url", middlewares.RequireAuthenticated(sh.HandleGetSongAudioSignedURL)).Methods("GET")
+	api.HandleFunc("/songs/{id}/audio", sh.HandleStreamSongAudio).Methods("GET")
 
 	// Albums endpoints
 	api.Handle("/albums", middlewares.RequireAuthenticated(alh.HandleGetAlbums)).Methods("GET")

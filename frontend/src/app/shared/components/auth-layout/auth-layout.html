@@ -4,10 +4,6 @@
   }
 
   <div class="auth-layout__main">
-    <div class="auth-layout__logo">
-      <app-brand-logo />
-    </div>
-
     <div class="auth-layout__section">
       @if (title) {
         <div class="auth-layout__header">
@@ -16,6 +12,8 @@
               <mat-icon aria-hidden="true">arrow_back</mat-icon>
               <span class="auth-layout__back-text">Back</span>
             </button>
+          } @else {
+            <app-brand-logo class="auth-layout__header-logo" [size]="36" />
           }
           <div class="auth-layout__info">
             @if (showStepCount && stepIndex !== null && totalSteps !== null) {

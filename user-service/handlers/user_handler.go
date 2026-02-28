@@ -282,6 +282,79 @@ func (h *UserHandler) HandleCheckEmail(w http.ResponseWriter, r *http.Request) {
 	_ = respond.OkJson(w, map[string]bool{"exists": exists})
 }
 
+// HandleCheckUsername checks if a username is already registered.
+func (h *UserHandler) HandleCheckUsername(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	if username == "" {
+		_ = respond.BadRequest(w, respond.ErrorMessage("Username is required"))
+		return
+	}
+
+	if err := h.v.Var(username, "required,validusername"); err != nil {
+		_ = respond.BadRequest(w, respond.ErrorMessage("Invalid username"))
+		return
+	}
+
+	exists, err := h.s.UsernameExists(r.Context(), username)
+	if err != nil {
+		_ = respond.InternalServerError(w)
+		return
+	}
+
+	_ = respond.OkJson(w, map[string]bool{"exists": exists})
+}
+
+// HandleGetProfile returns profile info for authenticated user.
+func (h *UserHandler) HandleGetProfile(w http.ResponseWriter, r *http.Request) {
+	profile, err := h.s.GetProfile(r.Context())
+	switch {
+	case errors.Is(err, services.ErrObjectIdCastFailed):
+		_ = respond.BadRequest(w, respond.ErrorMessage("invalid user id"))
+		return
+	case errors.Is(err, services.ErrUserNotFound):
+		_ = respond.NotFound(w)
+		return
+	case err != nil:
+		logging.Errorf(r.Context(), "failed to get profile: %v", err)
+		_ = respond.InternalServerError(w)
+		return
+	}
+
+	if err := respond.OkJson(w, profile); err != nil {
+		logging.Errorf(r.Context(), "failed to write profile response: %v", err)
+	}
+}
+
+// HandleUpdateProfile updates profile info for authenticated user.
+func (h *UserHandler) HandleUpdateProfile(w http.ResponseWriter, r *http.Request) {
+	var req dtos.UpdateProfileDto
+	if ok, err := requests.ReadAndValidateJson(w, h.v, r.Body, &req); !ok {
+		if err != nil {
+			logging.Errorf(r.Context(), "failed to process update profile request: %v", err)
+		}
+		return
+	}
+
+	err := h.s.UpdateProfile(r.Context(), &req)
+	switch {
+	case errors.Is(err, services.ErrObjectIdCastFailed):
+		_ = respond.BadRequest(w, respond.ErrorMessage("invalid user id"))
+		return
+	case errors.Is(err, services.ErrUserNotFound):
+		_ = respond.NotFound(w)
+		return
+	case errors.Is(err, services.ErrUsernameTaken):
+		_ = respond.Conflict(w, respond.ErrorMessageWithCode("Username is already taken.", "username_taken"))
+		return
+	case err != nil:
+		logging.Errorf(r.Context(), "failed to update profile: %v", err)
+		_ = respond.InternalServerError(w)
+		return
+	}
+
+	respond.NoContent(w)
+}
+
 // HandleLogout revokes the refresh token (if present) and clears the cookie.
 func (h *UserHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	cookie, err := r.Cookie(refreshCookieName())

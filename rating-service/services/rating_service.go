@@ -123,42 +123,33 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 		return err
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(createCtx, 5*time.Second)
-	defer cancel()
+	// Publish rating created event with retry for reliability
+	payload := events.RatingEventPayload{
+		UserID:    ratingEntity.UserID.Hex(),
+		SongID:    ratingEntity.SongID.Hex(),
+		Rating:    int(ratingEntity.Value),
+		EventID:   primitive.NewObjectID().Hex(),
+		CreatedAt: ratingEntity.CreatedAt,
+	}
 
-	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "rating.create.event")
-	defer eventSpan.End()
-
-	rcp := toRatingCreated(ratingEntity.UserID.Hex(), ratingEntity.SongID.Hex(), ratingEntity.Value)
+	publishCtx, publishSpan := s.tr.Start(ratingCtx, "rating.create.publish")
+	defer publishSpan.End()
+	if s.jsc == nil {
+		return nil
+	}
 
 	err = retry.Do(
 		func() error {
-			return s.jsc.Publish(eventCtx, events.SUBJECT_SONG_RATED, rcp)
+			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_CREATED, payload)
 		},
 		retry.Attempts(3),
-		retry.Delay(time.Second*1),
+		retry.Delay(time.Second),
 		retry.DelayType(retry.BackOffDelay),
-		retry.Context(eventCtx),
+		retry.Context(publishCtx),
 	)
 	if err != nil {
-		logging.Errorf(eventCtx, "failed to publish song rating event: %v", err)
-		eventSpan.RecordError(err)
-
-		var errs []error
-
-		errs = append(errs, err)
-
-		rbCtx, rbSpan := s.tr.Start(createCtx, "rating.create.rollback")
-		defer rbSpan.End()
-
-		err := s.DeleteRating(ratingEntity.ID, rbCtx)
-		if err != nil {
-			logging.Errorf(rbCtx, "rollback failed: %s", err)
-			rbSpan.RecordError(err)
-			errs = append(errs, err)
-		}
-
-		return errors.Join(errs...)
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish rating created event: %v", err)
 	}
 
 	return nil
@@ -202,6 +193,35 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 
 	if deletedCount != 1 {
 		return ErrRatingNotFound
+	}
+
+	// Publish rating deleted event with retry for reliability
+	payload := events.RatingEventPayload{
+		UserID:    userID.Hex(),
+		SongID:    existing.SongID.Hex(),
+		Rating:    int(existing.Value),
+		EventID:   primitive.NewObjectID().Hex(),
+		CreatedAt: existing.CreatedAt,
+	}
+
+	publishCtx, publishSpan := s.tr.Start(ctx, "rating.delete.publish")
+	defer publishSpan.End()
+	if s.jsc == nil {
+		return nil
+	}
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_DELETED, payload)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(publishCtx),
+	)
+	if err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish rating deleted event: %v", err)
 	}
 
 	return nil
@@ -331,6 +351,35 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 		return nil, err
 	}
 
+	// Publish rating updated event with retry for reliability
+	payload := events.RatingEventPayload{
+		UserID:    rating.UserID.Hex(),
+		SongID:    rating.SongID.Hex(),
+		Rating:    int(rating.Value),
+		EventID:   primitive.NewObjectID().Hex(),
+		CreatedAt: rating.CreatedAt,
+	}
+
+	publishCtx, publishSpan := s.tr.Start(ctx, "rating.update.publish")
+	defer publishSpan.End()
+	if s.jsc == nil {
+		return rating, nil
+	}
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_UPDATED, payload)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(publishCtx),
+	)
+	if err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish rating updated event: %v", err)
+	}
+
 	return rating, nil
 }
 
@@ -352,12 +401,4 @@ func (s *RatingService) GetAverageRatingBySongID(ctx context.Context, songIDStr 
 	}
 
 	return summary, nil
-}
-
-func toRatingCreated(userID string, songID string, value int) *events.SongRatingPayload {
-	return &events.SongRatingPayload{
-		SongID: songID,
-		UserID: userID,
-		Value:  value,
-	}
 }

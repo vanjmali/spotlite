@@ -11,6 +11,10 @@ export interface Song {
   genres: Genre[];
   lengthSeconds: number;
   artists: Artist[];
+  rating?: {
+    average: number;
+    count: number;
+  };
 }
 
 export interface CreateSongDto {

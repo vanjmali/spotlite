@@ -3,11 +3,10 @@ http:
     rate-limit-global:
       rateLimit:
         # determines the amount of tokens added every time the refresh interval is triggered
-        average: 2
+        average: 30
 
         # burst defines the size of the bucket (how many tokens can be stored at once)
-        burst: 10
+        burst: 60
 
-        # period defines the time interval on which the tokens will be added, in this case
-        # "average" tokens will be added every 10s
-        period: 10s
+        # period defines the time interval on which the tokens will be added
+        period: 1s

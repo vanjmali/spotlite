@@ -7,4 +7,4 @@ COPY package*.json .
 RUN npm ci
 
 EXPOSE 3000
-CMD ["npm", "run", "start"]
+CMD ["sh", "-c", ": \"${API_BASE_URL:?API_BASE_URL environment variable is required}\" && npm run start -- --port 3000 --host 0.0.0.0 --define __API_BASE_URL__=\"'${API_BASE_URL}'\""]

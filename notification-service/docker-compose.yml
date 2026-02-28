@@ -12,6 +12,7 @@ services:
       CASSANDRA_PORT: ${CASSANDRA_PORT?}
       CASSANDRA_DC: ${CASSANDRA_DC?}
       CASSANDRA_KEYSPACE: ${CASSANDRA_KEYSPACE?}
+      NATS_URL: ${NATS_URL?}
       LOG_DIR: ${LOG_DIR?}
       LOG_ROTATE_MAX_SIZE_MB: ${LOG_ROTATE_MAX_SIZE_MB?}
       LOG_ROTATE_MAX_BACKUPS: ${LOG_ROTATE_MAX_BACKUPS?}
@@ -46,7 +47,6 @@ services:
   # notification cassandra service
   notification-cassandra:
     image: cassandra:${CASSANDRA_VERSION}
-    container_name: notification-cassandra
     volumes:
       - "notification-cassandra-data:/var/lib/cassandra"
     # the environments are optional and come in handy only when working with multiple nodes

@@ -3,7 +3,7 @@
   [showStepCount]="true"
   [stepIndex]="stepIndexSg()"
   [totalSteps]="totalSteps"
-  [back]="goBack.bind(this)"
+  [back]="canGoBackSg() ? goBack.bind(this) : undefined"
 >
   <div auth-body class="registration-page__body">
     @if (step() === 'personal') {

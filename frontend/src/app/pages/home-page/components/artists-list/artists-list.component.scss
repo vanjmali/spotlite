@@ -1,69 +1,283 @@
 @use 'variables/colors' as *;
+@use 'mixins' as m;
 
-.artists-list {
+:host {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.recommendations {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 28px 18px;
+  width: 100%;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
 
-  &__grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 24px;
-  }
+  &__hero {
+    padding: 18px;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: radial-gradient(
+      circle at top right,
+      rgba(168, 85, 247, 0.22),
+      rgba(18, 18, 18, 0.95)
+    );
 
-  &__artist-card {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    padding: 20px;
-    background-color: $color-gray-800;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
+    h1 {
+      font-size: 28px;
+    }
 
-    &:hover {
-      background-color: $color-gray-700;
+    p {
+      margin-top: 6px;
+      color: $color-text-secondary;
     }
   }
 
-  &__artist-image {
-    width: 160px;
-    height: 160px;
-    border-radius: 50%;
-    overflow: hidden;
+  &__section {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid $color-border-primary;
+    background: rgba(255, 255, 255, 0.015);
+  }
+
+  &__section--skeleton {
+    pointer-events: none;
+  }
+
+  &__section-header {
+    margin-bottom: 10px;
+  }
+
+  &__artists {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    grid-auto-rows: 1fr;
+  }
+
+  &__artist-card {
+    @include m.selectable-surface(12px);
+    padding: 10px;
+    display: grid;
+    grid-template-columns: 60px minmax(0, 1fr);
+    gap: 10px;
+    text-decoration: none;
+    align-items: center;
+  }
+
+  &__artist-card--skeleton {
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.01);
+  }
+
+  &__artist-meta {
+    min-width: 0;
     display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__artist-name,
+  &__album-title,
+  &__song-title {
+    color: $color-text-primary;
+    font-weight: 700;
+  }
+
+  &__artist-desc,
+  &__album-artists,
+  &__song-artists {
+    color: $color-text-secondary;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__song-artists {
+    display: block;
+  }
+
+  &__song-artists-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__albums {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  &__album-card {
+    display: block;
+  }
+
+  &__album-card--skeleton {
+    border-color: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.01);
+  }
+
+  &__genres {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  &__genre-chip {
+    @include m.selectable-surface(999px, $color-border-primary, rgba(255, 255, 255, 0.05));
+    color: $color-text-secondary;
+    padding: 6px 10px;
+    cursor: pointer;
+
+    &:hover {
+      color: $color-primary-light;
+    }
+  }
+
+  &__songs {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  &__song {
+    @include m.selectable-surface(10px, $color-border-primary, transparent);
+    padding: 8px 10px;
+    text-align: left;
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  &__song-cover {
+    display: block;
+    flex-shrink: 0;
+  }
+
+  &__song-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__song-right {
+    justify-self: end;
+  }
+
+  &__song--skeleton {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  &__avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 999px;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, $color-primary, $color-purple-600);
-  }
-
-  &__artist-initial {
-    font-size: 64px;
-    font-weight: 700;
     color: $color-white;
-    line-height: 1;
+    font-weight: 700;
+    font-size: 20px;
+    flex-shrink: 0;
+
+    &--square {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1 / 1;
+      border-radius: 10px;
+      font-size: 28px;
+    }
   }
 
-  &__artist-name {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: $color-text-primary;
-    text-align: center;
-    line-height: 1.3;
-    display: -webkit-box;
-    line-clamp: 2;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  &__loading,
   &__empty {
     text-align: center;
-    color: $color-gray-400;
-    font-size: 16px;
-    padding: 40px 20px;
+    border: 1px dashed $color-border-primary;
+    border-radius: 12px;
+    padding: 24px;
+    color: $color-text-secondary;
+  }
+
+  &__skeleton {
+    border-radius: 8px;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.08) 20%,
+      rgba(255, 255, 255, 0.16) 40%,
+      rgba(255, 255, 255, 0.08) 60%
+    );
+    background-size: 200% 100%;
+    animation: skeletonPulse 1.2s ease-in-out infinite;
+  }
+
+  &__skeleton--title {
+    width: 220px;
+    height: 18px;
+  }
+
+  &__skeleton--avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 999px;
+  }
+
+  &__skeleton--cover {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 10px;
+  }
+
+  &__skeleton--line-lg {
+    width: 80%;
+    height: 14px;
+  }
+
+  &__skeleton--line {
+    width: 60%;
+    height: 12px;
+  }
+
+  &__skeleton--chip {
+    width: 90px;
+    height: 32px;
+    border-radius: 999px;
+  }
+}
+
+@keyframes skeletonPulse {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (min-width: 800px) {
+  .recommendations {
+    padding: 32px 24px;
+
+    &__artists {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    &__albums {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    &__songs {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 }

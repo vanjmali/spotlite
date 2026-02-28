@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable, NgZone } from '@angular/core';
 import { EventSourcePolyfill } from 'event-source-polyfill';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { environment } from 'src/environments/environment';
 
 export interface Notification {
@@ -26,6 +26,9 @@ export class NotificationService {
   // State management
   private notificationsSubject = new BehaviorSubject<Notification[]>([]);
   public notifications$ = this.notificationsSubject.asObservable();
+  private incomingNotificationSubject = new Subject<Notification>();
+  public incomingNotification$ = this.incomingNotificationSubject.asObservable();
+  private dismissedIds = new Set<string>();
 
   private http = inject(HttpClient);
   private zone = inject(NgZone);
@@ -49,8 +52,11 @@ export class NotificationService {
       const notificationObject = this.transformToNotificationObject(notificationString);
 
       this.zone.run(() => {
-        const current = this.notificationsSubject.value;
+        const current = this.notificationsSubject.value.filter(
+          (item) => item.notification_id !== notificationObject.notification_id
+        );
         this.notificationsSubject.next([notificationObject, ...current]);
+        this.incomingNotificationSubject.next(notificationObject);
       });
     };
 
@@ -82,14 +88,27 @@ export class NotificationService {
   getAllNotifications() {
     this.http.get<Notification[]>(this.apiUrl).subscribe({
       next: (data) => {
-        this.notificationsSubject.next(data);
+        const normalized = (data || [])
+          .filter((item) => !this.dismissedIds.has(item.notification_id))
+          .map((item) => ({ ...item, is_new: item.is_new === true }))
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        this.notificationsSubject.next(normalized);
       },
       error: (err) => console.error('Error fetching notifications:', err),
     });
   }
 
-  sendTestNotification() {
-    return this.http.post(`${this.apiUrl}`, {});
+  dismissNotification(id: string): void {
+    this.dismissedIds.add(id);
+    this.notificationsSubject.next(
+      this.notificationsSubject.value.filter((item) => item.notification_id !== id)
+    );
+  }
+
+  markAllAsSeen(): void {
+    this.notificationsSubject.next(
+      this.notificationsSubject.value.map((item) => ({ ...item, is_new: false }))
+    );
   }
 
   transformToNotificationObject(data: string): Notification {

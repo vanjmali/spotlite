@@ -53,3 +53,19 @@ type ResetPasswordDto struct {
 type VerifyAccountDto struct {
 	Token string `json:"token" validate:"required"`
 }
+
+// UpdateProfileDto carries profile fields user can edit.
+type UpdateProfileDto struct {
+	Username  string `json:"username" validate:"required,validusername"`
+	FirstName string `json:"first_name" validate:"required,validname,min=2,max=20"`
+	LastName  string `json:"last_name" validate:"required,validname,min=2,max=20"`
+}
+
+// ProfileResponseDto is the profile shape returned to frontend.
+type ProfileResponseDto struct {
+	ID        string `json:"id"`
+	Username  string `json:"username"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+}
