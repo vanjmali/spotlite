@@ -10,10 +10,7 @@ import (
 	"github.com/vanjmali/spotlite/recommendation-service/entities"
 )
 
-var (
-	ErrRecommendationNotFound = errors.New("recommendations not found")
-	ErrNoData                 = errors.New("no data found")
-)
+var ErrNoData = errors.New("no data found")
 
 // GraphRelationRepository provides data access for graph relationships.
 type GraphRelationRepository struct {
@@ -290,7 +287,7 @@ func (r *GraphRelationRepository) FindSubscriptionBasedRecommendations(ctx conte
 	return result.([]*entities.SongRecommendation), nil
 }
 
-func (r *GraphRelationRepository) FindLikeBasedRecommendation(ctx context.Context, userID string) (*entities.SongRecommendation, error) {
+func (r *GraphRelationRepository) FindLikeBasedRecommendation(ctx context.Context, userID string) ([]*entities.SongRecommendation, error) {
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
@@ -302,7 +299,7 @@ func (r *GraphRelationRepository) FindLikeBasedRecommendation(ctx context.Contex
 		  }
 		WITH s, count(r) AS fives
 		ORDER BY fives DESC
-		LIMIT 1
+		LIMIT 10
 		
 		OPTIONAL MATCH (:User)-[all_r:RATED]->(s)
 		RETURN 
@@ -323,7 +320,9 @@ func (r *GraphRelationRepository) FindLikeBasedRecommendation(ctx context.Contex
 			return nil, err
 		}
 
-		if records.Next(ctx) {
+		recommendations := make([]*entities.SongRecommendation, 0)
+
+		for records.Next(ctx) {
 			record := records.Record()
 
 			songIdVal, _ := record.Get("songId")
@@ -371,23 +370,24 @@ func (r *GraphRelationRepository) FindLikeBasedRecommendation(ctx context.Contex
 				}
 			}
 
-			return &entities.SongRecommendation{
+			recommendations = append(recommendations, &entities.SongRecommendation{
 				SongID:   songId,
 				Title:    title,
 				Duration: duration,
 				Rating:   average,
 				Artists:  artists,
-			}, nil
+			})
 		}
-		return nil, ErrNoData
+
+		return recommendations, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get top rated unsubscribed song: %w", err)
+		return nil, fmt.Errorf("failed to get top rated unsubscribed songs: %w", err)
 	}
 
 	if result == nil {
-		return nil, ErrRecommendationNotFound
+		return []*entities.SongRecommendation{}, nil
 	}
 
-	return result.(*entities.SongRecommendation), nil
+	return result.([]*entities.SongRecommendation), nil
 }

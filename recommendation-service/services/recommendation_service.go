@@ -28,7 +28,7 @@ type GraphRelationRepository interface {
 	UpdateSongWithGenres(ctx context.Context, sn entities.SongNode) error
 	UpdateGenre(ctx context.Context, gn entities.GenreNode) error
 	FindSubscriptionBasedRecommendations(ctx context.Context, userID string) ([]*entities.SongRecommendation, error)
-	FindLikeBasedRecommendation(ctx context.Context, userID string) (*entities.SongRecommendation, error)
+	FindLikeBasedRecommendation(ctx context.Context, userID string) ([]*entities.SongRecommendation, error)
 }
 type GenreNodeRepository interface {
 	Create(ctx context.Context, genre entities.GenreNode) error
@@ -200,7 +200,7 @@ func (rs *RecommendationService) SubscriptionBasedRecommendation(ctx context.Con
 	return srs, nil
 }
 
-func (rs *RecommendationService) LikeBasedRecommendation(ctx context.Context) (*entities.SongRecommendation, error) {
+func (rs *RecommendationService) LikeBasedRecommendation(ctx context.Context) ([]*entities.SongRecommendation, error) {
 	recCtx, recSpan := rs.tr.Start(ctx, "recommendation.like_based")
 	defer recSpan.End()
 
