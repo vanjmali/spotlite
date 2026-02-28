@@ -69,6 +69,30 @@ var (
 			ah := handlers.NewAnalyticsHandler(analyticsService, v)
 			h = routers.HandleRequests(ah)
 
+			// Ensure all required streams exist before starting consumers
+			// This makes the service resilient to startup order issues
+			if err := jsc.EnsureStream(ctx, events.LISTENS_STREAM, []string{events.SUBJECT_LISTEN_CREATED}); err != nil {
+				err = fmt.Errorf("failed to ensure listens stream: %w", err)
+				return h, shutdown, err
+			}
+
+			if err := jsc.EnsureStream(ctx, events.RATINGS_STREAM, []string{
+				events.SUBJECT_RATING_CREATED,
+				events.SUBJECT_RATING_UPDATED,
+				events.SUBJECT_RATING_DELETED,
+			}); err != nil {
+				err = fmt.Errorf("failed to ensure ratings stream: %w", err)
+				return h, shutdown, err
+			}
+
+			if err := jsc.EnsureStream(ctx, events.SUBSCRIPTIONS_STREAM, []string{
+				events.SUBJECT_SUBSCRIPTION_CREATED,
+				events.SUBJECT_SUBSCRIPTION_DELETED,
+			}); err != nil {
+				err = fmt.Errorf("failed to ensure subscriptions stream: %w", err)
+				return h, shutdown, err
+			}
+
 			// Create NATS consumers
 			c := consumers.NewConsumer(analyticsService)
 
