@@ -3,12 +3,12 @@ import { Component, DestroyRef, computed, effect, inject, signal } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '@app/services/auth.service';
-import { PlaybackService } from '@app/services/playback.service';
 import { SubscriptionService } from '@app/services/subscription.service';
+import { UserActivity, UserActivityService } from '@app/services/user-activity.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 
 type SidebarShortcut = { label: string; href: string };
-type RecentActivity = { label: string; href: string; meta: string };
+type RecentActivity = { key: string; label: string; href: string; meta: string };
 
 @Component({
   selector: 'app-homepage-left-sidebar',
@@ -19,27 +19,20 @@ type RecentActivity = { label: string; href: string; meta: string };
 })
 export class HomepageLeftSidebarComponent {
   private readonly authService = inject(AuthService);
-  private readonly playback = inject(PlaybackService);
   private readonly subscriptionService = inject(SubscriptionService);
+  private readonly userActivityService = inject(UserActivityService);
   private readonly destroyRef = inject(DestroyRef);
 
   readonly followedArtistsSg = signal<SidebarShortcut[]>([]);
   readonly followedGenresSg = signal<SidebarShortcut[]>([]);
-  readonly recentActivitySg = computed<RecentActivity[]>(() =>
-    this.playback
-      .playHistorySg()
-      .slice(0, 6)
-      .map((entry) => ({
-        label: entry.title,
-        href: `/albums/${entry.albumId}`,
-        meta: `Played ${this.relativeTime(entry.playedAt)}`,
-      }))
-  );
+  private readonly userActivitiesSg = signal<UserActivity[]>([]);
+  readonly recentActivitySg = computed<RecentActivity[]>(() => this.mapActivities(this.userActivitiesSg()));
 
   constructor() {
     this.subscriptionService.changes$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       if (this.authService.currentUserIdSg()) {
         this.loadSubscriptions();
+        this.loadActivities();
       }
     });
 
@@ -48,10 +41,12 @@ export class HomepageLeftSidebarComponent {
       if (!userId) {
         this.followedArtistsSg.set([]);
         this.followedGenresSg.set([]);
+        this.userActivitiesSg.set([]);
         return;
       }
 
       this.loadSubscriptions();
+      this.loadActivities();
     });
   }
 
@@ -84,6 +79,83 @@ export class HomepageLeftSidebarComponent {
           this.followedGenresSg.set([]);
         },
       });
+  }
+
+  private loadActivities(): void {
+    this.userActivityService
+      .getMyActivities(1, 12)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.userActivitiesSg.set(response.items ?? []);
+        },
+        error: () => {
+          this.userActivitiesSg.set([]);
+        },
+      });
+  }
+
+  private mapActivities(activities: UserActivity[]): RecentActivity[] {
+    return activities.slice(0, 6).map((activity) => {
+      const entityType = (activity.entity_type ?? '').toUpperCase();
+      const entityID = activity.entity_id ?? '';
+      const label = activity.entity_name?.trim() || this.defaultLabel(activity);
+      const href = this.entityHref(entityType, entityID);
+      const meta = this.activityMeta(activity);
+      const key = activity.event_id || `${activity.type}:${entityID}:${activity.occurred_at}`;
+
+      return { key, label, href, meta };
+    });
+  }
+
+  private defaultLabel(activity: UserActivity): string {
+    switch (activity.type) {
+      case 'LISTEN':
+      case 'RATING_CREATED':
+      case 'RATING_UPDATED':
+        return 'Song';
+      case 'SUBSCRIPTION_CREATED':
+      case 'SUBSCRIPTION_DELETED':
+        return activity.entity_type === 'ARTIST' ? 'Artist' : 'Genre';
+      default:
+        return 'Activity';
+    }
+  }
+
+  private entityHref(entityType: string, entityID: string): string {
+    if (!entityID) {
+      return '/';
+    }
+
+    if (entityType === 'SONG') {
+      return '/';
+    }
+    if (entityType === 'ARTIST') {
+      return `/artist/${entityID}`;
+    }
+    if (entityType === 'GENRE') {
+      return `/genre/${entityID}`;
+    }
+
+    return '/';
+  }
+
+  private activityMeta(activity: UserActivity): string {
+    const when = this.relativeTime(activity.occurred_at || activity.created_at);
+
+    switch (activity.type) {
+      case 'LISTEN':
+        return `Played ${when}`;
+      case 'SUBSCRIPTION_CREATED':
+        return `Subscribed ${when}`;
+      case 'SUBSCRIPTION_DELETED':
+        return `Unsubscribed ${when}`;
+      case 'RATING_CREATED':
+      case 'RATING_UPDATED':
+        return `Rated ${activity.rating_value ?? 0}/5 ${when}`;
+      default:
+        return when;
+    }
   }
 
   private relativeTime(isoDate: string): string {

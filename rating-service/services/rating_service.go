@@ -78,7 +78,7 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 	songExistsCtx, songExistsSpan := s.tr.Start(ratingCtx, "rating.create.exists")
 	defer songExistsSpan.End()
 
-	_, err := s.gcc.GetSong(songExistsCtx, req.SongID)
+	songTitle, err := s.gcc.GetSong(songExistsCtx, req.SongID)
 	if err != nil {
 		songExistsSpan.RecordError(err)
 		if errors.Is(err, gobreaker.ErrOpenState) {
@@ -127,6 +127,7 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 	payload := events.RatingEventPayload{
 		UserID:    ratingEntity.UserID.Hex(),
 		SongID:    ratingEntity.SongID.Hex(),
+		SongTitle: songTitle,
 		Rating:    ratingEntity.Value,
 		EventID:   primitive.NewObjectID().Hex(),
 		CreatedAt: ratingEntity.CreatedAt,
@@ -193,35 +194,6 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 
 	if deletedCount != 1 {
 		return ErrRatingNotFound
-	}
-
-	// Publish rating deleted event with retry for reliability
-	payload := events.RatingEventPayload{
-		UserID:    userID.Hex(),
-		SongID:    existing.SongID.Hex(),
-		Rating:    existing.Value,
-		EventID:   primitive.NewObjectID().Hex(),
-		CreatedAt: existing.CreatedAt,
-	}
-
-	publishCtx, publishSpan := s.tr.Start(ctx, "rating.delete.publish")
-	defer publishSpan.End()
-	if s.jsc == nil {
-		return nil
-	}
-
-	err = retry.Do(
-		func() error {
-			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_DELETED, payload)
-		},
-		retry.Attempts(3),
-		retry.Delay(time.Second),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Context(publishCtx),
-	)
-	if err != nil {
-		publishSpan.RecordError(err)
-		logging.Errorf(publishCtx, "failed to publish rating deleted event: %v", err)
 	}
 
 	return nil
@@ -351,10 +323,17 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 		return nil, err
 	}
 
+	songId := rating.SongID.Hex()
+	songTitle, err := s.gcc.GetSong(ctx, songId)
+	if err != nil {
+		return nil, err
+	}
+
 	// Publish rating updated event with retry for reliability
 	payload := events.RatingEventPayload{
 		UserID:    rating.UserID.Hex(),
-		SongID:    rating.SongID.Hex(),
+		SongID:    songId,
+		SongTitle: songTitle,
 		Rating:    rating.Value,
 		EventID:   primitive.NewObjectID().Hex(),
 		CreatedAt: rating.CreatedAt,

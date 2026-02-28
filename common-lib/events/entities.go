@@ -47,15 +47,16 @@ const (
 
 	SUBJECT_RATING_CREATED = "rating.created"
 	SUBJECT_RATING_UPDATED = "rating.updated"
-	SUBJECT_RATING_DELETED = "rating.deleted"
-	RATING_DURABLE         = "RATING_PROCESSOR"
+	RATING_CREATED_DURABLE = "RATING_CREATED_PROCESSOR"
+	RATING_UPDATED_DURABLE = "RATING_UPDATED_PROCESSOR"
 
 	SUBJECT_LISTEN_CREATED = "listen.created"
 	LISTEN_DURABLE         = "LISTEN_PROCESSOR"
 
 	SUBJECT_SUBSCRIPTION_CREATED = "subscription.created"
 	SUBJECT_SUBSCRIPTION_DELETED = "subscription.deleted"
-	SUBSCRIPTION_DURABLE         = "SUBSCRIPTION_PROCESSOR"
+	SUBSCRIPTION_CREATED_DURABLE = "SUBSCRIPTION_CREATED_PROCESSOR"
+	SUBSCRIPTION_DELETED_DURABLE = "SUBSCRIPTION_DELETED_PROCESSOR"
 )
 
 type SubscriptionEntityType string
@@ -128,6 +129,7 @@ type SongUpdatePayload struct {
 type RatingEventPayload struct {
 	UserID    string    `json:"user_id"`
 	SongID    string    `json:"song_id"`
+	SongTitle string    `json:"song_title"`
 	Rating    int       `json:"rating"`
 	EventID   string    `json:"event_id"`
 	CreatedAt time.Time `json:"created_at"`
@@ -136,6 +138,7 @@ type RatingEventPayload struct {
 type ListenEventPayload struct {
 	UserID    string    `json:"user_id"`
 	SongID    string    `json:"song_id"`
+	SongTitle string    `json:"song_title"`
 	EventID   string    `json:"event_id"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -143,6 +146,7 @@ type ListenEventPayload struct {
 type SubscriptionEventPayload struct {
 	UserID     string                 `json:"user_id"`
 	EntityID   string                 `json:"entity_id"`
+	EntityName string                 `json:"entity_name"`
 	EntityType SubscriptionEntityType `json:"entity_type"`
 	EventID    string                 `json:"event_id"`
 	CreatedAt  time.Time              `json:"created_at"`

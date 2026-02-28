@@ -11,6 +11,10 @@
     position: relative;
   }
 
+  &__activity {
+    position: relative;
+  }
+
   &__nav-button {
     position: relative;
     display: inline-flex;
@@ -220,6 +224,19 @@
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 260px;
+
+    &--rating {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+
+      mat-icon {
+        width: 13px;
+        height: 13px;
+        font-size: 13px;
+        color: #fbbf24;
+      }
+    }
   }
 
   &__item-side {

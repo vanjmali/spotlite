@@ -225,6 +225,21 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 		}
 	}
 
+	eventPayload := toSubscriptionActivityEvent(se)
+	if eventPayload != nil {
+		if err := retry.Do(
+			func() error {
+				return s.jsc.Publish(ctx, events.SUBJECT_SUBSCRIPTION_CREATED, eventPayload)
+			},
+			retry.Attempts(3),
+			retry.Delay(time.Second),
+			retry.DelayType(retry.BackOffDelay),
+			retry.Context(ctx),
+		); err != nil {
+			logging.Errorf(ctx, "failed to publish subscription created event: %v", err)
+		}
+	}
+
 	return nil
 }
 
@@ -270,6 +285,23 @@ func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx conte
 
 	if ddc != 1 {
 		return ErrSubscriptionNotFound
+	}
+
+	eventPayload := toSubscriptionActivityEvent(&subs[0])
+	if eventPayload != nil {
+		// Set the event creation time to now for unsubscription events
+		eventPayload.CreatedAt = time.Now().UTC()
+		if err := retry.Do(
+			func() error {
+				return s.jsc.Publish(ctx, events.SUBJECT_SUBSCRIPTION_DELETED, eventPayload)
+			},
+			retry.Attempts(3),
+			retry.Delay(time.Second),
+			retry.DelayType(retry.BackOffDelay),
+			retry.Context(ctx),
+		); err != nil {
+			logging.Errorf(ctx, "failed to publish subscription deleted event: %v", err)
+		}
 	}
 
 	return nil
@@ -394,5 +426,26 @@ func toSubscriptionEvent(userID string, genreID string) *events.GenreSubscriptio
 	return &events.GenreSubscriptionEventPayload{
 		UserID:  userID,
 		GenreID: genreID,
+	}
+}
+
+func toSubscriptionActivityEvent(se *entities.Subscription) *events.SubscriptionEventPayload {
+	var entityType events.SubscriptionEntityType
+	switch se.Type {
+	case subscription.ArtistSubscription:
+		entityType = events.SubscriptionEntityArtist
+	case subscription.GenreSubscription:
+		entityType = events.SubscriptionEntityGenre
+	default:
+		return nil
+	}
+
+	return &events.SubscriptionEventPayload{
+		UserID:     se.SubscriberID.Hex(),
+		EntityID:   se.EntityID.Hex(),
+		EntityName: se.EntityName,
+		EntityType: entityType,
+		EventID:    primitive.NewObjectID().Hex(),
+		CreatedAt:  se.SubscribedAt,
 	}
 }
