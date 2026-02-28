@@ -195,14 +195,20 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (*SongP
 		addToAlbumSpan.RecordError(err)
 		logging.Errorf(addToAlbumCtx, "error embedding song into album: %v", err)
 
+		var errs []error
+
+		errs = append(errs, err)
+
 		rollbackCtx, rollbackSpan := s.tr.Start(createCtx, "song.create.rollback")
 		defer rollbackSpan.End()
 
 		if deleteErr := s.DeleteSong(rollbackCtx, id.Hex()); deleteErr != nil {
 			rollbackSpan.RecordError(deleteErr)
 			logging.Errorf(rollbackCtx, "critical: failed to rollback song creation for song_id=%s: %v", id.Hex(), deleteErr)
-			return nil, err
+			errs = append(errs, err)
 		}
+
+		return nil, errors.Join(errs...)
 	}
 
 	return &SongPayload{SongID: id.Hex(), Title: songEntity.Title, Duration: songEntity.LengthSeconds, GenreIDs: songDto.GenreIds}, nil
