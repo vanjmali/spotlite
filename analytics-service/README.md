@@ -41,39 +41,37 @@ This service uses a **dual-model persistence strategy**:
 
 The Analytics Service consumes events from the following NATS JetStream streams (defined in common-lib/events):
 
-**From CONTENT_STREAM:**
+**From LISTENS_STREAM:**
 
 <ul>
-    <li><strong>content.created</strong> - Fired when artists, albums, or songs are created. Analytics extracts song creation events.</li>
-    <li><strong>content.updated</strong> - Fired when content is updated. Analytics tracks updates to song metadata (genre, etc).</li>
+    <li><strong>listen.created</strong> - Fired when a user plays a song (from content-service TrackSongPlay method)</li>
+</ul>
+
+**From RATINGS_STREAM:**
+
+<ul>
+    <li><strong>rating.created</strong> - Fired when a user creates a rating (from rating-service)</li>
+    <li><strong>rating.updated</strong> - Fired when a user updates an existing rating (from rating-service)</li>
+    <li><strong>rating.deleted</strong> - Fired when a user deletes a rating (from rating-service)</li>
 </ul>
 
 **From SUBSCRIPTIONS_STREAM:**
 
 <ul>
-    <li><strong>subscribers.batch.process</strong> - Fired with subscriber batch information when artists/genres are created. Used to track which users subscribed.</li>
+    <li><strong>subscription.created</strong> - Fired when a user subscribes to an artist or genre (from subscription-service Subscribe method)</li>
+    <li><strong>subscription.deleted</strong> - Fired when a subscription is cancelled (from subscription-service Unsubscribe method)</li>
 </ul>
 
-**Additional Events (to be emitted by other services or defined in analytics-service):**
-
-<ul>
-    <li><strong>song_played</strong> - Fired when a user plays a song (from content-service or user interaction)</li>
-    <li><strong>rating_created</strong> - Fired when a user creates a rating (from rating-service)</li>
-    <li><strong>rating_updated</strong> - Fired when a user updates a rating (from rating-service)</li>
-    <li><strong>rating_deleted</strong> - Fired when a user deletes a rating (from rating-service)</li>
-    <li><strong>subscription_created</strong> - Fired when a user subscribes to an artist or genre. Includes subscriptionType ("artist" or "genre") and targetID.</li>
-    <li><strong>subscription_deleted</strong> - Fired when a subscription is cancelled. Includes subscriptionType and targetID to identify which subscription was removed.</li>
-    <li><strong>song_deleted</strong> - Fired when a song is removed from the platform (from content-service)</li>
-</ul>
+**Note on Song Deletion:** Song deletion is handled via the Saga pattern (requirement 2.13) coordinated through the content service, not tracked as a direct analytics event.
 
 ### Subscription Types
 
-The Analytics Service tracks two types of subscriptions via events:
+The Analytics Service tracks two types of subscriptions via events (using unified `SubscriptionEventPayload`):
 
-- **Artist Subscriptions**: User subscribes to content from a specific artist. `subscriptionType: "artist"`, `targetID: artist_id`
-- **Genre Subscriptions**: User subscribes to content from a specific genre. `subscriptionType: "genre"`, `targetID: genre_id`
+- **Artist Subscriptions**: User subscribes to content from a specific artist. `EntityType: "ARTIST"`, `EntityID: artist_id`
+- **Genre Subscriptions**: User subscribes to content from a specific genre. `EntityType: "GENRE"`, `EntityID: genre_id`
 
-Both subscription types generate `subscription_created` and `subscription_deleted` events with the type and target information included in the event data.
+Both subscription types generate `subscription.created` and `subscription.deleted` events with the entity type and ID included in the event payload.
 
 ### The Idea Behind Event Sourcing & CQRS
 
@@ -103,21 +101,20 @@ Immutable event log - every state change in the analytics domain
 {
   "_id": "ObjectID",
   "user_id": "string",
-  "event_type": "string (song_played, rating_created, etc)",
+  "event_type": "string (listen_created, rating_created, rating_updated, rating_deleted, subscription_created, subscription_deleted)",
   "data": {},
   "timestamp": "timestamp"
 }
 ```
 
-Event-specific `data` fields:
+Event-specific `data` fields (from unified event payloads):
 
-- `song_played`: `songID`, `artistID`, `albumID`, `genreID`, `durationMS`, `playedAt`
-- `rating_created`: `songID`, `rating`, `createdAt`
-- `rating_updated`: `songID`, `oldRating`, `newRating`, `updatedAt`
-- `rating_deleted`: `songID`, `deletedRating`, `deletedAt`
-- `subscription_created`: `subscriptionType`, `targetID`, `createdAt`
-- `subscription_deleted`: `subscriptionType`, `targetID`, `deletedAt`
-- `song_deleted`: `songID`, `deletedAt`
+- `listen_created` (from ListenEventPayload): `song_id`, `user_id`, `event_id`, `created_at`
+- `rating_created` (from RatingEventPayload): `user_id`, `song_id`, `rating`, `event_id`, `created_at`
+- `rating_updated` (from RatingEventPayload): `user_id`, `song_id`, `rating`, `event_id`, `created_at`
+- `rating_deleted` (from RatingEventPayload): `user_id`, `song_id`, `rating`, `event_id`, `created_at`
+- `subscription_created` (from SubscriptionEventPayload): `user_id`, `entity_id`, `entity_type` (ARTIST|GENRE), `event_id`, `created_at`
+- `subscription_deleted` (from SubscriptionEventPayload): `user_id`, `entity_id`, `entity_type` (ARTIST|GENRE), `event_id`, `created_at`
 
 **Indexes:**
 
@@ -268,7 +265,7 @@ GET /activity-history/:userID
 
 **Activity Types:**
 
-- `song_played` - User listened to a song
+- `listen_created` - User listened to a song
 - `rating_created` - User created a new rating
 - `rating_updated` - User updated an existing rating
 - `rating_deleted` - User deleted a rating
