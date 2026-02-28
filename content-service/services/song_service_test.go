@@ -82,6 +82,8 @@ func (f *fakeSongRepo) UpdateAudioByID(
 type fakeAlbumManager struct {
 	removeFromAllFn func(context.Context, string) error
 	removedSongID   string
+	syncSongFn      func(context.Context, entities.Song) error
+	syncedSong      *entities.Song
 }
 
 func (f *fakeAlbumManager) FindAlbumByID(context.Context, string) (*entities.Album, error) {
@@ -96,6 +98,14 @@ func (f *fakeAlbumManager) RemoveSongFromAllAlbums(ctx context.Context, songID s
 	f.removedSongID = songID
 	if f.removeFromAllFn != nil {
 		return f.removeFromAllFn(ctx, songID)
+	}
+	return nil
+}
+
+func (f *fakeAlbumManager) SyncEmbeddedSong(ctx context.Context, song entities.Song) error {
+	f.syncedSong = &song
+	if f.syncSongFn != nil {
+		return f.syncSongFn(ctx, song)
 	}
 	return nil
 }

@@ -24,15 +24,31 @@ import (
 var ErrGenreNotFound = errors.New("genre not found")
 
 type GenreService struct {
-	r   *repositories.GenreRepository
-	jsc *events.JetStreamClient
-	tr  trace.Tracer
+	r          *repositories.GenreRepository
+	artistRepo *repositories.ArtistRepository
+	songRepo   *repositories.SongRepository
+	albumRepo  *repositories.AlbumRepository
+	jsc        *events.JetStreamClient
+	tr         trace.Tracer
 }
 
 // NewArtistService builds a ArtistService with repository.
-func NewGenreService(r repositories.GenreRepository, jsc events.JetStreamClient) *GenreService {
+func NewGenreService(
+	r repositories.GenreRepository,
+	artistRepo repositories.ArtistRepository,
+	songRepo repositories.SongRepository,
+	albumRepo repositories.AlbumRepository,
+	jsc events.JetStreamClient,
+) *GenreService {
 	tr := otel.Tracer("content-service/genre-service")
-	s := GenreService{r: &r, jsc: &jsc, tr: tr}
+	s := GenreService{
+		r:          &r,
+		artistRepo: &artistRepo,
+		songRepo:   &songRepo,
+		albumRepo:  &albumRepo,
+		jsc:        &jsc,
+		tr:         tr,
+	}
 
 	return &s
 }
@@ -210,6 +226,14 @@ func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.U
 		return nil, errors.Join(errs...)
 	}
 
+	syncCtx, syncSpan := s.tr.Start(updateCtx, "genre.update.sync_embeds")
+	if err := s.syncEmbeddedReferences(syncCtx, genre); err != nil {
+		syncSpan.RecordError(err)
+		syncSpan.End()
+		return nil, err
+	}
+	syncSpan.End()
+
 	// recommendation graph CQRS update
 	timeoutCtx, cancel = context.WithTimeout(updateCtx, 5*time.Second)
 	defer cancel()
@@ -234,6 +258,172 @@ func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.U
 	}
 
 	return genre, nil
+}
+
+func (s *GenreService) syncEmbeddedReferences(ctx context.Context, genre *entities.Genre) error {
+	// Sync embedded genre snapshot in artists.
+	artists, _, err := s.artistRepo.FindAll(ctx, bson.M{"genres._id": genre.ID}, 0, 0)
+	if err != nil {
+		return err
+	}
+
+	for _, artist := range artists {
+		changed := false
+		for i := range artist.Genres {
+			if artist.Genres[i].ID != genre.ID {
+				continue
+			}
+			if artist.Genres[i].Name != genre.Name {
+				artist.Genres[i].Name = genre.Name
+				changed = true
+			}
+		}
+		if !changed {
+			continue
+		}
+		if _, err := s.artistRepo.UpdateByID(ctx, artist.ID, map[string]any{"genres": artist.Genres}); err != nil {
+			return err
+		}
+	}
+
+	// Sync embedded genre snapshot in songs, including song.artists[].genres.
+	songFilter := bson.M{
+		"$or": []bson.M{
+			{"genres._id": genre.ID},
+			{"artists.genres._id": genre.ID},
+		},
+	}
+	songs, _, err := s.songRepo.FindAll(ctx, songFilter, 0, 0)
+	if err != nil {
+		return err
+	}
+
+	for _, song := range songs {
+		genresChanged := false
+		for i := range song.Genres {
+			if song.Genres[i].ID != genre.ID {
+				continue
+			}
+			if song.Genres[i].Name != genre.Name {
+				song.Genres[i].Name = genre.Name
+				genresChanged = true
+			}
+		}
+
+		artistsChanged := false
+		for i := range song.Artists {
+			for j := range song.Artists[i].Genres {
+				if song.Artists[i].Genres[j].ID != genre.ID {
+					continue
+				}
+				if song.Artists[i].Genres[j].Name != genre.Name {
+					song.Artists[i].Genres[j].Name = genre.Name
+					artistsChanged = true
+				}
+			}
+		}
+
+		if !genresChanged && !artistsChanged {
+			continue
+		}
+
+		update := map[string]any{}
+		if genresChanged {
+			update["genres"] = song.Genres
+		}
+		if artistsChanged {
+			update["artists"] = song.Artists
+		}
+
+		if _, err := s.songRepo.UpdateByID(ctx, song.ID, update); err != nil {
+			return err
+		}
+	}
+
+	// Sync embedded genre snapshot in albums, including nested artists/songs.
+	albumFilter := bson.M{
+		"$or": []bson.M{
+			{"genres._id": genre.ID},
+			{"artists.genres._id": genre.ID},
+			{"songs.genres._id": genre.ID},
+			{"songs.artists.genres._id": genre.ID},
+		},
+	}
+	albums, _, err := s.albumRepo.FindAll(ctx, albumFilter, 0, 0)
+	if err != nil {
+		return err
+	}
+
+	for _, album := range albums {
+		genresChanged := false
+		for i := range album.Genres {
+			if album.Genres[i].ID != genre.ID {
+				continue
+			}
+			if album.Genres[i].Name != genre.Name {
+				album.Genres[i].Name = genre.Name
+				genresChanged = true
+			}
+		}
+
+		artistsChanged := false
+		for i := range album.Artists {
+			for j := range album.Artists[i].Genres {
+				if album.Artists[i].Genres[j].ID != genre.ID {
+					continue
+				}
+				if album.Artists[i].Genres[j].Name != genre.Name {
+					album.Artists[i].Genres[j].Name = genre.Name
+					artistsChanged = true
+				}
+			}
+		}
+
+		songsChanged := false
+		for i := range album.Songs {
+			for j := range album.Songs[i].Genres {
+				if album.Songs[i].Genres[j].ID != genre.ID {
+					continue
+				}
+				if album.Songs[i].Genres[j].Name != genre.Name {
+					album.Songs[i].Genres[j].Name = genre.Name
+					songsChanged = true
+				}
+			}
+			for j := range album.Songs[i].Artists {
+				for k := range album.Songs[i].Artists[j].Genres {
+					if album.Songs[i].Artists[j].Genres[k].ID != genre.ID {
+						continue
+					}
+					if album.Songs[i].Artists[j].Genres[k].Name != genre.Name {
+						album.Songs[i].Artists[j].Genres[k].Name = genre.Name
+						songsChanged = true
+					}
+				}
+			}
+		}
+
+		if !genresChanged && !artistsChanged && !songsChanged {
+			continue
+		}
+
+		update := map[string]any{}
+		if genresChanged {
+			update["genres"] = album.Genres
+		}
+		if artistsChanged {
+			update["artists"] = album.Artists
+		}
+		if songsChanged {
+			update["songs"] = album.Songs
+		}
+
+		if _, err := s.albumRepo.UpdateByID(ctx, album.ID, update); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (s *GenreService) DeleteGenre(ctx context.Context, idStr string) error {
