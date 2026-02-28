@@ -37,30 +37,4 @@
     </div>
   </div>
 
-  <div class="homepage-left-sidebar__bottom">
-    <div class="homepage-left-sidebar__section">
-      <h3 class="homepage-left-sidebar__title">Recent activity</h3>
-      <nav class="homepage-left-sidebar__list" aria-label="Recent activity">
-        @if (recentActivitySg().length === 0) {
-          <p class="homepage-left-sidebar__item-note">No recent activity yet.</p>
-        } @else {
-          @for (item of recentActivitySg(); track item.key) {
-            <a class="homepage-left-sidebar__item" [routerLink]="item.href">
-              <app-cover-art
-                class="homepage-left-sidebar__cover homepage-left-sidebar__cover--square"
-                [name]="item.label"
-                [square]="true"
-                [size]="34"
-                [fontSize]="14"
-              />
-              <span class="homepage-left-sidebar__item-meta">
-                <span class="homepage-left-sidebar__item-label">{{ item.label }}</span>
-                <span class="homepage-left-sidebar__item-note">{{ item.meta }}</span>
-              </span>
-            </a>
-          }
-        }
-      </nav>
-    </div>
-  </div>
 </section>
