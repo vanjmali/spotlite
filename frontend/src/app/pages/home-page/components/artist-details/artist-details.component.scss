@@ -1,12 +1,23 @@
 @use 'variables/colors' as *;
+@use 'mixins' as m;
+
+:host {
+  display: block;
+  width: 100%;
+}
 
 .artist-details {
   padding: 32px 24px;
   display: flex;
   flex-direction: column;
   gap: 24px;
-  max-width: 1000px;
-  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
+
+  app-widget {
+    display: block;
+    width: 100%;
+  }
 
   &__back-button {
     display: flex;
@@ -74,6 +85,42 @@
     gap: 1rem;
   }
 
+  &__subscribe-btn {
+    width: fit-content;
+    border: 1px solid rgba($color-primary, 0.45);
+    border-radius: 999px;
+    background: rgba($color-primary, 0.14);
+    color: $color-primary-light;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
+
+    &:hover:not(:disabled) {
+      border-color: $color-primary-light;
+      background: rgba($color-primary, 0.25);
+    }
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: wait;
+    }
+
+    mat-icon {
+      width: 18px;
+      height: 18px;
+      font-size: 18px;
+    }
+  }
+
+  &__subscribe-btn--active {
+    background: rgba($color-primary, 0.3);
+  }
+
   &__genres {
     display: flex;
     flex-wrap: wrap;
@@ -88,6 +135,7 @@
     border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 500;
+    text-decoration: none;
   }
 
   &__description {
@@ -105,47 +153,88 @@
 
   &__albums-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.75rem;
   }
 
   &__album-card {
-    padding: 1.25rem;
-    background-color: rgba($color-gray-900, 0.5);
-    border: 1px solid rgba($color-primary, 0.2);
-    border-radius: 0.5rem;
+    @include m.selectable-surface(12px, rgba($color-primary, 0.22), rgba($color-gray-900, 0.46));
+    padding: 10px;
     cursor: pointer;
-    transition: all 0.3s ease;
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr) 30px;
+    gap: 10px;
+    align-items: flex-start;
+  }
 
-    &:hover {
-      border-color: $color-primary;
-      background-color: rgba($color-primary, 0.1);
-      transform: translateY(-2px);
-    }
+  &__album-cover {
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+
+  &__album-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.42rem;
   }
 
   &__album-header {
-    margin-bottom: 1rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
   }
 
   &__album-title {
     margin: 0;
     color: $color-text-primary;
-    font-size: 1rem;
-    font-weight: 600;
-    line-height: 1.4;
+    font-size: 0.94rem;
+    font-weight: 700;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
-  &__album-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+  &__album-play {
+    border: 1px solid rgba($color-primary, 0.38);
+    background: rgba($color-primary, 0.18);
+    color: $color-primary-light;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
+
+    &:hover {
+      border-color: $color-primary-light;
+      background: rgba($color-primary, 0.28);
+    }
+
+    mat-icon {
+      width: 17px;
+      height: 17px;
+      font-size: 17px;
+    }
+  }
+
+  &__album-play--active {
+    border-color: $color-primary-light;
+    background: rgba($color-primary, 0.32);
   }
 
   &__album-date {
     margin: 0;
     color: $color-gray-400;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     font-family: 'Courier New', monospace;
   }
 
@@ -157,19 +246,20 @@
 
   &__album-genre {
     display: inline-block;
-    padding: 0.2rem 0.5rem;
+    padding: 0.15rem 0.46rem;
     background-color: rgba($color-gray-700, 0.6);
     color: $color-gray-300;
     border-radius: 4px;
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     font-weight: 500;
+    text-decoration: none;
   }
 
   &__album-songs {
     margin: 0;
     color: $color-primary;
-    font-size: 0.75rem;
-    font-weight: 500;
+    font-size: 0.7rem;
+    font-weight: 600;
     display: flex;
     align-items: center;
     gap: 0.4rem;

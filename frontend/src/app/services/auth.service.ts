@@ -20,7 +20,12 @@ export class AuthService {
   // Public signals for reactive state
   readonly currentEmailSg = signal<string | null>(null);
   readonly accessTokenSg = signal<string | null>(null);
+  readonly authInitializedSg = signal(false);
   readonly isAuthenticatedSg = computed(() => !!this.accessTokenSg());
+  readonly currentUserIdSg = computed(() => {
+    const claims = this.getTokenClaims(this.accessTokenSg());
+    return this.extractUserIdFromClaims(claims);
+  });
   readonly isAdminSg = computed(() => {
     const claims = this.getTokenClaims(this.accessTokenSg());
     if (!claims) {
@@ -57,6 +62,48 @@ export class AuthService {
       .trim();
 
     return candidate ? candidate.charAt(0).toUpperCase() : 'U';
+  });
+  readonly profileDisplayNameSg = computed(() => {
+    const claims = this.getTokenClaims(this.accessTokenSg());
+    const firstName = claims?.first_name?.trim() ?? '';
+    const lastName = claims?.last_name?.trim() ?? '';
+    const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+    if (fullName.length > 0) {
+      return fullName;
+    }
+
+    const byName = claims?.name?.trim() ?? '';
+    if (byName.length > 0) {
+      return byName;
+    }
+
+    const byEmail = this.currentEmailSg()?.trim() ?? '';
+    if (byEmail.length > 0) {
+      return byEmail;
+    }
+
+    return 'User';
+  });
+  readonly profileAvatarNameSg = computed(() => {
+    const claims = this.getTokenClaims(this.accessTokenSg());
+    const firstName = claims?.first_name?.trim() ?? '';
+    const lastName = claims?.last_name?.trim() ?? '';
+    const fullName = [firstName, lastName].filter(Boolean).join(' ').trim();
+    if (fullName.length > 0) {
+      return fullName;
+    }
+
+    const byName = claims?.name?.trim() ?? '';
+    if (byName.length > 0) {
+      return byName;
+    }
+
+    const byEmail = this.currentEmailSg()?.trim() ?? '';
+    if (byEmail.length > 0) {
+      return byEmail;
+    }
+
+    return 'User';
   });
 
   readonly notificationService = inject(NotificationService);
@@ -171,7 +218,10 @@ export class AuthService {
 
   // Initialize auth on app startup - refresh access token using httpOnly cookie
   initializeAuth(): void {
-    void this.refreshAccessToken();
+    this.authInitializedSg.set(false);
+    void this.refreshAccessToken().finally(() => {
+      this.authInitializedSg.set(true);
+    });
   }
 
   // Refresh access token using httpOnly refresh cookie
@@ -287,9 +337,11 @@ export class AuthService {
 
   private getTokenClaims(token: string | null): {
     name?: string;
+    first_name?: string;
+    last_name?: string;
     username?: string;
     email?: string;
-    sub?: string;
+    sub?: string | { $oid?: string } | Record<string, unknown>;
     role?: string;
     roles?: string[];
     is_admin?: boolean;
@@ -312,5 +364,29 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  private extractUserIdFromClaims(
+    claims: {
+      sub?: string | { $oid?: string } | Record<string, unknown>;
+    } | null
+  ): string | null {
+    const sub = claims?.sub;
+    if (!sub) {
+      return null;
+    }
+
+    if (typeof sub === 'string' && sub.trim().length > 0) {
+      return sub;
+    }
+
+    if (typeof sub === 'object' && '$oid' in sub) {
+      const oid = (sub as { $oid?: unknown }).$oid;
+      if (typeof oid === 'string' && oid.trim().length > 0) {
+        return oid;
+      }
+    }
+
+    return null;
   }
 }

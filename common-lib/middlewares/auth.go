@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -25,32 +26,16 @@ const (
 
 func ValidateJWT(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		pubKey, _ := utils.GetPublicKey()
-
-		tStr := extractToken(r.Header.Get("Authorization"))
+		tStr := ExtractBearerToken(r.Header.Get("Authorization"))
 		if tStr == "" {
 			logging.Securityf(r.Context(), "auth_missing_token method=%s path=%s remote_addr=%s", r.Method, r.URL.Path, r.RemoteAddr)
 			_ = respond.Unauthorized(w)
 			return
 		}
 
-		t, err := jwt.Parse(tStr, func(token *jwt.Token) (interface{}, error) {
-			// final check to avoid "JWT Algorithm Confusion Attack"
-			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-				return nil, jwt.ErrSignatureInvalid
-			}
-			return pubKey, nil
-		})
-
-		if err != nil || !t.Valid {
+		claims, err := ValidateJWTToken(tStr)
+		if err != nil {
 			logging.Securityf(r.Context(), "auth_invalid_or_expired_token method=%s path=%s remote_addr=%s", r.Method, r.URL.Path, r.RemoteAddr)
-			_ = respond.Unauthorized(w)
-			return
-		}
-
-		claims, ok := t.Claims.(jwt.MapClaims)
-		if !ok {
-			logging.Securityf(r.Context(), "auth_invalid_token_claims method=%s path=%s remote_addr=%s", r.Method, r.URL.Path, r.RemoteAddr)
 			_ = respond.Unauthorized(w)
 			return
 		}
@@ -95,7 +80,8 @@ func ValidateJWT(next http.Handler) http.HandlerFunc {
 	}
 }
 
-func extractToken(authorizationHeader string) string {
+// ExtractBearerToken returns the bearer token value from an Authorization header.
+func ExtractBearerToken(authorizationHeader string) string {
 	bearerToken := strings.Split(authorizationHeader, " ")
 
 	if len(bearerToken) == 2 {
@@ -103,6 +89,36 @@ func extractToken(authorizationHeader string) string {
 	}
 
 	return ""
+}
+
+// ValidateJWTToken validates an RSA JWT token and returns its claims.
+func ValidateJWTToken(tokenString string) (jwt.MapClaims, error) {
+	if tokenString == "" {
+		return nil, errors.New("empty token")
+	}
+
+	pubKey, err := utils.GetPublicKey()
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// final check to avoid "JWT Algorithm Confusion Attack"
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		return pubKey, nil
+	})
+	if err != nil || !t.Valid {
+		return nil, errors.New("invalid token")
+	}
+
+	claims, ok := t.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, errors.New("invalid token claims")
+	}
+
+	return claims, nil
 }
 
 // GetUsernameFromContext retrieves the user ID from the request context.

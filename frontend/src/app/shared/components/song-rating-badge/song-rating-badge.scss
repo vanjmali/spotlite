@@ -1,0 +1,31 @@
+@use 'variables/colors' as *;
+
+.song-rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: $color-text-secondary;
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 11px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.song-rating-badge--rated {
+  color: #facc15;
+  border-color: rgba(250, 204, 21, 0.45);
+  background: rgba(250, 204, 21, 0.12);
+}
+
+.song-rating-badge__icon {
+  width: 12px;
+  height: 12px;
+  font-size: 12px;
+}
+
+.song-rating-badge__value {
+  font-weight: 700;
+}

@@ -1,22 +1,178 @@
-<app-widget title="Artists">
-  <div content class="artists-list">
-    @if (isLoadingSg()) {
-      <p class="artists-list__loading">Loading artists...</p>
-    } @else if (artistsSg().length === 0) {
-      <p class="artists-list__empty">No artists available</p>
-    } @else {
-      <div class="artists-list__grid">
-        @for (artist of artistsSg(); track artist.id) {
-          <div class="artists-list__artist-card" (click)="selectArtist(artist)">
-            <div class="artists-list__artist-image">
-              <span class="artists-list__artist-initial">{{
-                artist.name.charAt(0).toUpperCase()
-              }}</span>
+<section class="recommendations">
+  <header class="recommendations__hero">
+    <h1>Made for You</h1>
+    <p>Fresh picks based on your Spotlite activity.</p>
+  </header>
+
+  @if (isLoadingSg()) {
+    <section class="recommendations__section recommendations__section--skeleton">
+      <div class="recommendations__section-header">
+        <div class="recommendations__skeleton recommendations__skeleton--title"></div>
+      </div>
+      <div class="recommendations__artists">
+        @for (item of [0, 1, 2, 3]; track $index) {
+          <div class="recommendations__artist-card recommendations__artist-card--skeleton">
+            <div class="recommendations__skeleton recommendations__skeleton--avatar"></div>
+            <div class="recommendations__artist-meta">
+              <div class="recommendations__skeleton recommendations__skeleton--line-lg"></div>
+              <div class="recommendations__skeleton recommendations__skeleton--line"></div>
             </div>
-            <h3 class="artists-list__artist-name">{{ artist.name }}</h3>
           </div>
         }
       </div>
-    }
-  </div>
-</app-widget>
+    </section>
+
+    <section class="recommendations__section recommendations__section--skeleton">
+      <div class="recommendations__section-header">
+        <div class="recommendations__skeleton recommendations__skeleton--title"></div>
+      </div>
+      <div class="recommendations__albums">
+        @for (item of [0, 1, 2, 3]; track $index) {
+          <div class="recommendations__album-card recommendations__album-card--skeleton">
+            <div class="recommendations__skeleton recommendations__skeleton--cover"></div>
+            <div class="recommendations__skeleton recommendations__skeleton--line-lg"></div>
+            <div class="recommendations__skeleton recommendations__skeleton--line"></div>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="recommendations__section recommendations__section--skeleton">
+      <div class="recommendations__section-header">
+        <div class="recommendations__skeleton recommendations__skeleton--title"></div>
+      </div>
+      <div class="recommendations__genres">
+        @for (item of [0, 1, 2, 3, 4, 5]; track $index) {
+          <div class="recommendations__skeleton recommendations__skeleton--chip"></div>
+        }
+      </div>
+    </section>
+
+    <section class="recommendations__section recommendations__section--skeleton">
+      <div class="recommendations__section-header">
+        <div class="recommendations__skeleton recommendations__skeleton--title"></div>
+      </div>
+      <div class="recommendations__songs">
+        @for (item of [0, 1, 2, 3]; track $index) {
+          <div class="recommendations__song recommendations__song--skeleton">
+            <div class="recommendations__skeleton recommendations__skeleton--line-lg"></div>
+            <div class="recommendations__skeleton recommendations__skeleton--line"></div>
+          </div>
+        }
+      </div>
+    </section>
+  } @else {
+    <section class="recommendations__section">
+      <div class="recommendations__section-header">
+        <h2>Top artists for you</h2>
+      </div>
+      @if (artistsErrorSg()) {
+        <app-message [message]="artistsErrorSg()" type="error" />
+      }
+      @if (recommendedArtistsSg().length === 0 && !artistsErrorSg()) {
+        <p class="recommendations__empty">Not available right now, check back later!</p>
+      } @else {
+        <div class="recommendations__artists">
+          @for (artist of recommendedArtistsSg(); track artist.id) {
+            <a class="recommendations__artist-card" [routerLink]="['/artist', artist.id]">
+              <app-cover-art class="recommendations__avatar" [name]="artist.name" />
+              <div class="recommendations__artist-meta">
+                <span class="recommendations__artist-name">{{ artist.name }}</span>
+                <span class="recommendations__artist-desc">{{
+                  shortDescription(artist.description || 'No artist description available.', 120)
+                }}</span>
+              </div>
+            </a>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="recommendations__section">
+      <div class="recommendations__section-header">
+        <h2>Albums to play next</h2>
+      </div>
+      @if (albumsErrorSg()) {
+        <app-message [message]="albumsErrorSg()" type="error" />
+      }
+      @if (recommendedAlbumsSg().length === 0 && !albumsErrorSg()) {
+        <p class="recommendations__empty">Nothing to show right now, check back later!</p>
+      } @else {
+        <div class="recommendations__albums">
+          @for (album of recommendedAlbumsSg(); track album.id) {
+            <app-album-card
+              class="recommendations__album-card"
+              [album]="album"
+              [linkPrefix]="'album'"
+              [showPlayControl]="true"
+              [isPlaying]="isAlbumPlaying(album)"
+              (playToggle)="toggleAlbumPlayback(album, $event)"
+            />
+          }
+        </div>
+      }
+    </section>
+
+    <section class="recommendations__section">
+      <div class="recommendations__section-header">
+        <h2>Check out new genres!</h2>
+      </div>
+      @if (genresErrorSg()) {
+        <app-message [message]="genresErrorSg()" type="error" />
+      }
+      @if (recommendedGenresSg().length === 0 && !genresErrorSg()) {
+        <p class="recommendations__empty">No genres to explore just yet. More are on the way.</p>
+      } @else {
+        <div class="recommendations__genres">
+          @for (genre of recommendedGenresSg(); track genre.id) {
+            <button type="button" class="recommendations__genre-chip" (click)="openGenre(genre)">
+              {{ genre.name }}
+            </button>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="recommendations__section">
+      <div class="recommendations__section-header">
+        <h2>Quick play</h2>
+      </div>
+      @if (songsErrorSg()) {
+        <app-message [message]="songsErrorSg()" type="error" />
+      }
+      @if (recommendedSongsSg().length === 0 && !songsErrorSg()) {
+        <p class="recommendations__empty">No songs queued right now. Try again in a moment.</p>
+      } @else {
+        <div class="recommendations__songs">
+          @for (song of recommendedSongsSg(); track song.id) {
+            <button type="button" class="recommendations__song" (click)="playOrToggleSong(song)">
+              <app-cover-art
+                class="recommendations__song-cover"
+                [name]="song.title"
+                [size]="30"
+                [fontSize]="10"
+                [square]="true"
+                [pattern]="false"
+              />
+              <span class="recommendations__song-main">
+                <span class="recommendations__song-title">{{ song.title }}</span>
+                <span class="recommendations__song-artists">
+                  <span class="recommendations__song-artists-text">{{
+                    artistNames(song.artists)
+                  }}</span>
+                </span>
+              </span>
+              <app-song-trailing-meta
+                class="recommendations__song-right"
+                [songId]="song.id"
+                [average]="song.rating?.average"
+                [count]="song.rating?.count"
+                [durationSeconds]="song.lengthSeconds"
+              />
+            </button>
+          }
+        </div>
+      }
+    </section>
+  }
+</section>

@@ -11,7 +11,7 @@ A microservice which main goal is to persist notifications and notify users abou
 
 Additional services are available for local development:
 
-- Position yourself in the root directory run `docker compose up --build`, and then run `docker exec -it notification-cassandra cqlsh`.
+- Position yourself in the root directory run `docker compose up --build`, and then run `docker compose exec notification-cassandra cqlsh`.
   Congrats you can now run cql commands.
 
 ## Structure
