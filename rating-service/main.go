@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	pb "github.com/vanjmali/spotlite/common-lib/proto/rating_service"
 	"github.com/vanjmali/spotlite/common-lib/events"
+	pb "github.com/vanjmali/spotlite/common-lib/proto/rating_service"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/rating-service/handlers"

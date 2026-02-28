@@ -349,6 +349,22 @@ func (r *UserRepositoryMongo) ExistsByEmail(ctx context.Context, email string) (
 	return true, nil
 }
 
+func (r *UserRepositoryMongo) Delete(ctx context.Context, userID primitive.ObjectID) error {
+	c := r.getCollection()
+
+	filter := bson.M{"_id": userID}
+	res, err := c.DeleteOne(ctx, filter)
+	if err == nil && res.DeletedCount == 0 {
+		return ErrUserNotFound
+	}
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // UpdateProfile updates editable profile fields for a user.
 func (r *UserRepositoryMongo) UpdateProfile(
 	ctx context.Context,

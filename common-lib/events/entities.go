@@ -12,6 +12,10 @@ const (
 
 	CONTENT_STREAM       = "CONTENT"
 	SUBSCRIPTIONS_STREAM = "SUBSCRIPTIONS"
+	USERS_STREAM         = "USERS"
+	SONGS_STREAM         = "SONGS"
+	GENRES_STREAM        = "GENRES"
+	ARTISTS_STREAM       = "ARTISTS"
 	RATINGS_STREAM       = "RATINGS"
 	LISTENS_STREAM       = "LISTENS"
 
@@ -23,6 +27,23 @@ const (
 
 	SUBJECT_SUBSCRIBER_BATCH = "subscribers.batch.process"
 	SUB_DURABLE              = "SUBSCRIBER_PROCESSOR"
+
+	SUBJECT_USER_CREATED = "user.created"
+	USER_DURABLE         = "USER_PROCESSOR"
+
+	SUBJECT_GENRE_CREATED    = "genres.created"
+	SUBJECT_GENRE_SUBSCRIBED = "genres.subscription.created"
+	SUBJECT_GENRE_UPDATED    = "genres.updated"
+	GENRE_CREATE_DURABLE     = "GENRE_CREATE_PROCESSOR"
+	GENRE_SUB_DURABLE        = "GENRE_SUB_PROCESSOR"
+	GENRE_UPDATE_DURABLE     = "GENRE_UPDATE_PROCESSOR"
+
+	SUBJECT_SONG_CREATED = "songs.created"
+	SUBJECT_SONG_RATED   = "songs.rating.created"
+	SUBJECT_SONG_UPDATED = "songs.updated"
+	SONG_CREATE_DURABLE  = "SONG_CREATE_PROCESSOR"
+	SONG_RATE_DURABLE    = "SONG_RATE_PROCESSOR"
+	SONG_UPDATE_DURABLE  = "SONG_UPDATE_PROCESSOR"
 
 	SUBJECT_RATING_CREATED = "rating.created"
 	SUBJECT_RATING_UPDATED = "rating.updated"
@@ -65,6 +86,43 @@ type SubscribersBatchEventPayload struct {
 	CreatedAt     time.Time  `json:"created_at"`
 	SubscriberIDs []string   `json:"subscriber_ids"`
 	EventID       string     `json:"event_id"`
+}
+
+type UserRegistrationPayload struct {
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+}
+
+type GenreCreationPayload struct {
+	GenreID   string `json:"genre_id"`
+	GenreName string `json:"genre_name"`
+}
+
+type SongCreationPayload struct {
+	SongID      string   `json:"song_id"`
+	SongTitle   string   `json:"song_title"`
+	Duration    int      `json:"duration"`
+	GenreIDs    []string `json:"genre_ids"`
+	ArtistNames []string `json:"artist_names"`
+}
+
+type GenreSubscriptionEventPayload struct {
+	GenreID string `json:"genre_id"`
+	UserID  string `json:"user_id"`
+}
+
+type SongRatingPayload struct {
+	SongID string `json:"song_id"`
+	UserID string `json:"user_id"`
+	Value  int    `json:"value"`
+}
+
+type SongUpdatePayload struct {
+	SongID      string   `json:"song_id"`
+	SongTitle   string   `json:"song_title"`
+	Duration    int      `json:"duration"`
+	GenreIDs    []string `json:"genre_ids"`
+	ArtistNames []string `json:"artist_names"`
 }
 
 type RatingEventPayload struct {
