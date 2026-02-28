@@ -19,7 +19,7 @@ export interface SongRatingSummary {
 
 export interface RatingsResponse {
   items: Rating[];
-  nextCursor?: string;
+  next_cursor?: string;
 }
 
 export interface PaginatedRatingsResponse {
