@@ -33,7 +33,7 @@ type SongRating struct {
 }
 
 type SongRecommendation struct {
-	SongID   string   `json:"song_d"`
+	SongID   string   `json:"song_id"`
 	Title    string   `json:"title"`
 	Duration int      `json:"duration"`
 	Rating   float64  `json:"rating"`

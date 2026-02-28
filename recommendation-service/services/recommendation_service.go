@@ -27,7 +27,8 @@ type GraphRelationRepository interface {
 	CreateRating(ctx context.Context, sr entities.SongRating) error
 	UpdateSongWithGenres(ctx context.Context, sn entities.SongNode) error
 	UpdateGenre(ctx context.Context, gn entities.GenreNode) error
-	GetSubscribedSongsForHomepage(ctx context.Context, userID string) ([]*entities.SongRecommendation, error)
+	FindSubscriptionBasedRecommendations(ctx context.Context, userID string) ([]*entities.SongRecommendation, error)
+	FindLikeBasedRecommendation(ctx context.Context, userID string) (*entities.SongRecommendation, error)
 }
 type GenreNodeRepository interface {
 	Create(ctx context.Context, genre entities.GenreNode) error
@@ -191,10 +192,29 @@ func (rs *RecommendationService) SubscriptionBasedRecommendation(ctx context.Con
 		return nil, ErrObjectIdCastFailed
 	}
 
-	srs, err := rs.r.rr.GetSubscribedSongsForHomepage(recCtx, userIDStr)
+	srs, err := rs.r.rr.FindSubscriptionBasedRecommendations(recCtx, userIDStr)
 	if err != nil {
 		return nil, err
 	}
 
 	return srs, nil
+}
+
+func (rs *RecommendationService) LikeBasedRecommendation(ctx context.Context) (*entities.SongRecommendation, error) {
+	recCtx, recSpan := rs.tr.Start(ctx, "recommendation.like_based")
+	defer recSpan.End()
+
+	userIDStr := middlewares.GetUserIdFromContext(ctx)
+
+	_, err := primitive.ObjectIDFromHex(userIDStr)
+	if err != nil {
+		return nil, ErrObjectIdCastFailed
+	}
+
+	lr, err := rs.r.rr.FindLikeBasedRecommendation(recCtx, userIDStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return lr, nil
 }

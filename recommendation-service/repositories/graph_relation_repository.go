@@ -187,15 +187,15 @@ func (r *GraphRelationRepository) CreateRating(ctx context.Context, sr entities.
 	return err
 }
 
-func (r *GraphRelationRepository) GetSubscribedSongsForHomepage(ctx context.Context, userID string) ([]*entities.SongRecommendation, error) {
+func (r *GraphRelationRepository) FindSubscriptionBasedRecommendations(ctx context.Context, userID string) ([]*entities.SongRecommendation, error) {
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer session.Close(ctx)
 
 	query := `
-		MATCH (u:User {id: $userId})-[:SUBSCRIBED_TO]->(g:Genre)<-[:BELONGS_TO]-(s:Song)
+		MATCH (u:User {user_id: $userId})-[:SUBSCRIBED_TO]->(g:Genre)<-[:BELONGS_TO]-(s:Song)
 		WHERE NOT EXISTS {
 			MATCH (u)-[r:RATED]->(s)
-			WHERE r.rating < 4
+			WHERE r.value < 4
 		}
 		WITH DISTINCT s
 		OPTIONAL MATCH (:User)-[all_r:RATED]->(s)
@@ -204,7 +204,7 @@ func (r *GraphRelationRepository) GetSubscribedSongsForHomepage(ctx context.Cont
 			s.title AS title, 
 			s.duration AS duration, 
 			s.artist_names AS artists, 
-			COALESCE(avg(all_r.rating), 0.0) AS avgRating
+			COALESCE(avg(all_r.value), 0.0) AS avgRating
 		LIMIT 5
 	`
 
@@ -283,4 +283,107 @@ func (r *GraphRelationRepository) GetSubscribedSongsForHomepage(ctx context.Cont
 	}
 
 	return result.([]*entities.SongRecommendation), nil
+}
+
+func (r *GraphRelationRepository) FindLikeBasedRecommendation(ctx context.Context, userID string) (*entities.SongRecommendation, error) {
+	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	defer session.Close(ctx)
+
+	query := `
+		MATCH (u:User)-[r:RATED]->(s:Song)
+		WHERE r.value = 5 AND u.user_id <> $userId
+		  AND NOT EXISTS {
+			MATCH (:User {user_id: $userId})-[:SUBSCRIBED_TO]->(:Genre)<-[:BELONGS_TO]-(s)
+		  }
+		WITH s, count(r) AS fives
+		ORDER BY fives DESC
+		LIMIT 1
+		
+		OPTIONAL MATCH (:User)-[all_r:RATED]->(s)
+		RETURN 
+			s.song_id AS songId, 
+			s.title AS title, 
+			s.duration AS duration, 
+			s.artist_names AS artists, 
+			COALESCE(avg(all_r.value), 0.0) AS avgRating
+	`
+
+	params := map[string]any{
+		"userId": userID,
+	}
+
+	result, err := session.ExecuteRead(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		records, err := tx.Run(ctx, query, params)
+		if err != nil {
+			return nil, err
+		}
+
+		if records.Next(ctx) {
+			record := records.Record()
+
+			songIdVal, _ := record.Get("songId")
+			titleVal, _ := record.Get("title")
+			durationVal, _ := record.Get("duration")
+			artistsVal, _ := record.Get("artists")
+			avgRatingVal, _ := record.Get("avgRating")
+
+			var songId, title string
+			if songIdVal != nil {
+				songId = songIdVal.(string)
+			}
+			if titleVal != nil {
+				title = titleVal.(string)
+			}
+
+			var duration int
+			if durationVal != nil {
+				switch v := durationVal.(type) {
+				case int64:
+					duration = int(v)
+				case int:
+					duration = v
+				}
+			}
+
+			var artists []string
+			if artistsVal != nil {
+				if genericArray, ok := artistsVal.([]any); ok {
+					for _, item := range genericArray {
+						if strItem, isStr := item.(string); isStr {
+							artists = append(artists, strItem)
+						}
+					}
+				}
+			}
+
+			var average float64
+			if avgRatingVal != nil {
+				switch v := avgRatingVal.(type) {
+				case float64:
+					average = v
+				case int64:
+					average = float64(v)
+				}
+			}
+
+			return &entities.SongRecommendation{
+				SongID:   songId,
+				Title:    title,
+				Duration: duration,
+				Rating:   average,
+				Artists:  artists,
+			}, nil
+		}
+		return nil, nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get top rated unsubscribed song: %w", err)
+	}
+
+	if result == nil {
+		return nil, nil
+	}
+
+	return result.(*entities.SongRecommendation), nil
 }

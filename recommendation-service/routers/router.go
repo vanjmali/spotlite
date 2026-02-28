@@ -18,6 +18,7 @@ func HandleRequests(h *handlers.RecommendationHandler) http.Handler {
 	telemetry.AttachMuxTracing(api, "recommendation-service")
 
 	api.Handle("/subscription-based", middlewares.RequireAuthenticated(h.SubscriptionBasedRecommendation)).Methods("GET")
+	api.Handle("/like-based", middlewares.RequireAuthenticated(h.LikeBasedRecommendation)).Methods("GET")
 
 	return r
 }
