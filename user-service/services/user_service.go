@@ -179,7 +179,6 @@ func (s *UserService) Register(ctx context.Context, reqDto *dtos.UserRegistratio
 	if err := s.ms.SendAccountVerificationEmail(reqDto.Email, userEntity.EmailVerification.Token); err != nil {
 		mailSpan.RecordError(err)
 		logging.Errorf(registerCtx, "failed to send verification email: %v", err)
-		return err
 	}
 
 	return nil
