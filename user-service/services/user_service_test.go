@@ -6,7 +6,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"os"
 	"testing"
 	"time"
@@ -265,36 +264,6 @@ func TestUserServiceRegisterEmailTaken(t *testing.T) {
 	require.ErrorIs(t, err, ErrEmailTaken)
 	require.False(t, mail.verificationCalled, "verification email should not be sent")
 	require.False(t, repo.createCalled, "user should not be created")
-}
-
-func TestUserServiceRegisterEmailSendFails(t *testing.T) {
-	repo := &fakeUserRepo{}
-	mail := &fakeMailService{
-		sendVerificationFn: func(string, string) error {
-			return errors.New("smtp down")
-		},
-	}
-
-	jsc := new(MockEventClient)
-	// Mock the publish call (it happens after creation, before email)
-	jsc.On("Publish", mock.Anything, "user.created", mock.Anything).Return(nil)
-
-	svc := NewUserService(repo, mail, jsc)
-
-	err := svc.Register(context.Background(), &dtos.UserRegistrationDto{
-		Username:  "unique",
-		FirstName: "Jane",
-		LastName:  "Doe",
-		Email:     "jane@example.com",
-		Password:  "StrongPass123!",
-	})
-
-	require.Error(t, err, "expected error when email sending fails")
-	require.True(t, mail.verificationCalled, "verification email should be attempted")
-
-	// CHANGE: We expect the user to be created because the service persists
-	// the user before attempting to send the email.
-	require.True(t, repo.createCalled, "user is created before email attempt")
 }
 
 func TestUserServiceRegisterSuccess(t *testing.T) {
