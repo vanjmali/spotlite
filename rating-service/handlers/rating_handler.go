@@ -155,7 +155,7 @@ func (h *RatingHandler) HandleGetRatingsBySongID(w http.ResponseWriter, r *http.
 		}
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"items": ratings,
 	}
 
