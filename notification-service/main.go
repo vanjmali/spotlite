@@ -24,8 +24,9 @@ import (
 )
 
 var (
-	cassHost           = utils.GetEnv("CASSANDRA_HOST", "127.0.0.1")
-	ks                 = utils.GetEnv("CASSANDRA_KEYSPACE", "notification_service")
+	cassHost           = utils.MustGetEnv("CASSANDRA_HOST")
+	ks                 = utils.MustGetEnv("CASSANDRA_KEYSPACE")
+	natsURL            = utils.MustGetEnv("NATS_URL")
 	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
 	certFilePath       = utils.MustGetEnv("CERT_PATH")
 	keyFilePath        = utils.MustGetEnv("KEY_PATH")
@@ -144,7 +145,7 @@ func createClients(ctx context.Context) (*gocql.Session, *events.JetStreamClient
 		return nil, nil, nil, fmt.Errorf("failed to initialize redis: %w", err)
 	}
 
-	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
+	jsc, err := events.NewClient(natsURL, nats.RootCAs(rootCACertFilePath))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to initialized NATS jet stream client: %w", err)
 	}
