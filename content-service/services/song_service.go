@@ -143,7 +143,6 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (*SongP
 	defer resolveSpan.End()
 
 	embeddedArtists := make([]entities.Artist, 0)
-	var artistNames []string
 
 	for _, artistIdStr := range songDto.ArtistIds {
 		artist, err := s.artistService.FindArtistByID(resolveCtx, artistIdStr)
@@ -161,7 +160,6 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (*SongP
 			}
 		}
 
-		artistNames = append(artistNames, artist.Name)
 		embeddedArtists = append(embeddedArtists, entities.Artist{
 			ID:          artist.ID,
 			Name:        artist.Name,

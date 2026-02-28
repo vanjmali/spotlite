@@ -2,11 +2,17 @@ package repositories
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/recommendation-service/entities"
+)
+
+var (
+	ErrRecommendationNotFound = errors.New("recommendations not found")
+	ErrNoData                 = errors.New("no data found")
 )
 
 // GraphRelationRepository provides data access for graph relationships.
@@ -277,7 +283,6 @@ func (r *GraphRelationRepository) FindSubscriptionBasedRecommendations(ctx conte
 		}
 		return songs, records.Err()
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to get subscribed songs with average ratings: %w", err)
 	}
@@ -374,15 +379,14 @@ func (r *GraphRelationRepository) FindLikeBasedRecommendation(ctx context.Contex
 				Artists:  artists,
 			}, nil
 		}
-		return nil, nil
+		return nil, ErrNoData
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to get top rated unsubscribed song: %w", err)
 	}
 
 	if result == nil {
-		return nil, nil
+		return nil, ErrRecommendationNotFound
 	}
 
 	return result.(*entities.SongRecommendation), nil
