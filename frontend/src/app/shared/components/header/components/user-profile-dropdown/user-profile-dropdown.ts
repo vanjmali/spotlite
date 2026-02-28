@@ -240,11 +240,7 @@ export class UserProfileDropdownComponent implements OnDestroy {
       return;
     }
 
-    if (
-      !this.hasMoreActivitiesSg() ||
-      this.activityLoadingSg() ||
-      this.activityLoadingMoreSg()
-    ) {
+    if (!this.hasMoreActivitiesSg() || this.activityLoadingSg() || this.activityLoadingMoreSg()) {
       return;
     }
 
@@ -455,7 +451,9 @@ export class UserProfileDropdownComponent implements OnDestroy {
       while (true) {
         const response = await firstValueFrom(this.albumService.getAlbums(page, size));
         const albums = response.items ?? [];
-        const matched = albums.find((album) => (album.songs ?? []).some((song) => song.id === songId));
+        const matched = albums.find((album) =>
+          (album.songs ?? []).some((song) => song.id === songId)
+        );
         if (matched) {
           this.songAlbumCache.set(songId, matched.id);
           this.router.navigate(['/album', matched.id]);

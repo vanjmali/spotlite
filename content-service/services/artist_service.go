@@ -374,7 +374,7 @@ func (s *ArtistService) syncEmbeddedAlbums(ctx context.Context, artist *entities
 	return nil
 }
 
-// syncEmbedded syncs embedded
+// syncEmbedded syncs embedded.
 func (s *ArtistService) syncEmbedded(ctx context.Context, artist *entities.Artist) error {
 	if err := s.syncEmbeddedArtists(ctx, artist); err != nil {
 		return err
