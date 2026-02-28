@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/nats-io/nats.go"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	pb "github.com/vanjmali/spotlite/common-lib/proto/rating_service"
 	"github.com/vanjmali/spotlite/common-lib/server"
@@ -37,7 +38,9 @@ var (
 	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
 	certFilePath       = utils.MustGetEnv("CERT_PATH")
 	keyFilePath        = utils.MustGetEnv("KEY_PATH")
-	config             = server.ServerRunConfiguration{
+	natsURL            = utils.MustGetEnv("NATS_URL")
+
+	config = server.ServerRunConfiguration{
 		TelemetryName: "rating-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
 		ConfigureValidation: func(v *validator.Validate) error {
@@ -165,8 +168,7 @@ func createClients() (*mongodriver.Client, *grpc.ClientConn, *events.JetStreamCl
 		return nil, nil, nil, fmt.Errorf("failed to establish a RPC connection with the content-service: %w", err)
 	}
 
-	natsURL := utils.MustGetEnv("NATS_URL")
-	jsc, err := events.NewClient(natsURL)
+	jsc, err := events.NewClient(natsURL, nats.RootCAs(rootCACertFilePath))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to initialize NATS JetStream client: %w", err)
 	}

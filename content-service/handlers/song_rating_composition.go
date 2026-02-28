@@ -84,7 +84,6 @@ func getSongRatings(client pb.GetSongRatingClient, cache SongRatingCache, ctx co
 	var wg sync.WaitGroup
 
 	for i := range songs {
-
 		sem <- struct{}{}
 		wg.Add(1)
 		go func() {
