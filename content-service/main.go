@@ -91,7 +91,25 @@ var (
 			// make sure stream is already initialized
 			err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBJECT_ENTITY_UPDATED})
 			if err != nil {
-				err = fmt.Errorf("failed to ensure NATS stream: %w", err)
+				err = fmt.Errorf("failed to ensure content stream: %w", err)
+				return h, shutdown, err
+			}
+
+			if err = jsc.EnsureStream(
+				ctx,
+				events.SONGS_STREAM,
+				[]string{events.SUBJECT_SONG_CREATED, events.SUBJECT_SONG_RATED, events.SUBJECT_SONG_UPDATED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure songs stream: %w", err)
+				return h, shutdown, err
+			}
+
+			if err = jsc.EnsureStream(
+				ctx,
+				events.GENRES_STREAM,
+				[]string{events.SUBJECT_GENRE_SUBSCRIBED, events.SUBJECT_GENRE_CREATED, events.SUBJECT_GENRE_UPDATED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure genres stream: %w", err)
 				return h, shutdown, err
 			}
 
@@ -217,7 +235,7 @@ func createServices(
 	gs := services.NewGenreService(*gr, *ar, *sr, *alr, *jsc)
 	as := services.NewArtistService(*ar, *sr, *alr, *gs, *jsc)
 	als := services.NewAlbumService(*alr, *as, *sr, *gs, *jsc)
-	ss := services.NewSongService(*sr, *as, *gs, als, hdfsStore)
+	ss := services.NewSongService(*sr, *as, *gs, als, hdfsStore, jsc)
 	glss := services.NewGlobalSearchService(gs, ss, als, as)
 
 	return gs, as, ss, als, glss

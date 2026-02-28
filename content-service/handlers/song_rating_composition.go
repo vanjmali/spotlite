@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
 	"time"
 
@@ -40,7 +41,7 @@ func (c *RedisSongRatingCache) GetSummary(ctx context.Context, songID string) (f
 
 	raw, err := c.client.Get(ctx, songRatingCacheKey(songID)).Result()
 	if err != nil {
-		if err == redis.Nil {
+		if errors.Is(err, redis.Nil) {
 			return 0, 0, false, nil
 		}
 		return 0, 0, false, err
@@ -83,7 +84,7 @@ func getSongRatings(client pb.GetSongRatingClient, cache SongRatingCache, ctx co
 	var wg sync.WaitGroup
 
 	for i := range songs {
-		i := i
+
 		sem <- struct{}{}
 		wg.Add(1)
 		go func() {

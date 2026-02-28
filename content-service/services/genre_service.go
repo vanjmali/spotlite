@@ -54,27 +54,61 @@ func NewGenreService(
 }
 
 func (s *GenreService) Create(ctx context.Context, reqDto *dtos.GenreDto) error {
-	ctx, span := s.tr.Start(ctx, "genre.create")
-	defer span.End()
+	createCtx, createSpan := s.tr.Start(ctx, "genre.create")
+	defer createSpan.End()
 
-	createCtx, createSpan := s.tr.Start(ctx, "genre.create.create_genre")
 	genreEntity, err := mappers.ToGenreEntity(reqDto)
 	if err != nil {
 		createSpan.RecordError(err)
-		createSpan.End()
-		logging.Errorf(ctx, "error converting to genre entity: %v", err)
+		logging.Errorf(createCtx, "error converting to genre entity: %v", err)
 		return err
 	}
 
 	err = s.r.Create(createCtx, *genreEntity)
 	if err != nil {
 		createSpan.RecordError(err)
-		createSpan.End()
-		logging.Errorf(ctx, "error creating genre in database: %v", err)
+		logging.Errorf(createCtx, "error creating genre in database: %v", err)
 		return err
 	}
 
-	createSpan.End()
+	timeoutCtx, cancel := context.WithTimeout(createCtx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "genre.create.event")
+	defer eventSpan.End()
+
+	urp := toGenreCreatedEvent(genreEntity.ID.Hex(), genreEntity.Name)
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_GENRE_CREATED, urp)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second*1),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+	if err != nil {
+		logging.Errorf(eventCtx, "failed to publish genre created event: %v", err)
+		eventSpan.RecordError(err)
+
+		var errs []error
+
+		errs = append(errs, err)
+
+		rbCtx, rbSpan := s.tr.Start(createCtx, "genre.create.rollback")
+		defer rbSpan.End()
+
+		err = s.DeleteGenre(rbCtx, genreEntity.ID.Hex())
+		if err != nil {
+			logging.Errorf(eventCtx, "genre rollback failed: %v", err)
+
+			rbSpan.RecordError(err)
+			errs = append(errs, err)
+		}
+
+		return errors.Join(errs...)
+	}
 
 	return nil
 }
@@ -145,16 +179,19 @@ func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.U
 		return nil, err
 	}
 
-	eventCtx, eventSpan := s.tr.Start(updateCtx, "genre.update.update_event")
+	timeoutCtx, cancel := context.WithTimeout(updateCtx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "genre.update.event")
 	defer eventSpan.End()
 
 	// prepare payload
-	aep := toGenreUpdatedEvent(genre.ID.Hex(), genre.Name)
+	gup := toGenreUpdatedEvent(genre.ID.Hex(), genre.Name)
 
 	// attempts broadcasting event
 	err = retry.Do(
 		func() error {
-			return s.jsc.Publish(eventCtx, events.SUBJECT_ENTITY_UPDATED, aep)
+			return s.jsc.Publish(eventCtx, events.SUBJECT_ENTITY_UPDATED, gup)
 		},
 		retry.Attempts(3),
 		retry.Delay(time.Second),
@@ -181,6 +218,7 @@ func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.U
 
 		_, err := s.r.UpdateByID(rbCtx, id, rbUpdate)
 		if err != nil {
+			logging.Errorf(rbCtx, "rollback failed: %s", err)
 			rbSpan.RecordError(err)
 			errs = append(errs, err)
 		}
@@ -195,6 +233,29 @@ func (s *GenreService) UpdateGenre(ctx context.Context, idStr string, dto dtos.U
 		return nil, err
 	}
 	syncSpan.End()
+
+	// recommendation graph CQRS update
+	timeoutCtx, cancel = context.WithTimeout(updateCtx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan = s.tr.Start(timeoutCtx, "genre.update.event")
+	defer eventSpan.End()
+
+	// attempts broadcasting event
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_GENRE_UPDATED, gup)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+	// TODO: extend rollback logic
+	if err != nil {
+		logging.Errorf(eventCtx, "failed to publish genre updated event: %v", err)
+		eventSpan.RecordError(err)
+	}
 
 	return genre, nil
 }
@@ -435,5 +496,12 @@ func toGenreUpdatedEvent(genreID string, genreName string) *events.EntityUpdated
 	return &events.EntityUpdatedEventPayload{
 		EntityID:   genreID,
 		EntityName: genreName,
+	}
+}
+
+func toGenreCreatedEvent(genreID string, genreName string) *events.GenreCreationPayload {
+	return &events.GenreCreationPayload{
+		GenreID:   genreID,
+		GenreName: genreName,
 	}
 }

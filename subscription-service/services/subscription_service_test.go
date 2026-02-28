@@ -9,7 +9,6 @@ import (
 
 	"github.com/sony/gobreaker"
 	"github.com/stretchr/testify/require"
-	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/subscription"
 	"github.com/vanjmali/spotlite/subscription-service/dtos"
@@ -23,6 +22,23 @@ import (
 )
 
 var ErrNotSubscribed = errors.New("subscription not found")
+
+// fakeEventPublisher is a test double for EventPublisher.
+type fakeEventPublisher struct {
+	published []interface{}
+	subjects  []string
+	err       error
+}
+
+func (f *fakeEventPublisher) Publish(ctx context.Context, subject string, payload interface{}) error {
+	if f.published == nil {
+		f.published = make([]interface{}, 0)
+		f.subjects = make([]string, 0)
+	}
+	f.published = append(f.published, payload)
+	f.subjects = append(f.subjects, subject)
+	return f.err
+}
 
 //nolint:unused
 type fakeSubscriptionRepo struct {
@@ -432,7 +448,7 @@ func TestSubscribeSuccess(t *testing.T) {
 			return "My Genre", nil
 		},
 	}
-	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
+	svc := NewSubscriptionService(repo, getter, &fakeEventPublisher{})
 
 	userID := primitive.NewObjectID()
 	entityID := primitive.NewObjectID()
@@ -457,7 +473,7 @@ func TestSubscribeEntityNotFound(t *testing.T) {
 			return "", status.Error(codes.NotFound, "not found")
 		},
 	}
-	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
+	svc := NewSubscriptionService(repo, getter, &fakeEventPublisher{})
 
 	req := &dtos.CreateSubscriptionDto{
 		EntityID: primitive.NewObjectID().Hex(),
@@ -477,7 +493,7 @@ func TestSubscribeInvalidEntityID(t *testing.T) {
 			return "", status.Error(codes.InvalidArgument, "bad id")
 		},
 	}
-	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
+	svc := NewSubscriptionService(repo, getter, &fakeEventPublisher{})
 
 	req := &dtos.CreateSubscriptionDto{
 		EntityID: primitive.NewObjectID().Hex(),
@@ -504,7 +520,7 @@ func TestSubscribeUpstreamFailure(t *testing.T) {
 			return "", status.Error(codes.Internal, "boom")
 		},
 	}
-	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
+	svc := NewSubscriptionService(repo, getter, &fakeEventPublisher{})
 
 	req := &dtos.CreateSubscriptionDto{
 		EntityID: primitive.NewObjectID().Hex(),
@@ -524,7 +540,7 @@ func TestSubscribeUpstreamTimeout(t *testing.T) {
 			return "", status.Error(codes.DeadlineExceeded, "timeout")
 		},
 	}
-	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
+	svc := NewSubscriptionService(repo, getter, &fakeEventPublisher{})
 
 	req := &dtos.CreateSubscriptionDto{
 		EntityID: primitive.NewObjectID().Hex(),
@@ -544,7 +560,7 @@ func TestSubscribeUpstreamUnavailable(t *testing.T) {
 			return "", gobreaker.ErrOpenState
 		},
 	}
-	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
+	svc := NewSubscriptionService(repo, getter, &fakeEventPublisher{})
 
 	req := &dtos.CreateSubscriptionDto{
 		EntityID: primitive.NewObjectID().Hex(),
@@ -564,7 +580,7 @@ func TestSubscribeUpstreamThrottled(t *testing.T) {
 			return "", gobreaker.ErrTooManyRequests
 		},
 	}
-	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
+	svc := NewSubscriptionService(repo, getter, &fakeEventPublisher{})
 
 	req := &dtos.CreateSubscriptionDto{
 		EntityID: primitive.NewObjectID().Hex(),
@@ -584,7 +600,7 @@ func TestSubscribeRepoDuplicate(t *testing.T) {
 		},
 	}
 	getter := &fakeContentGetter{}
-	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
+	svc := NewSubscriptionService(repo, getter, &fakeEventPublisher{})
 
 	req := &dtos.CreateSubscriptionDto{
 		EntityID: primitive.NewObjectID().Hex(),
@@ -599,7 +615,7 @@ func TestSubscribeRepoDuplicate(t *testing.T) {
 func TestSubscribeMappingError(t *testing.T) {
 	repo := &fakeSubscriptionRepo{}
 	getter := &fakeContentGetter{}
-	svc := NewSubscriptionService(repo, getter, events.JetStreamClient{})
+	svc := NewSubscriptionService(repo, getter, &fakeEventPublisher{})
 
 	req := &dtos.CreateSubscriptionDto{
 		EntityID: "invalid-id",
@@ -613,14 +629,25 @@ func TestSubscribeMappingError(t *testing.T) {
 }
 
 func TestUnsubscribeSuccess(t *testing.T) {
+	userID := primitive.NewObjectID()
+	entityID := primitive.NewObjectID()
+
 	repo := &fakeSubscriptionRepo{
+		store: []entities.Subscription{
+			{
+				ID:           primitive.NewObjectID(),
+				SubscriberID: userID,
+				EntityID:     entityID,
+				Type:         subscription.GenreSubscription,
+			},
+		},
 		deleteFn: func(primitive.ObjectID, primitive.ObjectID, context.Context) (int64, error) {
 			return 1, nil
 		},
 	}
-	svc := NewSubscriptionService(repo, &fakeContentGetter{}, events.JetStreamClient{})
+	svc := NewSubscriptionService(repo, &fakeContentGetter{}, &fakeEventPublisher{})
 
-	err := svc.Unsubscribe(primitive.NewObjectID(), contextWithUserID(context.Background(), primitive.NewObjectID()))
+	err := svc.Unsubscribe(entityID, contextWithUserID(context.Background(), userID))
 
 	require.NoError(t, err)
 	require.True(t, repo.deleteCalled)
@@ -632,7 +659,7 @@ func TestUnsubscribeNotFound(t *testing.T) {
 			return 0, nil
 		},
 	}
-	svc := NewSubscriptionService(repo, &fakeContentGetter{}, events.JetStreamClient{})
+	svc := NewSubscriptionService(repo, &fakeContentGetter{}, &fakeEventPublisher{})
 
 	err := svc.Unsubscribe(primitive.NewObjectID(), contextWithUserID(context.Background(), primitive.NewObjectID()))
 
@@ -645,7 +672,7 @@ func TestUnsubscribeRepoError(t *testing.T) {
 			return 0, errors.New("delete failed")
 		},
 	}
-	svc := NewSubscriptionService(repo, &fakeContentGetter{}, events.JetStreamClient{})
+	svc := NewSubscriptionService(repo, &fakeContentGetter{}, &fakeEventPublisher{})
 
 	err := svc.Unsubscribe(primitive.NewObjectID(), contextWithUserID(context.Background(), primitive.NewObjectID()))
 
@@ -654,7 +681,7 @@ func TestUnsubscribeRepoError(t *testing.T) {
 
 func TestUnsubscribeInvalidUserID(t *testing.T) {
 	repo := &fakeSubscriptionRepo{}
-	svc := NewSubscriptionService(repo, &fakeContentGetter{}, events.JetStreamClient{})
+	svc := NewSubscriptionService(repo, &fakeContentGetter{}, &fakeEventPublisher{})
 
 	err := svc.Unsubscribe(primitive.NewObjectID(), context.Background())
 

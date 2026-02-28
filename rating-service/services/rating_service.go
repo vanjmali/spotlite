@@ -5,7 +5,10 @@ import (
 	"errors"
 	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/sony/gobreaker"
+	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/rating-service/dtos"
@@ -21,16 +24,18 @@ import (
 )
 
 var (
-	ErrEntityNotFound      = errors.New("song couldn't be found")
-	ErrInvalidEntityID     = errors.New("error has ocurred while parsing song ID")
+	ErrSongNotFound        = errors.New("song couldn't be found")
+	ErrInvalidSongID       = errors.New("error has ocurred while parsing song ID")
+	ErrUpstreamFailure     = errors.New("error has ocurred while fetching song")
+	ErrUpstreamTimeout     = errors.New("upstream service request timed out")
+	ErrUpstreamUnavailable = errors.New("upstream service is temporarily unavailable")
+	ErrUpstreamThrottled   = errors.New("upstream throttled")
 	ErrRatingNotFound      = errors.New("rating not found")
 	ErrRatingForbidden     = errors.New("rating does not belong to user")
 	ErrNoFieldsToUpdate    = errors.New("no fields to update")
 	ErrObjectIdCastFailed  = errors.New("failed to convert hex to objectID")
-	ErrUpstreamTimeout     = errors.New("upstream service request timed out")
-	ErrUpstreamFailure     = errors.New("upstream service returned an internal error")
-	ErrUpstreamUnavailable = errors.New("upstream service is temporarily unavailable")
-	ErrUpstreamThrottled   = errors.New("upstream throttled")
+	ErrEntityNotFound      = ErrSongNotFound
+	ErrInvalidEntityID     = ErrInvalidSongID
 )
 
 type RatingRepository interface {
@@ -49,41 +54,18 @@ type ContentEntityGetter interface {
 type RatingService struct {
 	rr  RatingRepository
 	gcc ContentEntityGetter
-	cb  *gobreaker.CircuitBreaker
 	tr  trace.Tracer
+	jsc *events.JetStreamClient
 }
 
 // NewRatingService creates and returns a new RatingService with the provided repository and content entity getter.
-func NewRatingService(rr RatingRepository, gcc ContentEntityGetter) *RatingService {
+func NewRatingService(rr RatingRepository, gcc ContentEntityGetter, jsc ...*events.JetStreamClient) *RatingService {
 	tr := otel.Tracer("rating-service/rating-service")
-
-	settings := gobreaker.Settings{
-		Name: "rating-service",
-		// defines the number of request which will be passed through when the circuit breaker is half open
-		// on which we are going to decide will we keep the circuit open or close it
-		MaxRequests: 3,
-
-		// defines the time window in which the request states will be saved, when the time is up, all request
-		// data is being removed
-		Interval: 15 * time.Second,
-
-		// amount of time given to the server to get back up, since the content service dependencies aren't slow
-		// to start up like cassandra 10 secs is fair
-		Timeout: 10 * time.Second,
-
-		// defines the case in which the circuit will be opened, in this case if more than 10 requests have been
-		// executed and more than 30% of them failed, we want to open the circuit
-		ReadyToTrip: func(counts gobreaker.Counts) bool {
-			failureRatio := float64(counts.TotalFailures) / float64(counts.Requests)
-			return counts.Requests >= 10 && failureRatio >= 0.3
-			// return counts.TotalFailures >= 1
-		},
-		OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
-			// testing purposes
-			// fmt.Print("circuit breaker state changed: ", to.String())
-		},
+	var publisher *events.JetStreamClient
+	if len(jsc) > 0 {
+		publisher = jsc[0]
 	}
-	s := RatingService{rr: rr, gcc: gcc, cb: gobreaker.NewCircuitBreaker(settings), tr: tr}
+	s := RatingService{rr: rr, gcc: gcc, tr: tr, jsc: publisher}
 
 	return &s
 }
@@ -93,24 +75,15 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 	ratingCtx, ratingSpan := s.tr.Start(ctx, "rating.create")
 	defer ratingSpan.End()
 
-	_, err := s.cb.Execute(func() (any, error) {
-		entityCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
-		defer cancel()
+	songExistsCtx, songExistsSpan := s.tr.Start(ratingCtx, "rating.create.exists")
+	defer songExistsSpan.End()
 
-		entityExistenceCtx, entityExistenceSpan := s.tr.Start(entityCtx, "rating.create.song_exists")
-		defer entityExistenceSpan.End()
-
-		name, err := s.gcc.GetSong(entityExistenceCtx, req.SongID)
-		if err != nil {
-			return nil, err
-		}
-		return name, nil
-	})
+	_, err := s.gcc.GetSong(songExistsCtx, req.SongID)
 	if err != nil {
+		songExistsSpan.RecordError(err)
 		if errors.Is(err, gobreaker.ErrOpenState) {
 			return ErrUpstreamUnavailable
 		}
-
 		if errors.Is(err, gobreaker.ErrTooManyRequests) {
 			return ErrUpstreamThrottled
 		}
@@ -119,7 +92,7 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 		if !ok {
 			return err
 		}
-
+		// TODO: Handle different types of errors with resiliency mechanisms
 		//nolint:exhaustive
 		switch st.Code() {
 		case codes.NotFound:
@@ -133,12 +106,12 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 		}
 	}
 
-	userIDstr := middlewares.GetUserIdFromContext(ratingCtx)
-	username := middlewares.GetUsernameFromContext(ratingCtx)
+	userIDstr := middlewares.GetUserIdFromContext(songExistsCtx)
+	username := middlewares.GetUsernameFromContext(songExistsCtx)
 
 	ratingEntity, err := mappers.ToRatingEntity(req.SongID, userIDstr, req.Value, username)
 	if err != nil {
-		ratingSpan.RecordError(err)
+		songExistsSpan.RecordError(err)
 		return err
 	}
 
@@ -148,6 +121,35 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 	if err != nil {
 		createSpan.RecordError(err)
 		return err
+	}
+
+	// Publish rating created event with retry for reliability
+	payload := events.RatingEventPayload{
+		UserID:    ratingEntity.UserID.Hex(),
+		SongID:    ratingEntity.SongID.Hex(),
+		Rating:    ratingEntity.Value,
+		EventID:   primitive.NewObjectID().Hex(),
+		CreatedAt: ratingEntity.CreatedAt,
+	}
+
+	publishCtx, publishSpan := s.tr.Start(ratingCtx, "rating.create.publish")
+	defer publishSpan.End()
+	if s.jsc == nil {
+		return nil
+	}
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_CREATED, payload)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(publishCtx),
+	)
+	if err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish rating created event: %v", err)
 	}
 
 	return nil
@@ -191,6 +193,35 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 
 	if deletedCount != 1 {
 		return ErrRatingNotFound
+	}
+
+	// Publish rating deleted event with retry for reliability
+	payload := events.RatingEventPayload{
+		UserID:    userID.Hex(),
+		SongID:    existing.SongID.Hex(),
+		Rating:    existing.Value,
+		EventID:   primitive.NewObjectID().Hex(),
+		CreatedAt: existing.CreatedAt,
+	}
+
+	publishCtx, publishSpan := s.tr.Start(ctx, "rating.delete.publish")
+	defer publishSpan.End()
+	if s.jsc == nil {
+		return nil
+	}
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_DELETED, payload)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(publishCtx),
+	)
+	if err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish rating deleted event: %v", err)
 	}
 
 	return nil
@@ -318,6 +349,35 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 			return nil, ErrRatingNotFound
 		}
 		return nil, err
+	}
+
+	// Publish rating updated event with retry for reliability
+	payload := events.RatingEventPayload{
+		UserID:    rating.UserID.Hex(),
+		SongID:    rating.SongID.Hex(),
+		Rating:    rating.Value,
+		EventID:   primitive.NewObjectID().Hex(),
+		CreatedAt: rating.CreatedAt,
+	}
+
+	publishCtx, publishSpan := s.tr.Start(ctx, "rating.update.publish")
+	defer publishSpan.End()
+	if s.jsc == nil {
+		return rating, nil
+	}
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_UPDATED, payload)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(publishCtx),
+	)
+	if err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish rating updated event: %v", err)
 	}
 
 	return rating, nil

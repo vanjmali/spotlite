@@ -258,7 +258,7 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 	}
 	defer file.Close()
 
-	updated, err := h.s.UploadAudio(r.Context(), id, reader, ext, mime, lengthSeconds)
+	updated, err := h.s.UploadAudio(r.Context(), services.SongPayload{SongID: id}, reader, ext, mime, lengthSeconds)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrSongNotFound):
@@ -459,7 +459,7 @@ func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.R
 	}
 	defer file.Close()
 
-	id, err := h.s.Create(r.Context(), &dto)
+	sp, err := h.s.Create(r.Context(), &dto)
 	if err != nil {
 		switch {
 		case errors.Is(err, services.ErrObjectIdCastFailed):
@@ -472,10 +472,11 @@ func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	updated, err := h.s.UploadAudio(r.Context(), id.Hex(), reader, ext, mime, lengthSeconds)
+	sp.Duration = *lengthSeconds
+	updated, err := h.s.UploadAudio(r.Context(), *sp, reader, ext, mime, lengthSeconds)
 	if err != nil {
-		if rollbackErr := h.s.DeleteSong(r.Context(), id.Hex()); rollbackErr != nil {
-			logSecurityEvent(r.Context(), "create_with_audio_rollback_failed", fmt.Sprintf("song_id=%s error=%v", id.Hex(), rollbackErr))
+		if rollbackErr := h.s.DeleteSong(r.Context(), sp.SongID); rollbackErr != nil {
+			logSecurityEvent(r.Context(), "create_with_audio_rollback_failed", fmt.Sprintf("song_id=%s error=%v", sp.SongID, rollbackErr))
 		}
 
 		switch {

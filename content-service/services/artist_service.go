@@ -108,19 +108,25 @@ func (s *ArtistService) Create(ctx context.Context, reqDto *dtos.ArtistDto) erro
 		return err
 	}
 
+	timeoutCtx, cancel := context.WithTimeout(createCtx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "artist.create.event")
+	defer eventSpan.End()
+
 	aep := toArtistCreatedEvent(genreIDs, artistEntity.ID.Hex(), artistEntity.Name)
 
 	err = retry.Do(
 		func() error {
-			return s.jsc.Publish(createCtx, events.SUBJECT_ENTITY_CREATED, aep)
+			return s.jsc.Publish(eventCtx, events.SUBJECT_ENTITY_CREATED, aep)
 		},
 		retry.Attempts(3),
 		retry.Delay(time.Second),
 		retry.DelayType(retry.BackOffDelay),
-		retry.Context(createCtx),
+		retry.Context(eventCtx),
 	)
 	if err != nil {
-		logging.Errorf(createCtx, "failed to publish entity created event: %v", err)
+		logging.Errorf(eventCtx, "failed to publish entity created event: %v", err)
 	}
 
 	return nil
@@ -223,7 +229,10 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 		return nil, err
 	}
 
-	eventCtx, eventSpan := s.tr.Start(updateCtx, "artist.update.update_event")
+	timeoutCtx, cancel := context.WithTimeout(updateCtx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "artist.update.event")
 	defer eventSpan.End()
 
 	aep := toArtistUpdatedEvent(updatedArtist.ID.Hex(), updatedArtist.Name)

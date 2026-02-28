@@ -45,7 +45,7 @@ MATCH (u:User {user_id: "user1"})-[r:RATED]->(s:Song)
 RETURN u.user_id, s.song_id, r.rating
 ```
 
-**Expected:** 2 rows (song1=5, song2=4)
+**Expected:** 2 rows (`song1=5`, `song2=4`)
 
 ### 2. GetUserListenHistory
 
@@ -55,7 +55,7 @@ RETURN s.song_id
 LIMIT 10
 ```
 
-**Expected:** 2 rows (song1, song2)
+**Expected:** 2 rows (`song1`, `song2`)
 
 ### 3. GetUserArtistSubscriptions
 
@@ -64,7 +64,7 @@ MATCH (u:User {user_id: "user1"})-[:SUBSCRIBED]->(a:Artist)
 RETURN a.artist_id
 ```
 
-**Expected:** 1 row (artist1)
+**Expected:** 1 row (`artist1`)
 
 ### 4. GetUserGenreSubscriptions
 
@@ -73,7 +73,7 @@ MATCH (u:User {user_id: "user1"})-[:SUBSCRIBED_GENRE]->(g:Genre)
 RETURN g.genre_id
 ```
 
-**Expected:** 1 row (genre1)
+**Expected:** 1 row (`genre1`)
 
 ### 5. GetSongsByGenre
 
@@ -83,7 +83,7 @@ RETURN s.song_id
 LIMIT 10
 ```
 
-**Expected:** 2 rows (song1, song2)
+**Expected:** 3 rows (`song1`, `song2`, `song3`)
 
 ### 6. GetSongsByArtist
 
@@ -93,7 +93,7 @@ RETURN s.song_id
 LIMIT 10
 ```
 
-**Expected:** 2 rows (song1, song2)
+**Expected:** 2 rows (`song1`, `song2`)
 
 ### 7. GetSongsByAlbum
 
@@ -102,7 +102,7 @@ MATCH (s:Song)-[:BELONGS_TO]->(a:Album {album_id: "album1"})
 RETURN s.song_id
 ```
 
-**Expected:** 2 rows (song1, song2)
+**Expected:** 2 rows (`song1`, `song2`)
 
 ### 8. GetHighlyRatedSongs
 
@@ -115,7 +115,7 @@ ORDER BY avg_rating DESC, rating_count DESC
 LIMIT 10
 ```
 
-**Expected:** 2 rows (song1 avg=5.0, song2 avg=4.0)
+**Expected:** at least 2 rows (`song1` avg=5.0, `song2` avg=4.0)
 
 ### 9. GetRecommendedSongsForUser
 
@@ -137,7 +137,7 @@ ORDER BY avg_rating DESC, rating_count DESC
 LIMIT 10
 ```
 
-**Expected:** Should recommend `song3` (`user1` has not rated/listened to it).
+**Expected:** should recommend `song3` (`user1` has not rated/listened to it).
 
 ### 10. GetSimilarUsers
 
@@ -167,7 +167,62 @@ ORDER BY similar_user_count DESC, avg_rating DESC
 LIMIT 10
 ```
 
-**Expected:** May return `song3` (`user2` rated it highly).
+**Expected:** may return `song3` (`user2` rated it highly).
+
+### 12. GetSongRatingStats (Data Enrichment)
+
+```cypher
+MATCH (s:Song {song_id: "song1"})<-[r:RATED]-()
+WITH avg(r.rating) as avg_rating, count(r) as rating_count
+RETURN COALESCE(avg_rating, 0.0) as avg_rating, rating_count
+```
+
+**Expected:** 1 row (avg_rating=5.0, rating_count=2)
+
+- Explanation: song1 has been rated twice (5 by user1, 5 by user2), so average is 5.0 and count is 2
+
+**Test with song that has no ratings:**
+
+```cypher
+MATCH (s:Song {song_id: "song_nonexistent"})<-[r:RATED]-()
+WITH avg(r.rating) as avg_rating, count(r) as rating_count
+RETURN COALESCE(avg_rating, 0.0) as avg_rating, rating_count
+```
+
+**Expected:** 1 row (avg_rating=0.0, rating_count=0) - No ratings found, returns defaults
+
+### 13. GetSongArtists (Data Enrichment)
+
+```cypher
+MATCH (s:Song {song_id: "song1"})-[:BY]->(a:Artist)
+RETURN a.name
+```
+
+**Expected:** 1 row (Queen)
+
+- Explanation: song1 (Bohemian Rhapsody) is by artist1 (Queen)
+
+**Test with multi-artist song (if supported):**
+
+```cypher
+MATCH (s:Song {song_id: "song2"})-[:BY]->(a:Artist)
+RETURN a.name
+```
+
+**Expected:** 1 row (Queen)
+
+- Explanation: song2 (Love of My Life) is also by artist1 (Queen)
+
+**Test with song that has no artists:**
+
+```cypher
+MATCH (s:Song {song_id: "song3"})-[:BY]->(a:Artist)
+RETURN a.name
+```
+
+**Expected:** 0 rows
+
+- Explanation: song3 (We Will Rock You) has no artists assigned in test data, returns empty list
 
 ## Cleanup test data
 

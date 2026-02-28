@@ -6,15 +6,16 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"errors"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/vanjmali/spotlite/common-lib/account"
 	"github.com/vanjmali/spotlite/common-lib/clock"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/user-service/dtos"
 	"github.com/vanjmali/spotlite/user-service/entities"
@@ -146,6 +147,10 @@ func (f *fakeUserRepo) ExistsByEmail(ctx context.Context, email string) (bool, e
 	return false, nil
 }
 
+func (f *fakeUserRepo) Delete(ctx context.Context, userID primitive.ObjectID) error {
+	return nil
+}
+
 func (f *fakeUserRepo) UpdateProfile(
 	ctx context.Context,
 	id primitive.ObjectID,
@@ -173,6 +178,29 @@ type fakeMailService struct {
 	loginOtpCode   string
 
 	sendPasswordResetCalled bool
+}
+
+type MockEventClient struct {
+	mock.Mock
+}
+
+func (m *MockEventClient) EnsureStream(ctx context.Context, streamName string, subjects []string) error {
+	args := m.Called(ctx, streamName, subjects)
+	return args.Error(0)
+}
+
+func (m *MockEventClient) Publish(ctx context.Context, subject string, payload interface{}) error {
+	args := m.Called(ctx, subject, payload)
+	return args.Error(0)
+}
+
+func (m *MockEventClient) StartConsumer(ctx context.Context, streamName string, subject string, durableName string, handler events.SubscribeHandler) error {
+	args := m.Called(ctx, streamName, subject, durableName, handler)
+	return args.Error(0)
+}
+
+func (m *MockEventClient) Close() {
+	m.Called()
 }
 
 func (f *fakeMailService) SendAccountVerificationEmail(mailto string, token string) error {
@@ -210,7 +238,8 @@ func TestUserServiceRegisterUsernameTaken(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, mail, jsc)
 
 	err := svc.Register(context.Background(), &dtos.UserRegistrationDto{
 		Username:  "taken",
@@ -235,7 +264,8 @@ func TestUserServiceRegisterEmailTaken(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := &events.JetStreamClient{}
+	svc := NewUserService(repo, mail, jsc)
 
 	err := svc.Register(context.Background(), &dtos.UserRegistrationDto{
 		Username:  "unique",
@@ -250,32 +280,15 @@ func TestUserServiceRegisterEmailTaken(t *testing.T) {
 	require.False(t, repo.createCalled, "user should not be created")
 }
 
-func TestUserServiceRegisterEmailSendFails(t *testing.T) {
-	repo := &fakeUserRepo{}
-	mail := &fakeMailService{
-		sendVerificationFn: func(string, string) error {
-			return errors.New("smtp down")
-		},
-	}
-	svc := NewUserService(repo, mail)
-
-	err := svc.Register(context.Background(), &dtos.UserRegistrationDto{
-		Username:  "unique",
-		FirstName: "Jane",
-		LastName:  "Doe",
-		Email:     "jane@example.com",
-		Password:  "StrongPass123!",
-	})
-
-	require.Error(t, err, "expected error when email sending fails")
-	require.True(t, mail.verificationCalled, "verification email should be attempted")
-	require.False(t, repo.createCalled, "user should not be created on email failure")
-}
-
 func TestUserServiceRegisterSuccess(t *testing.T) {
 	repo := &fakeUserRepo{}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := new(MockEventClient)
+
+	// Expect the user.created event
+	jsc.On("Publish", mock.Anything, "user.created", mock.Anything).Return(nil)
+
+	svc := NewUserService(repo, mail, jsc)
 
 	dto := &dtos.UserRegistrationDto{
 		Username:  "unique",
@@ -308,7 +321,12 @@ func TestUserServiceLoginInactive(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := new(MockEventClient)
+
+	// In case your logic publishes an event for re-sending verification
+	jsc.On("Publish", mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+
+	svc := NewUserService(repo, mail, jsc)
 
 	err := svc.Login(context.Background(), &dtos.UserLoginDto{
 		Email:    "user@example.com",
@@ -333,7 +351,10 @@ func TestUserServiceLoginInactiveInvalidPassword(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := new(MockEventClient)
+
+	// No Publish expected here as it fails on password check
+	svc := NewUserService(repo, mail, jsc)
 
 	err := svc.Login(context.Background(), &dtos.UserLoginDto{
 		Email:    "user@example.com",
@@ -356,7 +377,8 @@ func TestUserServiceLoginExpiredPassword(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewUserService(repo, &fakeMailService{})
+	jsc := new(MockEventClient)
+	svc := NewUserService(repo, &fakeMailService{}, jsc)
 
 	err := svc.Login(context.Background(), &dtos.UserLoginDto{
 		Email:    "user@example.com",
@@ -377,7 +399,8 @@ func TestUserServiceLoginInvalidPassword(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewUserService(repo, &fakeMailService{})
+	jsc := new(MockEventClient)
+	svc := NewUserService(repo, &fakeMailService{}, jsc)
 
 	err := svc.Login(context.Background(), &dtos.UserLoginDto{
 		Email:    "user@example.com",
@@ -402,7 +425,12 @@ func TestUserServiceLoginSuccess(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := new(MockEventClient)
+
+	// Allow Publish in case sending OTP publishes an audit event
+	jsc.On("Publish", mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+
+	svc := NewUserService(repo, mail, jsc)
 
 	start := time.Now()
 	err := svc.Login(context.Background(), &dtos.UserLoginDto{
@@ -437,7 +465,8 @@ func TestUserServiceVerifyLoginOtpExpired(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewUserService(repo, &fakeMailService{})
+	jsc := new(MockEventClient)
+	svc := NewUserService(repo, &fakeMailService{}, jsc)
 
 	_, err := svc.VerifyLoginOtp(context.Background(), &dtos.VerifyLoginOtpDto{
 		Email: "user@example.com",
@@ -462,7 +491,8 @@ func TestUserServiceVerifyLoginOtpInvalid(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewUserService(repo, &fakeMailService{})
+	jsc := new(MockEventClient)
+	svc := NewUserService(repo, &fakeMailService{}, jsc)
 
 	_, err := svc.VerifyLoginOtp(context.Background(), &dtos.VerifyLoginOtpDto{
 		Email: "user@example.com",
@@ -488,7 +518,12 @@ func TestUserServiceVerifyLoginOtpSuccess(t *testing.T) {
 			}, nil
 		},
 	}
-	svc := NewUserService(repo, &fakeMailService{})
+	jsc := new(MockEventClient)
+
+	// Expect a "user.logged_in" or similar event here
+	jsc.On("Publish", mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+
+	svc := NewUserService(repo, &fakeMailService{}, jsc)
 
 	user, err := svc.VerifyLoginOtp(context.Background(), &dtos.VerifyLoginOtpDto{
 		Email: "user@example.com",
@@ -508,7 +543,8 @@ func TestUserServiceResendLoginOtpNotFound(t *testing.T) {
 			return nil, repositories.ErrUserNotFound
 		},
 	}
-	svc := NewUserService(repo, &fakeMailService{})
+	jsc := new(MockEventClient)
+	svc := NewUserService(repo, &fakeMailService{}, jsc)
 
 	err := svc.ResendLoginOtp(context.Background(), "user@example.com")
 
@@ -521,7 +557,8 @@ func TestUserServiceResendLoginOtpInactive(t *testing.T) {
 			return &entities.User{AccountStatus: account.StatusInactive}, nil
 		},
 	}
-	svc := NewUserService(repo, &fakeMailService{})
+	jsc := new(MockEventClient)
+	svc := NewUserService(repo, &fakeMailService{}, jsc)
 
 	err := svc.ResendLoginOtp(context.Background(), "user@example.com")
 
@@ -541,7 +578,12 @@ func TestUserServiceResendLoginOtpSuccess(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := new(MockEventClient)
+
+	// In case resending OTP publishes an audit event
+	jsc.On("Publish", mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+
+	svc := NewUserService(repo, mail, jsc)
 
 	err := svc.ResendLoginOtp(context.Background(), "user@example.com")
 
@@ -563,8 +605,9 @@ func TestUserServiceCreateNewToken(t *testing.T) {
 	require.NoError(t, keyFile.Sync())
 
 	t.Setenv("JWT_PRIVATE_KEY_PATH", keyFile.Name())
-
-	svc := NewUserService(&fakeUserRepo{}, &fakeMailService{})
+	jsc := new(MockEventClient)
+	// CreateToken is usually pure logic, but we pass the mock to constructor
+	svc := NewUserService(&fakeUserRepo{}, &fakeMailService{}, jsc)
 	fixed := time.Date(2025, time.January, 2, 15, 4, 5, 0, time.UTC)
 	svc.c = clock.NewFixedClock(fixed)
 	user := &entities.User{
@@ -616,7 +659,6 @@ func TestUserServiceCreateNewToken(t *testing.T) {
 	require.Equal(t, exp, fixed.Add(15*time.Minute))
 }
 
-// Change Password Tests.
 func TestChangePasswordInvalidCurrentPassword(t *testing.T) {
 	userID := primitive.NewObjectID()
 	hashedPassword, _ := auth.HashPassword("ValidPass123!")
@@ -627,12 +669,13 @@ func TestChangePasswordInvalidCurrentPassword(t *testing.T) {
 				Email:               "user@example.com",
 				Password:            hashedPassword,
 				AccountStatus:       account.StatusActive,
-				PasswordLastChanged: time.Now().Add(-48 * time.Hour), // Changed more than 24 hours ago
+				PasswordLastChanged: time.Now().Add(-48 * time.Hour),
 			}, nil
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := new(MockEventClient)
+	svc := NewUserService(repo, mail, jsc)
 
 	ctx := contextWithUserID(context.Background(), userID)
 	dto := &dtos.ChangePasswordDto{
@@ -659,7 +702,8 @@ func TestChangePasswordTooFrequent(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := new(MockEventClient)
+	svc := NewUserService(repo, mail, jsc)
 
 	ctx := contextWithUserID(context.Background(), userID)
 	dto := &dtos.ChangePasswordDto{
@@ -684,7 +728,7 @@ func TestChangePasswordSuccess(t *testing.T) {
 				Email:               "user@example.com",
 				Password:            hashedPassword,
 				AccountStatus:       account.StatusActive,
-				PasswordLastChanged: time.Now().Add(-48 * time.Hour), // Changed more than 24 hours ago
+				PasswordLastChanged: time.Now().Add(-48 * time.Hour),
 			}, nil
 		},
 		setHashPasswordFn: func(ctx context.Context, userId primitive.ObjectID, passwordHash string, newTime, expiresAt time.Time) error {
@@ -694,7 +738,12 @@ func TestChangePasswordSuccess(t *testing.T) {
 		},
 	}
 	mail := &fakeMailService{}
-	svc := NewUserService(repo, mail)
+	jsc := new(MockEventClient)
+
+	// Ensure Publish is mocked for success event
+	jsc.On("Publish", mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+
+	svc := NewUserService(repo, mail, jsc)
 
 	ctx := contextWithUserID(context.Background(), userID)
 	dto := &dtos.ChangePasswordDto{

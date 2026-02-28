@@ -155,12 +155,12 @@ func (h *RatingHandler) HandleGetRatingsBySongID(w http.ResponseWriter, r *http.
 		}
 	}
 
-	response := map[string]interface{}{
+	response := map[string]any{
 		"items": ratings,
 	}
 
 	if nextCursor != "" {
-		response["nextCursor"] = nextCursor
+		response["next_cursor"] = nextCursor
 	}
 
 	_ = respond.OkJson(w, response)

@@ -14,11 +14,11 @@ type Song struct {
 	ID            primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	Title         string             `bson:"title" json:"title"`
 	Genres        []Genre            `bson:"genres" json:"genres"`
-	LengthSeconds int                `bson:"length_seconds" json:"lengthSeconds"`
+	LengthSeconds int                `bson:"length_seconds" json:"length_seconds"`
 	Artists       []Artist           `bson:"artists" json:"artists"`
 	Rating        *SongRating        `bson:"-" json:"rating,omitempty"`
-	AudioPath     string             `bson:"audio_path,omitempty" json:"-"`
-	AudioSize     int64              `bson:"audio_size,omitempty" json:"-"`
-	AudioMimeType string             `bson:"audio_mime_type,omitempty" json:"-"`
-	AudioChecksum string             `bson:"audio_checksum,omitempty" json:"-"`
+	AudioPath     string             `bson:"audio_path,omitempty" json:"audio_path,omitempty"`
+	AudioSize     int64              `bson:"audio_size,omitempty" json:"audio_size,omitempty"`
+	AudioMimeType string             `bson:"audio_mime_type,omitempty" json:"audio_mime_type,omitempty"`
+	AudioChecksum string             `bson:"audio_checksum,omitempty" json:"audio_checksum,omitempty"`
 }
