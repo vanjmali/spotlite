@@ -267,7 +267,7 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 	}
 	if dto.GenreIds != nil {
 		embeddedGenres := make([]entities.Genre, 0)
-		for _, genreIdStr := range *dto.GenreIds {
+		for _, genreIdStr := range dto.GenreIds {
 			genre, err := s.genreService.FindGenreByID(buildCtx, genreIdStr)
 			if err != nil {
 				buildSpan.RecordError(err)
@@ -293,7 +293,7 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 	var artistNames []string
 	if dto.ArtistIds != nil {
 		embeddedArtists := make([]entities.Artist, 0)
-		for _, artistIdStr := range *dto.ArtistIds {
+		for _, artistIdStr := range dto.ArtistIds {
 			artist, err := s.artistService.FindArtistByID(buildCtx, artistIdStr)
 			if err != nil {
 				buildSpan.RecordError(err)
@@ -346,7 +346,7 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "song.update.event")
 	defer eventSpan.End()
 
-	sup := toSongUpdatedEvent(idStr, updatedSong.Title, updatedSong.LengthSeconds, *dto.GenreIds, artistNames)
+	sup := toSongUpdatedEvent(idStr, updatedSong.Title, updatedSong.LengthSeconds, dto.GenreIds, artistNames)
 
 	// attempts broadcasting event
 	err = retry.Do(
