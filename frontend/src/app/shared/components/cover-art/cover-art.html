@@ -1,0 +1,18 @@
+<div
+  class="cover-art"
+  [class.cover-art--square]="squareSg()"
+  [style.background]="gradientSg()"
+  [style.--cover-size]="sizeStyleSg()"
+  [style.--cover-font-size]="fontSizeStyleSg()"
+  [style.--cover-angle]="angleSg()"
+>
+  @if (patternSg()) {
+    <div class="cover-art__pattern" aria-hidden="true">
+      <mat-icon>{{ iconSg() }}</mat-icon>
+      <mat-icon>{{ iconSg() }}</mat-icon>
+      <mat-icon>{{ iconSg() }}</mat-icon>
+    </div>
+  }
+  <span class="cover-art__slot"><ng-content></ng-content></span>
+  <span class="cover-art__initials">{{ initialsSg() }}</span>
+</div>

@@ -12,7 +12,8 @@ const (
 
 	CONTENT_STREAM       = "CONTENT"
 	SUBSCRIPTIONS_STREAM = "SUBSCRIPTIONS"
-	ANALYTICS_STREAM     = "ANALYTICS"
+	RATINGS_STREAM       = "RATINGS"
+	LISTENS_STREAM       = "LISTENS"
 
 	SUBJECT_ENTITY_CREATED = "content.created"
 	ENTITY_CREATE_DURABLE  = "ENTITY_CREATOR"
@@ -23,21 +24,24 @@ const (
 	SUBJECT_SUBSCRIBER_BATCH = "subscribers.batch.process"
 	SUB_DURABLE              = "SUBSCRIBER_PROCESSOR"
 
-	// Analytics event subjects and durables
-	SUBJECT_SONG_PLAYED          = "analytics.song_played"
-	SONG_PLAYED_DURABLE          = "SONG_PLAYED_PROCESSOR"
-	SUBJECT_RATING_CREATED       = "analytics.rating_created"
-	RATING_CREATED_DURABLE       = "RATING_CREATED_PROCESSOR"
-	SUBJECT_RATING_UPDATED       = "analytics.rating_updated"
-	RATING_UPDATED_DURABLE       = "RATING_UPDATED_PROCESSOR"
-	SUBJECT_RATING_DELETED       = "analytics.rating_deleted"
-	RATING_DELETED_DURABLE       = "RATING_DELETED_PROCESSOR"
-	SUBJECT_SUBSCRIPTION_CREATED = "analytics.subscription_created"
-	SUBSCRIPTION_CREATED_DURABLE = "SUBSCRIPTION_CREATED_PROCESSOR"
-	SUBJECT_SUBSCRIPTION_DELETED = "analytics.subscription_deleted"
-	SUBSCRIPTION_DELETED_DURABLE = "SUBSCRIPTION_DELETED_PROCESSOR"
-	SUBJECT_SONG_DELETED         = "analytics.song_deleted"
-	SONG_DELETED_DURABLE         = "SONG_DELETED_PROCESSOR"
+	SUBJECT_RATING_CREATED = "rating.created"
+	SUBJECT_RATING_UPDATED = "rating.updated"
+	SUBJECT_RATING_DELETED = "rating.deleted"
+	RATING_DURABLE         = "RATING_PROCESSOR"
+
+	SUBJECT_LISTEN_CREATED = "listen.created"
+	LISTEN_DURABLE         = "LISTEN_PROCESSOR"
+
+	SUBJECT_SUBSCRIPTION_CREATED = "subscription.created"
+	SUBJECT_SUBSCRIPTION_DELETED = "subscription.deleted"
+	SUBSCRIPTION_DURABLE         = "SUBSCRIPTION_PROCESSOR"
+)
+
+type SubscriptionEntityType string
+
+const (
+	SubscriptionEntityArtist SubscriptionEntityType = "ARTIST"
+	SubscriptionEntityGenre  SubscriptionEntityType = "GENRE"
 )
 
 type EntityCreatedEventPayload struct {
@@ -63,61 +67,25 @@ type SubscribersBatchEventPayload struct {
 	EventID       string     `json:"event_id"`
 }
 
-// Analytics event payloads
-type SongPlayedEventPayload struct {
-	UserID     string    `json:"user_id"`
-	SongID     string    `json:"song_id"`
-	ArtistID   string    `json:"artist_id"`
-	AlbumID    string    `json:"album_id"`
-	GenreID    string    `json:"genre_id"`
-	DurationMS int       `json:"duration_ms"`
-	PlayedAt   time.Time `json:"played_at"`
-	EventID    string    `json:"event_id"`
-}
-
-type RatingCreatedEventPayload struct {
+type RatingEventPayload struct {
 	UserID    string    `json:"user_id"`
 	SongID    string    `json:"song_id"`
 	Rating    int       `json:"rating"`
-	CreatedAt time.Time `json:"created_at"`
 	EventID   string    `json:"event_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
-type RatingUpdatedEventPayload struct {
+type ListenEventPayload struct {
 	UserID    string    `json:"user_id"`
 	SongID    string    `json:"song_id"`
-	OldRating int       `json:"old_rating"`
-	NewRating int       `json:"new_rating"`
-	UpdatedAt time.Time `json:"updated_at"`
 	EventID   string    `json:"event_id"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
-type RatingDeletedEventPayload struct {
-	UserID        string    `json:"user_id"`
-	SongID        string    `json:"song_id"`
-	DeletedRating int       `json:"deleted_rating"`
-	DeletedAt     time.Time `json:"deleted_at"`
-	EventID       string    `json:"event_id"`
-}
-
-type SubscriptionCreatedEventPayload struct {
-	UserID           string    `json:"user_id"`
-	SubscriptionType string    `json:"subscription_type"`
-	TargetID         string    `json:"target_id"`
-	CreatedAt        time.Time `json:"created_at"`
-	EventID          string    `json:"event_id"`
-}
-
-type SubscriptionDeletedEventPayload struct {
-	UserID           string    `json:"user_id"`
-	SubscriptionType string    `json:"subscription_type"`
-	TargetID         string    `json:"target_id"`
-	DeletedAt        time.Time `json:"deleted_at"`
-	EventID          string    `json:"event_id"`
-}
-
-type SongDeletedEventPayload struct {
-	SongID    string    `json:"song_id"`
-	DeletedAt time.Time `json:"deleted_at"`
-	EventID   string    `json:"event_id"`
+type SubscriptionEventPayload struct {
+	UserID     string                 `json:"user_id"`
+	EntityID   string                 `json:"entity_id"`
+	EntityType SubscriptionEntityType `json:"entity_type"`
+	EventID    string                 `json:"event_id"`
+	CreatedAt  time.Time              `json:"created_at"`
 }

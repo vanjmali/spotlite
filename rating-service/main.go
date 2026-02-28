@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,8 +15,8 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/nats-io/nats.go"
 	"github.com/vanjmali/spotlite/common-lib/events"
+	pb "github.com/vanjmali/spotlite/common-lib/proto/rating_service"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/rating-service/handlers"
@@ -55,7 +56,9 @@ var (
 					return
 				}
 				_ = dbc.Disconnect(ctx)
-				jsc.Close()
+				if jsc != nil {
+					jsc.Close()
+				}
 			}()
 
 			err = initializeRatingIndexes(ctx, dbc)
@@ -63,23 +66,36 @@ var (
 				return nil, nil, err
 			}
 
-			err = jsc.EnsureStream(
-				ctx,
-				events.ANALYTICS_STREAM,
-				[]string{
-					events.SUBJECT_RATING_CREATED,
-					events.SUBJECT_RATING_UPDATED,
-					events.SUBJECT_RATING_DELETED,
-				},
-			)
+			// Ensure ratings stream exists before publishing
+			err = jsc.EnsureStream(ctx, events.RATINGS_STREAM, []string{
+				events.SUBJECT_RATING_CREATED,
+				events.SUBJECT_RATING_UPDATED,
+				events.SUBJECT_RATING_DELETED,
+			})
 			if err != nil {
-				err = fmt.Errorf("failed to ensure NATS stream: %w", err)
+				err = fmt.Errorf("failed to ensure ratings stream: %w", err)
 				return h, shutdown, err
 			}
 
 			gcc := createAdapters(gc)
 			rr := createRepositories(dbc)
 			rs := createServices(rr, gcc, jsc)
+			grpcServer, err := createGrpcServer(rs)
+			if err != nil {
+				return h, shutdown, fmt.Errorf("failed to create grpc server: %w", err)
+			}
+			grpcPort := utils.GetEnv("GRPC_PORT", "50051")
+			lis, err := net.Listen("tcp", ":"+grpcPort)
+			if err != nil {
+				return h, shutdown, fmt.Errorf("failed to listen on grpc port: %w", err)
+			}
+			go func() {
+				log.Printf("gRPC rating server listening on port %s", grpcPort)
+				if serveErr := grpcServer.Serve(lis); serveErr != nil {
+					log.Printf("failed to serve rating grpc: %v", serveErr)
+				}
+			}()
+
 			h = createHandlers(v, rs)
 			shutdown = func() error {
 				var errs []error
@@ -89,6 +105,14 @@ var (
 
 				if err := gc.Close(); err != nil {
 					errs = append(errs, fmt.Errorf("grpc close error: %w", err))
+				}
+				grpcServer.GracefulStop()
+				if err := lis.Close(); err != nil {
+					errs = append(errs, fmt.Errorf("grpc listener close error: %w", err))
+				}
+
+				if jsc != nil {
+					jsc.Close()
 				}
 
 				if err := dbc.Disconnect(shutdownCtx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
@@ -143,10 +167,9 @@ func createClients() (*mongodriver.Client, *grpc.ClientConn, *events.JetStreamCl
 		return nil, nil, nil, fmt.Errorf("failed to establish a RPC connection with the content-service: %w", err)
 	}
 
-	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
+	natsURL := utils.MustGetEnv("NATS_URL")
+	jsc, err := events.NewClient(natsURL)
 	if err != nil {
-		_ = dbc.Disconnect(context.Background())
-		_ = gc.Close()
 		return nil, nil, nil, fmt.Errorf("failed to initialize NATS JetStream client: %w", err)
 	}
 
@@ -201,7 +224,7 @@ func createServices(
 	gcc *adapters.GrpcContentEntityGetter,
 	jsc *events.JetStreamClient,
 ) *services.RatingService {
-	rs := services.NewRatingService(sr, gcc, *jsc)
+	rs := services.NewRatingService(sr, gcc, jsc)
 
 	return rs
 }
@@ -212,6 +235,23 @@ func createHandlers(
 ) http.Handler {
 	rh := handlers.NewRatingHandler(*rs, *v)
 	return routers.HandleRequests(rh)
+}
+
+func createGrpcServer(rs *services.RatingService) (*grpc.Server, error) {
+	ratingGrpcServer := adapters.NewRatingServer(rs)
+
+	creds, err := credentials.NewServerTLSFromFile(certFilePath, keyFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load TLS keys: %w", err)
+	}
+
+	s := grpc.NewServer(
+		grpc.Creds(creds),
+		grpc.StatsHandler(otelgrpc.NewServerHandler()),
+	)
+	pb.RegisterGetSongRatingServer(s, ratingGrpcServer)
+
+	return s, nil
 }
 
 func generateCreds() (credentials.TransportCredentials, error) {

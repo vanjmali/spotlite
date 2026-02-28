@@ -1,0 +1,15 @@
+@use 'variables/colors' as *;
+
+.song-trailing-meta {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.song-trailing-meta__duration {
+  color: $color-gray-300;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

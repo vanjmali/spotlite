@@ -62,25 +62,6 @@ var (
 				return h, shutdown, err
 			}
 
-			// Initialize NATS stream for analytics events
-			err = jsc.EnsureStream(
-				ctx,
-				events.ANALYTICS_STREAM,
-				[]string{
-					events.SUBJECT_SONG_PLAYED,
-					events.SUBJECT_RATING_CREATED,
-					events.SUBJECT_RATING_UPDATED,
-					events.SUBJECT_RATING_DELETED,
-					events.SUBJECT_SUBSCRIPTION_CREATED,
-					events.SUBJECT_SUBSCRIPTION_DELETED,
-					events.SUBJECT_SONG_DELETED,
-				},
-			)
-			if err != nil {
-				err = fmt.Errorf("failed to ensure NATS stream: %w", err)
-				return h, shutdown, err
-			}
-
 			// Create shared analytics service for both HTTP handlers and NATS consumers
 			analyticsService := createAnalyticsService(mc)
 
@@ -98,46 +79,40 @@ var (
 			// Configure all analytics event consumers
 			configs := []events.ConsumerConfig{
 				{
-					Stream:  events.ANALYTICS_STREAM,
-					Subject: events.SUBJECT_SONG_PLAYED,
-					Durable: events.SONG_PLAYED_DURABLE,
-					Handler: c.HandleSongPlayed,
+					Stream:  events.LISTENS_STREAM,
+					Subject: events.SUBJECT_LISTEN_CREATED,
+					Durable: events.LISTEN_DURABLE,
+					Handler: c.HandleListenCreated,
 				},
 				{
-					Stream:  events.ANALYTICS_STREAM,
+					Stream:  events.RATINGS_STREAM,
 					Subject: events.SUBJECT_RATING_CREATED,
-					Durable: events.RATING_CREATED_DURABLE,
+					Durable: events.RATING_DURABLE,
 					Handler: c.HandleRatingCreated,
 				},
 				{
-					Stream:  events.ANALYTICS_STREAM,
+					Stream:  events.RATINGS_STREAM,
 					Subject: events.SUBJECT_RATING_UPDATED,
-					Durable: events.RATING_UPDATED_DURABLE,
+					Durable: events.RATING_DURABLE,
 					Handler: c.HandleRatingUpdated,
 				},
 				{
-					Stream:  events.ANALYTICS_STREAM,
+					Stream:  events.RATINGS_STREAM,
 					Subject: events.SUBJECT_RATING_DELETED,
-					Durable: events.RATING_DELETED_DURABLE,
+					Durable: events.RATING_DURABLE,
 					Handler: c.HandleRatingDeleted,
 				},
 				{
-					Stream:  events.ANALYTICS_STREAM,
+					Stream:  events.SUBSCRIPTIONS_STREAM,
 					Subject: events.SUBJECT_SUBSCRIPTION_CREATED,
-					Durable: events.SUBSCRIPTION_CREATED_DURABLE,
+					Durable: events.SUBSCRIPTION_DURABLE,
 					Handler: c.HandleSubscriptionCreated,
 				},
 				{
-					Stream:  events.ANALYTICS_STREAM,
+					Stream:  events.SUBSCRIPTIONS_STREAM,
 					Subject: events.SUBJECT_SUBSCRIPTION_DELETED,
-					Durable: events.SUBSCRIPTION_DELETED_DURABLE,
+					Durable: events.SUBSCRIPTION_DURABLE,
 					Handler: c.HandleSubscriptionDeleted,
-				},
-				{
-					Stream:  events.ANALYTICS_STREAM,
-					Subject: events.SUBJECT_SONG_DELETED,
-					Durable: events.SONG_DELETED_DURABLE,
-					Handler: c.HandleSongDeleted,
 				},
 			}
 

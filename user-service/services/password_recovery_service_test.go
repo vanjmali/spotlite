@@ -134,6 +134,16 @@ func (f *fakeUserRepositoryForPasswordRecovery) UpdateVerificationToken(
 	return nil
 }
 
+func (f *fakeUserRepositoryForPasswordRecovery) UpdateProfile(
+	ctx context.Context,
+	id primitive.ObjectID,
+	username string,
+	firstName string,
+	lastName string,
+) error {
+	return nil
+}
+
 func TestPasswordRecoveryServiceRequestPasswordResetUserNotFound(t *testing.T) {
 	userRepo := &fakeUserRepositoryForPasswordRecovery{
 		findUserByEmailFn: func(context.Context, string) (*entities.User, error) {

@@ -32,11 +32,11 @@ func NewConsumer(analyticsService AnalyticsService) *AnalyticsConsumer {
 	}
 }
 
-// HandleSongPlayed processes song played events - increments play count and updates genre/artist stats
-func (h *AnalyticsConsumer) HandleSongPlayed(ctx context.Context, msg jetstream.Msg) error {
-	var p events.SongPlayedEventPayload
+// HandleListenCreated processes listen created events
+func (h *AnalyticsConsumer) HandleListenCreated(ctx context.Context, msg jetstream.Msg) error {
+	var p events.ListenEventPayload
 	if err := json.Unmarshal(msg.Data(), &p); err != nil {
-		logging.Errorf(ctx, "critical: failed to unmarshal SongPlayedEventPayload: %v", err)
+		logging.Errorf(ctx, "critical: failed to unmarshal ListenEventPayload: %v", err)
 		return nil
 	}
 
@@ -45,30 +45,14 @@ func (h *AnalyticsConsumer) HandleSongPlayed(ctx context.Context, msg jetstream.
 		UserID:    p.UserID,
 		EventType: entities.EventTypeSongPlayed,
 		Data: map[string]interface{}{
-			"songID":     p.SongID,
-			"artistID":   p.ArtistID,
-			"albumID":    p.AlbumID,
-			"genreID":    p.GenreID,
-			"durationMS": p.DurationMS,
-			"playedAt":   p.PlayedAt,
+			"songID":    p.SongID,
+			"createdAt": p.CreatedAt,
 		},
-		Timestamp: p.PlayedAt,
+		Timestamp: p.CreatedAt,
 	}
 
 	if err := h.analyticsService.StoreEvent(ctx, event); err != nil {
-		logging.Errorf(ctx, "failed to store song played event: %v", err)
-		return err
-	}
-
-	// Project event to read models
-	if err := h.analyticsService.ProjectSongPlayedEvent(
-		ctx,
-		p.UserID,
-		p.GenreID,
-		p.ArtistID,
-		p.PlayedAt,
-	); err != nil {
-		logging.Errorf(ctx, "failed to project song played event: %v", err)
+		logging.Errorf(ctx, "failed to store listen event: %v", err)
 		return err
 	}
 
@@ -77,9 +61,9 @@ func (h *AnalyticsConsumer) HandleSongPlayed(ctx context.Context, msg jetstream.
 
 // HandleRatingCreated processes rating created events - stores rating and updates average
 func (h *AnalyticsConsumer) HandleRatingCreated(ctx context.Context, msg jetstream.Msg) error {
-	var p events.RatingCreatedEventPayload
+	var p events.RatingEventPayload
 	if err := json.Unmarshal(msg.Data(), &p); err != nil {
-		logging.Errorf(ctx, "critical: failed to unmarshal RatingCreatedEventPayload: %v", err)
+		logging.Errorf(ctx, "critical: failed to unmarshal RatingEventPayload: %v", err)
 		return nil
 	}
 
@@ -118,9 +102,9 @@ func (h *AnalyticsConsumer) HandleRatingCreated(ctx context.Context, msg jetstre
 
 // HandleRatingUpdated processes rating updated events - updates rating and recalculates average
 func (h *AnalyticsConsumer) HandleRatingUpdated(ctx context.Context, msg jetstream.Msg) error {
-	var p events.RatingUpdatedEventPayload
+	var p events.RatingEventPayload
 	if err := json.Unmarshal(msg.Data(), &p); err != nil {
-		logging.Errorf(ctx, "critical: failed to unmarshal RatingUpdatedEventPayload: %v", err)
+		logging.Errorf(ctx, "critical: failed to unmarshal RatingEventPayload: %v", err)
 		return nil
 	}
 
@@ -130,11 +114,10 @@ func (h *AnalyticsConsumer) HandleRatingUpdated(ctx context.Context, msg jetstre
 		EventType: entities.EventTypeRatingUpdated,
 		Data: map[string]interface{}{
 			"songID":    p.SongID,
-			"oldRating": p.OldRating,
-			"newRating": p.NewRating,
-			"updatedAt": p.UpdatedAt,
+			"newRating": p.Rating,
+			"updatedAt": p.CreatedAt,
 		},
-		Timestamp: p.UpdatedAt,
+		Timestamp: p.CreatedAt,
 	}
 
 	if err := h.analyticsService.StoreEvent(ctx, event); err != nil {
@@ -147,9 +130,9 @@ func (h *AnalyticsConsumer) HandleRatingUpdated(ctx context.Context, msg jetstre
 		ctx,
 		p.UserID,
 		entities.EventTypeRatingUpdated,
-		p.NewRating,
-		p.OldRating,
-		p.UpdatedAt,
+		p.Rating,
+		0, // no old rating in unified payload
+		p.CreatedAt,
 	); err != nil {
 		logging.Errorf(ctx, "failed to project rating updated event: %v", err)
 		return err
@@ -160,9 +143,9 @@ func (h *AnalyticsConsumer) HandleRatingUpdated(ctx context.Context, msg jetstre
 
 // HandleRatingDeleted processes rating deleted events - removes rating and recalculates average
 func (h *AnalyticsConsumer) HandleRatingDeleted(ctx context.Context, msg jetstream.Msg) error {
-	var p events.RatingDeletedEventPayload
+	var p events.RatingEventPayload
 	if err := json.Unmarshal(msg.Data(), &p); err != nil {
-		logging.Errorf(ctx, "critical: failed to unmarshal RatingDeletedEventPayload: %v", err)
+		logging.Errorf(ctx, "critical: failed to unmarshal RatingEventPayload: %v", err)
 		return nil
 	}
 
@@ -172,10 +155,10 @@ func (h *AnalyticsConsumer) HandleRatingDeleted(ctx context.Context, msg jetstre
 		EventType: entities.EventTypeRatingDeleted,
 		Data: map[string]interface{}{
 			"songID":        p.SongID,
-			"deletedRating": p.DeletedRating,
-			"deletedAt":     p.DeletedAt,
+			"deletedRating": p.Rating,
+			"deletedAt":     p.CreatedAt,
 		},
-		Timestamp: p.DeletedAt,
+		Timestamp: p.CreatedAt,
 	}
 
 	if err := h.analyticsService.StoreEvent(ctx, event); err != nil {
@@ -188,9 +171,9 @@ func (h *AnalyticsConsumer) HandleRatingDeleted(ctx context.Context, msg jetstre
 		ctx,
 		p.UserID,
 		entities.EventTypeRatingDeleted,
-		p.DeletedRating,
+		p.Rating,
 		0, // no old rating for deleted
-		p.DeletedAt,
+		p.CreatedAt,
 	); err != nil {
 		logging.Errorf(ctx, "failed to project rating deleted event: %v", err)
 		return err
@@ -201,21 +184,21 @@ func (h *AnalyticsConsumer) HandleRatingDeleted(ctx context.Context, msg jetstre
 
 // HandleSubscriptionCreated processes subscription created events - increments subscribed count
 func (h *AnalyticsConsumer) HandleSubscriptionCreated(ctx context.Context, msg jetstream.Msg) error {
-	var p events.SubscriptionCreatedEventPayload
+	var p events.SubscriptionEventPayload
 	if err := json.Unmarshal(msg.Data(), &p); err != nil {
-		logging.Errorf(ctx, "critical: failed to unmarshal SubscriptionCreatedEventPayload: %v", err)
+		logging.Errorf(ctx, "critical: failed to unmarshal SubscriptionEventPayload: %v", err)
 		return nil
 	}
 
-	// Convert string from event payload to type-safe enum at boundary
+	// Convert entity type to subscription type
 	var subType subscription.SubscriptionType
-	switch p.SubscriptionType {
-	case string(subscription.ArtistSubscription):
+	switch p.EntityType {
+	case events.SubscriptionEntityArtist:
 		subType = subscription.ArtistSubscription
-	case string(subscription.GenreSubscription):
+	case events.SubscriptionEntityGenre:
 		subType = subscription.GenreSubscription
 	default:
-		logging.Errorf(ctx, "critical: invalid subscription type: %s", p.SubscriptionType)
+		logging.Errorf(ctx, "critical: invalid entity type: %s", p.EntityType)
 		return nil
 	}
 
@@ -224,9 +207,9 @@ func (h *AnalyticsConsumer) HandleSubscriptionCreated(ctx context.Context, msg j
 		UserID:    p.UserID,
 		EventType: entities.EventTypeSubscriptionCreated,
 		Data: map[string]interface{}{
-			"subscriptionType": p.SubscriptionType,
-			"targetID":         p.TargetID,
-			"createdAt":        p.CreatedAt,
+			"entityType": string(p.EntityType),
+			"entityID":   p.EntityID,
+			"createdAt":  p.CreatedAt,
 		},
 		Timestamp: p.CreatedAt,
 	}
@@ -253,21 +236,21 @@ func (h *AnalyticsConsumer) HandleSubscriptionCreated(ctx context.Context, msg j
 
 // HandleSubscriptionDeleted processes subscription deleted events - decrements subscribed count
 func (h *AnalyticsConsumer) HandleSubscriptionDeleted(ctx context.Context, msg jetstream.Msg) error {
-	var p events.SubscriptionDeletedEventPayload
+	var p events.SubscriptionEventPayload
 	if err := json.Unmarshal(msg.Data(), &p); err != nil {
-		logging.Errorf(ctx, "critical: failed to unmarshal SubscriptionDeletedEventPayload: %v", err)
+		logging.Errorf(ctx, "critical: failed to unmarshal SubscriptionEventPayload: %v", err)
 		return nil
 	}
 
-	// Convert string from event payload to type-safe enum at boundary
+	// Convert entity type to subscription type
 	var subType subscription.SubscriptionType
-	switch p.SubscriptionType {
-	case string(subscription.ArtistSubscription):
+	switch p.EntityType {
+	case events.SubscriptionEntityArtist:
 		subType = subscription.ArtistSubscription
-	case string(subscription.GenreSubscription):
+	case events.SubscriptionEntityGenre:
 		subType = subscription.GenreSubscription
 	default:
-		logging.Errorf(ctx, "critical: invalid subscription type: %s", p.SubscriptionType)
+		logging.Errorf(ctx, "critical: invalid entity type: %s", p.EntityType)
 		return nil
 	}
 
@@ -276,11 +259,11 @@ func (h *AnalyticsConsumer) HandleSubscriptionDeleted(ctx context.Context, msg j
 		UserID:    p.UserID,
 		EventType: entities.EventTypeSubscriptionDeleted,
 		Data: map[string]interface{}{
-			"subscriptionType": p.SubscriptionType,
-			"targetID":         p.TargetID,
-			"deletedAt":        p.DeletedAt,
+			"entityType": string(p.EntityType),
+			"entityID":   p.EntityID,
+			"deletedAt":  p.CreatedAt,
 		},
-		Timestamp: p.DeletedAt,
+		Timestamp: p.CreatedAt,
 	}
 
 	if err := h.analyticsService.StoreEvent(ctx, event); err != nil {
@@ -294,40 +277,11 @@ func (h *AnalyticsConsumer) HandleSubscriptionDeleted(ctx context.Context, msg j
 		p.UserID,
 		entities.EventTypeSubscriptionDeleted,
 		subType,
-		p.DeletedAt,
+		p.CreatedAt,
 	); err != nil {
 		logging.Errorf(ctx, "failed to project subscription deleted event: %v", err)
 		return err
 	}
 
-	return nil
-}
-
-// HandleSongDeleted processes song deleted events - stores event for audit trail
-func (h *AnalyticsConsumer) HandleSongDeleted(ctx context.Context, msg jetstream.Msg) error {
-	var p events.SongDeletedEventPayload
-	if err := json.Unmarshal(msg.Data(), &p); err != nil {
-		logging.Errorf(ctx, "critical: failed to unmarshal SongDeletedEventPayload: %v", err)
-		return nil
-	}
-
-	// Store event in event store for audit trail
-	event := &entities.Event{
-		UserID:    "", // system event, no specific user
-		EventType: entities.EventTypeSongDeleted,
-		Data: map[string]interface{}{
-			"songID":    p.SongID,
-			"deletedAt": p.DeletedAt,
-		},
-		Timestamp: p.DeletedAt,
-	}
-
-	if err := h.analyticsService.StoreEvent(ctx, event); err != nil {
-		logging.Errorf(ctx, "failed to store song deleted event: %v", err)
-		return err
-	}
-
-	// Note: Read model cleanup/archiving can be implemented in future if needed
-	// Currently just storing the event for audit trail
 	return nil
 }

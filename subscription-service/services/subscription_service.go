@@ -52,15 +52,19 @@ type ContentEntityGetter interface {
 	GetEntity(ctx context.Context, entityID string, subType subscription.SubscriptionType) (string, error)
 }
 
+type EventPublisher interface {
+	Publish(ctx context.Context, subject string, payload any) error
+}
+
 type SubscriptionService struct {
 	sr  SubscriptionRepository
 	gcc ContentEntityGetter
-	jsc events.JetStreamClient
+	jsc EventPublisher
 	tr  trace.Tracer
 	cb  *gobreaker.CircuitBreaker
 }
 
-func NewSubscriptionService(sr SubscriptionRepository, gcc ContentEntityGetter, jsc events.JetStreamClient) *SubscriptionService {
+func NewSubscriptionService(sr SubscriptionRepository, gcc ContentEntityGetter, jsc EventPublisher) *SubscriptionService {
 	tr := otel.Tracer("subscription-service/subscription-service")
 
 	settings := gobreaker.Settings{
@@ -175,21 +179,38 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 		return err
 	}
 
-	// Publish subscription created event
+	// Publish subscription created event with retry for reliability
+	var entityType events.SubscriptionEntityType
+	switch se.Type {
+	case subscription.ArtistSubscription:
+		entityType = events.SubscriptionEntityArtist
+	case subscription.GenreSubscription:
+		entityType = events.SubscriptionEntityGenre
+	}
+
+	payload := events.SubscriptionEventPayload{
+		UserID:     se.SubscriberID.Hex(),
+		EntityID:   se.EntityID.Hex(),
+		EntityType: entityType,
+		EventID:    primitive.NewObjectID().Hex(),
+		CreatedAt:  se.SubscribedAt,
+	}
+
 	publishCtx, publishSpan := s.tr.Start(ctx, "subscription.subscribe.publish")
 	defer publishSpan.End()
 
-	subPayload := events.SubscriptionCreatedEventPayload{
-		UserID:           se.SubscriberID.Hex(),
-		TargetID:         se.EntityID.Hex(),
-		SubscriptionType: string(se.Type),
-		CreatedAt:        se.SubscribedAt,
-	}
-
-	if err := s.jsc.Publish(publishCtx, events.SUBJECT_SUBSCRIPTION_CREATED, subPayload); err != nil {
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(publishCtx, events.SUBJECT_SUBSCRIPTION_CREATED, payload)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(publishCtx),
+	)
+	if err != nil {
 		publishSpan.RecordError(err)
 		logging.Errorf(publishCtx, "failed to publish subscription created event: %v", err)
-		// Continue even if publish fails - subscription was created successfully
 	}
 
 	return nil
@@ -207,7 +228,28 @@ func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx conte
 		return err
 	}
 
-	deleteCtx, deleteSpan := s.tr.Start(ctx, "subscription.unsubcribe.delete")
+	// Find the subscription first to get its details for event publishing
+	findCtx, findSpan := s.tr.Start(ctx, "subscription.unsubscribe.find")
+	defer findSpan.End()
+
+	filter := bson.M{
+		"entity_id":     entityId,
+		"subscriber_id": userID,
+	}
+
+	subs, _, err := s.sr.FindSubscriptionsByUserID(findCtx, filter, 0, 1)
+	if err != nil {
+		findSpan.RecordError(err)
+		return err
+	}
+
+	if len(subs) == 0 {
+		return ErrSubscriptionNotFound
+	}
+
+	existing := subs[0]
+
+	deleteCtx, deleteSpan := s.tr.Start(ctx, "subscription.unsubscribe.delete")
 	defer deleteSpan.End()
 
 	ddc, err := s.sr.Delete(entityId, userID, deleteCtx)
@@ -220,23 +262,38 @@ func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx conte
 		return ErrSubscriptionNotFound
 	}
 
-	// Publish subscription deleted event
+	// Publish subscription deleted event with retry for reliability
+	var entityType events.SubscriptionEntityType
+	switch existing.Type {
+	case subscription.ArtistSubscription:
+		entityType = events.SubscriptionEntityArtist
+	case subscription.GenreSubscription:
+		entityType = events.SubscriptionEntityGenre
+	}
+
+	payload := events.SubscriptionEventPayload{
+		UserID:     existing.SubscriberID.Hex(),
+		EntityID:   existing.EntityID.Hex(),
+		EntityType: entityType,
+		EventID:    primitive.NewObjectID().Hex(),
+		CreatedAt:  existing.SubscribedAt,
+	}
+
 	publishCtx, publishSpan := s.tr.Start(ctx, "subscription.unsubscribe.publish")
 	defer publishSpan.End()
 
-	// We need to fetch subscription info to get the subscription type
-	// For simplicity in the event, we'll construct with available data
-	subPayload := events.SubscriptionDeletedEventPayload{
-		UserID:           userID.Hex(),
-		TargetID:         entityId.Hex(),
-		SubscriptionType: "", // Type not readily available after deletion
-		DeletedAt:        time.Now(),
-	}
-
-	if err := s.jsc.Publish(publishCtx, events.SUBJECT_SUBSCRIPTION_DELETED, subPayload); err != nil {
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(publishCtx, events.SUBJECT_SUBSCRIPTION_DELETED, payload)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(publishCtx),
+	)
+	if err != nil {
 		publishSpan.RecordError(err)
 		logging.Errorf(publishCtx, "failed to publish subscription deleted event: %v", err)
-		// Continue even if publish fails - subscription was deleted successfully
 	}
 
 	return nil

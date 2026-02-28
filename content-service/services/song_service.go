@@ -352,38 +352,23 @@ func (s *SongService) TrackSongPlay(ctx context.Context, idStr string) error {
 		return err
 	}
 
-	// Extract genre IDs from embedded genres
-	var genreID string
-	if len(song.Genres) > 0 {
-		genreID = song.Genres[0].ID.Hex()
-	}
-
-	// Extract artist ID from embedded artists
-	var artistID string
-	if len(song.Artists) > 0 {
-		artistID = song.Artists[0].ID.Hex()
-	}
-
 	// Get user ID from context
 	userID := middlewares.GetUserIdFromContext(ctx)
 
-	// Publish SONG_PLAYED event
+	// Publish LISTEN_CREATED event
 	publishCtx, publishSpan := s.tr.Start(ctx, "song.track_play.publish")
 	defer publishSpan.End()
 
-	songPlayedPayload := events.SongPlayedEventPayload{
-		UserID:     userID,
-		SongID:     song.ID.Hex(),
-		ArtistID:   artistID,
-		AlbumID:    "", // Song entity doesn't store album ID directly
-		GenreID:    genreID,
-		DurationMS: song.LengthSeconds * 1000, // Convert seconds to milliseconds
-		PlayedAt:   time.Now(),
+	listenPayload := events.ListenEventPayload{
+		UserID:    userID,
+		SongID:    song.ID.Hex(),
+		EventID:   primitive.NewObjectID().Hex(),
+		CreatedAt: time.Now(),
 	}
 
-	if err := s.jsc.Publish(publishCtx, events.SUBJECT_SONG_PLAYED, songPlayedPayload); err != nil {
+	if err := s.jsc.Publish(publishCtx, events.SUBJECT_LISTEN_CREATED, listenPayload); err != nil {
 		publishSpan.RecordError(err)
-		logging.Errorf(publishCtx, "failed to publish song played event: %v", err)
+		logging.Errorf(publishCtx, "failed to publish listen event: %v", err)
 		// Don't return error - tracking failure shouldn't block the response
 	}
 
@@ -447,21 +432,6 @@ func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
 			logging.Errorf(cleanupCtx, "failed to delete audio file at path %s: %v", song.AudioPath, err)
 		}
 		cleanupSpan.End()
-	}
-
-	// Publish song deleted event
-	publishCtx, publishSpan := s.tr.Start(ctx, "song.delete_song.publish")
-	defer publishSpan.End()
-
-	songDeletedPayload := events.SongDeletedEventPayload{
-		SongID:    id.Hex(),
-		DeletedAt: time.Now(),
-	}
-
-	if err := s.jsc.Publish(publishCtx, events.SUBJECT_SONG_DELETED, songDeletedPayload); err != nil {
-		publishSpan.RecordError(err)
-		logging.Errorf(publishCtx, "failed to publish song deleted event: %v", err)
-		// Continue even if publish fails - song was deleted successfully
 	}
 
 	return nil

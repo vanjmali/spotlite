@@ -1,0 +1,19 @@
+<span
+  class="song-rating-badge"
+  [class.song-rating-badge--rated]="hasRatingsSg()"
+  [attr.aria-label]="
+    'Song rating: ' +
+    (hasRatingsSg()
+      ? averageTextSg() + ' out of 5 from ' + countSg() + ' ratings'
+      : 'not rated yet')
+  "
+>
+  <mat-icon class="song-rating-badge__icon">star</mat-icon>
+  <span class="song-rating-badge__value">
+    @if (hasRatingsSg()) {
+      {{ averageTextSg() }} ({{ countSg() }})
+    } @else {
+      -
+    }
+  </span>
+</span>

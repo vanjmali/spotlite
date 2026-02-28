@@ -14,6 +14,7 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	pb "github.com/vanjmali/spotlite/common-lib/proto/content_service"
+	ratingpb "github.com/vanjmali/spotlite/common-lib/proto/rating_service"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
@@ -37,6 +38,7 @@ var (
 	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
 	certFilePath       = utils.MustGetEnv("CERT_PATH")
 	keyFilePath        = utils.MustGetEnv("KEY_PATH")
+	natsURL            = utils.MustGetEnv("NATS_URL")
 	config             = server.ServerRunConfiguration{
 		TelemetryName: "content-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
@@ -52,6 +54,8 @@ var (
 			return nil
 		},
 		CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
+			var ratingConn *grpc.ClientConn
+
 			dbc, jsc, rc, err := createClients(ctx)
 			if err != nil {
 				err = fmt.Errorf("failed to create clients: %w", err)
@@ -79,6 +83,9 @@ var (
 				_ = dbc.Disconnect(ctx)
 				_ = rc.Close()
 				_ = hdfsStore.Close()
+				if ratingConn != nil {
+					_ = ratingConn.Close()
+				}
 			}()
 
 			// Ensure CONTENT_STREAM for publishing entity events
@@ -88,8 +95,8 @@ var (
 				return h, shutdown, err
 			}
 
-			// Ensure ANALYTICS_STREAM for publishing song play and deletion events
-			err = jsc.EnsureStream(ctx, events.ANALYTICS_STREAM, []string{events.SUBJECT_SONG_PLAYED, events.SUBJECT_SONG_DELETED})
+			// Ensure LISTENS_STREAM for publishing song play events
+			err = jsc.EnsureStream(ctx, events.LISTENS_STREAM, []string{events.SUBJECT_LISTEN_CREATED})
 			if err != nil {
 				err = fmt.Errorf("failed to ensure NATS stream: %w", err)
 				return h, shutdown, err
@@ -97,7 +104,11 @@ var (
 
 			ar, sr, alr, gr := createRepositories(dbc)
 			gs, as, ss, als, glss := createServices(ar, sr, alr, gr, jsc, hdfsStore)
-			h = createHandlers(v, as, ss, als, gs, glss, rc)
+			ratingClient, ratingConn, err := infragrpc.NewRatingSummaryClient()
+			if err != nil {
+				return h, shutdown, fmt.Errorf("failed to create rating grpc client: %w", err)
+			}
+			h = createHandlers(v, as, ss, als, gs, glss, rc, ratingClient)
 
 			// configures grpc server
 			grpcPort := utils.GetEnv("GRPC_PORT", "50051")
@@ -133,6 +144,9 @@ var (
 				}
 
 				jsc.Close()
+				if err := ratingConn.Close(); err != nil {
+					return fmt.Errorf("failed to close rating grpc connection: %w", err)
+				}
 
 				return nil
 			}
@@ -165,7 +179,7 @@ func createClients(ctx context.Context) (*mongodriver.Client, *events.JetStreamC
 		return nil, nil, nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
 	}
 
-	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
+	jsc, err := events.NewClient(natsURL, nats.RootCAs(rootCACertFilePath))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to initialized NATS jets teram client: %w", err)
 	}
@@ -224,12 +238,16 @@ func createHandlers(
 	gs *services.GenreService,
 	glss *services.GlobalSearchService,
 	rc *redis.Client,
+	ratingClient ratingpb.GetSongRatingClient,
 ) http.Handler {
+	ttl := utils.MustGetDurationEnv("SONG_RATING_CACHE_TTL_SECONDS", time.Second)
+	src := handlers.NewRedisSongRatingCache(rc, ttl)
+
 	ah := handlers.NewArtistHandler(*as, *v)
-	sh := handlers.NewSongHandler(*ss, rc, *v)
-	alh := handlers.NewAlbumHandler(*als, *v)
+	sh := handlers.NewSongHandler(*ss, rc, ratingClient, src, *v)
+	alh := handlers.NewAlbumHandler(*als, ratingClient, src, *v)
 	gh := handlers.NewGenreHandler(*gs, *v)
-	gsh := handlers.NewGlobalSearchHandler(glss)
+	gsh := handlers.NewGlobalSearchHandler(glss, ratingClient, src)
 
 	return routers.HandleRequests(ah, sh, alh, gh, gsh)
 }
