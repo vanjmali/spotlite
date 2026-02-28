@@ -47,7 +47,6 @@ services:
   # notification cassandra service
   notification-cassandra:
     image: cassandra:${CASSANDRA_VERSION}
-    container_name: notification-cassandra
     volumes:
       - "notification-cassandra-data:/var/lib/cassandra"
     # the environments are optional and come in handy only when working with multiple nodes
