@@ -273,7 +273,7 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 	}
 
 	syncCtx, syncSpan := s.tr.Start(updateCtx, "artist.update.sync_embeds")
-	if err := s.syncEmbeddedReferences(syncCtx, updatedArtist); err != nil {
+	if err := s.syncEmbedded(syncCtx, updatedArtist); err != nil {
 		syncSpan.RecordError(err)
 		syncSpan.End()
 		return nil, err
@@ -283,8 +283,7 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 	return updatedArtist, nil
 }
 
-func (s *ArtistService) syncEmbeddedReferences(ctx context.Context, artist *entities.Artist) error {
-	// Sync embedded artist snapshot in songs.
+func (s *ArtistService) syncEmbeddedArtists(ctx context.Context, artist *entities.Artist) error {
 	songs, _, err := s.songRepo.FindAll(ctx, bson.M{"artists._id": artist.ID}, 0, 0)
 	if err != nil {
 		return err
@@ -309,7 +308,10 @@ func (s *ArtistService) syncEmbeddedReferences(ctx context.Context, artist *enti
 		}
 	}
 
-	// Sync embedded artist snapshot in albums (top-level artists and song artists).
+	return nil
+}
+
+func (s *ArtistService) syncEmbeddedAlbums(ctx context.Context, artist *entities.Artist) error {
 	filter := bson.M{
 		"$or": []bson.M{
 			{"artists._id": artist.ID},
@@ -358,6 +360,19 @@ func (s *ArtistService) syncEmbeddedReferences(ctx context.Context, artist *enti
 		if _, err := s.albumRepo.UpdateByID(ctx, album.ID, update); err != nil {
 			return err
 		}
+	}
+
+	return nil
+}
+
+// syncEmbedded syncs embedded
+func (s *ArtistService) syncEmbedded(ctx context.Context, artist *entities.Artist) error {
+	if err := s.syncEmbeddedArtists(ctx, artist); err != nil {
+		return err
+	}
+
+	if err := s.syncEmbeddedAlbums(ctx, artist); err != nil {
+		return err
 	}
 
 	return nil
