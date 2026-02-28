@@ -55,6 +55,7 @@ type albumSongManager interface {
 	FindAlbumByID(ctx context.Context, idStr string) (*entities.Album, error)
 	AddSongsToAlbum(ctx context.Context, idStr string, dto dtos.AddAlbumSongsDto) (*entities.Album, error)
 	RemoveSongFromAllAlbums(ctx context.Context, songIdStr string) error
+	SyncEmbeddedSong(ctx context.Context, song entities.Song) error
 }
 
 type audioStore interface {
@@ -321,6 +322,14 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 	}
 	repoSpan.End()
 
+	syncCtx, syncSpan := s.tr.Start(ctx, "song.update.sync_album_embeds")
+	if err := s.albumService.SyncEmbeddedSong(syncCtx, *updatedSong); err != nil {
+		syncSpan.RecordError(err)
+		syncSpan.End()
+		return nil, err
+	}
+	syncSpan.End()
+
 	return updatedSong, nil
 }
 
@@ -494,6 +503,14 @@ func (s *SongService) UploadAudio(ctx context.Context, idStr string, r io.Reader
 		}
 		return nil, err
 	}
+
+	syncCtx, syncSpan := s.tr.Start(ctx, "song.upload_audio.sync_album_embeds")
+	if err := s.albumService.SyncEmbeddedSong(syncCtx, *updated); err != nil {
+		syncSpan.RecordError(err)
+		syncSpan.End()
+		return nil, err
+	}
+	syncSpan.End()
 
 	if song.AudioPath != "" && song.AudioPath != audioPath {
 		if err := s.hdfs.Remove(song.AudioPath); err != nil {

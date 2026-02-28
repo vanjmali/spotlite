@@ -200,8 +200,8 @@ func createServices(
 	*services.AlbumService,
 	*services.GlobalSearchService,
 ) {
-	gs := services.NewGenreService(*gr, *jsc)
-	as := services.NewArtistService(*ar, *gs, *jsc)
+	gs := services.NewGenreService(*gr, *ar, *sr, *alr, *jsc)
+	as := services.NewArtistService(*ar, *sr, *alr, *gs, *jsc)
 	als := services.NewAlbumService(*alr, *as, *sr, *gs, *jsc)
 	ss := services.NewSongService(*sr, *as, *gs, als, hdfsStore)
 	glss := services.NewGlobalSearchService(gs, ss, als, as)
