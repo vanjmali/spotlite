@@ -388,93 +388,63 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 	return updatedSong, nil
 }
 
-func (s *SongService) UpdateSongDeletionStatus(ctx context.Context, idStr string, status types.EntityStatus) error {
-	ctx, span := s.tr.Start(ctx, "song.update_deletion_status")
-	defer span.End()
-
-	_, parseSpan := s.tr.Start(ctx, "song.update_deletion_status.parse_id")
-	defer parseSpan.End()
-	id, err := primitive.ObjectIDFromHex(idStr)
-	if err != nil {
-		parseSpan.RecordError(err)
-		return ErrObjectIdCastFailed
-	}
-
-	update := map[string]any{
-		"status": status,
-	}
-
-	repoCtx, repoSpan := s.tr.Start(ctx, "song.")
-	defer repoSpan.End()
-	_, err = s.songRepo.UpdateByID(repoCtx, id, update)
-	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			repoSpan.RecordError(err)
-			return ErrSongNotFound
-		}
-		repoSpan.RecordError(err)
-		return err
-	}
-	return nil
-}
-
 // DeleteSong deletes a song by its ID.
 func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
-	ctx, span := s.tr.Start(ctx, "song.delete_song")
-	defer span.End()
+	deleteCtx, deleteSpan := s.tr.Start(ctx, "song.delete_song")
+	defer deleteSpan.End()
 
-	_, parseSpan := s.tr.Start(ctx, "song.delete_song.parse_id")
+	_, parseSpan := s.tr.Start(deleteCtx, "song.delete_song.parse_id")
+	defer parseSpan.End()
+
 	id, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
 		parseSpan.RecordError(err)
-		parseSpan.End()
 		return ErrObjectIdCastFailed
 	}
-	parseSpan.End()
 
-	findSongCtx, findSongSpan := s.tr.Start(ctx, "song.delete_song.find_song")
+	findSongCtx, findSongSpan := s.tr.Start(deleteCtx, "song.delete_song.find_song")
+	defer findSongSpan.End()
+
 	song, err := s.songRepo.FindByID(findSongCtx, id)
 	if err != nil {
 		findSongSpan.RecordError(err)
-		findSongSpan.End()
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return ErrSongNotFound
 		}
 		return err
 	}
-	findSongSpan.End()
 
-	removeFromAlbumsCtx, removeFromAlbumsSpan := s.tr.Start(ctx, "song.delete_song.remove_from_albums")
+	removeFromAlbumsCtx, removeFromAlbumsSpan := s.tr.Start(deleteCtx, "song.delete_song.remove_from_albums")
+	defer removeFromAlbumsSpan.End()
+
 	if err := s.albumService.RemoveSongFromAllAlbums(removeFromAlbumsCtx, id.Hex()); err != nil {
 		removeFromAlbumsSpan.RecordError(err)
-		removeFromAlbumsSpan.End()
 		return err
 	}
-	removeFromAlbumsSpan.End()
 
-	repoCtx, repoSpan := s.tr.Start(ctx, "song.delete.repository_delete")
+	repoCtx, repoSpan := s.tr.Start(deleteCtx, "song.delete.repository_delete")
+	defer repoSpan.End()
+
 	res, err := s.songRepo.DeleteByID(repoCtx, id)
 	if err != nil {
 		repoSpan.RecordError(err)
-		repoSpan.End()
 		return err
 	}
 
 	if res.DeletedCount == 0 {
 		err = ErrSongNotFound
 		repoSpan.RecordError(err)
-		repoSpan.End()
 		return err
 	}
-	repoSpan.End()
 
 	if song.AudioPath != "" {
 		cleanupCtx, cleanupSpan := s.tr.Start(ctx, "song.delete_song.remove_audio")
+		defer cleanupSpan.End()
+
 		if err := s.hdfs.Remove(song.AudioPath); err != nil {
 			cleanupSpan.RecordError(err)
 			logging.Errorf(cleanupCtx, "failed to delete audio file at path %s: %v", song.AudioPath, err)
 		}
-		cleanupSpan.End()
 	}
 
 	return nil
