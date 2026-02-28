@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/nats-io/nats.go"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	pb "github.com/vanjmali/spotlite/common-lib/proto/rating_service"
 	"github.com/vanjmali/spotlite/common-lib/server"
@@ -168,7 +169,7 @@ func createClients() (*mongodriver.Client, *grpc.ClientConn, *events.JetStreamCl
 	}
 
 	natsURL := utils.MustGetEnv("NATS_URL")
-	jsc, err := events.NewClient(natsURL)
+	jsc, err := events.NewClient(natsURL, nats.RootCAs(rootCACertFilePath))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to initialize NATS JetStream client: %w", err)
 	}
