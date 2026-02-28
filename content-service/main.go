@@ -85,12 +85,20 @@ var (
 				return h, shutdown, err
 			}
 
-			if err = jsc.EnsureStream(ctx, events.SONGS_STREAM, []string{events.SUBJECT_SONG_CREATED, events.SUBJECT_SONG_RATED, events.SUBJECT_SONG_UPDATED}); err != nil {
+			if err = jsc.EnsureStream(
+				ctx,
+				events.SONGS_STREAM,
+				[]string{events.SUBJECT_SONG_CREATED, events.SUBJECT_SONG_RATED, events.SUBJECT_SONG_UPDATED},
+			); err != nil {
 				err = fmt.Errorf("failed to ensure songs stream: %w", err)
 				return h, shutdown, err
 			}
 
-			if err = jsc.EnsureStream(ctx, events.GENRES_STREAM, []string{events.SUBJECT_GENRE_SUBSCRIBED, events.SUBJECT_GENRE_CREATED, events.SUBJECT_GENRE_UPDATED}); err != nil {
+			if err = jsc.EnsureStream(
+				ctx,
+				events.GENRES_STREAM,
+				[]string{events.SUBJECT_GENRE_SUBSCRIBED, events.SUBJECT_GENRE_CREATED, events.SUBJECT_GENRE_UPDATED},
+			); err != nil {
 				err = fmt.Errorf("failed to ensure genres stream: %w", err)
 				return h, shutdown, err
 			}
