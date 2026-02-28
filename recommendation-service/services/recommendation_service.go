@@ -6,8 +6,9 @@ import (
 
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
+	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/recommendation-service/entities"
-	"github.com/vanjmali/spotlite/recommendation-service/repositories"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -17,12 +18,41 @@ var (
 	ErrGraphDatabaseUnavailable = errors.New("graph database is currently unavailable")
 	ErrLimitOutOfRange          = errors.New("limit must be between 1 and 50")
 	ErrInvalidUserID            = errors.New("invalid user ID format")
+	ErrObjectIdCastFailed       = errors.New("failed to convert hex to objectId")
 )
 
+type GraphRelationRepository interface {
+	SaveSongWithGenres(ctx context.Context, sn entities.SongNode) error
+	CreateGenreSubscription(ctx context.Context, gs entities.GenreSubscription) error
+	CreateRating(ctx context.Context, sr entities.SongRating) error
+	UpdateSongWithGenres(ctx context.Context, sn entities.SongNode) error
+	UpdateGenre(ctx context.Context, gn entities.GenreNode) error
+	GetSubscribedSongsForHomepage(ctx context.Context, userID string) ([]*entities.SongRecommendation, error)
+}
+type GenreNodeRepository interface {
+	Create(ctx context.Context, genre entities.GenreNode) error
+}
+
+type UserNodeRepository interface {
+	Create(ctx context.Context, user entities.UserNode) error
+}
+
+func NewServices(
+	ur UserNodeRepository,
+	gr GenreNodeRepository,
+	rr GraphRelationRepository,
+) *Repositories {
+	return &Repositories{
+		ur: ur,
+		gr: gr,
+		rr: rr,
+	}
+}
+
 type Repositories struct {
-	userNodeRepository  *repositories.UserNodeRepository
-	genreNodeRepository *repositories.GenreNodeRepository
-	relationRepository  GraphRelationRepository
+	ur UserNodeRepository
+	gr GenreNodeRepository
+	rr GraphRelationRepository
 }
 
 // RecommendationService provides recommendation-related business logic.
@@ -45,7 +75,7 @@ func (rs *RecommendationService) CreateUser(u events.UserRegistrationPayload, ct
 
 	un := entities.UserNode{UserID: u.UserID, Username: u.Username}
 
-	err := rs.r.userNodeRepository.Create(createCtx, un)
+	err := rs.r.ur.Create(createCtx, un)
 	if err != nil {
 		return err
 	}
@@ -59,7 +89,7 @@ func (rs *RecommendationService) CreateGenre(g events.GenreCreationPayload, ctx 
 
 	gn := entities.GenreNode{GenreID: g.GenreID, Name: g.GenreName}
 
-	err := rs.r.genreNodeRepository.Create(createCtx, gn)
+	err := rs.r.gr.Create(createCtx, gn)
 	if err != nil {
 		createSpan.RecordError(err)
 		logging.Errorf(createCtx, "critical: an error has occured while creating genre: %v", err)
@@ -73,7 +103,9 @@ func (rs *RecommendationService) CreateSong(e events.SongCreationPayload, ctx co
 	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.song.create")
 	defer createSpan.End()
 
-	err := rs.r.relationRepository.SaveSongWithGenres(createCtx, e)
+	sn := entities.SongNode{SongID: e.SongID, Title: e.SongTitle, Duration: e.Duration, GenreIDs: e.GenreIDs, Artists: e.ArtistNames}
+
+	err := rs.r.rr.SaveSongWithGenres(createCtx, sn)
 	if err != nil {
 		createSpan.RecordError(err)
 		logging.Errorf(createCtx, "critical: an error has occured while creating song: %v", err)
@@ -87,7 +119,9 @@ func (rs *RecommendationService) CreateSubscription(e events.GenreSubscriptionEv
 	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.subscription.create")
 	defer createSpan.End()
 
-	err := rs.r.relationRepository.CreateGenreSubscription(createCtx, e)
+	gs := entities.GenreSubscription{GenreID: e.GenreID, UserID: e.UserID}
+
+	err := rs.r.rr.CreateGenreSubscription(createCtx, gs)
 	if err != nil {
 		createSpan.RecordError(err)
 		logging.Errorf(createCtx, "critical: an error has occured while creating subscription relationship: %v", err)
@@ -101,7 +135,9 @@ func (rs *RecommendationService) CreateRating(e events.SongRatingPayload, ctx co
 	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.rating.create")
 	defer createSpan.End()
 
-	err := rs.r.relationRepository.CreateRating(createCtx, e)
+	sr := entities.SongRating{SongID: e.SongID, UserID: e.UserID, Value: e.Value}
+
+	err := rs.r.rr.CreateRating(createCtx, sr)
 	if err != nil {
 		createSpan.RecordError(err)
 		logging.Errorf(createCtx, "critical: an error has occured while creating rating relationship: %v", err)
@@ -115,7 +151,9 @@ func (rs *RecommendationService) UpdateSong(e events.SongUpdatePayload, ctx cont
 	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.song.update")
 	defer createSpan.End()
 
-	err := rs.r.relationRepository.UpdateSongWithGenres(createCtx, e)
+	sn := entities.SongNode{SongID: e.SongID, Title: e.SongTitle, Duration: e.Duration, GenreIDs: e.GenreIDs, Artists: e.ArtistNames}
+
+	err := rs.r.rr.UpdateSongWithGenres(createCtx, sn)
 	if err != nil {
 		createSpan.RecordError(err)
 		logging.Errorf(createCtx, "critical: an error has occured while updating song node and it's relationships: %v", err)
@@ -129,7 +167,9 @@ func (rs *RecommendationService) UpdateGenre(e events.EntityUpdatedEventPayload,
 	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.genre.update")
 	defer createSpan.End()
 
-	err := rs.r.relationRepository.UpdateGenre(createCtx, e)
+	gn := entities.GenreNode{GenreID: e.EntityID, Name: e.EntityName}
+
+	err := rs.r.rr.UpdateGenre(createCtx, gn)
 	if err != nil {
 		createSpan.RecordError(err)
 		logging.Errorf(createCtx, "critical: an error has occured while updating genre node and it's relationships: %v", err)
@@ -137,4 +177,24 @@ func (rs *RecommendationService) UpdateGenre(e events.EntityUpdatedEventPayload,
 	}
 
 	return nil
+}
+
+func (rs *RecommendationService) SubscriptionBasedRecommendation(ctx context.Context) ([]*entities.SongRecommendation, error) {
+	recCtx, recSpan := rs.tr.Start(ctx, "recommendation.sub_based")
+	defer recSpan.End()
+
+	userIDStr := middlewares.GetUserIdFromContext(ctx)
+
+	// just to be sure if it's a valid UUID
+	_, err := primitive.ObjectIDFromHex(userIDStr)
+	if err != nil {
+		return nil, ErrObjectIdCastFailed
+	}
+
+	srs, err := rs.r.rr.GetSubscribedSongsForHomepage(recCtx, userIDStr)
+	if err != nil {
+		return nil, err
+	}
+
+	return srs, nil
 }

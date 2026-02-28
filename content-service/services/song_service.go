@@ -143,6 +143,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (*SongP
 	defer resolveSpan.End()
 
 	embeddedArtists := make([]entities.Artist, 0)
+	var artistNames []string
 
 	for _, artistIdStr := range songDto.ArtistIds {
 		artist, err := s.artistService.FindArtistByID(resolveCtx, artistIdStr)
@@ -160,6 +161,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (*SongP
 			}
 		}
 
+		artistNames = append(artistNames, artist.Name)
 		embeddedArtists = append(embeddedArtists, entities.Artist{
 			ID:          artist.ID,
 			Name:        artist.Name,
@@ -283,6 +285,8 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 		}
 		update["genres"] = embeddedGenres
 	}
+
+	var artistNames []string
 	if dto.ArtistIds != nil {
 		embeddedArtists := make([]entities.Artist, 0)
 		for _, artistIdStr := range *dto.ArtistIds {
@@ -301,6 +305,7 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 				}
 			}
 
+			artistNames = append(artistNames, artist.Name)
 			embeddedArtists = append(embeddedArtists, entities.Artist{
 				ID:          artist.ID,
 				Name:        artist.Name,
@@ -337,7 +342,7 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "song.update.event")
 	defer eventSpan.End()
 
-	sup := toSongUpdatedEvent(idStr, updatedSong.Title, updatedSong.LengthSeconds, *dto.GenreIds)
+	sup := toSongUpdatedEvent(idStr, updatedSong.Title, updatedSong.LengthSeconds, *dto.GenreIds, artistNames)
 
 	// attempts broadcasting event
 	err = retry.Do(
@@ -566,7 +571,7 @@ func (s *SongService) UploadAudio(ctx context.Context, p SongPayload, r io.Reade
 	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "song.upload_audio.event")
 	defer eventSpan.End()
 
-	scp := toSongCreatedEvent(id.Hex(), p.Title, p.Duration, p.GenreIDs)
+	scp := toSongCreatedEvent(id.Hex(), p.Title, p.Duration, p.GenreIDs, p.ArtistNames)
 
 	err = retry.Do(
 		func() error {
@@ -612,27 +617,30 @@ func (s *SongService) uploadAudioWithChecksum(songID string, r io.Reader, ext st
 	return audioPath, size, checksum, nil
 }
 
-func toSongCreatedEvent(songID string, songTitle string, duration int, genreIDs []string) *events.SongCreationPayload {
+func toSongCreatedEvent(songID string, songTitle string, duration int, genreIDs []string, artistNames []string) *events.SongCreationPayload {
 	return &events.SongCreationPayload{
-		SongID:    songID,
-		SongTitle: songTitle,
-		Duration:  duration,
-		GenreIDs:  genreIDs,
+		SongID:      songID,
+		SongTitle:   songTitle,
+		Duration:    duration,
+		GenreIDs:    genreIDs,
+		ArtistNames: artistNames,
 	}
 }
 
-func toSongUpdatedEvent(songID string, songTitle string, duration int, genreIDs []string) *events.SongUpdatePayload {
+func toSongUpdatedEvent(songID string, songTitle string, duration int, genreIDs []string, artistNames []string) *events.SongUpdatePayload {
 	return &events.SongUpdatePayload{
-		SongID:    songID,
-		SongTitle: songTitle,
-		Duration:  duration,
-		GenreIDs:  genreIDs,
+		SongID:      songID,
+		SongTitle:   songTitle,
+		Duration:    duration,
+		GenreIDs:    genreIDs,
+		ArtistNames: artistNames,
 	}
 }
 
 type SongPayload struct {
-	SongID   string
-	Title    string
-	Duration int
-	GenreIDs []string
+	SongID      string
+	Title       string
+	Duration    int
+	GenreIDs    []string
+	ArtistNames []string
 }

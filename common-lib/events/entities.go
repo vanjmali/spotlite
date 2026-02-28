@@ -85,10 +85,11 @@ type GenreCreationPayload struct {
 }
 
 type SongCreationPayload struct {
-	SongID    string   `json:"song_id"`
-	SongTitle string   `json:"song_title"`
-	Duration  int      `json:"duration"`
-	GenreIDs  []string `json:"genre_ids"`
+	SongID      string   `json:"song_id"`
+	SongTitle   string   `json:"song_title"`
+	Duration    int      `json:"duration"`
+	GenreIDs    []string `json:"genre_ids"`
+	ArtistNames []string `json:"artist_names"`
 }
 
 type GenreSubscriptionEventPayload struct {
@@ -103,8 +104,9 @@ type SongRatingPayload struct {
 }
 
 type SongUpdatePayload struct {
-	SongID    string   `json:"song_id"`
-	SongTitle string   `json:"song_title"`
-	Duration  int      `json:"duration"`
-	GenreIDs  []string `json:"genre_ids"`
+	SongID      string   `json:"song_id"`
+	SongTitle   string   `json:"song_title"`
+	Duration    int      `json:"duration"`
+	GenreIDs    []string `json:"genre_ids"`
+	ArtistNames []string `json:"artist_names"`
 }

@@ -11,6 +11,8 @@ type SongNode struct {
 	SongID   string
 	Title    string
 	Duration int
+	GenreIDs []string
+	Artists  []string
 }
 
 // GenreNode represents a genre node in the recommendation graph.
@@ -19,15 +21,21 @@ type GenreNode struct {
 	Name    string
 }
 
-// Rating represents a RATED relationship in the graph.
-type Rating struct {
-	UserID string
+type GenreSubscription struct {
+	GenreID string
+	UserID  string
+}
+
+type SongRating struct {
 	SongID string
+	UserID string
 	Value  int
 }
 
-// GenreSubscription represents a SUBSCRIBED_GENRE relationship in the graph.
-type GenreSubscription struct {
-	UserID  string
-	GenreID string
+type SongRecommendation struct {
+	SongID   string   `json:"song_d"`
+	Title    string   `json:"title"`
+	Duration int      `json:"duration"`
+	Rating   float64  `json:"rating"`
+	Artists  []string `json:"artists"`
 }
