@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/nats-io/nats.go"
 	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
@@ -21,18 +22,11 @@ import (
 	"github.com/vanjmali/spotlite/recommendation-service/services"
 )
 
-const (
-	ratingCreatedDurable       = events.RATING_DURABLE + "_CREATED"
-	ratingUpdatedDurable       = events.RATING_DURABLE + "_UPDATED"
-	ratingDeletedDurable       = events.RATING_DURABLE + "_DELETED"
-	subscriptionCreatedDurable = events.SUBSCRIPTION_DURABLE + "_CREATED"
-	subscriptionDeletedDurable = events.SUBSCRIPTION_DURABLE + "_DELETED"
-)
-
 var (
-	certFilePath = utils.MustGetEnv("CERT_PATH")
-	keyFilePath  = utils.MustGetEnv("KEY_PATH")
-	config       = server.ServerRunConfiguration{
+	certFilePath       = utils.MustGetEnv("CERT_PATH")
+	keyFilePath        = utils.MustGetEnv("KEY_PATH")
+	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
+	config             = server.ServerRunConfiguration{
 		TelemetryName: "recommendation-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
 		CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
@@ -51,40 +45,38 @@ var (
 				_ = dbc.Close(ctx)
 			}()
 
-			// Ensure streams exist
-			if err = jsc.EnsureStream(ctx, events.RATINGS_STREAM, []string{
-				events.SUBJECT_RATING_CREATED,
-				events.SUBJECT_RATING_UPDATED,
-				events.SUBJECT_RATING_DELETED,
-			}); err != nil {
-				err = fmt.Errorf("failed to ensure ratings stream: %w", err)
+			if err = jsc.EnsureStream(ctx, events.USERS_STREAM, []string{events.SUBJECT_USER_CREATED}); err != nil {
+				err = fmt.Errorf("failed to ensure users stream: %w", err)
 				return h, shutdown, err
 			}
 
-			if err = jsc.EnsureStream(ctx, events.LISTENS_STREAM, []string{
-				events.SUBJECT_LISTEN_CREATED,
-			}); err != nil {
-				err = fmt.Errorf("failed to ensure listens stream: %w", err)
+			if err = jsc.EnsureStream(
+				ctx,
+				events.SONGS_STREAM,
+				[]string{events.SUBJECT_SONG_CREATED, events.SUBJECT_SONG_RATED, events.SUBJECT_SONG_UPDATED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure songs stream: %w", err)
 				return h, shutdown, err
 			}
 
-			if err = jsc.EnsureStream(ctx, events.SUBSCRIPTIONS_STREAM, []string{
-				events.SUBJECT_SUBSCRIPTION_CREATED,
-				events.SUBJECT_SUBSCRIPTION_DELETED,
-			}); err != nil {
-				err = fmt.Errorf("failed to ensure subscriptions stream: %w", err)
+			if err = jsc.EnsureStream(
+				ctx,
+				events.GENRES_STREAM,
+				[]string{events.SUBJECT_GENRE_SUBSCRIBED, events.SUBJECT_GENRE_CREATED, events.SUBJECT_GENRE_UPDATED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure genres stream: %w", err)
 				return h, shutdown, err
 			}
 
-			ur, sr, ar, gr, abr, rr := createRepositories(dbc)
-			ss := createServices(ur, sr, ar, gr, abr, rr)
-			h = createHandlers(ss)
-			c := createConsumers(ur, sr, ar, gr, abr, rr)
+			ur, gr, rr := createRepositories(dbc)
+			_, rs := createServices(ur, gr, rr)
+			h = createHandlers(rs)
+			c := createConsumers(rs)
 
 			// Start consumers in background.
 			consumerCtx, consumerCancel := context.WithCancel(ctx)
 			var consumerWg sync.WaitGroup
-			consumerErrCh := make(chan error, 6)
+			consumerErrCh := make(chan error, 7)
 
 			startConsumer := func(stream, subject, durable, label string, handler events.SubscribeHandler) {
 				consumerWg.Add(1)
@@ -99,46 +91,59 @@ var (
 			}
 
 			startConsumer(
-				events.RATINGS_STREAM,
-				events.SUBJECT_RATING_CREATED,
-				ratingCreatedDurable,
-				"rating created",
-				c.HandleRatingCreated,
+				events.GENRES_STREAM,
+				events.SUBJECT_GENRE_CREATED,
+				events.GENRE_CREATE_DURABLE,
+				"genre created",
+				c.HandleGenreCreation,
 			)
+
 			startConsumer(
-				events.RATINGS_STREAM,
-				events.SUBJECT_RATING_UPDATED,
-				ratingUpdatedDurable,
-				"rating updated",
-				c.HandleRatingUpdated,
+				events.GENRES_STREAM,
+				events.SUBJECT_GENRE_SUBSCRIBED,
+				events.GENRE_SUB_DURABLE,
+				"genre subscription created",
+				c.HandleGenreSubscription,
 			)
+
 			startConsumer(
-				events.RATINGS_STREAM,
-				events.SUBJECT_RATING_DELETED,
-				ratingDeletedDurable,
-				"rating deleted",
-				c.HandleRatingDeleted,
+				events.GENRES_STREAM,
+				events.SUBJECT_GENRE_UPDATED,
+				events.GENRE_UPDATE_DURABLE,
+				"genre updated",
+				c.HandleGenreUpdate,
 			)
+
 			startConsumer(
-				events.LISTENS_STREAM,
-				events.SUBJECT_LISTEN_CREATED,
-				events.LISTEN_DURABLE,
-				"listen created",
-				c.HandleListenCreated,
+				events.SONGS_STREAM,
+				events.SUBJECT_SONG_UPDATED,
+				events.SONG_UPDATE_DURABLE,
+				"song updated",
+				c.HandleSongUpdate,
 			)
+
 			startConsumer(
-				events.SUBSCRIPTIONS_STREAM,
-				events.SUBJECT_SUBSCRIPTION_CREATED,
-				subscriptionCreatedDurable,
-				"subscription created",
-				c.HandleSubscriptionCreated,
+				events.SONGS_STREAM,
+				events.SUBJECT_SONG_CREATED,
+				events.SONG_CREATE_DURABLE,
+				"song created",
+				c.HandleSongCreation,
 			)
+
 			startConsumer(
-				events.SUBSCRIPTIONS_STREAM,
-				events.SUBJECT_SUBSCRIPTION_DELETED,
-				subscriptionDeletedDurable,
-				"subscription deleted",
-				c.HandleSubscriptionDeleted,
+				events.SONGS_STREAM,
+				events.SUBJECT_SONG_RATED,
+				events.SONG_RATE_DURABLE,
+				"song rating created",
+				c.HandleSongRating,
+			)
+
+			startConsumer(
+				events.USERS_STREAM,
+				events.SUBJECT_USER_CREATED,
+				events.USER_DURABLE,
+				"user created",
+				c.HandleUserRegistration,
 			)
 
 			shutdown = func() error {
@@ -146,7 +151,9 @@ var (
 
 				consumerCancel()
 				consumerWg.Wait()
+
 				close(consumerErrCh)
+
 				for consumerErr := range consumerErrCh {
 					errs = append(errs, consumerErr)
 				}
@@ -187,6 +194,33 @@ func main() {
 	}
 }
 
+func ensureConstraints(ctx context.Context, d neo4j.DriverWithContext) error {
+	session := d.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+
+	// a list of constraints to apply
+	queries := []string{
+		"CREATE CONSTRAINT user_id_unique IF NOT EXISTS FOR (u:User) REQUIRE u.user_id IS UNIQUE",
+		"CREATE CONSTRAINT genre_id_unique IF NOT EXISTS FOR (g:Genre) REQUIRE g.genre_id IS UNIQUE",
+		"CREATE CONSTRAINT song_id_unique IF NOT EXISTS FOR (s:Song) REQUIRE s.song_id IS UNIQUE",
+	}
+
+	for _, query := range queries {
+		_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+			result, err := tx.Run(ctx, query, nil)
+			if err != nil {
+				return nil, err
+			}
+			return result.Consume(ctx)
+		})
+		if err != nil {
+			return fmt.Errorf("failed to apply constraint [%s]: %w", query, err)
+		}
+	}
+
+	return nil
+}
+
 func createClients() (neo4j.DriverWithContext, *events.JetStreamClient, error) {
 	neoUri := utils.MustGetEnv("NEO4J_URI")
 	neoUser := utils.MustGetEnv("NEO4J_USER")
@@ -197,11 +231,14 @@ func createClients() (neo4j.DriverWithContext, *events.JetStreamClient, error) {
 		return nil, nil, fmt.Errorf("failed to create Neo4j driver: %w", err)
 	}
 
-	natsUrl := utils.GetEnv("NATS_URL", "nats://localhost:4222")
-	jsc, err := events.NewClient(natsUrl)
+	err = ensureConstraints(context.Background(), dbc)
 	if err != nil {
-		_ = dbc.Close(context.Background())
-		return nil, nil, fmt.Errorf("failed to create NATS JetStream client: %w", err)
+		return nil, nil, fmt.Errorf("failed to ensure constraints: %w", err)
+	}
+
+	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to initialized NATS jet stream client: %w", err)
 	}
 
 	return dbc, jsc, nil
@@ -209,45 +246,33 @@ func createClients() (neo4j.DriverWithContext, *events.JetStreamClient, error) {
 
 func createRepositories(driver neo4j.DriverWithContext) (
 	*repositories.UserNodeRepository,
-	*repositories.SongNodeRepository,
-	*repositories.ArtistNodeRepository,
 	*repositories.GenreNodeRepository,
-	*repositories.AlbumNodeRepository,
 	*repositories.GraphRelationRepository,
 ) {
 	ur := repositories.NewUserNodeRepository(driver)
-	sr := repositories.NewSongNodeRepository(driver)
-	ar := repositories.NewArtistNodeRepository(driver)
 	gr := repositories.NewGenreNodeRepository(driver)
-	abr := repositories.NewAlbumNodeRepository(driver)
 	rr := repositories.NewGraphRelationRepository(driver)
 
-	return ur, sr, ar, gr, abr, rr
+	return ur, gr, rr
 }
 
 func createServices(
 	ur *repositories.UserNodeRepository,
-	sr *repositories.SongNodeRepository,
-	ar *repositories.ArtistNodeRepository,
 	gr *repositories.GenreNodeRepository,
-	abr *repositories.AlbumNodeRepository,
 	rr *repositories.GraphRelationRepository,
-) *services.Services {
-	return services.NewServices(ur, sr, ar, gr, abr, rr)
+) (*services.Repositories, *services.RecommendationService) {
+	baseServices := services.NewServices(ur, gr, rr)
+	recommendationService := services.NewRecommendationService(baseServices)
+	return baseServices, recommendationService
 }
 
 func createConsumers(
-	ur *repositories.UserNodeRepository,
-	sr *repositories.SongNodeRepository,
-	ar *repositories.ArtistNodeRepository,
-	gr *repositories.GenreNodeRepository,
-	abr *repositories.AlbumNodeRepository,
-	rr *repositories.GraphRelationRepository,
+	rs *services.RecommendationService,
 ) *consumers.RecommendationConsumer {
-	return consumers.NewRecommendationConsumer(ur, sr, ar, gr, abr, rr)
+	return consumers.NewRecommendationConsumer(rs)
 }
 
-func createHandlers(ss *services.Services) http.Handler {
-	rh := handlers.NewRecommendationHandler(*ss)
+func createHandlers(rs *services.RecommendationService) http.Handler {
+	rh := handlers.NewRecommendationHandler(rs)
 	return routers.HandleRequests(rh)
 }

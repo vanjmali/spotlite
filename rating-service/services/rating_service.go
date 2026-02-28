@@ -127,7 +127,7 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 	payload := events.RatingEventPayload{
 		UserID:    ratingEntity.UserID.Hex(),
 		SongID:    ratingEntity.SongID.Hex(),
-		Rating:    int(ratingEntity.Value),
+		Rating:    ratingEntity.Value,
 		EventID:   primitive.NewObjectID().Hex(),
 		CreatedAt: ratingEntity.CreatedAt,
 	}
@@ -199,7 +199,7 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 	payload := events.RatingEventPayload{
 		UserID:    userID.Hex(),
 		SongID:    existing.SongID.Hex(),
-		Rating:    int(existing.Value),
+		Rating:    existing.Value,
 		EventID:   primitive.NewObjectID().Hex(),
 		CreatedAt: existing.CreatedAt,
 	}
@@ -355,7 +355,7 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 	payload := events.RatingEventPayload{
 		UserID:    rating.UserID.Hex(),
 		SongID:    rating.SongID.Hex(),
-		Rating:    int(rating.Value),
+		Rating:    rating.Value,
 		EventID:   primitive.NewObjectID().Hex(),
 		CreatedAt: rating.CreatedAt,
 	}

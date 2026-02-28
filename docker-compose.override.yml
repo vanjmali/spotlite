@@ -149,7 +149,9 @@ services:
     volumes:
       - ./logs/recommendation-service:/app/logs
       - certs:/certs
+      - keys:/run/keys:ro
     environment:
+      JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
       ROOT_CERT_PATH: /certs/rootCA.crt
       CERT_PATH: /certs/recommendation-service.crt
       KEY_PATH: /certs/recommendation-service.key
@@ -179,6 +181,7 @@ services:
     environment:
       JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      ROOT_CERT_PATH: /certs/rootCA.crt
       CERT_PATH: /certs/user-service.crt
       KEY_PATH: /certs/user-service.key
     depends_on:

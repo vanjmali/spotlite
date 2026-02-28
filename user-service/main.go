@@ -9,6 +9,8 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/hibiken/asynq"
+	"github.com/nats-io/nats.go"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/server"
@@ -28,9 +30,10 @@ import (
 )
 
 var (
-	certFilePath = utils.MustGetEnv("CERT_PATH")
-	keyFilePath  = utils.MustGetEnv("KEY_PATH")
-	config       = server.ServerRunConfiguration{
+	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
+	certFilePath       = utils.MustGetEnv("CERT_PATH")
+	keyFilePath        = utils.MustGetEnv("KEY_PATH")
+	config             = server.ServerRunConfiguration{
 		TelemetryName: "user-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
 		ConfigureValidation: func(v *validator.Validate) error {
@@ -50,7 +53,7 @@ var (
 			return nil
 		},
 		CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
-			mc, mail, err := createClients(ctx)
+			mc, mail, jsc, err := createClients(ctx)
 			if err != nil {
 				err = fmt.Errorf("failed to create clients: %w", err)
 				return h, shutdown, err
@@ -64,10 +67,18 @@ var (
 				}
 				_ = mc.Disconnect(ctx)
 				_ = mail.Close()
+				jsc.Close()
+
 				if asynqShutdown != nil {
 					_ = asynqShutdown()
 				}
 			}()
+
+			err = jsc.EnsureStream(ctx, events.USERS_STREAM, []string{events.SUBJECT_USER_CREATED})
+			if err != nil {
+				err = fmt.Errorf("failed to ensure song stream: %w", err)
+				return h, shutdown, err
+			}
 
 			ur, rtr, prr, err := createRepositories(ctx, mc)
 			if err != nil {
@@ -75,7 +86,7 @@ var (
 				return h, shutdown, err
 			}
 
-			ms, us, rts, prs := createServices(mail, ur, rtr, prr)
+			ms, us, rts, prs := createServices(mail, ur, rtr, prr, jsc)
 			h = createHandlers(v, us, rts, prs)
 
 			asynqShutdown = setupAsynq(us, ms)
@@ -110,19 +121,24 @@ var (
 	}
 )
 
-func createClients(ctx context.Context) (*mongodriver.Client, *mail.Client, error) {
+func createClients(ctx context.Context) (*mongodriver.Client, *mail.Client, *events.JetStreamClient, error) {
 	mongo, err := mongo.InitMongoClient()
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to initialize MongoDB client: %w", err)
 	}
 
 	mail, err := mailing.InitClientFromEnv()
 	if err != nil {
 		_ = mongo.Disconnect(ctx)
-		return nil, nil, fmt.Errorf("failed to initialize mail client: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to initialize mail client: %w", err)
 	}
 
-	return mongo, mail, nil
+	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to initialized NATS jet strea, client: %w", err)
+	}
+
+	return mongo, mail, jsc, nil
 }
 
 func createRepositories(ctx context.Context, mongo *mongodriver.Client) (
@@ -143,7 +159,6 @@ func createRepositories(ctx context.Context, mongo *mongodriver.Client) (
 	if err := rtr.EnsureRefreshIndexes(ctx); err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to ensure refresh token indexes: %w", err)
 	}
-
 	return ur, rtr, prr, nil
 }
 
@@ -151,7 +166,8 @@ func createServices(
 	mail *mail.Client,
 	ur services.UserRepository,
 	rr services.RefreshTokenRepository,
-	pt services.PasswordRecoveryRepository) (
+	pt services.PasswordRecoveryRepository,
+	jsc *events.JetStreamClient) (
 	*services.MailService,
 	*services.UserService,
 	*services.RefreshTokenService,
@@ -164,7 +180,7 @@ func createServices(
 	}
 
 	ms := services.InitMailingService(mail, mailCfg)
-	us := services.NewUserService(ur, ms)
+	us := services.NewUserService(ur, ms, jsc)
 	rts := services.NewRefreshTokenService(rr)
 	prs := services.NewPasswordRecoveryService(ur, pt, ms)
 

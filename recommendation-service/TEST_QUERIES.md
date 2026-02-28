@@ -169,6 +169,61 @@ LIMIT 10
 
 **Expected:** may return `song3` (`user2` rated it highly).
 
+### 12. GetSongRatingStats (Data Enrichment)
+
+```cypher
+MATCH (s:Song {song_id: "song1"})<-[r:RATED]-()
+WITH avg(r.rating) as avg_rating, count(r) as rating_count
+RETURN COALESCE(avg_rating, 0.0) as avg_rating, rating_count
+```
+
+**Expected:** 1 row (avg_rating=5.0, rating_count=2)
+
+- Explanation: song1 has been rated twice (5 by user1, 5 by user2), so average is 5.0 and count is 2
+
+**Test with song that has no ratings:**
+
+```cypher
+MATCH (s:Song {song_id: "song_nonexistent"})<-[r:RATED]-()
+WITH avg(r.rating) as avg_rating, count(r) as rating_count
+RETURN COALESCE(avg_rating, 0.0) as avg_rating, rating_count
+```
+
+**Expected:** 1 row (avg_rating=0.0, rating_count=0) - No ratings found, returns defaults
+
+### 13. GetSongArtists (Data Enrichment)
+
+```cypher
+MATCH (s:Song {song_id: "song1"})-[:BY]->(a:Artist)
+RETURN a.name
+```
+
+**Expected:** 1 row (Queen)
+
+- Explanation: song1 (Bohemian Rhapsody) is by artist1 (Queen)
+
+**Test with multi-artist song (if supported):**
+
+```cypher
+MATCH (s:Song {song_id: "song2"})-[:BY]->(a:Artist)
+RETURN a.name
+```
+
+**Expected:** 1 row (Queen)
+
+- Explanation: song2 (Love of My Life) is also by artist1 (Queen)
+
+**Test with song that has no artists:**
+
+```cypher
+MATCH (s:Song {song_id: "song3"})-[:BY]->(a:Artist)
+RETURN a.name
+```
+
+**Expected:** 0 rows
+
+- Explanation: song3 (We Will Rock You) has no artists assigned in test data, returns empty list
+
 ## Cleanup test data
 
 After testing, delete the test data:

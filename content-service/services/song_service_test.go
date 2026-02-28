@@ -138,7 +138,7 @@ func newTestSongService(repo songRepo, album albumSongManager, hdfs audioStore) 
 func TestSongServiceUploadAudio_InvalidID(t *testing.T) {
 	svc := newTestSongService(&fakeSongRepo{}, &fakeAlbumManager{}, &fakeAudioStore{})
 
-	_, err := svc.UploadAudio(context.Background(), "bad-id", strings.NewReader("x"), ".mp3", "audio/mpeg", nil)
+	_, err := svc.UploadAudio(context.Background(), SongPayload{SongID: "bad-id"}, strings.NewReader("x"), ".mp3", "audio/mpeg", nil)
 	if !errors.Is(err, ErrObjectIdCastFailed) {
 		t.Fatalf("expected ErrObjectIdCastFailed, got %v", err)
 	}
@@ -152,7 +152,7 @@ func TestSongServiceUploadAudio_SongNotFound(t *testing.T) {
 	}
 	svc := newTestSongService(repo, &fakeAlbumManager{}, &fakeAudioStore{})
 
-	_, err := svc.UploadAudio(context.Background(), primitive.NewObjectID().Hex(), strings.NewReader("x"), ".mp3", "audio/mpeg", nil)
+	_, err := svc.UploadAudio(context.Background(), SongPayload{SongID: primitive.NewObjectID().Hex()}, strings.NewReader("x"), ".mp3", "audio/mpeg", nil)
 	if !errors.Is(err, ErrSongNotFound) {
 		t.Fatalf("expected ErrSongNotFound, got %v", err)
 	}
@@ -199,7 +199,7 @@ func TestSongServiceUploadAudio_SuccessUpdatesMetadataAndRemovesOldFile(t *testi
 	svc := newTestSongService(repo, &fakeAlbumManager{}, store)
 
 	lengthSeconds := 42
-	got, err := svc.UploadAudio(context.Background(), id.Hex(), strings.NewReader("song-bytes"), ".mp3", "audio/mpeg", &lengthSeconds)
+	got, err := svc.UploadAudio(context.Background(), SongPayload{SongID: id.Hex()}, strings.NewReader("song-bytes"), ".mp3", "audio/mpeg", &lengthSeconds)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
