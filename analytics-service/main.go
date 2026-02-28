@@ -111,31 +111,31 @@ var (
 				{
 					Stream:  events.RATINGS_STREAM,
 					Subject: events.SUBJECT_RATING_CREATED,
-					Durable: events.RATING_DURABLE,
+					Durable: events.RATING_CREATED_DURABLE,
 					Handler: c.HandleRatingCreated,
 				},
 				{
 					Stream:  events.RATINGS_STREAM,
 					Subject: events.SUBJECT_RATING_UPDATED,
-					Durable: events.RATING_DURABLE,
+					Durable: events.RATING_UPDATED_DURABLE,
 					Handler: c.HandleRatingUpdated,
 				},
 				{
 					Stream:  events.RATINGS_STREAM,
 					Subject: events.SUBJECT_RATING_DELETED,
-					Durable: events.RATING_DURABLE,
+					Durable: events.RATING_DELETED_DURABLE,
 					Handler: c.HandleRatingDeleted,
 				},
 				{
 					Stream:  events.SUBSCRIPTIONS_STREAM,
 					Subject: events.SUBJECT_SUBSCRIPTION_CREATED,
-					Durable: events.SUBSCRIPTION_DURABLE,
+					Durable: events.SUBSCRIPTION_CREATED_DURABLE,
 					Handler: c.HandleSubscriptionCreated,
 				},
 				{
 					Stream:  events.SUBSCRIPTIONS_STREAM,
 					Subject: events.SUBJECT_SUBSCRIPTION_DELETED,
-					Durable: events.SUBSCRIPTION_DURABLE,
+					Durable: events.SUBSCRIPTION_DELETED_DURABLE,
 					Handler: c.HandleSubscriptionDeleted,
 				},
 			}

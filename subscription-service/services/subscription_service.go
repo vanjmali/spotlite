@@ -179,6 +179,34 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 		return err
 	}
 
+	// Publish subscription created event for analytics
+	timeoutCtx, cancel := context.WithTimeout(createCtx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "subscription.subscribe.publish_event")
+	defer eventSpan.End()
+
+	subscriptionEvent := map[string]interface{}{
+		"user_id":     se.SubscriberID.Hex(),
+		"entity_id":   se.EntityID.Hex(),
+		"entity_type": se.Type,
+		"created_at":  time.Now(),
+	}
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_SUBSCRIPTION_CREATED, subscriptionEvent)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+	if err != nil {
+		logging.Errorf(eventCtx, "failed to publish subscription created event: %v", err)
+		eventSpan.RecordError(err)
+	}
+
 	if se.Type == subscription.GenreSubscription {
 		timeoutCtx, cancel := context.WithTimeout(createCtx, 5*time.Second)
 		defer cancel()
@@ -270,6 +298,34 @@ func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx conte
 
 	if ddc != 1 {
 		return ErrSubscriptionNotFound
+	}
+
+	// Publish subscription deleted event for analytics
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "subscription.unsubscribe.publish_event")
+	defer eventSpan.End()
+
+	subscriptionEvent := map[string]interface{}{
+		"user_id":     userID.Hex(),
+		"entity_id":   entityId.Hex(),
+		"entity_type": subs[0].Type,
+		"created_at":  time.Now(),
+	}
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_SUBSCRIPTION_DELETED, subscriptionEvent)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+	if err != nil {
+		logging.Errorf(eventCtx, "failed to publish subscription deleted event: %v", err)
+		eventSpan.RecordError(err)
 	}
 
 	return nil
