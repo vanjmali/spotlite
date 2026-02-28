@@ -26,6 +26,7 @@ var (
 	certFilePath       = utils.MustGetEnv("CERT_PATH")
 	keyFilePath        = utils.MustGetEnv("KEY_PATH")
 	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
+	natsURL            = utils.MustGetEnv("NATS_URL")
 	config             = server.ServerRunConfiguration{
 		TelemetryName: "recommendation-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
@@ -236,7 +237,7 @@ func createClients() (neo4j.DriverWithContext, *events.JetStreamClient, error) {
 		return nil, nil, fmt.Errorf("failed to ensure constraints: %w", err)
 	}
 
-	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
+	jsc, err := events.NewClient(natsURL, nats.RootCAs(rootCACertFilePath))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to initialized NATS jet stream client: %w", err)
 	}
