@@ -1,17 +1,46 @@
-<div class="page">
+<div class="page" [class.page--resizing]="isResizingSg()">
   <app-header />
 
   <div class="page__main">
-    <aside class="page__aside">
-      <ng-content select="[aside]"></ng-content>
-    </aside>
+    @if (showSidebarsSg() && authService.isAuthenticatedSg()) {
+      <aside class="page__aside" [style.width.px]="leftSidebarWidthSg()">
+        <app-homepage-left-sidebar />
+      </aside>
+      <div
+        class="page__resizer page__resizer--left"
+        (mousedown)="startResize('left', $event)"
+        (dblclick)="resetSidebarWidth('left')"
+        title="Drag to resize. Double-click to reset."
+      ></div>
+    }
+    @if (!showSidebarsSg()) {
+      <aside class="page__custom-aside">
+        <ng-content select="[aside]"></ng-content>
+      </aside>
+    }
 
     <main class="page__content">
       <ng-content select="[content]"></ng-content>
     </main>
+
+    @if (showSidebarsSg() && authService.isAuthenticatedSg()) {
+      <div
+        class="page__resizer page__resizer--right"
+        (mousedown)="startResize('right', $event)"
+        (dblclick)="resetSidebarWidth('right')"
+        title="Drag to resize. Double-click to reset."
+      ></div>
+      <aside class="page__right" [style.width.px]="rightSidebarWidthSg()">
+        <app-homepage-right-sidebar />
+      </aside>
+    }
   </div>
 
   <footer class="page__footer">
-    <app-site-footer />
+    @if (showControlBarSg() && showSidebarsSg() && authService.isAuthenticatedSg()) {
+      <app-control-bar [homepageMode]="true" />
+    } @else {
+      <app-site-footer />
+    }
   </footer>
 </div>

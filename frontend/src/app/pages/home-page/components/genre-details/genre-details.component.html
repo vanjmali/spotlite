@@ -1,0 +1,95 @@
+<div class="genre-details">
+  @if (isLoadingSg()) {
+    <p class="genre-details__loading">Loading genre...</p>
+  } @else if (errorSg()) {
+    <app-message [message]="errorSg()" type="error" />
+  } @else if (!genreSg()) {
+    <p class="genre-details__empty">Genre not found</p>
+  } @else {
+    <app-widget [title]="genreSg()!.name">
+      <div content class="genre-details__header">
+        <div class="genre-details__meta">
+          <p class="genre-details__subtitle">Songs in this genre</p>
+          <p class="genre-details__count">{{ songsSg().length }} songs</p>
+          @if (canManageSubscriptionSg()) {
+            <button
+              type="button"
+              class="genre-details__subscribe-btn"
+              [class.genre-details__subscribe-btn--active]="isSubscribedSg()"
+              [disabled]="isSubscribeBusySg()"
+              (click)="toggleGenreSubscription()"
+            >
+              <mat-icon>{{ isSubscribedSg() ? 'check_circle' : 'add_circle' }}</mat-icon>
+              {{ isSubscribedSg() ? 'Subscribed' : 'Subscribe' }}
+            </button>
+          }
+          @if (subscribeErrorSg()) {
+            <app-message [message]="subscribeErrorSg()" type="error" />
+          }
+        </div>
+      </div>
+    </app-widget>
+
+    <app-widget title="Songs">
+      <div content class="genre-details__songs">
+        @if (songsSg().length === 0) {
+          <p class="genre-details__empty">No songs in this genre yet.</p>
+        } @else {
+          <div class="genre-details__songs-list">
+            @for (row of songsSg(); track row.songId + ':' + row.albumId) {
+              <button
+                type="button"
+                class="genre-details__song-item"
+                [class.genre-details__song-item--active]="row.songId === activeSongIdSg()"
+                (click)="playFromRow(row.songId, row.albumId)"
+              >
+                <div class="genre-details__song-index">
+                  @if (row.songId === activeSongIdSg()) {
+                    <span
+                      class="genre-details__song-toggle"
+                      role="button"
+                      tabindex="0"
+                      aria-label="Toggle playback"
+                      (click)="toggleRowPlayback(row.songId, row.albumId, $event)"
+                      (keydown.enter)="toggleRowPlayback(row.songId, row.albumId, $event)"
+                      (keydown.space)="
+                        $event.preventDefault(); toggleRowPlayback(row.songId, row.albumId, $event)
+                      "
+                    >
+                      <mat-icon class="genre-details__song-index-icon">{{
+                        playback.isPlayingSg() ? 'pause' : 'play_arrow'
+                      }}</mat-icon>
+                    </span>
+                  } @else {
+                    <mat-icon class="genre-details__song-index-icon">music_note</mat-icon>
+                  }
+                </div>
+                <div class="genre-details__song-main">
+                  <p class="genre-details__song-title">{{ row.songTitle }}</p>
+                  <p class="genre-details__song-artist">{{ row.artistsText }}</p>
+                </div>
+                <div class="genre-details__song-meta">
+                  <app-song-rating-badge
+                    [songId]="row.songId"
+                    [average]="row.rating?.average"
+                    [count]="row.rating?.count"
+                  />
+                  <span class="genre-details__song-duration">{{
+                    formatSongDuration(row.lengthSeconds)
+                  }}</span>
+                  <a
+                    class="genre-details__song-album"
+                    [routerLink]="['/album', row.albumId]"
+                    (click)="$event.stopPropagation()"
+                  >
+                    {{ row.albumTitle }}
+                  </a>
+                </div>
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </app-widget>
+  }
+</div>

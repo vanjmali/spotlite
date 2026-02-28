@@ -26,6 +26,7 @@ func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler, 
 	api.HandleFunc("/login/resend-otp", h.HandleResendOtp).Methods("POST")
 
 	api.HandleFunc("/check-email", h.HandleCheckEmail).Methods("GET")
+	api.HandleFunc("/check-username", h.HandleCheckUsername).Methods("GET")
 
 	api.HandleFunc("/password-recovery/request", prh.HandleRequestPasswordReset).Methods("POST")
 	api.HandleFunc("/password-recovery/validate", prh.HandleValidateRecoveryToken).Methods("POST")
@@ -37,6 +38,8 @@ func HandleRequests(h *handlers.UserHandler, rth *handlers.RefreshTokenHandler, 
 	api.HandleFunc("/verify", h.HandleAccountVerification).Methods("POST")
 
 	api.Handle("/change-password", middlewares.RequireAuthenticated(h.HandleChangePassword)).Methods("PATCH")
+	api.Handle("/profile", middlewares.RequireAuthenticated(h.HandleGetProfile)).Methods("GET")
+	api.Handle("/profile", middlewares.RequireAuthenticated(h.HandleUpdateProfile)).Methods("PATCH")
 
 	return r
 }

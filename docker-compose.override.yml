@@ -120,15 +120,18 @@ services:
   # For hot reload
 
   frontend:
-    command: npm run start -- --host 0.0.0.0 --port 3000
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
     labels:
       traefik.enable: true
-      traefik.http.routers.frontend.rule: PathPrefix(`/`)
-      traefik.http.routers.frontend.entrypoints: websecure
-      traefik.http.routers.frontend.tls: true
+      traefik.http.routers.frontend-https.rule: PathPrefix(`/`)
+      traefik.http.routers.frontend-https.entrypoints: websecure
+      traefik.http.routers.frontend-https.tls: true
+      traefik.http.routers.frontend-https.service: frontend
+      traefik.http.routers.frontend-http.rule: PathPrefix(`/`)
+      traefik.http.routers.frontend-http.entrypoints: web
+      traefik.http.routers.frontend-http.service: frontend
       traefik.http.services.frontend.loadbalancer.server.port: "3000"
     volumes:
       - ./frontend/:/app
@@ -139,6 +142,7 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true # reliable file watching on Docker for Win/Mac
       - NG_CLI_ANALYTICS=false # disable telemetry
+      - API_BASE_URL=${APP_API_BASE_URL?}
 
   # --- Recommendation Service ---
   recommendation-service:
@@ -224,6 +228,7 @@ services:
       - certs:/certs
     environment:
       JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       ROOT_CERT_PATH: /certs/rootCA.crt
       CERT_PATH: /certs/content-service.crt
       KEY_PATH: /certs/content-service.key
@@ -264,7 +269,7 @@ services:
 
   content-redis:
     ports:
-      - "${CONTENT_REDIS_PORT}:6379"
+      - "6381:6379"
 
   content-redis-ui:
     image: rediscommander/redis-commander:latest

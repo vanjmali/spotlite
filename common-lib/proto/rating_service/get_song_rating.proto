@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+option go_package = "github.com/vanjmali/spotlite/common-lib/proto/rating_service;rating_service_pb";
+
+package rating_service;
+
+service GetSongRating {
+    rpc GetSongRatingSummary (SongIDRequest) returns (SongRatingSummaryResponse);
+}
+
+message SongIDRequest {
+    string song_id = 1;
+}
+
+message SongRatingSummaryResponse {
+    double average = 1;
+    int64 count = 2;
+}
+

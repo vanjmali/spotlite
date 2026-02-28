@@ -18,30 +18,36 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	"github.com/h2non/filetype"
 	"github.com/redis/go-redis/v9"
 	commondtos "github.com/vanjmali/spotlite/common-lib/dtos"
 	"github.com/vanjmali/spotlite/common-lib/logging"
+	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
+	pb "github.com/vanjmali/spotlite/common-lib/proto/rating_service"
 	"github.com/vanjmali/spotlite/common-lib/requests"
 	"github.com/vanjmali/spotlite/common-lib/respond"
-	"github.com/vanjmali/spotlite/common-lib/telemetry"
+	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/services"
 )
 
 // SongHandler wires HTTP handlers to the song service and validators.
 type SongHandler struct {
-	s  *services.SongService
-	rc *redis.Client
-	v  *validator.Validate
+	s            *services.SongService
+	rc           *redis.Client
+	ratingClient pb.GetSongRatingClient
+	src          SongRatingCache
+	v            *validator.Validate
 }
 
 const (
 	maxSongAudioUploadBytes   = 100 << 20
 	maxSongAudioUploadMessage = "payload too large (max 100MB)"
 	maxSongAudioCacheBytes    = 10 << 20
+	streamURLTTLSeconds       = 30
 )
 
 var allowedSongAudioMimes = map[string]string{
@@ -64,8 +70,14 @@ var (
 var audioDurationDetector = detectAudioDurationSeconds
 
 // NewSongHandler creates and returns a new SongHandler with the provided service and validator.
-func NewSongHandler(s services.SongService, rc *redis.Client, v validator.Validate) *SongHandler {
-	h := SongHandler{s: &s, rc: rc, v: &v}
+func NewSongHandler(
+	s services.SongService,
+	rc *redis.Client,
+	ratingClient pb.GetSongRatingClient,
+	src SongRatingCache,
+	v validator.Validate,
+) *SongHandler {
+	h := SongHandler{s: &s, rc: rc, ratingClient: ratingClient, src: src, v: &v}
 	return &h
 }
 
@@ -126,6 +138,8 @@ func (h *SongHandler) HandleGetSongById(w http.ResponseWriter, r *http.Request) 
 			return
 		}
 	}
+
+	getSongRating(h.ratingClient, h.src, r.Context(), song)
 
 	if err := respond.OkJson(w, song); err != nil {
 		logging.Errorf(r.Context(), "failed to write get song response: %v", err)
@@ -212,7 +226,13 @@ func (h *SongHandler) HandleGetSongs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	commondtos.HandleListResponse(w, r, "songs", func(ctx context.Context) (any, error) {
-		return h.s.GetSongs(ctx, query)
+		result, err := h.s.GetSongs(ctx, query)
+		if err != nil {
+			return nil, err
+		}
+
+		getSongRatings(h.ratingClient, h.src, ctx, result.Items)
+		return result, nil
 	})
 }
 
@@ -259,6 +279,7 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 			return
 		}
 	}
+
 	cacheKey := "audio:" + id
 	err = h.rc.Del(r.Context(), cacheKey).Err()
 	if err != nil {
@@ -273,6 +294,11 @@ func (h *SongHandler) HandleUploadSongAudio(w http.ResponseWriter, r *http.Reque
 func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
 	cacheKey := "audio:" + id
+
+	if !h.authorizeAudioStreamRequest(r, id) {
+		_ = respond.Unauthorized(w)
+		return
+	}
 
 	song, err := h.s.FindSongById(r.Context(), id)
 	if err != nil {
@@ -300,7 +326,6 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 	if err == nil && len(cachedAudio) > 0 {
 		logging.Infof(r.Context(), "Cache HIT song: %s", id)
 		setSongAudioResponseHeaders(w, int64(len(cachedAudio)), song.AudioMimeType)
-
 		_, _ = w.Write(cachedAudio)
 		return
 	}
@@ -335,6 +360,7 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 		_ = respond.InternalServerError(w)
 		return
 	}
+
 	if int64(len(audioBytes)) < maxSongAudioCacheBytes {
 		err = h.rc.Set(r.Context(), cacheKey, audioBytes, 24*time.Hour).Err()
 		if err != nil {
@@ -347,6 +373,54 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 	setSongAudioResponseHeaders(w, int64(len(audioBytes)), song.AudioMimeType)
 
 	_, _ = w.Write(audioBytes)
+}
+
+func (h *SongHandler) HandleGetSongAudioSignedURL(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+
+	if _, err := h.s.FindSongById(r.Context(), id); err != nil {
+		switch {
+		case errors.Is(err, services.ErrSongNotFound):
+			_ = respond.NotFound(w)
+			return
+		case errors.Is(err, services.ErrObjectIdCastFailed):
+			_ = respond.BadRequest(w, respond.ErrorMessage("Invalid ID format"))
+			return
+		default:
+			logging.Errorf(r.Context(), "failed to resolve song for signed stream url: %v", err)
+			_ = respond.InternalServerError(w)
+			return
+		}
+	}
+
+	privateKey, err := utils.GetPrivateKey()
+	if err != nil {
+		logging.Errorf(r.Context(), "failed to load private key for stream url signing: %v", err)
+		_ = respond.InternalServerError(w)
+		return
+	}
+
+	expiresAt := time.Now().Add(streamURLTTLSeconds * time.Second)
+	userID := middlewares.GetUserIdFromContext(r.Context())
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+		"sub":     userID,
+		"song_id": id,
+		"aud":     "song-stream",
+		"iat":     time.Now().Unix(),
+		"exp":     expiresAt.Unix(),
+	})
+
+	signed, err := token.SignedString(privateKey)
+	if err != nil {
+		logging.Errorf(r.Context(), "failed to sign stream token: %v", err)
+		_ = respond.InternalServerError(w)
+		return
+	}
+
+	_ = respond.OkJson(w, map[string]string{
+		"url":        fmt.Sprintf("/api/content/songs/%s/audio?st=%s", id, signed),
+		"expires_at": expiresAt.UTC().Format(time.RFC3339),
+	})
 }
 
 func (h *SongHandler) HandleCreateSongWithAudio(w http.ResponseWriter, r *http.Request) {
@@ -600,14 +674,47 @@ func verifySongAudioChecksumFromReader(ctx context.Context, audioPath string, ex
 
 	hasher := sha256.New()
 	if _, err := io.Copy(hasher, r); err != nil {
-		return fmt.Errorf("failed to read audio for checksum path=%s trace_id=%s", audioPath, telemetry.TraceID(ctx))
+		logging.Errorf(ctx, "failed to read audio for checksum path=%s: %v", audioPath, err)
+		return fmt.Errorf("failed to read audio for checksum path=%s", audioPath)
 	}
 	computed := hex.EncodeToString(hasher.Sum(nil))
 	if computed == expected {
 		return nil
 	}
 
-	return fmt.Errorf("checksum mismatch path=%s trace_id=%s", audioPath, telemetry.TraceID(ctx))
+	logging.Securityf(ctx, "security_event=stream_rejected_integrity_check_failed path=%s", audioPath)
+	return fmt.Errorf("checksum mismatch path=%s", audioPath)
+}
+
+func (h *SongHandler) authorizeAudioStreamRequest(r *http.Request, songID string) bool {
+	if streamToken := strings.TrimSpace(r.URL.Query().Get("st")); streamToken != "" {
+		if validateSongStreamToken(streamToken, songID) {
+			return true
+		}
+	}
+
+	accessToken := middlewares.ExtractBearerToken(r.Header.Get("Authorization"))
+	if accessToken == "" {
+		return false
+	}
+
+	_, err := middlewares.ValidateJWTToken(accessToken)
+	return err == nil
+}
+
+func validateSongStreamToken(tokenStr, songID string) bool {
+	claims, err := middlewares.ValidateJWTToken(tokenStr)
+	if err != nil {
+		return false
+	}
+
+	tokenSongID, _ := claims["song_id"].(string)
+	if tokenSongID == "" || tokenSongID != songID {
+		return false
+	}
+
+	aud, _ := claims["aud"].(string)
+	return aud == "song-stream"
 }
 
 func setSongAudioResponseHeaders(w http.ResponseWriter, size int64, mime string) {

@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { CanMatchFn, Routes } from '@angular/router';
-import { CheckEmailPage, RegistrationPage, ProfilePage } from './pages';
+import { CheckEmailPage, RegistrationPage } from './pages';
 
 import { HomePage } from './pages/home-page';
 import { ResetPasswordPage } from './pages/reset-password-page/reset-password-page';
@@ -8,7 +8,6 @@ import { AdminPage } from './pages/admin-page';
 import { CredentialsPage } from './pages/login/credentials-page';
 import { OtpPage } from './pages/login/otp-page';
 import { VerifyPage } from './pages/register/verify-page';
-import { InboxPage } from './pages/inbox-page';
 import { LoginStore } from './pages/login/store';
 import { NotFoundPage } from './pages/not-found-page';
 import { AuthService } from './services/auth.service';
@@ -26,16 +25,6 @@ const adminOnlyMatch: CanMatchFn = async () => {
   }
 
   return authService.isAdminSg();
-};
-
-const authenticatedMatch: CanMatchFn = async () => {
-  const authService = inject(AuthService);
-
-  if (authService.isAuthenticatedSg()) {
-    return true;
-  }
-
-  return authService.refreshAccessToken();
 };
 
 export const routes: Routes = [
@@ -72,16 +61,6 @@ export const routes: Routes = [
   {
     path: 'check-email',
     component: CheckEmailPage,
-  },
-  {
-    path: 'inbox',
-    component: InboxPage,
-    canMatch: [authenticatedMatch],
-  },
-  {
-    path: 'profile',
-    component: ProfilePage,
-    canMatch: [authenticatedMatch],
   },
   {
     path: 'admin',
@@ -147,6 +126,35 @@ export const routes: Routes = [
           import('./pages/home-page/components/album-details/album-details.component').then(
             (m) => m.AlbumDetailsComponent
           ),
+      },
+      {
+        path: 'genre/:id',
+        loadComponent: () =>
+          import('./pages/home-page/components/genre-details/genre-details.component').then(
+            (m) => m.GenreDetailsComponent
+          ),
+      },
+      {
+        path: 'search',
+        loadComponent: () =>
+          import('./pages/home-page/components/search-results/search-results.component').then(
+            (m) => m.SearchResultsComponent
+          ),
+      },
+      {
+        path: 'artists/:id',
+        redirectTo: 'artist/:id',
+        pathMatch: 'full',
+      },
+      {
+        path: 'albums/:id',
+        redirectTo: 'album/:id',
+        pathMatch: 'full',
+      },
+      {
+        path: 'genres/:id',
+        redirectTo: 'genre/:id',
+        pathMatch: 'full',
       },
     ],
   },

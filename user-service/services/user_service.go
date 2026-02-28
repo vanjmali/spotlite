@@ -55,6 +55,7 @@ type UserRepository interface {
 	FindUserByID(ctx context.Context, id primitive.ObjectID) (*entities.User, error)
 	ExistsByUsername(ctx context.Context, username string) (bool, error)
 	ExistsByEmail(ctx context.Context, email string) (bool, error)
+	UpdateProfile(ctx context.Context, id primitive.ObjectID, username string, firstName string, lastName string) error
 }
 
 // UserService contains business logic for user onboarding, login and account maintenance.
@@ -406,26 +407,12 @@ func (s *UserService) EmailExists(ctx context.Context, email string) (bool, erro
 }
 
 func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswordDto) error {
-	// Extract user ID before creating spans
-	userIdHexString := middlewares.GetUserIdFromContext(ctx)
-	if userIdHexString == "" {
-		return ErrObjectIdCastFailed
-	}
-
 	ctx, span := s.tr.Start(ctx, "user.change_password")
 	defer span.End()
 
-	userObjectId, err := primitive.ObjectIDFromHex(userIdHexString)
-	if err != nil {
-		span.RecordError(err)
-		return ErrObjectIdCastFailed
-	}
-
 	_, lookupSpan := s.tr.Start(ctx, "user.change_password.lookup_user")
-	user, err := s.r.FindUserByID(ctx, userObjectId)
+	user, err := s.findUserFromContext(ctx)
 	if err != nil {
-		// User not found error should not appear here as the user is authenticated
-		// and user id is extracted from the token. But just in case, we log and return.
 		lookupSpan.RecordError(err)
 		lookupSpan.End()
 		return err
@@ -468,4 +455,69 @@ func (s *UserService) ChangePassword(ctx context.Context, dto *dtos.ChangePasswo
 
 	passwordSpan.End()
 	return nil
+}
+
+// GetProfile returns profile data for authenticated user.
+func (s *UserService) GetProfile(ctx context.Context) (*dtos.ProfileResponseDto, error) {
+	user, err := s.findUserFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dtos.ProfileResponseDto{
+		ID:        user.ID.Hex(),
+		Username:  user.Username,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
+	}, nil
+}
+
+// UpdateProfile updates editable profile data for authenticated user.
+func (s *UserService) UpdateProfile(ctx context.Context, dto *dtos.UpdateProfileDto) error {
+	user, err := s.findUserFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	if dto.Username != user.Username {
+		exists, err := s.r.ExistsByUsername(ctx, dto.Username)
+		if err != nil {
+			return err
+		}
+
+		if exists {
+			return ErrUsernameTaken
+		}
+	}
+
+	return s.r.UpdateProfile(ctx, user.ID, dto.Username, dto.FirstName, dto.LastName)
+}
+
+// UsernameExists checks if a username is already registered.
+func (s *UserService) UsernameExists(ctx context.Context, username string) (bool, error) {
+	return s.r.ExistsByUsername(ctx, username)
+}
+
+func (s *UserService) findUserFromContext(ctx context.Context) (*entities.User, error) {
+	userIDHex := middlewares.GetUserIdFromContext(ctx)
+	if userIDHex == "" {
+		return nil, ErrObjectIdCastFailed
+	}
+
+	userID, err := primitive.ObjectIDFromHex(userIDHex)
+	if err != nil {
+		return nil, ErrObjectIdCastFailed
+	}
+
+	user, err := s.r.FindUserByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrUserNotFound) {
+			return nil, ErrUserNotFound
+		}
+
+		return nil, err
+	}
+
+	return user, nil
 }
