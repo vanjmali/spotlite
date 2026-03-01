@@ -4,6 +4,7 @@ metadata:
   name: notification-cassandra
 spec:
   clusterIP: None
+  publishNotReadyAddresses: true
   selector:
     app: notification-cassandra
   ports:
@@ -46,7 +47,7 @@ spec:
                   name: spotlite-app-secrets
                   key: CASSANDRA_RACK
             - name: CASSANDRA_SEEDS
-              value: notification-cassandra
+              value: notification-cassandra-0.notification-cassandra.spotlite.svc.cluster.local
             - name: MAX_HEAP_SIZE
               valueFrom:
                 secretKeyRef:
