@@ -98,9 +98,9 @@ jobs:
       - publish-go-services
       - publish-frontend
     env:
-      SPOTLITE_REMOTE_HOST: ${{ vars.SPOTLITE_REMOTE_HOST }}
-      SPOTLITE_REMOTE_PORT: ${{ vars.SPOTLITE_REMOTE_PORT }}
-      SPOTLITE_REMOTE_USER: ${{ vars.SPOTLITE_REMOTE_USER }}
+      SPOTLITE_REMOTE_HOST: ${{ secrets.SPOTLITE_REMOTE_HOST }}
+      SPOTLITE_REMOTE_PORT: ${{ secrets.SPOTLITE_REMOTE_PORT }}
+      SPOTLITE_REMOTE_USER: ${{ secrets.SPOTLITE_REMOTE_USER }}
       SPOTLITE_REMOTE_PRIVATE_KEY: ${{ secrets.SPOTLITE_REMOTE_PRIVATE_KEY }}
     steps:
       - name: Checkout code
