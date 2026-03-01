@@ -151,6 +151,23 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 	if err != nil {
 		eventSpan.RecordError(err)
 		logging.Errorf(eventCtx, "failed to publish rating created event: %v", err)
+
+		var errs []error
+
+		errs = append(errs, err)
+
+		rbCtx, rbSpan := s.tr.Start(createCtx, "rating.create.rollback")
+		defer rbSpan.End()
+
+		_, err := s.rr.Delete(ratingEntity.ID, ratingEntity.UserID, rbCtx)
+		if err != nil {
+			eventSpan.RecordError(err)
+			logging.Errorf(eventCtx, "rollback failed: %v", err)
+
+			errs = append(errs, err)
+		}
+
+		return errors.Join(errs...)
 	}
 
 	return nil
@@ -194,35 +211,6 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 
 	if deletedCount != 1 {
 		return ErrRatingNotFound
-	}
-
-	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "rating.delete.event")
-	defer eventSpan.End()
-
-	payload := events.RatingEventPayload{
-		UserID:    userID.Hex(),
-		SongID:    existing.SongID.Hex(),
-		Rating:    existing.Value,
-		EventID:   primitive.NewObjectID().Hex(),
-		CreatedAt: existing.CreatedAt,
-	}
-
-	err = retry.Do(
-		func() error {
-			return s.jsc.Publish(eventCtx, events.SUBJECT_RATING_DELETED, payload)
-		},
-		retry.Attempts(3),
-		retry.Delay(time.Second),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Context(eventCtx),
-	)
-	if err != nil {
-		eventSpan.RecordError(err)
-		logging.Errorf(eventCtx, "failed to publish rating deleted event: %v", err)
-		return err
 	}
 
 	return nil
@@ -349,36 +337,6 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, ErrRatingNotFound
 		}
-		return nil, err
-	}
-
-	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "rating.update.event")
-	defer eventSpan.End()
-
-	// Publish rating updated event with retry for reliability
-	payload := events.RatingEventPayload{
-		UserID:    rating.UserID.Hex(),
-		SongID:    rating.SongID.Hex(),
-		Rating:    rating.Value,
-		EventID:   primitive.NewObjectID().Hex(),
-		CreatedAt: rating.CreatedAt,
-	}
-
-	err = retry.Do(
-		func() error {
-			return s.jsc.Publish(eventCtx, events.SUBJECT_RATING_UPDATED, payload)
-		},
-		retry.Attempts(3),
-		retry.Delay(time.Second),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Context(eventCtx),
-	)
-	if err != nil {
-		eventSpan.RecordError(err)
-		logging.Errorf(eventCtx, "failed to publish rating updated event: %v", err)
 		return nil, err
 	}
 

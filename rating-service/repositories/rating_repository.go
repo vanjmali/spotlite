@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/rating-service/dtos"
 	"github.com/vanjmali/spotlite/rating-service/entities"
 	"go.mongodb.org/mongo-driver/bson"
@@ -210,6 +209,5 @@ func (r *RatingRepository) DeleteSongRatings(songID primitive.ObjectID, ctx cont
 		return 0, err
 	}
 
-	logging.Infof(ctx, "%s", res.DeletedCount)
 	return res.DeletedCount, nil
 }
