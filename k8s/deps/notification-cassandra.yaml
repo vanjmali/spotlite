@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-cassandra
+spec:
+  clusterIP: None
+  selector:
+    app: notification-cassandra
+  ports:
+    - name: cql
+      port: 9042
+      targetPort: 9042
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: notification-cassandra
+spec:
+  serviceName: notification-cassandra
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-cassandra
+  template:
+    metadata:
+      labels:
+        app: notification-cassandra
+    spec:
+      containers:
+        - name: cassandra
+          image: cassandra:5.0
+          env:
+            - name: CASSANDRA_CLUSTER_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: CASSANDRA_CLUSTER_NAME
+            - name: CASSANDRA_DC
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: CASSANDRA_DC
+            - name: CASSANDRA_RACK
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: CASSANDRA_RACK
+            - name: CASSANDRA_SEEDS
+              value: notification-cassandra
+            - name: MAX_HEAP_SIZE
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: CASSANDRA_MAX_HEAP
+            - name: HEAP_NEWSIZE
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: CASSANDRA_NEW_HEAP
+            - name: CASSANDRA_ENDPOINT_SNITCH
+              value: GossipingPropertyFileSnitch
+          ports:
+            - containerPort: 9042
+              name: cql
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "cqlsh -e 'SELECT release_version FROM system.local'"]
+            initialDelaySeconds: 90
+            periodSeconds: 20
+            timeoutSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket:
+              port: 9042
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 6
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/cassandra
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 8Gi
