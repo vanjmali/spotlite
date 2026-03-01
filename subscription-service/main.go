@@ -88,6 +88,15 @@ var (
 				return h, shutdown, err
 			}
 
+			if err = jsc.EnsureStream(
+				ctx,
+				events.SUBSCRIPTIONS_STREAM,
+				[]string{events.SUBJECT_SUBSCRIPTION_CREATED, events.SUBJECT_SUBSCRIPTION_DELETED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure subscriptions stream: %w", err)
+				return h, shutdown, err
+			}
+
 			gcc := createAdapters(gc)
 			sr := createRepositories(dbc)
 			ss := createServices(sr, gcc, jsc)

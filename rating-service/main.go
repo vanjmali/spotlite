@@ -73,7 +73,6 @@ var (
 			err = jsc.EnsureStream(ctx, events.RATINGS_STREAM, []string{
 				events.SUBJECT_RATING_CREATED,
 				events.SUBJECT_RATING_UPDATED,
-				events.SUBJECT_RATING_DELETED,
 			})
 			if err != nil {
 				err = fmt.Errorf("failed to ensure ratings stream: %w", err)

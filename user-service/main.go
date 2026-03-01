@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -16,6 +17,7 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	"github.com/vanjmali/spotlite/common-lib/validations"
+	"github.com/vanjmali/spotlite/user-service/consumers"
 	"github.com/vanjmali/spotlite/user-service/handlers"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mailing"
 	"github.com/vanjmali/spotlite/user-service/infrastructure/mongo"
@@ -60,11 +62,19 @@ var (
 			}
 			// Cleanup resources on error
 			var asynqShutdown func() error
+			var stopConsumers func()
+			var consumerWg sync.WaitGroup
 			defer func() {
 				if err == nil {
 					// No error, do nothing when function exits
 					return
 				}
+
+				if stopConsumers != nil {
+					stopConsumers()
+					consumerWg.Wait()
+				}
+
 				_ = mc.Disconnect(ctx)
 				_ = mail.Close()
 				jsc.Close()
@@ -80,17 +90,54 @@ var (
 				return h, shutdown, err
 			}
 
-			ur, rtr, prr, err := createRepositories(ctx, mc)
+			if err = jsc.EnsureStream(
+				ctx,
+				events.LISTENS_STREAM,
+				[]string{events.SUBJECT_LISTEN_CREATED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure listens stream: %w", err)
+				return h, shutdown, err
+			}
+
+			if err = jsc.EnsureStream(
+				ctx,
+				events.RATINGS_STREAM,
+				[]string{
+					events.SUBJECT_RATING_CREATED,
+					events.SUBJECT_RATING_UPDATED,
+				},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure ratings stream: %w", err)
+				return h, shutdown, err
+			}
+
+			if err = jsc.EnsureStream(
+				ctx,
+				events.SUBSCRIPTIONS_STREAM,
+				[]string{events.SUBJECT_SUBSCRIPTION_CREATED, events.SUBJECT_SUBSCRIPTION_DELETED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure subscriptions stream: %w", err)
+				return h, shutdown, err
+			}
+
+			ur, rtr, prr, uar, err := createRepositories(ctx, mc)
 			if err != nil {
 				err = fmt.Errorf("failed to create repositories: %w", err)
 				return h, shutdown, err
 			}
 
-			ms, us, rts, prs := createServices(mail, ur, rtr, prr, jsc)
-			h = createHandlers(v, us, rts, prs)
+			ms, us, rts, prs, uas := createServices(mail, ur, rtr, prr, uar, jsc)
+			h = createHandlers(v, us, rts, prs, uas)
+
+			stopConsumers = setupActivityConsumers(ctx, jsc, uas, &consumerWg)
 
 			asynqShutdown = setupAsynq(us, ms)
 			shutdown = func() error {
+				if stopConsumers != nil {
+					stopConsumers()
+					consumerWg.Wait()
+				}
+
 				if err := mc.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
 					return fmt.Errorf("failed to disconnect mongo client: %w", err)
 				}
@@ -145,21 +192,28 @@ func createRepositories(ctx context.Context, mongo *mongodriver.Client) (
 	services.UserRepository,
 	services.RefreshTokenRepository,
 	services.PasswordRecoveryRepository,
+	services.UserActivityRepository,
 	error,
 ) {
 	name := utils.MustGetEnv("DB_NAME")
 	ur := repositories.NewUserRepositoryMongo(name, "users", mongo)
 	rtr := repositories.NewRefreshTokenRepository(name, "refresh_tokens", mongo)
 	prr := repositories.NewPasswordRecoveryRepository(name, "password_recovery_tokens", mongo)
+	uar := repositories.NewUserActivityRepository(name, "user_activity_events", mongo)
 
 	if err := ur.EnsureUserIndexes(ctx); err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to ensure user indexes: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to ensure user indexes: %w", err)
 	}
 
 	if err := rtr.EnsureRefreshIndexes(ctx); err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to ensure refresh token indexes: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("failed to ensure refresh token indexes: %w", err)
 	}
-	return ur, rtr, prr, nil
+
+	if err := uar.EnsureIndexes(ctx); err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("failed to ensure user activity indexes: %w", err)
+	}
+
+	return ur, rtr, prr, uar, nil
 }
 
 func createServices(
@@ -167,11 +221,13 @@ func createServices(
 	ur services.UserRepository,
 	rr services.RefreshTokenRepository,
 	pt services.PasswordRecoveryRepository,
+	uar services.UserActivityRepository,
 	jsc *events.JetStreamClient) (
 	*services.MailService,
 	*services.UserService,
 	*services.RefreshTokenService,
 	*services.PasswordRecoveryService,
+	*services.UserActivityService,
 ) {
 	mailCfg := services.MailConfig{
 		VerificationURL:  utils.MustGetEnv("SRV_USER_VERIFY_URL"),
@@ -183,8 +239,9 @@ func createServices(
 	us := services.NewUserService(ur, ms, jsc)
 	rts := services.NewRefreshTokenService(rr)
 	prs := services.NewPasswordRecoveryService(ur, pt, ms)
+	uas := services.NewUserActivityService(uar)
 
-	return ms, us, rts, prs
+	return ms, us, rts, prs, uas
 }
 
 func createHandlers(
@@ -192,13 +249,15 @@ func createHandlers(
 	us *services.UserService,
 	rts *services.RefreshTokenService,
 	prs *services.PasswordRecoveryService,
+	uas *services.UserActivityService,
 ) http.Handler {
 	uh := handlers.NewUserHandler(*us, *v, *rts)
+	ah := handlers.NewUserActivityHandler(uas)
 
 	rth := handlers.NewRefreshTokenHandler(*rts, *us, *v)
 	prh := handlers.NewPasswordRecoveryHandler(*prs, *v)
 
-	return routers.HandleRequests(uh, rth, prh)
+	return routers.HandleRequests(uh, rth, prh, ah)
 }
 
 // setupAsynq initializes and starts the asynq server, client, scheduler, workers and task router.
@@ -228,6 +287,67 @@ func setupAsynq(us *services.UserService, ms *services.MailService) func() error
 	as.Start(mux)
 
 	return as.Stop
+}
+
+func setupActivityConsumers(
+	ctx context.Context,
+	jsc *events.JetStreamClient,
+	uas *services.UserActivityService,
+	wg *sync.WaitGroup,
+) func() {
+	consumer := consumers.NewUserActivityConsumer(uas)
+	consumerCtx, cancel := context.WithCancel(ctx)
+
+	configs := []events.ConsumerConfig{
+		{
+			Stream:  events.LISTENS_STREAM,
+			Subject: events.SUBJECT_LISTEN_CREATED,
+			Durable: events.LISTEN_DURABLE,
+			Handler: consumer.HandleListenCreated,
+		},
+		{
+			Stream:  events.RATINGS_STREAM,
+			Subject: events.SUBJECT_RATING_CREATED,
+			Durable: events.RATING_CREATED_DURABLE,
+			Handler: consumer.HandleRatingCreated,
+		},
+		{
+			Stream:  events.RATINGS_STREAM,
+			Subject: events.SUBJECT_RATING_UPDATED,
+			Durable: events.RATING_UPDATED_DURABLE,
+			Handler: consumer.HandleRatingUpdated,
+		},
+		{
+			Stream:  events.SUBSCRIPTIONS_STREAM,
+			Subject: events.SUBJECT_SUBSCRIPTION_CREATED,
+			Durable: events.SUBSCRIPTION_CREATED_DURABLE,
+			Handler: consumer.HandleSubscriptionCreated,
+		},
+		{
+			Stream:  events.SUBSCRIPTIONS_STREAM,
+			Subject: events.SUBJECT_SUBSCRIPTION_DELETED,
+			Durable: events.SUBSCRIPTION_DELETED_DURABLE,
+			Handler: consumer.HandleSubscriptionDeleted,
+		},
+	}
+
+	for _, cfg := range configs {
+		wg.Add(1)
+		go func(config events.ConsumerConfig) {
+			defer wg.Done()
+			if err := jsc.StartConsumer(
+				consumerCtx,
+				config.Stream,
+				config.Subject,
+				config.Durable,
+				config.Handler,
+			); err != nil && !errors.Is(err, context.Canceled) {
+				logging.Errorf(context.Background(), "activity consumer %s failed: %v", config.Durable, err)
+			}
+		}(cfg)
+	}
+
+	return cancel
 }
 
 func main() {

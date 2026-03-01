@@ -113,6 +113,15 @@ var (
 				return h, shutdown, err
 			}
 
+			if err = jsc.EnsureStream(
+				ctx,
+				events.LISTENS_STREAM,
+				[]string{events.SUBJECT_LISTEN_CREATED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure listens stream: %w", err)
+				return h, shutdown, err
+			}
+
 			ar, sr, alr, gr := createRepositories(dbc)
 			gs, as, ss, als, glss := createServices(ar, sr, alr, gr, jsc, hdfsStore)
 			ratingClient, ratingConn, err := infragrpc.NewRatingSummaryClient()
