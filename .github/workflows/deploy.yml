@@ -2,8 +2,7 @@ name: Publish Images to GHCR
 
 on:
   push:
-    # TODO: Change to main branch before merging
-    # branches: [develop]
+    branches: [develop]
 
 permissions:
   contents: read
