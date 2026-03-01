@@ -43,7 +43,7 @@ services:
   nui:
     image: ghcr.io/nats-nui/nui:0.9.1
     environment:
-      - NATS_URL=tls://nats:4222
+      NATS_URL: ${NATS_URL?}
     labels:
       traefik.enable: true
       traefik.http.routers.nui.rule: PathPrefix(`/dev/nui`)

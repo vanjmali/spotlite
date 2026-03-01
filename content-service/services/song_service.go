@@ -144,6 +144,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (*SongP
 	defer resolveSpan.End()
 
 	embeddedArtists := make([]entities.Artist, 0)
+	artistNames := make([]string, 0)
 
 	for _, artistIdStr := range songDto.ArtistIds {
 		artist, err := s.artistService.FindArtistByID(resolveCtx, artistIdStr)
@@ -161,6 +162,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (*SongP
 			}
 		}
 
+		artistNames = append(artistNames, artist.Name)
 		embeddedArtists = append(embeddedArtists, entities.Artist{
 			ID:          artist.ID,
 			Name:        artist.Name,
@@ -212,7 +214,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (*SongP
 		return nil, errors.Join(errs...)
 	}
 
-	return &SongPayload{SongID: id.Hex(), Title: songEntity.Title, Duration: songEntity.LengthSeconds, GenreIDs: songDto.GenreIds}, nil
+	return &SongPayload{SongID: id.Hex(), Title: songEntity.Title, Duration: songEntity.LengthSeconds, GenreIDs: songDto.GenreIds, ArtistNames: artistNames}, nil
 }
 
 // FindSongById retrieves a single song by its ID.
