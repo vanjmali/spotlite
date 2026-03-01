@@ -175,11 +175,7 @@ var (
 					errs = append(errs, fmt.Errorf("failed to close Neo4j driver: %w", err))
 				}
 
-				if len(errs) > 0 {
-					return fmt.Errorf("shutdown errors: %v", errs)
-				}
-
-				return nil
+				return errors.Join(errs...)
 			}
 
 			return h, shutdown, err

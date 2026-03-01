@@ -67,7 +67,7 @@ var (
 					jsc.Close()
 				}
 				if gc != nil {
-					gc.Close()
+					_ = gc.Close()
 				}
 				if grpcServer != nil {
 					grpcServer.Stop()

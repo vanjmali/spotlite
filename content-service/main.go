@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -19,6 +20,7 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
 	commonvalid "github.com/vanjmali/spotlite/common-lib/validations"
+	"github.com/vanjmali/spotlite/content/consumers"
 	"github.com/vanjmali/spotlite/content/handlers"
 	"github.com/vanjmali/spotlite/content/infrastructure"
 	infragrpc "github.com/vanjmali/spotlite/content/infrastructure/grpc"
@@ -75,7 +77,6 @@ var (
 				return h, shutdown, err
 			}
 
-			// Cleanup resources on error
 			defer func() {
 				if err == nil {
 					return
@@ -88,7 +89,6 @@ var (
 				}
 			}()
 
-			// make sure stream is already initialized
 			err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBJECT_ENTITY_UPDATED})
 			if err != nil {
 				err = fmt.Errorf("failed to ensure content stream: %w", err)
@@ -115,26 +115,56 @@ var (
 
 			ar, sr, alr, gr := createRepositories(dbc)
 			gs, as, ss, als, glss := createServices(ar, sr, alr, gr, jsc, hdfsStore)
+
+			cc := createConsumers(ss)
+
+			consumerCtx, consumerCancel := context.WithCancel(ctx)
+			var consumerWg sync.WaitGroup
+			consumerErrCh := make(chan error, 5)
+
+			startConsumer := func(stream, subject, durable, label string, handler events.SubscribeHandler) {
+				consumerWg.Add(1)
+				go func() {
+					defer consumerWg.Done()
+					err := jsc.StartConsumer(consumerCtx, stream, subject, durable, handler)
+					if err != nil && !errors.Is(err, context.Canceled) {
+						logging.Errorf(ctx, "%s consumer error: %v", label, err)
+						select {
+						case consumerErrCh <- fmt.Errorf("%s consumer error: %w", label, err):
+						default:
+						}
+					}
+				}()
+			}
+
+			startConsumer(
+				events.SONGS_STREAM,
+				events.SUBJECT_SONG_DELETED,
+				events.SONG_DELETE_DURABLE_CONTENT,
+				"song deleted",
+				cc.HandleSongDelete,
+			)
+
 			ratingClient, ratingConn, err := infragrpc.NewRatingSummaryClient()
 			if err != nil {
+				consumerCancel()
 				return h, shutdown, fmt.Errorf("failed to create rating grpc client: %w", err)
 			}
 			h = createHandlers(v, as, ss, als, gs, glss, rc, ratingClient)
 
-			// configures grpc server
 			grpcPort := utils.GetEnv("GRPC_PORT", "50051")
 			s, err := createGrpcServer(gs, as, ss, certFilePath, keyFilePath)
 			if err != nil {
+				consumerCancel()
 				return h, shutdown, fmt.Errorf("failed to create grpc server: %w", err)
 			}
 
-			// this doesn't start the server it just reserves the port and prepares everything
 			lis, err := net.Listen("tcp", ":"+grpcPort)
 			if err != nil {
+				consumerCancel()
 				return h, shutdown, fmt.Errorf("failed to listen on grpc port: %w", err)
 			}
 
-			// starts the server in a separate go routine to avoid blocking the http server
 			go func() {
 				logging.Infof(context.Background(), "gRPC server listening on port %s", grpcPort)
 				if err := s.Serve(lis); err != nil {
@@ -143,23 +173,33 @@ var (
 			}()
 
 			shutdown = func() error {
-				// makes sure to gracefully stop the rpc server
+				var errs []error
+
+				consumerCancel()
+				consumerWg.Wait()
+
+				close(consumerErrCh)
+				for consumerErr := range consumerErrCh {
+					errs = append(errs, consumerErr)
+				}
+
 				s.GracefulStop()
 
 				if err := hdfsStore.Close(); err != nil {
-					return fmt.Errorf("failed to close hdfs client: %w", err)
+					errs = append(errs, fmt.Errorf("failed to close hdfs client: %w", err))
 				}
 
 				if err := dbc.Disconnect(ctx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
-					return fmt.Errorf("failed to disconnect mongo client: %w", err)
+					errs = append(errs, fmt.Errorf("failed to disconnect mongo client: %w", err))
 				}
 
 				jsc.Close()
+
 				if err := ratingConn.Close(); err != nil {
-					return fmt.Errorf("failed to close rating grpc connection: %w", err)
+					errs = append(errs, fmt.Errorf("failed to close rating grpc connection: %w", err))
 				}
 
-				return nil
+				return errors.Join(errs...)
 			}
 
 			return h, shutdown, err
@@ -261,6 +301,12 @@ func createHandlers(
 	gsh := handlers.NewGlobalSearchHandler(glss, ratingClient, src)
 
 	return routers.HandleRequests(ah, sh, alh, gh, gsh)
+}
+
+func createConsumers(
+	ss *services.SongService,
+) *consumers.ContentConsumer {
+	return consumers.NewContentConsumer(ss)
 }
 
 func createGrpcServer(gs *services.GenreService, as *services.ArtistService, ss *services.SongService, cfp, kfp string) (*grpc.Server, error) {

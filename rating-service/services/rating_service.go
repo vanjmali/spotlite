@@ -141,7 +141,7 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 
 	err = retry.Do(
 		func() error {
-			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_CREATED, payload)
+			return s.jsc.Publish(publishCtx, events.SUBJECT_SONG_RATED, payload)
 		},
 		retry.Attempts(3),
 		retry.Delay(time.Second),

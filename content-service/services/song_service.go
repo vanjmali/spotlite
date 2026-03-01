@@ -422,29 +422,6 @@ func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
 		return err
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "song.delete.event")
-	defer eventSpan.End()
-
-	sdp := toSongDeleteEvent(idStr)
-
-	err = retry.Do(
-		func() error {
-			return s.jsc.Publish(eventCtx, events.SUBJECT_SONG_DELETED, sdp)
-		},
-		retry.Attempts(3),
-		retry.Delay(time.Second*1),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Context(eventCtx),
-	)
-	if err != nil {
-		logging.Errorf(eventCtx, "failed to publish song delete event: %v", err)
-		eventSpan.RecordError(err)
-		return err
-	}
-
 	removeFromAlbumsCtx, removeFromAlbumsSpan := s.tr.Start(deleteCtx, "song.delete_song.remove_from_albums")
 	defer removeFromAlbumsSpan.End()
 
@@ -476,6 +453,58 @@ func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
 			cleanupSpan.RecordError(err)
 			logging.Errorf(cleanupCtx, "failed to delete audio file at path %s: %v", song.AudioPath, err)
 		}
+	}
+
+	return nil
+}
+
+func (s *SongService) RequestSongDelete(ctx context.Context, idStr string) error {
+	reqCtx, reqSpan := s.tr.Start(ctx, "song.delete_request")
+	defer reqSpan.End()
+
+	_, parseSpan := s.tr.Start(reqCtx, "song.delete_request.parse_id")
+	defer parseSpan.End()
+
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		parseSpan.RecordError(err)
+		return ErrObjectIdCastFailed
+	}
+
+	findSongCtx, findSongSpan := s.tr.Start(reqCtx, "song.delete_request.find_song")
+	defer findSongSpan.End()
+
+	// check if the song exists before initializing delete
+	_, err = s.songRepo.FindByID(findSongCtx, id)
+	if err != nil {
+		findSongSpan.RecordError(err)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return ErrSongNotFound
+		}
+		return err
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "song.delete.event")
+	defer eventSpan.End()
+
+	sdp := toSongDeleteEvent(idStr)
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_SONG_DELETED, sdp)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second*1),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+	if err != nil {
+		logging.Errorf(eventCtx, "failed to publish song delete event: %v", err)
+		eventSpan.RecordError(err)
+		return err
 	}
 
 	return nil

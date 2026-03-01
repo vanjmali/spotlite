@@ -188,11 +188,34 @@ func (h *SongHandler) HandleUpdateSong(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleDeleteSong handles HTTP DELETE requests to delete a song.
-func (h *SongHandler) HandleDeleteSong(w http.ResponseWriter, r *http.Request) {
+// func (h *SongHandler) HandleDeleteSong(w http.ResponseWriter, r *http.Request) {
+// 	vars := mux.Vars(r)
+// 	id := vars["id"]
+
+// 	err := h.s.DeleteSong(r.Context(), id)
+// 	switch {
+// 	case errors.Is(err, services.ErrObjectIdCastFailed):
+// 		logging.Warnf(r.Context(), "invalid song id: %v", err)
+// 		_ = respond.BadRequest(w, respond.ErrorMessage("invalid song id"))
+// 		return
+// 	case errors.Is(err, services.ErrSongNotFound):
+// 		logging.Warnf(r.Context(), "song not found: %v", err)
+// 		_ = respond.NotFound(w)
+// 		return
+// 	case err != nil:
+// 		logging.Errorf(r.Context(), "failed to delete song: %v", err)
+// 		_ = respond.InternalServerError(w)
+// 		return
+// 	}
+
+// 	respond.NoContent(w)
+// }
+
+func (h *SongHandler) HandleDeleteSongRequest(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	err := h.s.DeleteSong(r.Context(), id)
+	err := h.s.RequestSongDelete(r.Context(), id)
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
 		logging.Warnf(r.Context(), "invalid song id: %v", err)
