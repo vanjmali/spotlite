@@ -124,6 +124,12 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 		return err
 	}
 
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "rating.create.event")
+	defer eventSpan.End()
+
 	// Publish rating created event with retry for reliability
 	payload := events.RatingEventPayload{
 		UserID:    ratingEntity.UserID.Hex(),
@@ -133,24 +139,18 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 		CreatedAt: ratingEntity.CreatedAt,
 	}
 
-	publishCtx, publishSpan := s.tr.Start(ratingCtx, "rating.create.publish")
-	defer publishSpan.End()
-	if s.jsc == nil {
-		return nil
-	}
-
 	err = retry.Do(
 		func() error {
-			return s.jsc.Publish(publishCtx, events.SUBJECT_SONG_RATED, payload)
+			return s.jsc.Publish(eventCtx, events.SUBJECT_SONG_RATED, payload)
 		},
 		retry.Attempts(3),
 		retry.Delay(time.Second),
 		retry.DelayType(retry.BackOffDelay),
-		retry.Context(publishCtx),
+		retry.Context(eventCtx),
 	)
 	if err != nil {
-		publishSpan.RecordError(err)
-		logging.Errorf(publishCtx, "failed to publish rating created event: %v", err)
+		eventSpan.RecordError(err)
+		logging.Errorf(eventCtx, "failed to publish rating created event: %v", err)
 	}
 
 	return nil
@@ -196,7 +196,12 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 		return ErrRatingNotFound
 	}
 
-	// Publish rating deleted event with retry for reliability
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "rating.delete.event")
+	defer eventSpan.End()
+
 	payload := events.RatingEventPayload{
 		UserID:    userID.Hex(),
 		SongID:    existing.SongID.Hex(),
@@ -205,24 +210,19 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 		CreatedAt: existing.CreatedAt,
 	}
 
-	publishCtx, publishSpan := s.tr.Start(ctx, "rating.delete.publish")
-	defer publishSpan.End()
-	if s.jsc == nil {
-		return nil
-	}
-
 	err = retry.Do(
 		func() error {
-			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_DELETED, payload)
+			return s.jsc.Publish(eventCtx, events.SUBJECT_RATING_DELETED, payload)
 		},
 		retry.Attempts(3),
 		retry.Delay(time.Second),
 		retry.DelayType(retry.BackOffDelay),
-		retry.Context(publishCtx),
+		retry.Context(eventCtx),
 	)
 	if err != nil {
-		publishSpan.RecordError(err)
-		logging.Errorf(publishCtx, "failed to publish rating deleted event: %v", err)
+		eventSpan.RecordError(err)
+		logging.Errorf(eventCtx, "failed to publish rating deleted event: %v", err)
+		return err
 	}
 
 	return nil
@@ -352,6 +352,12 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 		return nil, err
 	}
 
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "rating.update.event")
+	defer eventSpan.End()
+
 	// Publish rating updated event with retry for reliability
 	payload := events.RatingEventPayload{
 		UserID:    rating.UserID.Hex(),
@@ -361,24 +367,19 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 		CreatedAt: rating.CreatedAt,
 	}
 
-	publishCtx, publishSpan := s.tr.Start(ctx, "rating.update.publish")
-	defer publishSpan.End()
-	if s.jsc == nil {
-		return rating, nil
-	}
-
 	err = retry.Do(
 		func() error {
-			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_UPDATED, payload)
+			return s.jsc.Publish(eventCtx, events.SUBJECT_RATING_UPDATED, payload)
 		},
 		retry.Attempts(3),
 		retry.Delay(time.Second),
 		retry.DelayType(retry.BackOffDelay),
-		retry.Context(publishCtx),
+		retry.Context(eventCtx),
 	)
 	if err != nil {
-		publishSpan.RecordError(err)
-		logging.Errorf(publishCtx, "failed to publish rating updated event: %v", err)
+		eventSpan.RecordError(err)
+		logging.Errorf(eventCtx, "failed to publish rating updated event: %v", err)
+		return nil, err
 	}
 
 	return rating, nil
