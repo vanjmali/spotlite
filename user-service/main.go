@@ -309,25 +309,25 @@ func setupActivityConsumers(
 		{
 			Stream:  events.RATINGS_STREAM,
 			Subject: events.SUBJECT_RATING_CREATED,
-			Durable: events.RATING_CREATED_DURABLE,
+			Durable: events.RATING_CREATE_ACTION_DURABLE,
 			Handler: consumer.HandleRatingCreated,
 		},
 		{
 			Stream:  events.RATINGS_STREAM,
 			Subject: events.SUBJECT_RATING_UPDATED,
-			Durable: events.RATING_UPDATED_DURABLE,
+			Durable: events.RATING_UPDATE_ACTION_DURABLE,
 			Handler: consumer.HandleRatingUpdated,
 		},
 		{
 			Stream:  events.SUBSCRIPTIONS_STREAM,
 			Subject: events.SUBJECT_SUBSCRIPTION_CREATED,
-			Durable: events.SUBSCRIPTION_CREATED_DURABLE,
+			Durable: events.SUBSCRIPTION_CREATED_ACTION_DURABLE,
 			Handler: consumer.HandleSubscriptionCreated,
 		},
 		{
 			Stream:  events.SUBSCRIPTIONS_STREAM,
 			Subject: events.SUBJECT_SUBSCRIPTION_DELETED,
-			Durable: events.SUBSCRIPTION_DELETED_DURABLE,
+			Durable: events.SUBSCRIPTION_DELETED_ACTION_DURABLE,
 			Handler: consumer.HandleSubscriptionDeleted,
 		},
 	}
