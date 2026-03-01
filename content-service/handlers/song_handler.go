@@ -324,8 +324,8 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 
 	// Publish song played event for analytics tracking (non-blocking)
 	// Track play regardless of cache hit/miss
-	// Extract userID before goroutine to avoid context issues
-	userID := middlewares.GetUserIdFromContext(r.Context())
+	// Extract userID from the signed stream token (st param) or fall back to context
+	userID := getUserIDFromRequest(r)
 	go func() {
 		if err := h.s.TrackSongPlay(context.Background(), id, userID); err != nil {
 			logging.Warnf(context.Background(), "failed to track song play for user %s, song %s: %v", userID, id, err)
@@ -745,4 +745,17 @@ func setSongAudioResponseHeaders(w http.ResponseWriter, size int64, mime string)
 
 func logSecurityEvent(ctx context.Context, event string, details string) {
 	logging.Securityf(ctx, "security_event=%s %s", event, details)
+}
+
+// getUserIDFromRequest extracts the authenticated user ID from the stream token (?st=)
+// or falls back to the JWT middleware context value.
+func getUserIDFromRequest(r *http.Request) string {
+	if streamToken := strings.TrimSpace(r.URL.Query().Get("st")); streamToken != "" {
+		if claims, err := middlewares.ValidateJWTToken(streamToken); err == nil {
+			if sub, ok := claims["sub"].(string); ok && sub != "" {
+				return sub
+			}
+		}
+	}
+	return middlewares.GetUserIdFromContext(r.Context())
 }
