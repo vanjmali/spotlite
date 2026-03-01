@@ -3,7 +3,6 @@ package repositories
 import (
 	"context"
 
-	"github.com/vanjmali/spotlite/common-lib/types"
 	"github.com/vanjmali/spotlite/content/entities"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -49,7 +48,7 @@ func (r *SongRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*
 	c := r.getCollection()
 
 	var song entities.Song
-	filter := bson.M{"_id": id, "status": bson.M{"$ne": types.StatusDeletionInProgress}}
+	filter := bson.M{"_id": id}
 	if err := c.FindOne(ctx, filter).Decode(&song); err != nil {
 		return nil, err
 	}

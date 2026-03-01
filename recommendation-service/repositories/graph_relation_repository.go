@@ -10,7 +10,10 @@ import (
 	"github.com/vanjmali/spotlite/recommendation-service/entities"
 )
 
-var ErrNoData = errors.New("no data found")
+var (
+	ErrNoData       = errors.New("no data found")
+	ErrSongNotFound = errors.New("song not found")
+)
 
 // GraphRelationRepository provides data access for graph relationships.
 type GraphRelationRepository struct {
@@ -390,4 +393,39 @@ func (r *GraphRelationRepository) FindLikeBasedRecommendation(ctx context.Contex
 	}
 
 	return result.([]*entities.SongRecommendation), nil
+}
+
+func (r *GraphRelationRepository) DeleteSong(ctx context.Context, songID string) error {
+	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	defer session.Close(ctx)
+
+	// ignores delete count, it is returned to avoid nilnil
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		query := `
+			MATCH (s:Song {song_id: $songID})
+			DETACH DELETE s
+		`
+		params := map[string]interface{}{
+			"songID": songID,
+		}
+
+		result, err := tx.Run(ctx, query, params)
+		if err != nil {
+			return nil, err
+		}
+
+		summary, err := result.Consume(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		deletedCount := summary.Counters().NodesDeleted()
+		if deletedCount == 0 {
+			return nil, ErrSongNotFound
+		}
+
+		return deletedCount, nil
+	})
+
+	return err
 }

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/vanjmali/spotlite/common-lib/types"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/rating-service/dtos"
 	"github.com/vanjmali/spotlite/rating-service/entities"
 	"go.mongodb.org/mongo-driver/bson"
@@ -75,8 +75,7 @@ func (r *RatingRepository) FindByID(ctx context.Context, ratingID primitive.Obje
 	c := r.getCollection()
 
 	var rating entities.Rating
-	filter := bson.M{"_id": ratingID, "status": bson.M{"$ne": types.StatusDeletionInProgress}}
-	if err := c.FindOne(ctx, filter).Decode(&rating); err != nil {
+	if err := c.FindOne(ctx, bson.M{"_id": ratingID}).Decode(&rating); err != nil {
 		return nil, err
 	}
 
@@ -92,7 +91,7 @@ func (r *RatingRepository) FindRatingsBySongID(
 ) ([]*entities.Rating, string, error) {
 	c := r.getCollection()
 
-	filter := bson.M{"song_id": songID, "status": bson.M{"$ne": types.StatusDeletionInProgress}}
+	filter := bson.M{"song_id": songID}
 
 	if lastID != nil {
 		filter["_id"] = bson.M{"$lt": *lastID}
@@ -125,7 +124,6 @@ func (r *RatingRepository) FindRatingsBySongID(
 func (r *RatingRepository) FindRatingsByUserID(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Rating, int64, error) {
 	c := r.getCollection()
 
-	filter["status"] = bson.M{"$ne": types.StatusDeletionInProgress}
 	total, err := c.CountDocuments(ctx, filter)
 	if err != nil {
 		return nil, 0, err
@@ -155,7 +153,7 @@ func (r *RatingRepository) UpdateByID(
 ) (*entities.Rating, error) {
 	c := r.getCollection()
 
-	filter := bson.M{"_id": ratingID, "user_id": userID, "status": bson.M{"$ne": types.StatusDeletionInProgress}}
+	filter := bson.M{"_id": ratingID, "user_id": userID}
 	updateDoc := bson.M{"$set": update}
 
 	opts := options.FindOneAndUpdate().SetReturnDocument(options.After)
@@ -174,7 +172,7 @@ func (r *RatingRepository) GetAverageRatingBySongID(ctx context.Context, songID 
 	c := r.getCollection()
 
 	pipeline := mongo.Pipeline{
-		{{Key: "$match", Value: bson.M{"song_id": songID, "status": bson.M{"$ne": types.StatusDeletionInProgress}}}},
+		{{Key: "$match", Value: bson.M{"song_id": songID}}},
 		{{Key: "$group", Value: bson.M{
 			"_id":   "$song_id",
 			"avg":   bson.M{"$avg": "$value"},
@@ -198,4 +196,20 @@ func (r *RatingRepository) GetAverageRatingBySongID(ctx context.Context, songID 
 	}
 
 	return &rows[0], nil
+}
+
+func (r *RatingRepository) DeleteSongRatings(songID primitive.ObjectID, ctx context.Context) (int64, error) {
+	c := r.getCollection()
+
+	filter := bson.M{
+		"song_id": songID,
+	}
+
+	res, err := c.DeleteMany(ctx, filter)
+	if err != nil {
+		return 0, err
+	}
+
+	logging.Infof(ctx, "%s", res.DeletedCount)
+	return res.DeletedCount, nil
 }

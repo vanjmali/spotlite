@@ -125,3 +125,18 @@ func (c *RecommendationConsumer) HandleSongUpdate(ctx context.Context, msg jetst
 
 	return nil
 }
+
+func (c *RecommendationConsumer) HandleSongDelete(ctx context.Context, msg jetstream.Msg) error {
+	var p events.SongDeletePayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		logging.Errorf(ctx, "error: failed to unmarshal SongDeletePayload: %v", err)
+		return nil
+	}
+
+	if err := c.rs.DeleteSong(p, ctx); err != nil {
+		logging.Errorf(ctx, "error: an error has occured while handling song delete event: %v", err)
+		return err
+	}
+
+	return nil
+}

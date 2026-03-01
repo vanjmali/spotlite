@@ -98,7 +98,7 @@ var (
 			if err = jsc.EnsureStream(
 				ctx,
 				events.SONGS_STREAM,
-				[]string{events.SUBJECT_SONG_CREATED, events.SUBJECT_SONG_RATED, events.SUBJECT_SONG_UPDATED},
+				[]string{events.SUBJECT_SONG_CREATED, events.SUBJECT_SONG_RATED, events.SUBJECT_SONG_UPDATED, events.SUBJECT_SONG_DELETED},
 			); err != nil {
 				err = fmt.Errorf("failed to ensure songs stream: %w", err)
 				return h, shutdown, err

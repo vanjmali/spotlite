@@ -29,6 +29,7 @@ type GraphRelationRepository interface {
 	UpdateGenre(ctx context.Context, gn entities.GenreNode) error
 	FindSubscriptionBasedRecommendations(ctx context.Context, userID string) ([]*entities.SongRecommendation, error)
 	FindLikeBasedRecommendation(ctx context.Context, userID string) ([]*entities.SongRecommendation, error)
+	DeleteSong(ctx context.Context, songID string) error
 }
 type GenreNodeRepository interface {
 	Create(ctx context.Context, genre entities.GenreNode) error
@@ -217,4 +218,16 @@ func (rs *RecommendationService) LikeBasedRecommendation(ctx context.Context) ([
 	}
 
 	return lr, nil
+}
+
+func (rs *RecommendationService) DeleteSong(e events.SongDeletePayload, ctx context.Context) error {
+	recCtx, recSpan := rs.tr.Start(ctx, "recommendation.delete_song")
+	defer recSpan.End()
+
+	err := rs.r.rr.DeleteSong(recCtx, e.SongID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

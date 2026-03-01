@@ -3,7 +3,6 @@ package entities
 import (
 	"time"
 
-	"github.com/vanjmali/spotlite/common-lib/types"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -16,5 +15,4 @@ type Rating struct {
 	Value     int                `bson:"value" json:"value"`
 	CreatedAt time.Time          `bson:"created_at" json:"created_at"`
 	IsEdited  bool               `bson:"is_edited" json:"is_edited"`
-	Status    types.EntityStatus `bson:"status" json:"status"`
 }

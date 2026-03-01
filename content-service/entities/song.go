@@ -1,7 +1,6 @@
 package entities
 
 import (
-	"github.com/vanjmali/spotlite/common-lib/types"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -18,7 +17,6 @@ type Song struct {
 	LengthSeconds int                `bson:"length_seconds" json:"length_seconds"`
 	Artists       []Artist           `bson:"artists" json:"artists"`
 	Rating        *SongRating        `bson:"-" json:"rating,omitempty"`
-	Status        types.EntityStatus `bson:"status" json:"status"`
 	AudioPath     string             `bson:"audio_path,omitempty" json:"-"`
 	AudioSize     int64              `bson:"audio_size,omitempty" json:"-"`
 	AudioMimeType string             `bson:"audio_mime_type,omitempty" json:"-"`

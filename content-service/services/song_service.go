@@ -12,7 +12,6 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
-	"github.com/vanjmali/spotlite/common-lib/types"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
 	"github.com/vanjmali/spotlite/content/mappers"
@@ -414,6 +413,29 @@ func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
 		return err
 	}
 
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "song.delete.event")
+	defer eventSpan.End()
+
+	sdp := toSongDeleteEvent(idStr)
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_SONG_DELETED, sdp)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second*1),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+	if err != nil {
+		logging.Errorf(eventCtx, "failed to publish song delete event: %v", err)
+		eventSpan.RecordError(err)
+		return err
+	}
+
 	removeFromAlbumsCtx, removeFromAlbumsSpan := s.tr.Start(deleteCtx, "song.delete_song.remove_from_albums")
 	defer removeFromAlbumsSpan.End()
 
@@ -499,8 +521,6 @@ func (s *SongService) GetSongs(ctx context.Context, q SongsQuery) (*dtos.SongLis
 		}
 		filter["artists._id"] = artistId
 	}
-
-	filter["status"] = bson.M{"$ne": types.StatusDeletionInProgress}
 
 	p := pagination.NewPagination(q.Page, q.Size)
 	items, total, err := s.songRepo.FindAll(ctx, filter, p.Skip(), p.Limit())
@@ -641,6 +661,12 @@ func toSongUpdatedEvent(songID string, songTitle string, duration int, genreIDs 
 		Duration:    duration,
 		GenreIDs:    genreIDs,
 		ArtistNames: artistNames,
+	}
+}
+
+func toSongDeleteEvent(songID string) *events.SongDeletePayload {
+	return &events.SongDeletePayload{
+		SongID: songID,
 	}
 }
 

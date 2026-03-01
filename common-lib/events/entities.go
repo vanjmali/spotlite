@@ -38,12 +38,15 @@ const (
 	GENRE_SUB_DURABLE        = "GENRE_SUB_PROCESSOR"
 	GENRE_UPDATE_DURABLE     = "GENRE_UPDATE_PROCESSOR"
 
-	SUBJECT_SONG_CREATED = "songs.created"
-	SUBJECT_SONG_RATED   = "songs.rating.created"
-	SUBJECT_SONG_UPDATED = "songs.updated"
-	SONG_CREATE_DURABLE  = "SONG_CREATE_PROCESSOR"
-	SONG_RATE_DURABLE    = "SONG_RATE_PROCESSOR"
-	SONG_UPDATE_DURABLE  = "SONG_UPDATE_PROCESSOR"
+	SUBJECT_SONG_CREATED               = "songs.created"
+	SUBJECT_SONG_RATED                 = "songs.rating.created"
+	SUBJECT_SONG_UPDATED               = "songs.updated"
+	SUBJECT_SONG_DELETED               = "songs.deleted"
+	SONG_CREATE_DURABLE                = "SONG_CREATE_PROCESSOR"
+	SONG_RATE_DURABLE                  = "SONG_RATE_PROCESSOR"
+	SONG_UPDATE_DURABLE                = "SONG_UPDATE_PROCESSOR"
+	SONG_DELETE_DURABLE_RATING         = "SONG_DELETE_PROCESSOR_RATING"
+	SONG_DELETE_DURABLE_RECOMMENDATION = "SONG_DELETE_PROCESSOR_RECOMMENDATION"
 
 	SUBJECT_RATING_CREATED = "rating.created"
 	SUBJECT_RATING_UPDATED = "rating.updated"
@@ -146,4 +149,8 @@ type SubscriptionEventPayload struct {
 	EntityType SubscriptionEntityType `json:"entity_type"`
 	EventID    string                 `json:"event_id"`
 	CreatedAt  time.Time              `json:"created_at"`
+}
+
+type SongDeletePayload struct {
+	SongID string `json:"song_id"`
 }

@@ -46,6 +46,7 @@ type RatingRepository interface {
 	FindRatingsByUserID(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Rating, int64, error)
 	UpdateByID(ctx context.Context, ratingID primitive.ObjectID, userID primitive.ObjectID, update map[string]any) (*entities.Rating, error)
 	GetAverageRatingBySongID(ctx context.Context, songID primitive.ObjectID) (*dtos.SongRatingSummary, error)
+	DeleteSongRatings(songID primitive.ObjectID, ctx context.Context) (int64, error)
 }
 
 type ContentEntityGetter interface {
@@ -401,4 +402,25 @@ func (s *RatingService) GetAverageRatingBySongID(ctx context.Context, songIDStr 
 	}
 
 	return summary, nil
+}
+
+func (s *RatingService) DeleteSongRatings(ctx context.Context, songIDStr string) error {
+	deleteCtx, deleteSpan := s.tr.Start(ctx, "rating.delete_by_song")
+	defer deleteSpan.End()
+
+	songID, err := primitive.ObjectIDFromHex(songIDStr)
+	if err != nil {
+		logging.Errorf(deleteCtx, "an error has occured while parsing song ID: ", err)
+		deleteSpan.RecordError(err)
+		return ErrObjectIdCastFailed
+	}
+
+	_, err = s.rr.DeleteSongRatings(songID, deleteCtx)
+	if err != nil {
+		logging.Errorf(deleteCtx, "an error has occured while deleting song ratings: ", err)
+		deleteSpan.RecordError(err)
+		return err
+	}
+
+	return nil
 }
