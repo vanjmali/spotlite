@@ -11,6 +11,7 @@ type NotificationType string
 const (
 	NotificationNewArtist NotificationType = "ARTIST"
 	NotificationNewAlbum  NotificationType = "ALBUM"
+	NotificationNewSong   NotificationType = "SONG"
 )
 
 type Notification struct {
