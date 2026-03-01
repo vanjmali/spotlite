@@ -30,6 +30,7 @@ type GraphRelationRepository interface {
 	FindSubscriptionBasedRecommendations(ctx context.Context, userID string) ([]*entities.SongRecommendation, error)
 	FindLikeBasedRecommendation(ctx context.Context, userID string) ([]*entities.SongRecommendation, error)
 	DeleteSong(ctx context.Context, songID string) error
+	UpdateRating(ctx context.Context, songID string, userID string, rating int) error
 }
 type GenreNodeRepository interface {
 	Create(ctx context.Context, genre entities.GenreNode) error
@@ -133,11 +134,11 @@ func (rs *RecommendationService) CreateSubscription(e events.GenreSubscriptionEv
 	return nil
 }
 
-func (rs *RecommendationService) CreateRating(e events.SongRatingPayload, ctx context.Context) error {
+func (rs *RecommendationService) CreateRating(e events.RatingEventPayload, ctx context.Context) error {
 	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.rating.create")
 	defer createSpan.End()
 
-	sr := entities.SongRating{SongID: e.SongID, UserID: e.UserID, Value: e.Value}
+	sr := entities.SongRating{SongID: e.SongID, UserID: e.UserID, Value: e.Rating}
 
 	err := rs.r.rr.CreateRating(createCtx, sr)
 	if err != nil {
@@ -225,6 +226,18 @@ func (rs *RecommendationService) DeleteSong(e events.SongDeletePayload, ctx cont
 	defer recSpan.End()
 
 	err := rs.r.rr.DeleteSong(recCtx, e.SongID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (rs *RecommendationService) UpdateRating(e events.RatingEventPayload, ctx context.Context) error {
+	recCtx, recSpan := rs.tr.Start(ctx, "recommendation.update_rating")
+	defer recSpan.End()
+
+	err := rs.r.rr.UpdateRating(recCtx, e.SongID, e.UserID, e.Rating)
 	if err != nil {
 		return err
 	}

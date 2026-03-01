@@ -53,8 +53,17 @@ var (
 
 			if err = jsc.EnsureStream(
 				ctx,
+				events.RATINGS_STREAM,
+				[]string{events.SUBJECT_RATING_CREATED, events.SUBJECT_RATING_UPDATED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure rating stream: %w", err)
+				return h, shutdown, err
+			}
+
+			if err = jsc.EnsureStream(
+				ctx,
 				events.SONGS_STREAM,
-				[]string{events.SUBJECT_SONG_CREATED, events.SUBJECT_SONG_RATED, events.SUBJECT_SONG_UPDATED, events.SUBJECT_SONG_DELETED},
+				[]string{events.SUBJECT_SONG_CREATED, events.SUBJECT_SONG_UPDATED, events.SUBJECT_SONG_DELETED},
 			); err != nil {
 				err = fmt.Errorf("failed to ensure songs stream: %w", err)
 				return h, shutdown, err
@@ -77,7 +86,7 @@ var (
 			// Start consumers in background.
 			consumerCtx, consumerCancel := context.WithCancel(ctx)
 			var consumerWg sync.WaitGroup
-			consumerErrCh := make(chan error, 8)
+			consumerErrCh := make(chan error, 10)
 
 			startConsumer := func(stream, subject, durable, label string, handler events.SubscribeHandler) {
 				consumerWg.Add(1)
@@ -140,11 +149,19 @@ var (
 			)
 
 			startConsumer(
-				events.SONGS_STREAM,
-				events.SUBJECT_SONG_RATED,
-				events.SONG_RATE_DURABLE,
+				events.RATINGS_STREAM,
+				events.SUBJECT_RATING_CREATED,
+				events.RATING_CREATE_DURABLE,
 				"song rating created",
 				c.HandleSongRating,
+			)
+
+			startConsumer(
+				events.RATINGS_STREAM,
+				events.SUBJECT_RATING_UPDATED,
+				events.RATING_UPDATE_DURABLE,
+				"song rating updated",
+				c.HandleRatingUpdate,
 			)
 
 			startConsumer(

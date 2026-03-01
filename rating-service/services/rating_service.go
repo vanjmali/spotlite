@@ -141,7 +141,7 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 
 	err = retry.Do(
 		func() error {
-			return s.jsc.Publish(eventCtx, events.SUBJECT_SONG_RATED, payload)
+			return s.jsc.Publish(eventCtx, events.SUBJECT_RATING_CREATED, payload)
 		},
 		retry.Attempts(3),
 		retry.Delay(time.Second),
@@ -212,6 +212,8 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 	if deletedCount != 1 {
 		return ErrRatingNotFound
 	}
+
+	// TODO, add graph db sync event publishing
 
 	return nil
 }
@@ -338,6 +340,55 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 			return nil, ErrRatingNotFound
 		}
 		return nil, err
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "rating.update.event")
+	defer eventSpan.End()
+
+	payload := events.RatingEventPayload{
+		UserID:    rating.UserID.Hex(),
+		SongID:    rating.SongID.Hex(),
+		Rating:    *dto.Value,
+		EventID:   primitive.NewObjectID().Hex(),
+		CreatedAt: rating.CreatedAt,
+	}
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_RATING_UPDATED, payload)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+	if err != nil {
+		eventSpan.RecordError(err)
+		logging.Errorf(eventCtx, "failed to publish rating created event: %v", err)
+
+		var errs []error
+
+		errs = append(errs, err)
+
+		rbCtx, rbSpan := s.tr.Start(updateCtx, "rating.update.rollback")
+		defer rbSpan.End()
+
+		rbUpdate := make(map[string]any)
+		rbUpdate["value"] = dto.Value
+		rbUpdate["is_edited"] = existing.IsEdited
+
+		_, err := s.rr.UpdateByID(rbCtx, existing.ID, existing.UserID, rbUpdate)
+		if err != nil {
+			eventSpan.RecordError(err)
+			logging.Errorf(eventCtx, "rollback failed: %v", err)
+
+			errs = append(errs, err)
+		}
+
+		return nil, errors.Join(errs...)
 	}
 
 	return rating, nil

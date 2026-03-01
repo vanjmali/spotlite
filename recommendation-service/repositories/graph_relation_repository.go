@@ -429,3 +429,42 @@ func (r *GraphRelationRepository) DeleteSong(ctx context.Context, songID string)
 
 	return err
 }
+
+func (r *GraphRelationRepository) UpdateRating(ctx context.Context, songID string, userID string, rating int) error {
+	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+
+	logging.Infof(ctx, "Updating rating: song=%s, user=%s, val=%d", songID, userID, rating)
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		result, err := tx.Run(
+			ctx,
+			`MATCH (u:User {user_id: $userId})
+             MATCH (s:Song {song_id: $songId})
+			 MERGE (u)-[r:RATED]->(s)
+			 SET r.value = $value`,
+			map[string]any{
+				"userId": userID,
+				"songId": songID,
+				"value":  rating,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		summary, err := result.Consume(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		if summary.Counters().PropertiesSet() == 0 && summary.Counters().RelationshipsCreated() == 0 {
+
+			logging.Warnf(ctx, "Neo4j update had no effect. User %s or Song %s might be missing.", userID, songID)
+		}
+
+		return summary, nil
+	})
+
+	return err
+}

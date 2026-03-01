@@ -100,18 +100,15 @@ var (
 					log.Printf("failed to serve rating grpc: %v", serveErr)
 				}
 			}()
-
 			if err = jsc.EnsureStream(ctx, events.RATINGS_STREAM, []string{
 				events.SUBJECT_RATING_CREATED,
-				events.SUBJECT_RATING_UPDATED,
-				events.SUBJECT_RATING_DELETED,
-			}); err != nil {
+				events.SUBJECT_RATING_UPDATED},
+			); err != nil {
 				return nil, nil, fmt.Errorf("failed to ensure ratings stream: %w", err)
 			}
 
 			if err = jsc.EnsureStream(ctx, events.SONGS_STREAM, []string{
 				events.SUBJECT_SONG_CREATED,
-				events.SUBJECT_SONG_RATED,
 				events.SUBJECT_SONG_UPDATED,
 				events.SUBJECT_SONG_DELETED,
 			}); err != nil {

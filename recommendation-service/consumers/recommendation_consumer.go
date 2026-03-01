@@ -82,7 +82,7 @@ func (c *RecommendationConsumer) HandleGenreSubscription(ctx context.Context, ms
 }
 
 func (c *RecommendationConsumer) HandleSongRating(ctx context.Context, msg jetstream.Msg) error {
-	var p events.SongRatingPayload
+	var p events.RatingEventPayload
 	if err := json.Unmarshal(msg.Data(), &p); err != nil {
 		logging.Errorf(ctx, "error: failed to unmarshal SongRatingPayload: %v", err)
 		return nil
@@ -135,6 +135,23 @@ func (c *RecommendationConsumer) HandleSongDelete(ctx context.Context, msg jetst
 
 	if err := c.rs.DeleteSong(p, ctx); err != nil {
 		logging.Errorf(ctx, "error: an error has occured while handling song delete event: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *RecommendationConsumer) HandleRatingUpdate(ctx context.Context, msg jetstream.Msg) error {
+	var p events.RatingEventPayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		logging.Errorf(ctx, "error: failed to unmarshal RatingEventPayload: %v", err)
+		return nil
+	}
+
+	logging.Infof(ctx, "%s", p)
+
+	if err := c.rs.UpdateRating(p, ctx); err != nil {
+		logging.Errorf(ctx, "error: an error has occured while handling rating update event: %v", err)
 		return err
 	}
 
