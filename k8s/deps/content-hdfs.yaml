@@ -1,9 +1,64 @@
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: content-hdfs-config
+data:
+  core-site.xml: |
+    <?xml version="1.0"?>
+    <configuration>
+      <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://content-hdfs-namenode-0.content-hdfs-namenode.spotlite.svc.cluster.local:8020</value>
+      </property>
+    </configuration>
+  hdfs-site.xml: |
+    <?xml version="1.0"?>
+    <configuration>
+      <property>
+        <name>dfs.namenode.rpc-address</name>
+        <value>content-hdfs-namenode-0.content-hdfs-namenode.spotlite.svc.cluster.local:8020</value>
+      </property>
+      <property>
+        <name>dfs.namenode.rpc-bind-host</name>
+        <value>0.0.0.0</value>
+      </property>
+      <property>
+        <name>dfs.namenode.http-address</name>
+        <value>0.0.0.0:9870</value>
+      </property>
+      <property>
+        <name>dfs.namenode.http-bind-host</name>
+        <value>0.0.0.0</value>
+      </property>
+      <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+      </property>
+      <property>
+        <name>dfs.permissions.enabled</name>
+        <value>false</value>
+      </property>
+      <property>
+        <name>dfs.namenode.datanode.registration.ip-hostname-check</name>
+        <value>false</value>
+      </property>
+      <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>file:///data/dfs/name</value>
+      </property>
+      <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file:///data/dfs/data</value>
+      </property>
+    </configuration>
+---
+apiVersion: v1
 kind: Service
 metadata:
   name: content-hdfs-namenode
 spec:
   clusterIP: None
+  publishNotReadyAddresses: true
   selector:
     app: content-hdfs-namenode
   ports:
@@ -32,20 +87,19 @@ spec:
       containers:
         - name: namenode
           image: apache/hadoop:3.4
-          command: ["hdfs", "namenode"]
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              mkdir -p /data/dfs/name
+              if [ ! -d /data/dfs/name/current ]; then
+                hdfs namenode -format -nonInteractive
+              fi
+              exec hdfs namenode
           env:
-            - name: CLUSTER_NAME
-              value: spotlite-hdfs
-            - name: CORE-SITE.XML_fs.defaultFS
-              value: hdfs://content-hdfs-namenode:8020
-            - name: HDFS-SITE.XML_dfs.replication
-              value: "1"
-            - name: HDFS-SITE.XML_dfs.permissions.enabled
-              value: "false"
-            - name: HDFS-SITE.XML_dfs.namenode.name.dir
-              value: file:///data/dfs/name
-            - name: ENSURE_NAMENODE_DIR
-              value: /data/dfs/name
+            - name: HADOOP_CONF_DIR
+              value: /etc/hadoop-conf
           ports:
             - containerPort: 8020
               name: rpc
@@ -68,6 +122,18 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: config
+              mountPath: /etc/hadoop-conf/core-site.xml
+              subPath: core-site.xml
+              readOnly: true
+            - name: config
+              mountPath: /etc/hadoop-conf/hdfs-site.xml
+              subPath: hdfs-site.xml
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: content-hdfs-config
   volumeClaimTemplates:
     - metadata:
         name: data
@@ -116,18 +182,16 @@ spec:
       containers:
         - name: datanode
           image: apache/hadoop:3.4
-          command: ["hdfs", "datanode"]
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              mkdir -p /data/dfs/data
+              exec hdfs datanode
           env:
-            - name: CLUSTER_NAME
-              value: spotlite-hdfs
-            - name: CORE-SITE.XML_fs.defaultFS
-              value: hdfs://content-hdfs-namenode:8020
-            - name: HDFS-SITE.XML_dfs.replication
-              value: "1"
-            - name: HDFS-SITE.XML_dfs.permissions.enabled
-              value: "false"
-            - name: HDFS-SITE.XML_dfs.datanode.data.dir
-              value: file:///data/dfs/data
+            - name: HADOOP_CONF_DIR
+              value: /etc/hadoop-conf
           ports:
             - containerPort: 9864
               name: data
@@ -148,6 +212,18 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: config
+              mountPath: /etc/hadoop-conf/core-site.xml
+              subPath: core-site.xml
+              readOnly: true
+            - name: config
+              mountPath: /etc/hadoop-conf/hdfs-site.xml
+              subPath: hdfs-site.xml
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: content-hdfs-config
   volumeClaimTemplates:
     - metadata:
         name: data
