@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: recommendation-neo4j
+spec:
+  selector:
+    app: recommendation-neo4j
+  ports:
+    - name: browser
+      port: 7474
+      targetPort: 7474
+    - name: bolt
+      port: 7687
+      targetPort: 7687
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: recommendation-neo4j
+spec:
+  serviceName: recommendation-neo4j
+  replicas: 1
+  selector:
+    matchLabels:
+      app: recommendation-neo4j
+  template:
+    metadata:
+      labels:
+        app: recommendation-neo4j
+    spec:
+      containers:
+        - name: neo4j
+          image: neo4j:5.18
+          env:
+            - name: NEO4J_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: NEO4J_AUTH
+            - name: NEO4J_dbms_security_procedures_unrestricted
+              value: apoc.*
+          ports:
+            - containerPort: 7474
+              name: browser
+            - containerPort: 7687
+              name: bolt
+          readinessProbe:
+            tcpSocket:
+              port: 7687
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            tcpSocket:
+              port: 7687
+            initialDelaySeconds: 40
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi

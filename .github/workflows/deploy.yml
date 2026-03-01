@@ -1,0 +1,139 @@
+name: Publish Images to GHCR
+
+on:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish-go-services:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: user-service
+            context: ./user-service
+            dockerfile: ./Dockerfile.microservice
+          - service: content-service
+            context: ./content-service
+            dockerfile: ./content-service/Dockerfile
+          - service: notification-service
+            context: ./notification-service
+            dockerfile: ./Dockerfile.microservice
+          - service: subscription-service
+            context: ./subscription-service
+            dockerfile: ./Dockerfile.microservice
+          - service: rating-service
+            context: ./rating-service
+            dockerfile: ./Dockerfile.microservice
+          - service: recommendation-service
+            context: ./recommendation-service
+            dockerfile: ./Dockerfile.microservice
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ghcr.io/vanjmali/spotlite:${{ matrix.service }}
+          build-contexts: |
+            common-lib=./common-lib
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  publish-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ghcr.io/vanjmali/spotlite:frontend
+          build-args: |
+            API_BASE_URL=/api
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+  deploy-k8s:
+    runs-on: ubuntu-latest
+    needs:
+      - publish-go-services
+      - publish-frontend
+    env:
+      SPOTLITE_REMOTE_HOST: ${{ secrets.SPOTLITE_REMOTE_HOST }}
+      SPOTLITE_REMOTE_PORT: ${{ secrets.SPOTLITE_REMOTE_PORT }}
+      SPOTLITE_REMOTE_USER: ${{ secrets.SPOTLITE_REMOTE_USER }}
+      SPOTLITE_REMOTE_PRIVATE_KEY: ${{ secrets.SPOTLITE_REMOTE_PRIVATE_KEY }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ env.SPOTLITE_REMOTE_PRIVATE_KEY }}
+
+      - name: Add remote host to known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "${{ env.SPOTLITE_REMOTE_PORT }}" -H "${{ env.SPOTLITE_REMOTE_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload k8s manifests
+        run: |
+          tar -czf - k8s | ssh -p "${{ env.SPOTLITE_REMOTE_PORT }}" \
+            "${{ env.SPOTLITE_REMOTE_USER }}"@"${{ env.SPOTLITE_REMOTE_HOST }}" \
+            "mkdir -p /tmp/spotlite && tar -xzf - -C /tmp/spotlite"
+
+      - name: Apply manifests and restart workloads
+        run: |
+          ssh -p "${{ env.SPOTLITE_REMOTE_PORT }}" "${{ env.SPOTLITE_REMOTE_USER }}"@"${{ env.SPOTLITE_REMOTE_HOST }}" '
+            set -e
+            export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+            kubectl apply -k /tmp/spotlite/k8s
+            kubectl -n spotlite rollout restart deployment/user-service deployment/content-service deployment/notification-service deployment/subscription-service deployment/rating-service deployment/recommendation-service deployment/frontend
+            kubectl -n spotlite rollout status deployment/user-service --timeout=180s
+            kubectl -n spotlite rollout status deployment/content-service --timeout=180s
+            kubectl -n spotlite rollout status deployment/notification-service --timeout=180s
+            kubectl -n spotlite rollout status deployment/subscription-service --timeout=180s
+            kubectl -n spotlite rollout status deployment/rating-service --timeout=180s
+            kubectl -n spotlite rollout status deployment/recommendation-service --timeout=180s
+            kubectl -n spotlite rollout status deployment/frontend --timeout=180s
+            kubectl -n spotlite get pods
+          '
