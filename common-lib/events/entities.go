@@ -139,6 +139,8 @@ type RatingEventPayload struct {
 type ListenEventPayload struct {
 	UserID    string    `json:"user_id"`
 	SongID    string    `json:"song_id"`
+	ArtistID  string    `json:"artist_id"`
+	GenreID   string    `json:"genre_id"`
 	EventID   string    `json:"event_id"`
 	CreatedAt time.Time `json:"created_at"`
 }

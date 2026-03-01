@@ -33,6 +33,7 @@ type UserAnalyticsRepository interface {
 // UserActivityHistoryRepository defines the interface for user activity history read model operations
 type UserActivityHistoryRepository interface {
 	UpsertUserActivityHistory(ctx context.Context, history *entities.UserActivityHistory) error
+	AddActivityToHistory(ctx context.Context, userID string, activity entities.ActivitySummary) error
 	GetActivityHistory(ctx context.Context, userID string) (*entities.UserActivityHistory, error)
 }
 
@@ -207,20 +208,11 @@ func (s *AnalyticsService) ProjectSongPlayedEvent(
 		return err
 	}
 
-	// Get or create activity history
-	history, err := s.GetOrCreateUserActivityHistory(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	// Append activity
-	history.AddActivity(entities.ActivitySummary{
+	// Append activity to history (atomic operation)
+	if err := s.historyRepo.AddActivityToHistory(ctx, userID, entities.ActivitySummary{
 		ActivityType: entities.EventTypeSongPlayed,
 		Timestamp:    timestamp,
-	})
-
-	// Persist updated history
-	if err := s.UpdateUserActivityHistory(ctx, history); err != nil {
+	}); err != nil {
 		return err
 	}
 
@@ -257,20 +249,11 @@ func (s *AnalyticsService) ProjectSubscriptionEvent(
 		return err
 	}
 
-	// Get or create activity history
-	history, err := s.GetOrCreateUserActivityHistory(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	// Append activity
-	history.AddActivity(entities.ActivitySummary{
+	// Append activity to history (atomic operation)
+	if err := s.historyRepo.AddActivityToHistory(ctx, userID, entities.ActivitySummary{
 		ActivityType: eventType,
 		Timestamp:    timestamp,
-	})
-
-	// Persist updated history
-	if err := s.UpdateUserActivityHistory(ctx, history); err != nil {
+	}); err != nil {
 		return err
 	}
 
@@ -311,20 +294,11 @@ func (s *AnalyticsService) ProjectRatingEvent(
 		return err
 	}
 
-	// Get or create activity history
-	history, err := s.GetOrCreateUserActivityHistory(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	// Append activity
-	history.AddActivity(entities.ActivitySummary{
+	// Append activity to history (atomic operation)
+	if err := s.historyRepo.AddActivityToHistory(ctx, userID, entities.ActivitySummary{
 		ActivityType: eventType,
 		Timestamp:    timestamp,
-	})
-
-	// Persist updated history
-	if err := s.UpdateUserActivityHistory(ctx, history); err != nil {
+	}); err != nil {
 		return err
 	}
 

@@ -322,6 +322,17 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Publish song played event for analytics tracking (non-blocking)
+	// Track play regardless of cache hit/miss
+	// Extract userID before goroutine to avoid context issues
+	userID := middlewares.GetUserIdFromContext(r.Context())
+	go func() {
+		if err := h.s.TrackSongPlay(context.Background(), id, userID); err != nil {
+			logging.Warnf(context.Background(), "failed to track song play for user %s, song %s: %v", userID, id, err)
+			// Don't fail the request - tracking is non-critical
+		}
+	}()
+
 	cachedAudio, err := h.rc.Get(r.Context(), cacheKey).Bytes()
 	if err == nil && len(cachedAudio) > 0 {
 		logging.Infof(r.Context(), "Cache HIT song: %s", id)
@@ -370,14 +381,6 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 			logging.Infof(r.Context(), "successfully cached audio for song: %s", id)
 		}
 	}
-
-	// Publish song played event for analytics tracking (non-blocking)
-	go func() {
-		if err := h.s.TrackSongPlay(r.Context(), id); err != nil {
-			logging.Warnf(r.Context(), "failed to track song play: %v", err)
-			// Don't fail the request - tracking is non-critical
-		}
-	}()
 
 	setSongAudioResponseHeaders(w, int64(len(audioBytes)), song.AudioMimeType)
 

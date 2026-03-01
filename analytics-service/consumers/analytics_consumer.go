@@ -32,7 +32,7 @@ func NewConsumer(analyticsService AnalyticsService) *AnalyticsConsumer {
 	}
 }
 
-// HandleListenCreated processes listen created events
+// HandleListenCreated processes listen created events - updates analytics and appends activity
 func (h *AnalyticsConsumer) HandleListenCreated(ctx context.Context, msg jetstream.Msg) error {
 	var p events.ListenEventPayload
 	if err := json.Unmarshal(msg.Data(), &p); err != nil {
@@ -46,6 +46,8 @@ func (h *AnalyticsConsumer) HandleListenCreated(ctx context.Context, msg jetstre
 		EventType: entities.EventTypeSongPlayed,
 		Data: map[string]interface{}{
 			"songID":    p.SongID,
+			"artistID":  p.ArtistID,
+			"genreID":   p.GenreID,
 			"createdAt": p.CreatedAt,
 		},
 		Timestamp: p.CreatedAt,
@@ -53,6 +55,18 @@ func (h *AnalyticsConsumer) HandleListenCreated(ctx context.Context, msg jetstre
 
 	if err := h.analyticsService.StoreEvent(ctx, event); err != nil {
 		logging.Errorf(ctx, "failed to store listen event: %v", err)
+		return err
+	}
+
+	// Project event to read models
+	if err := h.analyticsService.ProjectSongPlayedEvent(
+		ctx,
+		p.UserID,
+		p.GenreID,
+		p.ArtistID,
+		p.CreatedAt,
+	); err != nil {
+		logging.Errorf(ctx, "failed to project listen event: %v", err)
 		return err
 	}
 

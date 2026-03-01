@@ -42,7 +42,7 @@ func (r *UserAnalyticsRepository) EnsureIndexes(ctx context.Context) error {
 	indexModels := []mongo.IndexModel{
 		{
 			Keys:    bson.D{{Key: "user_id", Value: 1}},
-			Options: options.Index().SetName("user_analytics_user_id_idx"),
+			Options: options.Index().SetName("user_analytics_user_id_idx").SetUnique(true),
 		},
 	}
 
@@ -67,7 +67,20 @@ func (r *UserAnalyticsRepository) UpsertUserAnalytics(
 	c := r.getCollection()
 
 	filter := bson.M{"user_id": analytics.UserID}
-	update := bson.M{"$set": analytics}
+	update := bson.M{
+		"$set": bson.M{
+			"total_songs_played":       analytics.TotalSongsPlayed,
+			"average_rating":           analytics.AverageRating,
+			"rating_sum":               analytics.RatingSum,
+			"ratings_count":            analytics.RatingsCount,
+			"songs_by_genre":           analytics.SongsByGenre,
+			"top_artists":              analytics.TopArtists,
+			"subscribed_artists_count": analytics.SubscribedArtistsCount,
+		},
+		"$setOnInsert": bson.M{
+			"user_id": analytics.UserID,
+		},
+	}
 
 	opts := options.Update().SetUpsert(true)
 
@@ -89,7 +102,7 @@ func (r *UserAnalyticsRepository) GetUserAnalytics(
 
 	filter := bson.M{"user_id": userID}
 
-	var analytics *entities.UserAnalyticsReadModel
+	var analytics entities.UserAnalyticsReadModel
 	err := c.FindOne(ctx, filter).Decode(&analytics)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -98,7 +111,7 @@ func (r *UserAnalyticsRepository) GetUserAnalytics(
 		return nil, fmt.Errorf("failed to query user analytics: %w", err)
 	}
 
-	return analytics, nil
+	return &analytics, nil
 }
 
 // UserActivityHistoryRepository provides data access helpers for activity history CQRS read models.
@@ -146,6 +159,7 @@ func (r *UserActivityHistoryRepository) EnsureIndexes(ctx context.Context) error
 
 // UpsertUserActivityHistory creates or updates a user activity history aggregate.
 // Used by read model projections to maintain denormalized activity timeline data.
+// Uses atomic $push operation to avoid race conditions when multiple events arrive concurrently.
 func (r *UserActivityHistoryRepository) UpsertUserActivityHistory(
 	ctx context.Context,
 	history *entities.UserActivityHistory,
@@ -157,13 +171,60 @@ func (r *UserActivityHistoryRepository) UpsertUserActivityHistory(
 	c := r.getCollection()
 
 	filter := bson.M{"user_id": history.UserID}
-	update := bson.M{"$set": history}
+
+	// Use $push to atomically append new activities to the array
+	// Only push the newly added activities (the first element, since AddActivity prepends)
+	if len(history.Activities) > 0 {
+		update := bson.M{
+			"$push": bson.M{
+				"activities": bson.M{
+					"$each":     []entities.ActivitySummary{history.Activities[0]},
+					"$position": 0,    // Insert at beginning (most recent first)
+					"$slice":    1000, // Keep only 1000 most recent
+				},
+			},
+			"$setOnInsert": bson.M{
+				"user_id": history.UserID,
+			},
+		}
+
+		opts := options.Update().SetUpsert(true)
+		_, err := c.UpdateOne(ctx, filter, update, opts)
+		if err != nil {
+			return fmt.Errorf("failed to upsert user activity history: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// AddActivityToHistory atomically adds a single activity to a user's activity history.
+// This is the preferred method for projections to avoid race conditions.
+func (r *UserActivityHistoryRepository) AddActivityToHistory(
+	ctx context.Context,
+	userID string,
+	activity entities.ActivitySummary,
+) error {
+	c := r.getCollection()
+
+	filter := bson.M{"user_id": userID}
+	update := bson.M{
+		"$push": bson.M{
+			"activities": bson.M{
+				"$each":     []entities.ActivitySummary{activity},
+				"$position": 0,    // Insert at beginning (most recent first)
+				"$slice":    1000, // Keep only 1000 most recent
+			},
+		},
+		"$setOnInsert": bson.M{
+			"user_id": userID,
+		},
+	}
 
 	opts := options.Update().SetUpsert(true)
-
 	_, err := c.UpdateOne(ctx, filter, update, opts)
 	if err != nil {
-		return fmt.Errorf("failed to upsert user activity history: %w", err)
+		return fmt.Errorf("failed to add activity to history for user %s: %w", userID, err)
 	}
 
 	return nil
@@ -179,7 +240,7 @@ func (r *UserActivityHistoryRepository) GetActivityHistory(
 
 	filter := bson.M{"user_id": userID}
 
-	var history *entities.UserActivityHistory
+	var history entities.UserActivityHistory
 	err := c.FindOne(ctx, filter).Decode(&history)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
@@ -188,5 +249,5 @@ func (r *UserActivityHistoryRepository) GetActivityHistory(
 		return nil, fmt.Errorf("failed to query user activity history: %w", err)
 	}
 
-	return history, nil
+	return &history, nil
 }

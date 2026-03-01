@@ -11,7 +11,6 @@ import (
 	"github.com/avast/retry-go"
 	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/logging"
-	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/pagination"
 	"github.com/vanjmali/spotlite/content/dtos"
 	"github.com/vanjmali/spotlite/content/entities"
@@ -389,7 +388,7 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 }
 
 // TrackSongPlay publishes a SONG_PLAYED event for analytics tracking.
-func (s *SongService) TrackSongPlay(ctx context.Context, idStr string) error {
+func (s *SongService) TrackSongPlay(ctx context.Context, idStr string, userID string) error {
 	ctx, span := s.tr.Start(ctx, "song.track_play")
 	defer span.End()
 
@@ -411,8 +410,14 @@ func (s *SongService) TrackSongPlay(ctx context.Context, idStr string) error {
 		return err
 	}
 
-	// Get user ID from context
-	userID := middlewares.GetUserIdFromContext(ctx)
+	// Extract primary artist and genre for analytics tracking
+	var artistID, genreID string
+	if len(song.Artists) > 0 {
+		artistID = song.Artists[0].ID.Hex()
+	}
+	if len(song.Genres) > 0 {
+		genreID = song.Genres[0].ID.Hex()
+	}
 
 	// Publish LISTEN_CREATED event
 	publishCtx, publishSpan := s.tr.Start(ctx, "song.track_play.publish")
@@ -421,6 +426,8 @@ func (s *SongService) TrackSongPlay(ctx context.Context, idStr string) error {
 	listenPayload := events.ListenEventPayload{
 		UserID:    userID,
 		SongID:    song.ID.Hex(),
+		ArtistID:  artistID,
+		GenreID:   genreID,
 		EventID:   primitive.NewObjectID().Hex(),
 		CreatedAt: time.Now(),
 	}
