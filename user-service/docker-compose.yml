@@ -17,6 +17,7 @@ services:
       SMTP_PORT: ${SRV_USER_SMTP_PORT?}
       SMTP_USER: ${SRV_USER_SMTP_USERNAME?}
       SMTP_PASS: ${SRV_USER_SMTP_PASSWORD?}
+      SMTP_TLS_POLICY: ${SRV_USER_SMTP_TLS_POLICY?}
       MAIL_FROM: ${SRV_USER_MAIL_FROM_ADDRESS?}
       # JWT_PRIVATE_KEY_PATH: /run/keys/private.pem
       # JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
