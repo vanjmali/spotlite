@@ -78,6 +78,16 @@ var (
 				return nil, nil, err
 			}
 
+			// Ensure ratings stream exists before publishing
+			err = jsc.EnsureStream(ctx, events.RATINGS_STREAM, []string{
+				events.SUBJECT_RATING_CREATED,
+				events.SUBJECT_RATING_UPDATED,
+			})
+			if err != nil {
+				err = fmt.Errorf("failed to ensure ratings stream: %w", err)
+				return h, shutdown, err
+			}
+
 			gcc := createAdapters(gc)
 			rr := createRepositories(dbc)
 			rs := createServices(rr, gcc, jsc)

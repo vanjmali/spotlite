@@ -79,7 +79,7 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 	songExistsCtx, songExistsSpan := s.tr.Start(ratingCtx, "rating.create.exists")
 	defer songExistsSpan.End()
 
-	_, err := s.gcc.GetSong(songExistsCtx, req.SongID)
+	songTitle, err := s.gcc.GetSong(songExistsCtx, req.SongID)
 	if err != nil {
 		songExistsSpan.RecordError(err)
 		if errors.Is(err, gobreaker.ErrOpenState) {
@@ -134,6 +134,7 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 	payload := events.RatingEventPayload{
 		UserID:    ratingEntity.UserID.Hex(),
 		SongID:    ratingEntity.SongID.Hex(),
+		SongTitle: songTitle,
 		Rating:    ratingEntity.Value,
 		EventID:   primitive.NewObjectID().Hex(),
 		CreatedAt: ratingEntity.CreatedAt,
