@@ -9,6 +9,7 @@ type EntityType string
 const (
 	ArtistType EntityType = "ARTIST"
 	AlbumType  EntityType = "ALBUM"
+	SongType   EntityType = "SONG"
 
 	CONTENT_STREAM       = "CONTENT"
 	SUBSCRIPTIONS_STREAM = "SUBSCRIPTIONS"

@@ -18,7 +18,7 @@ import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 import { ProfileEditorDialogComponent } from '@app/dialogs/profile-editor-dialog/profile-editor-dialog';
 import { ChangePasswordDialogComponent } from '@app/dialogs/change-password-dialog/change-password-dialog';
 
-type NotificationFilter = 'all' | 'artists' | 'albums';
+type NotificationFilter = 'all' | 'artists' | 'albums' | 'songs';
 
 @Component({
   selector: 'app-user-profile-dropdown',
@@ -160,6 +160,9 @@ export class UserProfileDropdownComponent implements OnDestroy {
     if (filter === 'artists') {
       return 'New artist activity';
     }
+    if (filter === 'songs') {
+      return 'New song available';
+    }
 
     return 'New album available';
   }
@@ -175,11 +178,15 @@ export class UserProfileDropdownComponent implements OnDestroy {
       this.router.navigate(['/album', item.entity_id]);
       return;
     }
+    if (mapped === 'songs') {
+      this.router.navigate(['/search'], { queryParams: { q: item.entity_name || '' } });
+      return;
+    }
     this.router.navigate(['/']);
   }
 
   notificationFilters(): NotificationFilter[] {
-    return ['all', 'albums', 'artists'];
+    return ['all', 'albums', 'artists', 'songs'];
   }
 
   isFilterActive(filter: NotificationFilter): boolean {
@@ -194,6 +201,8 @@ export class UserProfileDropdownComponent implements OnDestroy {
         return 'Artists';
       case 'albums':
         return 'Albums';
+      case 'songs':
+        return 'Songs';
     }
   }
 
@@ -254,6 +263,7 @@ export class UserProfileDropdownComponent implements OnDestroy {
   private mapTypeToFilter(type: string): NotificationFilter {
     const normalized = (type || '').toLowerCase();
     if (normalized.includes('artist')) return 'artists';
+    if (normalized.includes('song')) return 'songs';
     return 'albums';
   }
 
