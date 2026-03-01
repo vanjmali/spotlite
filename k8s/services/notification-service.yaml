@@ -71,7 +71,7 @@ spec:
             - name: JWT_PUBLIC_KEY_PATH
               value: /run/keys/public.pem
             - name: LOG_DIR
-              value: /app/logs
+              value: /tmp/logs
             - name: LOG_ROTATE_MAX_SIZE_MB
               value: "10"
             - name: LOG_ROTATE_MAX_BACKUPS
