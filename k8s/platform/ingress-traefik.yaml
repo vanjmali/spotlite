@@ -66,12 +66,39 @@ spec:
     forceSlash: false
 ---
 apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-to-https
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: spotlite-http-redirect
+spec:
+  entryPoints:
+    - web
+  routes:
+    - kind: Rule
+      match: PathPrefix(`/`)
+      middlewares:
+        - name: redirect-to-https
+      services:
+        - name: frontend
+          port: 8080
+---
+apiVersion: traefik.io/v1alpha1
 kind: IngressRoute
 metadata:
   name: spotlite
 spec:
   entryPoints:
-    - web
+    - websecure
+  tls:
+    secretName: spotlite-app-tls
   routes:
     - kind: Rule
       match: PathPrefix(`/api/users`)
