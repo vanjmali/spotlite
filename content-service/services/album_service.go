@@ -448,6 +448,49 @@ func (s *AlbumService) RemoveSongFromAllAlbums(ctx context.Context, songIdStr st
 	return nil
 }
 
+// SyncEmbeddedSong updates all album-embedded song snapshots for a song.
+func (s *AlbumService) SyncEmbeddedSong(ctx context.Context, song entities.Song) error {
+	ctx, span := s.tr.Start(ctx, "album.sync_embedded_song")
+	defer span.End()
+
+	filter := bson.M{"songs._id": song.ID}
+	albums, _, err := s.albumRepo.FindAll(ctx, filter, 0, 0)
+	if err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	embedded := entities.Song{
+		ID:            song.ID,
+		Title:         song.Title,
+		Genres:        song.Genres,
+		LengthSeconds: song.LengthSeconds,
+		Artists:       song.Artists,
+	}
+
+	for _, album := range albums {
+		changed := false
+		for i := range album.Songs {
+			if album.Songs[i].ID != song.ID {
+				continue
+			}
+			album.Songs[i] = embedded
+			changed = true
+		}
+
+		if !changed {
+			continue
+		}
+
+		if _, err := s.albumRepo.UpdateByID(ctx, album.ID, map[string]any{"songs": album.Songs}); err != nil {
+			span.RecordError(err)
+			return err
+		}
+	}
+
+	return nil
+}
+
 // DeleteAlbum deletes an album by its ID.
 func (s *AlbumService) DeleteAlbum(ctx context.Context, idStr string) error {
 	ctx, span := s.tr.Start(ctx, "album.delete_album")
