@@ -85,6 +85,11 @@ spec:
                 secretKeyRef:
                   name: spotlite-app-secrets
                   key: SMTP_PASS
+            - name: SMTP_TLS_POLICY
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: SMTP_TLS_POLICY
             - name: MAIL_FROM
               valueFrom:
                 secretKeyRef:
