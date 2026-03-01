@@ -144,7 +144,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (*SongP
 	defer resolveSpan.End()
 
 	embeddedArtists := make([]entities.Artist, 0)
-	artistNames := make([]string, 0)
+	artistNames := make([]string, 0, len(songDto.ArtistIds))
 
 	for _, artistIdStr := range songDto.ArtistIds {
 		artist, err := s.artistService.FindArtistByID(resolveCtx, artistIdStr)
@@ -169,6 +169,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (*SongP
 			Genres:      artist.Genres,
 			Description: artist.Description,
 		})
+		artistNames = append(artistNames, artist.Name)
 	}
 
 	_, mapSpan := s.tr.Start(createCtx, "song.create.map_entity")
@@ -214,7 +215,14 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (*SongP
 		return nil, errors.Join(errs...)
 	}
 
-	return &SongPayload{SongID: id.Hex(), Title: songEntity.Title, Duration: songEntity.LengthSeconds, GenreIDs: songDto.GenreIds, ArtistNames: artistNames}, nil
+	return &SongPayload{
+		SongID:      id.Hex(),
+		Title:       songEntity.Title,
+		Duration:    songEntity.LengthSeconds,
+		GenreIDs:    songDto.GenreIds,
+		ArtistIDs:   songDto.ArtistIds,
+		ArtistNames: artistNames,
+	}, nil
 }
 
 // FindSongById retrieves a single song by its ID.
@@ -674,6 +682,22 @@ func (s *SongService) UploadAudio(ctx context.Context, p SongPayload, r io.Reade
 		}
 		return nil, errors.Join(errs...)
 	}
+
+	createdEntityEvent := toSongCreatedEntityEvent(id.Hex(), p.Title, p.ArtistIDs, p.GenreIDs)
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_ENTITY_CREATED, createdEntityEvent)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second*1),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+	if err != nil {
+		logging.Errorf(eventCtx, "failed to publish entity created event for song: %v", err)
+		eventSpan.RecordError(err)
+	}
+
 	return updated, nil
 }
 
@@ -702,6 +726,36 @@ func toSongCreatedEvent(songID string, songTitle string, duration int, genreIDs 
 	}
 }
 
+func toSongCreatedEntityEvent(songID string, songTitle string, artistIDs []string, genreIDs []string) *events.EntityCreatedEventPayload {
+	targetIDs := make([]string, 0, len(artistIDs)+len(genreIDs))
+	seen := make(map[string]struct{}, len(artistIDs)+len(genreIDs))
+
+	for _, id := range artistIDs {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		targetIDs = append(targetIDs, id)
+	}
+
+	for _, id := range genreIDs {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		targetIDs = append(targetIDs, id)
+	}
+
+	return &events.EntityCreatedEventPayload{
+		TargetIDs:  targetIDs,
+		CreatedAt:  time.Now(),
+		EntityID:   songID,
+		EntityName: songTitle,
+		EntityType: events.SongType,
+		EventID:    primitive.NewObjectID().Hex(),
+	}
+}
+
 func toSongUpdatedEvent(songID string, songTitle string, duration int, genreIDs []string, artistNames []string) *events.SongUpdatePayload {
 	return &events.SongUpdatePayload{
 		SongID:      songID,
@@ -723,5 +777,6 @@ type SongPayload struct {
 	Title       string
 	Duration    int
 	GenreIDs    []string
+	ArtistIDs   []string
 	ArtistNames []string
 }

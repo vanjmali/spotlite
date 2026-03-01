@@ -62,6 +62,8 @@ func (s *NotificationService) CreateNotification(np events.SubscribersBatchEvent
 			notifType = entities.NotificationNewAlbum
 		case events.ArtistType:
 			notifType = entities.NotificationNewArtist
+		case events.SongType:
+			notifType = entities.NotificationNewSong
 		default:
 			logging.Warnf(ctx, "invalid entity type for notification: %s", np.EntityType)
 			return ErrInvalidEntityType
