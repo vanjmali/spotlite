@@ -378,7 +378,7 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 		defer rbSpan.End()
 
 		rbUpdate := make(map[string]any)
-		rbUpdate["value"] = dto.Value
+		rbUpdate["value"] = existing.Value
 		rbUpdate["is_edited"] = existing.IsEdited
 
 		_, err := s.rr.UpdateByID(rbCtx, existing.ID, existing.UserID, rbUpdate)
