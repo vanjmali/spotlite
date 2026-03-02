@@ -194,3 +194,20 @@ func (c *RecommendationConsumer) HandleSubscriptionCreated(ctx context.Context, 
 
 	return nil
 }
+
+func (c *RecommendationConsumer) HandleSubscriptionDeleted(ctx context.Context, msg jetstream.Msg) error {
+	var p events.SubscriptionEventPayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		logging.Errorf(ctx, "error: failed to unmarshal SubscriptionEventPayload: %v", err)
+		return nil
+	}
+
+	logging.Infof(ctx, "handling subscription deleted: user_id=%s entity_id=%s entity_type=%s", p.UserID, p.EntityID, p.EntityType)
+
+	if err := c.rs.DeleteSubscriptionFromEvent(p, ctx); err != nil {
+		logging.Errorf(ctx, "error: an error has occured while handling subscription deleted event: %v", err)
+		return err
+	}
+
+	return nil
+}

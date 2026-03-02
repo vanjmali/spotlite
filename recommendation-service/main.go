@@ -81,7 +81,7 @@ var (
 			if err = jsc.EnsureStream(
 				ctx,
 				events.SUBSCRIPTIONS_STREAM,
-				[]string{events.SUBJECT_SUBSCRIPTION_CREATED},
+				[]string{events.SUBJECT_SUBSCRIPTION_CREATED, events.SUBJECT_SUBSCRIPTION_DELETED},
 			); err != nil {
 				err = fmt.Errorf("failed to ensure subscriptions stream: %w", err)
 				return h, shutdown, err
@@ -196,6 +196,14 @@ var (
 				events.SUBSCRIPTION_CREATED_RECCOMENDATION_DURABLE,
 				"subscription created",
 				c.HandleSubscriptionCreated,
+			)
+
+			startConsumer(
+				events.SUBSCRIPTIONS_STREAM,
+				events.SUBJECT_SUBSCRIPTION_DELETED,
+				events.SUBSCRIPTION_DELETED_RECOMMENDATION_DURABLE,
+				"subscription deleted",
+				c.HandleSubscriptionDeleted,
 			)
 
 			startConsumer(
