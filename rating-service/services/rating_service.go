@@ -227,7 +227,7 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 		SongTitle: "",
 		Rating:    existing.Value,
 		EventID:   primitive.NewObjectID().Hex(),
-		CreatedAt: existing.CreatedAt,
+		CreatedAt: time.Now().UTC(),
 	}
 
 	publishCtx, publishSpan := s.tr.Start(ctx, "rating.delete.publish")
@@ -396,7 +396,7 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 		Rating:    rating.Value,
 		OldRating: existing.Value,
 		EventID:   primitive.NewObjectID().Hex(),
-		CreatedAt: rating.CreatedAt,
+		CreatedAt: time.Now().UTC(),
 	}
 
 	if s.jsc == nil {
