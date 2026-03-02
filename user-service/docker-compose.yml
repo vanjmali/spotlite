@@ -35,6 +35,7 @@ services:
       LOG_ROTATE_COMPRESS: ${LOG_ROTATE_COMPRESS?}
       NATS_URL: ${NATS_URL?}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      ASYNQ_SCHEDULE: ${USER_ASYNQ_SCHEDULE?}
     labels:
       traefik.enable: true
       traefik.docker.network: spotlite-api-gateway
