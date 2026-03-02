@@ -6,6 +6,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { ItemTableComponent } from '@app/shared/components/item-table';
 import { PaginationComponent } from '@app/shared/components/pagination';
 import { SongEditorDialogComponent } from '@app/dialogs/song-editor-dialog';
+import { DialogComponent } from '@app/shared/components/dialog';
 import { SongService, Song } from '@app/services/song.service';
 
 @Component({
@@ -19,6 +20,7 @@ import { SongService, Song } from '@app/services/song.service';
     ItemTableComponent,
     PaginationComponent,
     SongEditorDialogComponent,
+    DialogComponent,
   ],
   templateUrl: './songs-management.component.html',
   styleUrl: './songs-management.component.scss',
@@ -34,6 +36,8 @@ export class SongsManagementComponent {
   readonly totalSg = signal(0);
   readonly isDialogOpenSg = signal(false);
   readonly selectedSongSg = signal<Song | null>(null);
+  readonly isDeleteDialogOpenSg = signal(false);
+  readonly songToDeleteSg = signal<Song | null>(null);
 
   constructor() {
     effect(() => {
@@ -82,14 +86,22 @@ export class SongsManagementComponent {
   }
 
   onDelete(song: Song): void {
+    this.songToDeleteSg.set(song);
+    this.isDeleteDialogOpenSg.set(true);
+  }
+
+  cancelDelete(): void {
     if (this.isDeletingSg()) {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Delete song "${song.title}"?\n\nThis sends a delete request and removes the song asynchronously.`
-    );
-    if (!confirmed) {
+    this.isDeleteDialogOpenSg.set(false);
+    this.songToDeleteSg.set(null);
+  }
+
+  confirmDelete(): void {
+    const song = this.songToDeleteSg();
+    if (!song || this.isDeletingSg()) {
       return;
     }
 
@@ -99,6 +111,8 @@ export class SongsManagementComponent {
         this.songsSg.set(this.songsSg().filter((s) => s.id !== song.id));
         this.totalSg.set(Math.max(0, this.totalSg() - 1));
         this.isDeletingSg.set(false);
+        this.isDeleteDialogOpenSg.set(false);
+        this.songToDeleteSg.set(null);
       },
       error: (error) => {
         console.error('Failed to delete song:', error);
