@@ -421,7 +421,7 @@ func (r *GraphRelationRepository) FindLikeBasedRecommendation(ctx context.Contex
 }
 
 func (r *GraphRelationRepository) DeleteSong(ctx context.Context, songID string) error {
-	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
 
 	// ignores delete count, it is returned to avoid nilnil
