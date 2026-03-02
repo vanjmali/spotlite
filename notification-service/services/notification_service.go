@@ -62,6 +62,8 @@ func (s *NotificationService) CreateNotification(np events.SubscribersBatchEvent
 			notifType = entities.NotificationNewAlbum
 		case events.ArtistType:
 			notifType = entities.NotificationNewArtist
+		case events.SongType:
+			notifType = entities.NotificationNewSong
 		default:
 			logging.Warnf(ctx, "invalid entity type for notification: %s", np.EntityType)
 			return ErrInvalidEntityType
@@ -122,7 +124,13 @@ func filterDuplicateNotifications(rc *redis.Client, eventID string, userIDs []st
 	pipe := rc.Pipeline()
 
 	cmds := make(map[string]*redis.BoolCmd)
+	seen := make(map[string]struct{}, len(userIDs))
 	for _, uid := range userIDs {
+		if _, ok := seen[uid]; ok {
+			continue
+		}
+		seen[uid] = struct{}{}
+
 		key := fmt.Sprintf("notif:%s:%s", eventID, uid)
 		cmds[uid] = pipe.SetNX(ctx, key, "1", 15*time.Minute)
 	}

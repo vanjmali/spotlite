@@ -87,6 +87,7 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 	defer resolveGenreSpan.End()
 
 	embeddedGenre := make([]entities.Genre, 0)
+	genreIDs := []string{}
 
 	for _, genreIdStr := range albumDto.GenreIds {
 		genre, err := s.genreService.FindGenreByID(resolveGenreCtx, genreIdStr)
@@ -107,6 +108,8 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 			ID:   genre.ID,
 			Name: genre.Name,
 		})
+
+		genreIDs = append(genreIDs, genre.ID.Hex())
 	}
 
 	createAlCtx, createAlSpan := s.tr.Start(createCtx, "album.create.create_album")
@@ -132,7 +135,7 @@ func (s *AlbumService) Create(ctx context.Context, albumDto *dtos.CreateAlbumDto
 	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "album.create.event")
 	defer eventSpan.End()
 
-	aep := toAlbumCreatedEvent(artistIDs, albumEntity.ID.Hex(), albumEntity.Title)
+	aep := toAlbumCreatedEvent(artistIDs, genreIDs, albumEntity.ID.Hex(), albumEntity.Title)
 
 	err = retry.Do(
 		func() error {
@@ -448,6 +451,49 @@ func (s *AlbumService) RemoveSongFromAllAlbums(ctx context.Context, songIdStr st
 	return nil
 }
 
+// SyncEmbeddedSong updates all album-embedded song snapshots for a song.
+func (s *AlbumService) SyncEmbeddedSong(ctx context.Context, song entities.Song) error {
+	ctx, span := s.tr.Start(ctx, "album.sync_embedded_song")
+	defer span.End()
+
+	filter := bson.M{"songs._id": song.ID}
+	albums, _, err := s.albumRepo.FindAll(ctx, filter, 0, 0)
+	if err != nil {
+		span.RecordError(err)
+		return err
+	}
+
+	embedded := entities.Song{
+		ID:            song.ID,
+		Title:         song.Title,
+		Genres:        song.Genres,
+		LengthSeconds: song.LengthSeconds,
+		Artists:       song.Artists,
+	}
+
+	for _, album := range albums {
+		changed := false
+		for i := range album.Songs {
+			if album.Songs[i].ID != song.ID {
+				continue
+			}
+			album.Songs[i] = embedded
+			changed = true
+		}
+
+		if !changed {
+			continue
+		}
+
+		if _, err := s.albumRepo.UpdateByID(ctx, album.ID, map[string]any{"songs": album.Songs}); err != nil {
+			span.RecordError(err)
+			return err
+		}
+	}
+
+	return nil
+}
+
 // DeleteAlbum deletes an album by its ID.
 func (s *AlbumService) DeleteAlbum(ctx context.Context, idStr string) error {
 	ctx, span := s.tr.Start(ctx, "album.delete_album")
@@ -541,9 +587,28 @@ func (s *AlbumService) GetAlbums(ctx context.Context, q AlbumsQuery) (*dtos.Albu
 	return resp, nil
 }
 
-func toAlbumCreatedEvent(artistIDs []string, albumID string, albumName string) *events.EntityCreatedEventPayload {
+func toAlbumCreatedEvent(artistIDs []string, genreIDs []string, albumID string, albumName string) *events.EntityCreatedEventPayload {
+	targetIDs := make([]string, 0, len(artistIDs)+len(genreIDs))
+	seen := make(map[string]struct{}, len(artistIDs)+len(genreIDs))
+
+	for _, id := range artistIDs {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		targetIDs = append(targetIDs, id)
+	}
+
+	for _, id := range genreIDs {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		targetIDs = append(targetIDs, id)
+	}
+
 	return &events.EntityCreatedEventPayload{
-		TargetIDs:  artistIDs,
+		TargetIDs:  targetIDs,
 		EntityID:   albumID,
 		EntityName: albumName,
 		CreatedAt:  time.Now(),

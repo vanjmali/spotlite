@@ -61,6 +61,10 @@ func (f *fakeRatingRepo) GetAverageRatingBySongID(ctx context.Context, songID pr
 	return nil, errFakeRepoSentinel
 }
 
+func (f *fakeRatingRepo) DeleteSongRatings(songID primitive.ObjectID, ctx context.Context) (int64, error) {
+	return 0, errors.New("")
+}
+
 type fakeSongGetter struct {
 	getSongFn func(ctx context.Context, songID string) (string, error)
 }

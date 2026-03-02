@@ -1,0 +1,120 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: content-mongodb-init
+data:
+  mongo-init.js: |
+    db = db.getSiblingDB(process.env.MONGO_INITDB_DATABASE);
+    db.createUser({
+      user: process.env.SRV_CONTENT_MONGO_USERNAME,
+      pwd: process.env.SRV_CONTENT_MONGO_PASSWORD,
+      roles: [{ role: "readWrite", db: db.getName() }]
+    });
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: content-mongodb
+spec:
+  clusterIP: None
+  selector:
+    app: content-mongodb
+  ports:
+    - name: mongodb
+      port: 27017
+      targetPort: 27017
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: content-mongodb
+spec:
+  serviceName: content-mongodb
+  replicas: 1
+  selector:
+    matchLabels:
+      app: content-mongodb
+  template:
+    metadata:
+      labels:
+        app: content-mongodb
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:4.4
+          ports:
+            - containerPort: 27017
+              name: mongodb
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: SRV_CONTENT_MONGO_ROOT_USERNAME
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: SRV_CONTENT_MONGO_ROOT_PASSWORD
+            - name: MONGO_INITDB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: SRV_CONTENT_MONGO_DATABASE
+            - name: SRV_CONTENT_MONGO_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: SRV_CONTENT_MONGO_USERNAME
+            - name: SRV_CONTENT_MONGO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: SRV_CONTENT_MONGO_PASSWORD
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - >-
+                  mongo --quiet --username "$MONGO_INITDB_ROOT_USERNAME"
+                  --password "$MONGO_INITDB_ROOT_PASSWORD"
+                  --authenticationDatabase admin
+                  --eval 'db.runCommand({ ping: 1 })'
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - >-
+                  mongo --quiet --username "$MONGO_INITDB_ROOT_USERNAME"
+                  --password "$MONGO_INITDB_ROOT_PASSWORD"
+                  --authenticationDatabase admin
+                  --eval 'db.runCommand({ ping: 1 })'
+            initialDelaySeconds: 40
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+            - name: mongo-init
+              mountPath: /docker-entrypoint-initdb.d/mongo-init.js
+              subPath: mongo-init.js
+              readOnly: true
+      volumes:
+        - name: mongo-init
+          configMap:
+            name: content-mongodb-init
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi

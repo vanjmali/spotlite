@@ -20,6 +20,26 @@ func NewRecommendationConsumer(rs *services.RecommendationService) *Recommendati
 	}
 }
 
+func (c *RecommendationConsumer) HandleEntityCreated(ctx context.Context, msg jetstream.Msg) error {
+	var p events.EntityCreatedEventPayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		logging.Errorf(ctx, "critical: failed to unmarshal EntityCreatedPayload: %v", err)
+		return nil
+	}
+
+	// Only process artist creation events
+	if p.EntityType != events.ArtistType {
+		return nil
+	}
+
+	if err := c.rs.CreateArtist(p, ctx); err != nil {
+		logging.Errorf(ctx, "error: an error has occured while handling entity creation event: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 func (c *RecommendationConsumer) HandleUserRegistration(ctx context.Context, msg jetstream.Msg) error {
 	var p events.UserRegistrationPayload
 	if err := json.Unmarshal(msg.Data(), &p); err != nil {
@@ -71,7 +91,7 @@ func (c *RecommendationConsumer) HandleGenreSubscription(ctx context.Context, ms
 		return nil
 	}
 
-	logging.Infof(ctx, "%s", p)
+	logging.Infof(ctx, "%+v", p)
 
 	if err := c.rs.CreateSubscription(p, ctx); err != nil {
 		logging.Errorf(ctx, "error: an error has occured while handling genre subscription event: %v", err)
@@ -82,7 +102,7 @@ func (c *RecommendationConsumer) HandleGenreSubscription(ctx context.Context, ms
 }
 
 func (c *RecommendationConsumer) HandleSongRating(ctx context.Context, msg jetstream.Msg) error {
-	var p events.SongRatingPayload
+	var p events.RatingEventPayload
 	if err := json.Unmarshal(msg.Data(), &p); err != nil {
 		logging.Errorf(ctx, "error: failed to unmarshal SongRatingPayload: %v", err)
 		return nil
@@ -120,6 +140,55 @@ func (c *RecommendationConsumer) HandleSongUpdate(ctx context.Context, msg jetst
 
 	if err := c.rs.UpdateSong(p, ctx); err != nil {
 		logging.Errorf(ctx, "error: an error has occured while handling song update event: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *RecommendationConsumer) HandleSongDelete(ctx context.Context, msg jetstream.Msg) error {
+	var p events.SongDeletePayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		logging.Errorf(ctx, "error: failed to unmarshal SongDeletePayload: %v", err)
+		return nil
+	}
+
+	if err := c.rs.DeleteSong(p, ctx); err != nil {
+		logging.Errorf(ctx, "error: an error has occured while handling song delete event: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *RecommendationConsumer) HandleRatingUpdate(ctx context.Context, msg jetstream.Msg) error {
+	var p events.RatingEventPayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		logging.Errorf(ctx, "error: failed to unmarshal RatingEventPayload: %v", err)
+		return nil
+	}
+
+	logging.Infof(ctx, "%+v", p)
+
+	if err := c.rs.UpdateRating(p, ctx); err != nil {
+		logging.Errorf(ctx, "error: an error has occured while handling rating update event: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func (c *RecommendationConsumer) HandleSubscriptionCreated(ctx context.Context, msg jetstream.Msg) error {
+	var p events.SubscriptionEventPayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		logging.Errorf(ctx, "error: failed to unmarshal SubscriptionEventPayload: %v", err)
+		return nil
+	}
+
+	logging.Infof(ctx, "handling subscription created: user_id=%s entity_id=%s entity_type=%s", p.UserID, p.EntityID, p.EntityType)
+
+	if err := c.rs.CreateSubscriptionFromEvent(p, ctx); err != nil {
+		logging.Errorf(ctx, "error: an error has occured while handling subscription created event: %v", err)
 		return err
 	}
 

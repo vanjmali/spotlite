@@ -1,0 +1,234 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: content-hdfs-config
+data:
+  core-site.xml: |
+    <?xml version="1.0"?>
+    <configuration>
+      <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://content-hdfs-namenode-0.content-hdfs-namenode.spotlite.svc.cluster.local:8020</value>
+      </property>
+    </configuration>
+  hdfs-site.xml: |
+    <?xml version="1.0"?>
+    <configuration>
+      <property>
+        <name>dfs.namenode.rpc-address</name>
+        <value>content-hdfs-namenode-0.content-hdfs-namenode.spotlite.svc.cluster.local:8020</value>
+      </property>
+      <property>
+        <name>dfs.namenode.rpc-bind-host</name>
+        <value>0.0.0.0</value>
+      </property>
+      <property>
+        <name>dfs.namenode.http-address</name>
+        <value>0.0.0.0:9870</value>
+      </property>
+      <property>
+        <name>dfs.namenode.http-bind-host</name>
+        <value>0.0.0.0</value>
+      </property>
+      <property>
+        <name>dfs.replication</name>
+        <value>1</value>
+      </property>
+      <property>
+        <name>dfs.permissions.enabled</name>
+        <value>false</value>
+      </property>
+      <property>
+        <name>dfs.namenode.datanode.registration.ip-hostname-check</name>
+        <value>false</value>
+      </property>
+      <property>
+        <name>dfs.namenode.name.dir</name>
+        <value>file:///data/dfs/name</value>
+      </property>
+      <property>
+        <name>dfs.datanode.data.dir</name>
+        <value>file:///data/dfs/data</value>
+      </property>
+    </configuration>
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: content-hdfs-namenode
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    app: content-hdfs-namenode
+  ports:
+    - name: rpc
+      port: 8020
+      targetPort: 8020
+    - name: web
+      port: 9870
+      targetPort: 9870
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: content-hdfs-namenode
+spec:
+  serviceName: content-hdfs-namenode
+  replicas: 1
+  selector:
+    matchLabels:
+      app: content-hdfs-namenode
+  template:
+    metadata:
+      labels:
+        app: content-hdfs-namenode
+    spec:
+      containers:
+        - name: namenode
+          image: apache/hadoop:3.4
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              mkdir -p /data/dfs/name
+              if [ ! -d /data/dfs/name/current ]; then
+                hdfs namenode -format -nonInteractive
+              fi
+              exec hdfs namenode
+          env:
+            - name: HADOOP_CONF_DIR
+              value: /etc/hadoop-conf
+          ports:
+            - containerPort: 8020
+              name: rpc
+            - containerPort: 9870
+              name: web
+          readinessProbe:
+            tcpSocket:
+              port: 8020
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            tcpSocket:
+              port: 8020
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /etc/hadoop-conf/core-site.xml
+              subPath: core-site.xml
+              readOnly: true
+            - name: config
+              mountPath: /etc/hadoop-conf/hdfs-site.xml
+              subPath: hdfs-site.xml
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: content-hdfs-config
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: content-hdfs-datanode
+spec:
+  clusterIP: None
+  selector:
+    app: content-hdfs-datanode
+  ports:
+    - name: data
+      port: 9864
+      targetPort: 9864
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: content-hdfs-datanode
+spec:
+  serviceName: content-hdfs-datanode
+  replicas: 1
+  selector:
+    matchLabels:
+      app: content-hdfs-datanode
+  template:
+    metadata:
+      labels:
+        app: content-hdfs-datanode
+    spec:
+      initContainers:
+        - name: wait-for-namenode
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z content-hdfs-namenode 8020; do echo "waiting for content-hdfs-namenode"; sleep 3; done
+      containers:
+        - name: datanode
+          image: apache/hadoop:3.4
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              mkdir -p /data/dfs/data
+              exec hdfs datanode
+          env:
+            - name: HADOOP_CONF_DIR
+              value: /etc/hadoop-conf
+          ports:
+            - containerPort: 9864
+              name: data
+          readinessProbe:
+            tcpSocket:
+              port: 9864
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            tcpSocket:
+              port: 9864
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: config
+              mountPath: /etc/hadoop-conf/core-site.xml
+              subPath: core-site.xml
+              readOnly: true
+            - name: config
+              mountPath: /etc/hadoop-conf/hdfs-site.xml
+              subPath: hdfs-site.xml
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: content-hdfs-config
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi

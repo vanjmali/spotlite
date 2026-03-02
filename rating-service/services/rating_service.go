@@ -46,6 +46,7 @@ type RatingRepository interface {
 	FindRatingsByUserID(ctx context.Context, filter bson.M, skip int64, limit int64) ([]entities.Rating, int64, error)
 	UpdateByID(ctx context.Context, ratingID primitive.ObjectID, userID primitive.ObjectID, update map[string]any) (*entities.Rating, error)
 	GetAverageRatingBySongID(ctx context.Context, songID primitive.ObjectID) (*dtos.SongRatingSummary, error)
+	DeleteSongRatings(songID primitive.ObjectID, ctx context.Context) (int64, error)
 }
 
 type ContentEntityGetter interface {
@@ -78,7 +79,7 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 	songExistsCtx, songExistsSpan := s.tr.Start(ratingCtx, "rating.create.exists")
 	defer songExistsSpan.End()
 
-	_, err := s.gcc.GetSong(songExistsCtx, req.SongID)
+	songTitle, err := s.gcc.GetSong(songExistsCtx, req.SongID)
 	if err != nil {
 		songExistsSpan.RecordError(err)
 		if errors.Is(err, gobreaker.ErrOpenState) {
@@ -123,33 +124,55 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 		return err
 	}
 
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "rating.create.event")
+	defer eventSpan.End()
+
 	// Publish rating created event with retry for reliability
 	payload := events.RatingEventPayload{
 		UserID:    ratingEntity.UserID.Hex(),
 		SongID:    ratingEntity.SongID.Hex(),
+		SongTitle: songTitle,
 		Rating:    ratingEntity.Value,
 		EventID:   primitive.NewObjectID().Hex(),
 		CreatedAt: ratingEntity.CreatedAt,
 	}
 
-	publishCtx, publishSpan := s.tr.Start(ratingCtx, "rating.create.publish")
-	defer publishSpan.End()
 	if s.jsc == nil {
 		return nil
 	}
 
 	err = retry.Do(
 		func() error {
-			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_CREATED, payload)
+			return s.jsc.Publish(eventCtx, events.SUBJECT_RATING_CREATED, payload)
 		},
 		retry.Attempts(3),
 		retry.Delay(time.Second),
 		retry.DelayType(retry.BackOffDelay),
-		retry.Context(publishCtx),
+		retry.Context(eventCtx),
 	)
 	if err != nil {
-		publishSpan.RecordError(err)
-		logging.Errorf(publishCtx, "failed to publish rating created event: %v", err)
+		eventSpan.RecordError(err)
+		logging.Errorf(eventCtx, "failed to publish rating created event: %v", err)
+
+		var errs []error
+
+		errs = append(errs, err)
+
+		rbCtx, rbSpan := s.tr.Start(createCtx, "rating.create.rollback")
+		defer rbSpan.End()
+
+		_, err := s.rr.Delete(ratingEntity.ID, ratingEntity.UserID, rbCtx)
+		if err != nil {
+			eventSpan.RecordError(err)
+			logging.Errorf(eventCtx, "rollback failed: %v", err)
+
+			errs = append(errs, err)
+		}
+
+		return errors.Join(errs...)
 	}
 
 	return nil
@@ -195,10 +218,13 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 		return ErrRatingNotFound
 	}
 
+	// TODO, add graph db sync event publishing
+
 	// Publish rating deleted event with retry for reliability
 	payload := events.RatingEventPayload{
 		UserID:    userID.Hex(),
 		SongID:    existing.SongID.Hex(),
+		SongTitle: "",
 		Rating:    existing.Value,
 		EventID:   primitive.NewObjectID().Hex(),
 		CreatedAt: existing.CreatedAt,
@@ -351,33 +377,64 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 		return nil, err
 	}
 
-	// Publish rating updated event with retry for reliability
+	songId := rating.SongID.Hex()
+	songTitle, err := s.gcc.GetSong(ctx, songId)
+	if err != nil {
+		return nil, err
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "rating.update.event")
+	defer eventSpan.End()
+
 	payload := events.RatingEventPayload{
 		UserID:    rating.UserID.Hex(),
-		SongID:    rating.SongID.Hex(),
+		SongID:    songId,
+		SongTitle: songTitle,
 		Rating:    rating.Value,
 		EventID:   primitive.NewObjectID().Hex(),
 		CreatedAt: rating.CreatedAt,
 	}
 
-	publishCtx, publishSpan := s.tr.Start(ctx, "rating.update.publish")
-	defer publishSpan.End()
 	if s.jsc == nil {
 		return rating, nil
 	}
 
 	err = retry.Do(
 		func() error {
-			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_UPDATED, payload)
+			return s.jsc.Publish(eventCtx, events.SUBJECT_RATING_UPDATED, payload)
 		},
 		retry.Attempts(3),
 		retry.Delay(time.Second),
 		retry.DelayType(retry.BackOffDelay),
-		retry.Context(publishCtx),
+		retry.Context(eventCtx),
 	)
 	if err != nil {
-		publishSpan.RecordError(err)
-		logging.Errorf(publishCtx, "failed to publish rating updated event: %v", err)
+		eventSpan.RecordError(err)
+		logging.Errorf(eventCtx, "failed to publish rating created event: %v", err)
+
+		var errs []error
+
+		errs = append(errs, err)
+
+		rbCtx, rbSpan := s.tr.Start(updateCtx, "rating.update.rollback")
+		defer rbSpan.End()
+
+		rbUpdate := make(map[string]any)
+		rbUpdate["value"] = existing.Value
+		rbUpdate["is_edited"] = existing.IsEdited
+
+		_, err := s.rr.UpdateByID(rbCtx, existing.ID, existing.UserID, rbUpdate)
+		if err != nil {
+			eventSpan.RecordError(err)
+			logging.Errorf(eventCtx, "rollback failed: %v", err)
+
+			errs = append(errs, err)
+		}
+
+		return nil, errors.Join(errs...)
 	}
 
 	return rating, nil
@@ -401,4 +458,25 @@ func (s *RatingService) GetAverageRatingBySongID(ctx context.Context, songIDStr 
 	}
 
 	return summary, nil
+}
+
+func (s *RatingService) DeleteSongRatings(ctx context.Context, songIDStr string) error {
+	deleteCtx, deleteSpan := s.tr.Start(ctx, "rating.delete_by_song")
+	defer deleteSpan.End()
+
+	songID, err := primitive.ObjectIDFromHex(songIDStr)
+	if err != nil {
+		logging.Errorf(deleteCtx, "an error has occured while parsing song ID: %v", err)
+		deleteSpan.RecordError(err)
+		return ErrObjectIdCastFailed
+	}
+
+	_, err = s.rr.DeleteSongRatings(songID, deleteCtx)
+	if err != nil {
+		logging.Errorf(deleteCtx, "an error has occured while deleting song ratings: %v", err)
+		deleteSpan.RecordError(err)
+		return err
+	}
+
+	return nil
 }

@@ -1,0 +1,135 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: subscription-service
+spec:
+  selector:
+    app: subscription-service
+  ports:
+    - name: https
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: subscription-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: subscription-service
+  template:
+    metadata:
+      labels:
+        app: subscription-service
+    spec:
+      initContainers:
+        - name: wait-deps
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z subscription-mongodb 27017; do echo "waiting for subscription-mongodb"; sleep 2; done
+              until nc -z content-service 50051; do echo "waiting for content-service grpc"; sleep 2; done
+              until nc -z nats 4222; do echo "waiting for nats"; sleep 2; done
+      containers:
+        - name: subscription-service
+          image: ghcr.io/vanjmali/spotlite:subscription-service
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+              name: https
+          env:
+            - name: APP_PORT
+              value: "3000"
+            - name: DB_HOST
+              value: subscription-mongodb
+            - name: DB_PORT
+              value: "27017"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: SRV_SUB_MONGO_USERNAME
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: SRV_SUB_MONGO_PASSWORD
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: SRV_SUB_MONGO_DATABASE
+            - name: CONTENT_GRPC_ADDRESS
+              value: content-service:50051
+            - name: NATS_URL
+              value: tls://nats:4222
+            - name: ROOT_CERT_PATH
+              value: /certs/rootCA.crt
+            - name: CERT_PATH
+              value: /certs/subscription-service.crt
+            - name: KEY_PATH
+              value: /certs/subscription-service.key
+            - name: JWT_PUBLIC_KEY_PATH
+              value: /run/keys/public.pem
+            - name: LOG_DIR
+              value: /tmp/logs
+            - name: LOG_ROTATE_MAX_SIZE_MB
+              value: "10"
+            - name: LOG_ROTATE_MAX_BACKUPS
+              value: "5"
+            - name: LOG_ROTATE_MAX_AGE_DAYS
+              value: "30"
+            - name: LOG_ROTATE_COMPRESS
+              value: "true"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+              scheme: HTTPS
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+              scheme: HTTPS
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+              scheme: HTTPS
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 60
+          volumeMounts:
+            - name: crypto
+              mountPath: /certs
+              readOnly: true
+            - name: jwt-key
+              mountPath: /run/keys
+              readOnly: true
+      volumes:
+        - name: crypto
+          secret:
+            secretName: spotlite-crypto
+            items:
+              - key: rootCA.crt
+                path: rootCA.crt
+              - key: subscription-service.crt
+                path: subscription-service.crt
+              - key: subscription-service.key
+                path: subscription-service.key
+        - name: jwt-key
+          secret:
+            secretName: spotlite-crypto
+            items:
+              - key: public.pem
+                path: public.pem

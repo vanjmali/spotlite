@@ -12,14 +12,17 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/nats-io/nats.go"
 	"github.com/vanjmali/spotlite/common-lib/events"
+	"github.com/vanjmali/spotlite/common-lib/logging"
 	pb "github.com/vanjmali/spotlite/common-lib/proto/rating_service"
 	"github.com/vanjmali/spotlite/common-lib/server"
 	"github.com/vanjmali/spotlite/common-lib/utils"
+	"github.com/vanjmali/spotlite/rating-service/consumers"
 	"github.com/vanjmali/spotlite/rating-service/handlers"
 	adapters "github.com/vanjmali/spotlite/rating-service/infrastructure/grpc"
 	"github.com/vanjmali/spotlite/rating-service/infrastructure/mongo"
@@ -38,6 +41,7 @@ var (
 	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
 	certFilePath       = utils.MustGetEnv("CERT_PATH")
 	keyFilePath        = utils.MustGetEnv("KEY_PATH")
+	natsURL            = utils.MustGetEnv("NATS_URL")
 	config             = server.ServerRunConfiguration{
 		TelemetryName: "rating-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
@@ -47,23 +51,30 @@ var (
 		CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
 			dbc, gc, jsc, err := createClients()
 			if err != nil {
-				err = fmt.Errorf("failed to create clients: %w", err)
-				return h, shutdown, err
+				return nil, nil, fmt.Errorf("failed to create clients: %w", err)
 			}
 
-			// Cleanup resources on error
+			var grpcServer *grpc.Server
+
 			defer func() {
 				if err == nil {
 					return
 				}
-				_ = dbc.Disconnect(ctx)
+				if dbc != nil {
+					_ = dbc.Disconnect(context.Background())
+				}
 				if jsc != nil {
 					jsc.Close()
 				}
+				if gc != nil {
+					_ = gc.Close()
+				}
+				if grpcServer != nil {
+					grpcServer.Stop()
+				}
 			}()
 
-			err = initializeRatingIndexes(ctx, dbc)
-			if err != nil {
+			if err = initializeRatingIndexes(ctx, dbc); err != nil {
 				return nil, nil, err
 			}
 
@@ -71,7 +82,6 @@ var (
 			err = jsc.EnsureStream(ctx, events.RATINGS_STREAM, []string{
 				events.SUBJECT_RATING_CREATED,
 				events.SUBJECT_RATING_UPDATED,
-				events.SUBJECT_RATING_DELETED,
 			})
 			if err != nil {
 				err = fmt.Errorf("failed to ensure ratings stream: %w", err)
@@ -81,43 +91,105 @@ var (
 			gcc := createAdapters(gc)
 			rr := createRepositories(dbc)
 			rs := createServices(rr, gcc, jsc)
-			grpcServer, err := createGrpcServer(rs)
+			c := createConsumers(rs)
+
+			grpcServer, err = createGrpcServer(rs)
 			if err != nil {
-				return h, shutdown, fmt.Errorf("failed to create grpc server: %w", err)
+				return nil, nil, fmt.Errorf("failed to create grpc server: %w", err)
 			}
+
 			grpcPort := utils.GetEnv("GRPC_PORT", "50051")
 			lis, err := net.Listen("tcp", ":"+grpcPort)
 			if err != nil {
-				return h, shutdown, fmt.Errorf("failed to listen on grpc port: %w", err)
+				return nil, nil, fmt.Errorf("failed to listen on grpc port: %w", err)
 			}
+
 			go func() {
 				log.Printf("gRPC rating server listening on port %s", grpcPort)
 				if serveErr := grpcServer.Serve(lis); serveErr != nil {
 					log.Printf("failed to serve rating grpc: %v", serveErr)
 				}
 			}()
+			if err = jsc.EnsureStream(ctx, events.RATINGS_STREAM, []string{
+				events.SUBJECT_RATING_CREATED,
+				events.SUBJECT_RATING_UPDATED,
+				events.SUBJECT_RATING_DELETED,
+			},
+			); err != nil {
+				return nil, nil, fmt.Errorf("failed to ensure ratings stream: %w", err)
+			}
+
+			if err = jsc.EnsureStream(ctx, events.SONGS_STREAM, []string{
+				events.SUBJECT_SONG_CREATED,
+				events.SUBJECT_SONG_UPDATED,
+				events.SUBJECT_SONG_DELETED,
+			}); err != nil {
+				return nil, nil, fmt.Errorf("failed to ensure songs stream: %w", err)
+			}
+
+			consumerCtx, consumerCancel := context.WithCancel(ctx)
+			var consumerWg sync.WaitGroup
+
+			consumerErrCh := make(chan error, 5)
+
+			startConsumer := func(stream, subject, durable, label string, handler events.SubscribeHandler) {
+				consumerWg.Add(1)
+				go func() {
+					defer consumerWg.Done()
+					err := jsc.StartConsumer(consumerCtx, stream, subject, durable, handler)
+					if err != nil && !errors.Is(err, context.Canceled) {
+						logging.Errorf(ctx, "%s consumer error: %v", label, err)
+
+						select {
+						case consumerErrCh <- fmt.Errorf("%s consumer error: %w", label, err):
+						default:
+						}
+					}
+				}()
+			}
+
+			startConsumer(
+				events.SONGS_STREAM,
+				events.SUBJECT_SONG_DELETED,
+				events.SONG_DELETE_DURABLE_RATING,
+				"song deleted",
+				c.HandleSongDelete,
+			)
 
 			h = createHandlers(v, rs)
+
 			shutdown = func() error {
 				var errs []error
+
+				consumerCancel()
+				consumerWg.Wait()
+
+				close(consumerErrCh)
+				for consumerErr := range consumerErrCh {
+					errs = append(errs, consumerErr)
+				}
 
 				shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				defer cancel()
 
-				if err := gc.Close(); err != nil {
-					errs = append(errs, fmt.Errorf("grpc close error: %w", err))
+				if gc != nil {
+					if err := gc.Close(); err != nil {
+						errs = append(errs, fmt.Errorf("grpc client close error: %w", err))
+					}
 				}
-				grpcServer.GracefulStop()
-				if err := lis.Close(); err != nil {
-					errs = append(errs, fmt.Errorf("grpc listener close error: %w", err))
+
+				if grpcServer != nil {
+					grpcServer.GracefulStop()
 				}
 
 				if jsc != nil {
 					jsc.Close()
 				}
 
-				if err := dbc.Disconnect(shutdownCtx); err != nil && !errors.Is(err, mongodriver.ErrClientDisconnected) {
-					errs = append(errs, fmt.Errorf("failed to disconnect mongo client: %w", err))
+				if dbc != nil {
+					if err := dbc.Disconnect(shutdownCtx); err != nil {
+						errs = append(errs, fmt.Errorf("failed to disconnect mongo client: %w", err))
+					}
 				}
 
 				jsc.Close()
@@ -125,7 +197,7 @@ var (
 				return errors.Join(errs...)
 			}
 
-			return h, shutdown, err
+			return h, shutdown, nil
 		},
 		Server: struct {
 			ReadTimeout  time.Duration
@@ -253,6 +325,12 @@ func createGrpcServer(rs *services.RatingService) (*grpc.Server, error) {
 	pb.RegisterGetSongRatingServer(s, ratingGrpcServer)
 
 	return s, nil
+}
+
+func createConsumers(
+	rs *services.RatingService,
+) *consumers.RatingConsumer {
+	return consumers.NewRatingConsumer(rs)
 }
 
 func generateCreds() (credentials.TransportCredentials, error) {

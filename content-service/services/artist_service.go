@@ -27,15 +27,30 @@ var (
 
 type ArtistService struct {
 	r            *repositories.ArtistRepository
+	songRepo     *repositories.SongRepository
+	albumRepo    *repositories.AlbumRepository
 	genreService *GenreService
 	jsc          *events.JetStreamClient
 	tr           trace.Tracer
 }
 
 // NewArtistService builds a ArtistService with repository.
-func NewArtistService(r repositories.ArtistRepository, genreService GenreService, jsc events.JetStreamClient) *ArtistService {
+func NewArtistService(
+	r repositories.ArtistRepository,
+	songRepo repositories.SongRepository,
+	albumRepo repositories.AlbumRepository,
+	genreService GenreService,
+	jsc events.JetStreamClient,
+) *ArtistService {
 	tr := otel.Tracer("content-service/artist-service")
-	s := ArtistService{r: &r, genreService: &genreService, tr: tr, jsc: &jsc}
+	s := ArtistService{
+		r:            &r,
+		songRepo:     &songRepo,
+		albumRepo:    &albumRepo,
+		genreService: &genreService,
+		tr:           tr,
+		jsc:          &jsc,
+	}
 	return &s
 }
 
@@ -266,7 +281,110 @@ func (s *ArtistService) UpdateArtist(ctx context.Context, idStr string, dto dtos
 		return nil, errors.Join(errs...)
 	}
 
+	syncCtx, syncSpan := s.tr.Start(updateCtx, "artist.update.sync_embeds")
+	if err := s.syncEmbedded(syncCtx, updatedArtist); err != nil {
+		syncSpan.RecordError(err)
+		syncSpan.End()
+		return nil, err
+	}
+	syncSpan.End()
+
 	return updatedArtist, nil
+}
+
+func (s *ArtistService) syncEmbeddedArtists(ctx context.Context, artist *entities.Artist) error {
+	songs, _, err := s.songRepo.FindAll(ctx, bson.M{"artists._id": artist.ID}, 0, 0)
+	if err != nil {
+		return err
+	}
+
+	for _, song := range songs {
+		changed := false
+		for i := range song.Artists {
+			if song.Artists[i].ID != artist.ID {
+				continue
+			}
+			song.Artists[i] = *artist
+			changed = true
+		}
+
+		if !changed {
+			continue
+		}
+
+		if _, err := s.songRepo.UpdateByID(ctx, song.ID, map[string]any{"artists": song.Artists}); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *ArtistService) syncEmbeddedAlbums(ctx context.Context, artist *entities.Artist) error {
+	filter := bson.M{
+		"$or": []bson.M{
+			{"artists._id": artist.ID},
+			{"songs.artists._id": artist.ID},
+		},
+	}
+
+	albums, _, err := s.albumRepo.FindAll(ctx, filter, 0, 0)
+	if err != nil {
+		return err
+	}
+
+	for _, album := range albums {
+		artistsChanged := false
+		for i := range album.Artists {
+			if album.Artists[i].ID != artist.ID {
+				continue
+			}
+			album.Artists[i] = *artist
+			artistsChanged = true
+		}
+
+		songsChanged := false
+		for i := range album.Songs {
+			for j := range album.Songs[i].Artists {
+				if album.Songs[i].Artists[j].ID != artist.ID {
+					continue
+				}
+				album.Songs[i].Artists[j] = *artist
+				songsChanged = true
+			}
+		}
+
+		if !artistsChanged && !songsChanged {
+			continue
+		}
+
+		update := map[string]any{}
+		if artistsChanged {
+			update["artists"] = album.Artists
+		}
+		if songsChanged {
+			update["songs"] = album.Songs
+		}
+
+		if _, err := s.albumRepo.UpdateByID(ctx, album.ID, update); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// syncEmbedded syncs embedded.
+func (s *ArtistService) syncEmbedded(ctx context.Context, artist *entities.Artist) error {
+	if err := s.syncEmbeddedArtists(ctx, artist); err != nil {
+		return err
+	}
+
+	if err := s.syncEmbeddedAlbums(ctx, artist); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // DeleteArtist deletes an artist by its ID.

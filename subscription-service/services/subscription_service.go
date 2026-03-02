@@ -124,7 +124,7 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 	defer span.End()
 
 	entityName, err := s.cb.Execute(func() (any, error) {
-		entityCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		entityCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
 		defer cancel()
 
 		entityExistenceCtx, entityExistenceSpan := s.tr.Start(entityCtx, "subscription.subscribe.entity_exists")
@@ -132,6 +132,7 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 
 		name, err := s.gcc.GetEntity(entityExistenceCtx, req.EntityID, req.Type)
 		if err != nil {
+			logging.Errorf(entityExistenceCtx, "failed to get entity from gRPC: %v", err)
 			return nil, err
 		}
 		return name, nil
@@ -253,6 +254,21 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 		}
 	}
 
+	eventPayload := toSubscriptionActivityEvent(se)
+	if eventPayload != nil {
+		if err := retry.Do(
+			func() error {
+				return s.jsc.Publish(ctx, events.SUBJECT_SUBSCRIPTION_CREATED, eventPayload)
+			},
+			retry.Attempts(3),
+			retry.Delay(time.Second),
+			retry.DelayType(retry.BackOffDelay),
+			retry.Context(ctx),
+		); err != nil {
+			logging.Errorf(ctx, "failed to publish subscription created event: %v", err)
+		}
+	}
+
 	return nil
 }
 
@@ -300,32 +316,21 @@ func (s *SubscriptionService) Unsubscribe(entityId primitive.ObjectID, ctx conte
 		return ErrSubscriptionNotFound
 	}
 
-	// Publish subscription deleted event for analytics
-	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "subscription.unsubscribe.publish_event")
-	defer eventSpan.End()
-
-	subscriptionEvent := map[string]interface{}{
-		"user_id":     userID.Hex(),
-		"entity_id":   entityId.Hex(),
-		"entity_type": subs[0].Type,
-		"created_at":  time.Now(),
-	}
-
-	err = retry.Do(
-		func() error {
-			return s.jsc.Publish(eventCtx, events.SUBJECT_SUBSCRIPTION_DELETED, subscriptionEvent)
-		},
-		retry.Attempts(3),
-		retry.Delay(time.Second),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Context(eventCtx),
-	)
-	if err != nil {
-		logging.Errorf(eventCtx, "failed to publish subscription deleted event: %v", err)
-		eventSpan.RecordError(err)
+	eventPayload := toSubscriptionActivityEvent(&subs[0])
+	if eventPayload != nil {
+		// Set the event creation time to now for unsubscription events
+		eventPayload.CreatedAt = time.Now().UTC()
+		if err := retry.Do(
+			func() error {
+				return s.jsc.Publish(ctx, events.SUBJECT_SUBSCRIPTION_DELETED, eventPayload)
+			},
+			retry.Attempts(3),
+			retry.Delay(time.Second),
+			retry.DelayType(retry.BackOffDelay),
+			retry.Context(ctx),
+		); err != nil {
+			logging.Errorf(ctx, "failed to publish subscription deleted event: %v", err)
+		}
 	}
 
 	return nil
@@ -450,5 +455,26 @@ func toSubscriptionEvent(userID string, genreID string) *events.GenreSubscriptio
 	return &events.GenreSubscriptionEventPayload{
 		UserID:  userID,
 		GenreID: genreID,
+	}
+}
+
+func toSubscriptionActivityEvent(se *entities.Subscription) *events.SubscriptionEventPayload {
+	var entityType events.SubscriptionEntityType
+	switch se.Type {
+	case subscription.ArtistSubscription:
+		entityType = events.SubscriptionEntityArtist
+	case subscription.GenreSubscription:
+		entityType = events.SubscriptionEntityGenre
+	default:
+		return nil
+	}
+
+	return &events.SubscriptionEventPayload{
+		UserID:     se.SubscriberID.Hex(),
+		EntityID:   se.EntityID.Hex(),
+		EntityName: se.EntityName,
+		EntityType: entityType,
+		EventID:    primitive.NewObjectID().Hex(),
+		CreatedAt:  se.SubscribedAt,
 	}
 }

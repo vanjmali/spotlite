@@ -78,6 +78,58 @@
     }
   </div>
 
+  <div class="user-profile__activity">
+    <button
+      class="user-profile__nav-button"
+      [class.user-profile__nav-button--active]="activityMenuOpenSg()"
+      (click)="toggleActivityMenu()"
+      type="button"
+      aria-label="Activity history"
+      title="Activity history"
+    >
+      <mat-icon aria-hidden="true">history</mat-icon>
+    </button>
+
+    @if (activityMenuOpenSg()) {
+      <div class="user-profile__menu">
+        <div class="user-profile__menu-header">
+          <strong>Activity history</strong>
+        </div>
+
+        <div class="user-profile__menu-list" (scroll)="onActivityListScroll($event)">
+          @if (activityLoadingSg()) {
+            <p class="user-profile__empty">Loading...</p>
+          } @else if (activitiesSg().length === 0) {
+            <p class="user-profile__empty">No activity yet.</p>
+          } @else {
+            @for (item of activitiesSg(); track trackActivity($index, item)) {
+              <button type="button" class="user-profile__item" (click)="openActivity(item)">
+                <span class="user-profile__item-main">
+                  <span class="user-profile__item-title">{{ activityTitle(item) }}</span>
+                  @if (item.type === 'RATING_CREATED' || item.type === 'RATING_UPDATED') {
+                    <span class="user-profile__item-message user-profile__item-message--rating">
+                      <span>Rated song</span>
+                      <mat-icon aria-hidden="true">star</mat-icon>
+                      <span>{{ item.rating_value ?? 0 }}</span>
+                    </span>
+                  } @else {
+                    <span class="user-profile__item-message">{{ activityDescription(item) }}</span>
+                  }
+                </span>
+                <span class="user-profile__item-side">
+                  <span class="user-profile__item-time">{{ activityWhen(item) }}</span>
+                </span>
+              </button>
+            }
+            @if (activityLoadingMoreSg()) {
+              <p class="user-profile__empty">Loading more...</p>
+            }
+          }
+        </div>
+      </div>
+    }
+  </div>
+
   @if (authService.isAdminSg()) {
     <button
       class="user-profile__nav-button"

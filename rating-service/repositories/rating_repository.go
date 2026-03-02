@@ -196,3 +196,18 @@ func (r *RatingRepository) GetAverageRatingBySongID(ctx context.Context, songID 
 
 	return &rows[0], nil
 }
+
+func (r *RatingRepository) DeleteSongRatings(songID primitive.ObjectID, ctx context.Context) (int64, error) {
+	c := r.getCollection()
+
+	filter := bson.M{
+		"song_id": songID,
+	}
+
+	res, err := c.DeleteMany(ctx, filter)
+	if err != nil {
+		return 0, err
+	}
+
+	return res.DeletedCount, nil
+}

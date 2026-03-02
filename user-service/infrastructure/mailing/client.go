@@ -2,7 +2,9 @@ package mailing
 
 import (
 	"context"
+	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/utils"
@@ -16,10 +18,14 @@ type MailClient struct {
 
 // InitClient builds the mail client.
 func InitClient(host string, port int, username string, password string) (*mail.Client, error) {
+	tlsPolicy, err := tlsPolicyFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
 	c, err := mail.NewClient(host,
 		mail.WithPort(port),
-		mail.WithTLSPolicy(mail.NoTLS), // Change Mandatory to NoTLS or TLSOptional
-		// TODO: configurable TLS
+		mail.WithTLSPolicy(tlsPolicy),
 		mail.WithSMTPAuth(mail.SMTPAuthPlainNoEnc),
 		mail.WithUsername(username),
 		mail.WithPassword(password))
@@ -30,6 +36,19 @@ func InitClient(host string, port int, username string, password string) (*mail.
 	logging.Infof(context.Background(), "mail client initialized successfully")
 
 	return c, nil
+}
+
+func tlsPolicyFromEnv() (mail.TLSPolicy, error) {
+	switch strings.ToLower(strings.TrimSpace(utils.GetEnv("SMTP_TLS_POLICY", "none"))) {
+	case "none":
+		return mail.NoTLS, nil
+	case "optional":
+		return mail.TLSOpportunistic, nil
+	case "mandatory":
+		return mail.TLSMandatory, nil
+	default:
+		return mail.NoTLS, fmt.Errorf("invalid SMTP_TLS_POLICY: use one of none|optional|mandatory")
+	}
 }
 
 // InitClientFromEnv builds the mail client using environment variables with sensible defaults.

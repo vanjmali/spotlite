@@ -9,6 +9,7 @@ type EntityType string
 const (
 	ArtistType EntityType = "ARTIST"
 	AlbumType  EntityType = "ALBUM"
+	SongType   EntityType = "SONG"
 
 	CONTENT_STREAM       = "CONTENT"
 	SUBSCRIPTIONS_STREAM = "SUBSCRIPTIONS"
@@ -38,27 +39,39 @@ const (
 	GENRE_SUB_DURABLE        = "GENRE_SUB_PROCESSOR"
 	GENRE_UPDATE_DURABLE     = "GENRE_UPDATE_PROCESSOR"
 
-	SUBJECT_SONG_CREATED = "songs.created"
-	SUBJECT_SONG_RATED   = "songs.rating.created"
-	SUBJECT_SONG_UPDATED = "songs.updated"
-	SONG_CREATE_DURABLE  = "SONG_CREATE_PROCESSOR"
-	SONG_RATE_DURABLE    = "SONG_RATE_PROCESSOR"
-	SONG_UPDATE_DURABLE  = "SONG_UPDATE_PROCESSOR"
+	SUBJECT_SONG_CREATED               = "songs.created"
+	SUBJECT_SONG_RATED                 = "songs.rating.created"
+	SUBJECT_SONG_UPDATED               = "songs.updated"
+	SUBJECT_SONG_DELETED               = "songs.deleted"
+	SONG_CREATE_DURABLE                = "SONG_CREATE_PROCESSOR"
+	SONG_RATE_DURABLE                  = "SONG_RATE_PROCESSOR"
+	SONG_UPDATE_DURABLE                = "SONG_UPDATE_PROCESSOR"
+	SONG_DELETE_DURABLE_RATING         = "SONG_DELETE_PROCESSOR_RATING"
+	SONG_DELETE_DURABLE_RECOMMENDATION = "SONG_DELETE_PROCESSOR_RECOMMENDATION"
+	SONG_DELETE_DURABLE_CONTENT        = "SONG_DELETE_PROCESSOR_CONTENT"
 
-	SUBJECT_RATING_CREATED = "rating.created"
-	SUBJECT_RATING_UPDATED = "rating.updated"
-	SUBJECT_RATING_DELETED = "rating.deleted"
-	RATING_CREATED_DURABLE = "RATING_CREATED_PROCESSOR"
-	RATING_UPDATED_DURABLE = "RATING_UPDATED_PROCESSOR"
-	RATING_DELETED_DURABLE = "RATING_DELETED_PROCESSOR"
+	SUBJECT_RATING_CREATED       = "rating.created"
+	SUBJECT_RATING_UPDATED       = "rating.updated"
+	SUBJECT_RATING_DELETED       = "rating.deleted"
+	RATING_CREATE_DURABLE        = "RATING_CREATE_PROCESSOR"
+	RATING_UPDATE_DURABLE        = "RATING_UPDATE_PROCESSOR"
+	RATING_CREATE_ACTION_DURABLE = "RATING_CREATED_PROCESSOR"
+	RATING_UPDATE_ACTION_DURABLE = "RATING_UPDATED_PROCESSOR"
+	RATING_DURABLE               = "RATING_PROCESSOR"
+	RATING_CREATED_DURABLE       = "RATING_CREATED_PROCESSOR"
+	RATING_UPDATED_DURABLE       = "RATING_UPDATED_PROCESSOR"
+	RATING_DELETED_DURABLE       = "RATING_DELETED_PROCESSOR"
 
 	SUBJECT_LISTEN_CREATED = "listen.created"
 	LISTEN_DURABLE         = "LISTEN_PROCESSOR"
 
-	SUBJECT_SUBSCRIPTION_CREATED = "subscription.created"
-	SUBJECT_SUBSCRIPTION_DELETED = "subscription.deleted"
-	SUBSCRIPTION_CREATED_DURABLE = "SUBSCRIPTION_CREATED_PROCESSOR"
-	SUBSCRIPTION_DELETED_DURABLE = "SUBSCRIPTION_DELETED_PROCESSOR"
+	SUBJECT_SUBSCRIPTION_CREATED                = "subscription.created"
+	SUBJECT_SUBSCRIPTION_DELETED                = "subscription.deleted"
+	SUBSCRIPTION_CREATED_DURABLE                = "SUBSCRIPTION_CREATED_PROCESSOR"
+	SUBSCRIPTION_DELETED_DURABLE                = "SUBSCRIPTION_DELETED_PROCESSOR"
+	SUBSCRIPTION_CREATED_ACTION_DURABLE         = "SUBSCRIPTION_CREATED_PROCESSOR"
+	SUBSCRIPTION_CREATED_RECCOMENDATION_DURABLE = "SUBSCRIPTION_CREATED_RECOMMENDATION_PROCESSOR"
+	SUBSCRIPTION_DELETED_ACTION_DURABLE         = "SUBSCRIPTION_DELETED_PROCESSOR"
 )
 
 type SubscriptionEntityType string
@@ -131,6 +144,7 @@ type SongUpdatePayload struct {
 type RatingEventPayload struct {
 	UserID    string    `json:"user_id"`
 	SongID    string    `json:"song_id"`
+	SongTitle string    `json:"song_title"`
 	Rating    int       `json:"rating"`
 	EventID   string    `json:"event_id"`
 	CreatedAt time.Time `json:"created_at"`
@@ -139,6 +153,7 @@ type RatingEventPayload struct {
 type ListenEventPayload struct {
 	UserID    string    `json:"user_id"`
 	SongID    string    `json:"song_id"`
+	SongTitle string    `json:"song_title"`
 	ArtistID  string    `json:"artist_id"`
 	GenreID   string    `json:"genre_id"`
 	EventID   string    `json:"event_id"`
@@ -148,7 +163,12 @@ type ListenEventPayload struct {
 type SubscriptionEventPayload struct {
 	UserID     string                 `json:"user_id"`
 	EntityID   string                 `json:"entity_id"`
+	EntityName string                 `json:"entity_name"`
 	EntityType SubscriptionEntityType `json:"entity_type"`
 	EventID    string                 `json:"event_id"`
 	CreatedAt  time.Time              `json:"created_at"`
+}
+
+type SongDeletePayload struct {
+	SongID string `json:"song_id"`
 }

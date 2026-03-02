@@ -48,8 +48,8 @@ func (r *SongRepository) FindByID(ctx context.Context, id primitive.ObjectID) (*
 	c := r.getCollection()
 
 	var song entities.Song
-
-	if err := c.FindOne(ctx, bson.M{"_id": id}).Decode(&song); err != nil {
+	filter := bson.M{"_id": id}
+	if err := c.FindOne(ctx, filter).Decode(&song); err != nil {
 		return nil, err
 	}
 	return &song, nil

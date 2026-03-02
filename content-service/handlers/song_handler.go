@@ -188,11 +188,34 @@ func (h *SongHandler) HandleUpdateSong(w http.ResponseWriter, r *http.Request) {
 }
 
 // HandleDeleteSong handles HTTP DELETE requests to delete a song.
-func (h *SongHandler) HandleDeleteSong(w http.ResponseWriter, r *http.Request) {
+// func (h *SongHandler) HandleDeleteSong(w http.ResponseWriter, r *http.Request) {
+// 	vars := mux.Vars(r)
+// 	id := vars["id"]
+
+// 	err := h.s.DeleteSong(r.Context(), id)
+// 	switch {
+// 	case errors.Is(err, services.ErrObjectIdCastFailed):
+// 		logging.Warnf(r.Context(), "invalid song id: %v", err)
+// 		_ = respond.BadRequest(w, respond.ErrorMessage("invalid song id"))
+// 		return
+// 	case errors.Is(err, services.ErrSongNotFound):
+// 		logging.Warnf(r.Context(), "song not found: %v", err)
+// 		_ = respond.NotFound(w)
+// 		return
+// 	case err != nil:
+// 		logging.Errorf(r.Context(), "failed to delete song: %v", err)
+// 		_ = respond.InternalServerError(w)
+// 		return
+// 	}
+
+// 	respond.NoContent(w)
+// }
+
+func (h *SongHandler) HandleDeleteSongRequest(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	err := h.s.DeleteSong(r.Context(), id)
+	err := h.s.RequestSongDelete(r.Context(), id)
 	switch {
 	case errors.Is(err, services.ErrObjectIdCastFailed):
 		logging.Warnf(r.Context(), "invalid song id: %v", err)
@@ -295,7 +318,8 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 	id := mux.Vars(r)["id"]
 	cacheKey := "audio:" + id
 
-	if !h.authorizeAudioStreamRequest(r, id) {
+	userID, authorized := h.authorizeAudioStreamRequest(r, id)
+	if !authorized {
 		_ = respond.Unauthorized(w)
 		return
 	}
@@ -337,7 +361,9 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 	if err == nil && len(cachedAudio) > 0 {
 		logging.Infof(r.Context(), "Cache HIT song: %s", id)
 		setSongAudioResponseHeaders(w, int64(len(cachedAudio)), song.AudioMimeType)
-		_, _ = w.Write(cachedAudio)
+		if _, writeErr := w.Write(cachedAudio); writeErr == nil {
+			h.s.PublishListenEvent(r.Context(), userID, song)
+		}
 		return
 	}
 
@@ -384,7 +410,9 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 
 	setSongAudioResponseHeaders(w, int64(len(audioBytes)), song.AudioMimeType)
 
-	_, _ = w.Write(audioBytes)
+	if _, writeErr := w.Write(audioBytes); writeErr == nil {
+		h.s.PublishListenEvent(r.Context(), userID, song)
+	}
 }
 
 func (h *SongHandler) HandleGetSongAudioSignedURL(w http.ResponseWriter, r *http.Request) {
@@ -699,35 +727,53 @@ func verifySongAudioChecksumFromReader(ctx context.Context, audioPath string, ex
 	return fmt.Errorf("checksum mismatch path=%s", audioPath)
 }
 
-func (h *SongHandler) authorizeAudioStreamRequest(r *http.Request, songID string) bool {
+func (h *SongHandler) authorizeAudioStreamRequest(r *http.Request, songID string) (string, bool) {
 	if streamToken := strings.TrimSpace(r.URL.Query().Get("st")); streamToken != "" {
-		if validateSongStreamToken(streamToken, songID) {
-			return true
+		if userID, ok := validateSongStreamToken(streamToken, songID); ok {
+			return userID, true
 		}
 	}
 
 	accessToken := middlewares.ExtractBearerToken(r.Header.Get("Authorization"))
 	if accessToken == "" {
-		return false
+		return "", false
 	}
 
-	_, err := middlewares.ValidateJWTToken(accessToken)
-	return err == nil
+	claims, err := middlewares.ValidateJWTToken(accessToken)
+	if err != nil {
+		return "", false
+	}
+
+	userID, _ := claims["sub"].(string)
+	if userID == "" {
+		return "", false
+	}
+
+	return userID, true
 }
 
-func validateSongStreamToken(tokenStr, songID string) bool {
+func validateSongStreamToken(tokenStr, songID string) (string, bool) {
 	claims, err := middlewares.ValidateJWTToken(tokenStr)
 	if err != nil {
-		return false
+		return "", false
 	}
 
 	tokenSongID, _ := claims["song_id"].(string)
 	if tokenSongID == "" || tokenSongID != songID {
-		return false
+		return "", false
 	}
 
 	aud, _ := claims["aud"].(string)
-	return aud == "song-stream"
+	if aud != "song-stream" {
+		return "", false
+	}
+
+	userID, _ := claims["sub"].(string)
+	if userID == "" {
+		return "", false
+	}
+
+	return userID, true
 }
 
 func setSongAudioResponseHeaders(w http.ResponseWriter, size int64, mime string) {

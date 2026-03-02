@@ -26,6 +26,7 @@ var (
 	certFilePath       = utils.MustGetEnv("CERT_PATH")
 	keyFilePath        = utils.MustGetEnv("KEY_PATH")
 	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
+	natsURL            = utils.MustGetEnv("NATS_URL")
 	config             = server.ServerRunConfiguration{
 		TelemetryName: "recommendation-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
@@ -52,8 +53,17 @@ var (
 
 			if err = jsc.EnsureStream(
 				ctx,
+				events.RATINGS_STREAM,
+				[]string{events.SUBJECT_RATING_CREATED, events.SUBJECT_RATING_UPDATED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure rating stream: %w", err)
+				return h, shutdown, err
+			}
+
+			if err = jsc.EnsureStream(
+				ctx,
 				events.SONGS_STREAM,
-				[]string{events.SUBJECT_SONG_CREATED, events.SUBJECT_SONG_RATED, events.SUBJECT_SONG_UPDATED},
+				[]string{events.SUBJECT_SONG_CREATED, events.SUBJECT_SONG_UPDATED, events.SUBJECT_SONG_DELETED},
 			); err != nil {
 				err = fmt.Errorf("failed to ensure songs stream: %w", err)
 				return h, shutdown, err
@@ -68,15 +78,33 @@ var (
 				return h, shutdown, err
 			}
 
-			ur, gr, rr := createRepositories(dbc)
-			_, rs := createServices(ur, gr, rr)
+			if err = jsc.EnsureStream(
+				ctx,
+				events.SUBSCRIPTIONS_STREAM,
+				[]string{events.SUBJECT_SUBSCRIPTION_CREATED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure subscriptions stream: %w", err)
+				return h, shutdown, err
+			}
+
+			if err = jsc.EnsureStream(
+				ctx,
+				events.CONTENT_STREAM,
+				[]string{events.SUBJECT_ENTITY_CREATED, events.SUBJECT_ENTITY_UPDATED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure content stream: %w", err)
+				return h, shutdown, err
+			}
+
+			ur, gr, ar, rr := createRepositories(dbc)
+			_, rs := createServices(ur, gr, ar, rr)
 			h = createHandlers(rs)
 			c := createConsumers(rs)
 
 			// Start consumers in background.
 			consumerCtx, consumerCancel := context.WithCancel(ctx)
 			var consumerWg sync.WaitGroup
-			consumerErrCh := make(chan error, 7)
+			consumerErrCh := make(chan error, 10)
 
 			startConsumer := func(stream, subject, durable, label string, handler events.SubscribeHandler) {
 				consumerWg.Add(1)
@@ -124,6 +152,14 @@ var (
 
 			startConsumer(
 				events.SONGS_STREAM,
+				events.SUBJECT_SONG_DELETED,
+				events.SONG_DELETE_DURABLE_RECOMMENDATION,
+				"song deleted",
+				c.HandleSongDelete,
+			)
+
+			startConsumer(
+				events.SONGS_STREAM,
 				events.SUBJECT_SONG_CREATED,
 				events.SONG_CREATE_DURABLE,
 				"song created",
@@ -131,11 +167,19 @@ var (
 			)
 
 			startConsumer(
-				events.SONGS_STREAM,
-				events.SUBJECT_SONG_RATED,
-				events.SONG_RATE_DURABLE,
+				events.RATINGS_STREAM,
+				events.SUBJECT_RATING_CREATED,
+				events.RATING_CREATE_DURABLE,
 				"song rating created",
 				c.HandleSongRating,
+			)
+
+			startConsumer(
+				events.RATINGS_STREAM,
+				events.SUBJECT_RATING_UPDATED,
+				events.RATING_UPDATE_DURABLE,
+				"song rating updated",
+				c.HandleRatingUpdate,
 			)
 
 			startConsumer(
@@ -144,6 +188,22 @@ var (
 				events.USER_DURABLE,
 				"user created",
 				c.HandleUserRegistration,
+			)
+
+			startConsumer(
+				events.SUBSCRIPTIONS_STREAM,
+				events.SUBJECT_SUBSCRIPTION_CREATED,
+				events.SUBSCRIPTION_CREATED_RECCOMENDATION_DURABLE,
+				"subscription created",
+				c.HandleSubscriptionCreated,
+			)
+
+			startConsumer(
+				events.CONTENT_STREAM,
+				events.SUBJECT_ENTITY_CREATED,
+				"ENTITY_CREATED_RECOMMENDATION",
+				"entity created",
+				c.HandleEntityCreated,
 			)
 
 			shutdown = func() error {
@@ -166,11 +226,7 @@ var (
 					errs = append(errs, fmt.Errorf("failed to close Neo4j driver: %w", err))
 				}
 
-				if len(errs) > 0 {
-					return fmt.Errorf("shutdown errors: %v", errs)
-				}
-
-				return nil
+				return errors.Join(errs...)
 			}
 
 			return h, shutdown, err
@@ -203,6 +259,7 @@ func ensureConstraints(ctx context.Context, d neo4j.DriverWithContext) error {
 		"CREATE CONSTRAINT user_id_unique IF NOT EXISTS FOR (u:User) REQUIRE u.user_id IS UNIQUE",
 		"CREATE CONSTRAINT genre_id_unique IF NOT EXISTS FOR (g:Genre) REQUIRE g.genre_id IS UNIQUE",
 		"CREATE CONSTRAINT song_id_unique IF NOT EXISTS FOR (s:Song) REQUIRE s.song_id IS UNIQUE",
+		"CREATE CONSTRAINT artist_id_unique IF NOT EXISTS FOR (a:Artist) REQUIRE a.artist_id IS UNIQUE",
 	}
 
 	for _, query := range queries {
@@ -236,7 +293,7 @@ func createClients() (neo4j.DriverWithContext, *events.JetStreamClient, error) {
 		return nil, nil, fmt.Errorf("failed to ensure constraints: %w", err)
 	}
 
-	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
+	jsc, err := events.NewClient(natsURL, nats.RootCAs(rootCACertFilePath))
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to initialized NATS jet stream client: %w", err)
 	}
@@ -247,21 +304,24 @@ func createClients() (neo4j.DriverWithContext, *events.JetStreamClient, error) {
 func createRepositories(driver neo4j.DriverWithContext) (
 	*repositories.UserNodeRepository,
 	*repositories.GenreNodeRepository,
+	*repositories.ArtistNodeRepository,
 	*repositories.GraphRelationRepository,
 ) {
 	ur := repositories.NewUserNodeRepository(driver)
 	gr := repositories.NewGenreNodeRepository(driver)
+	ar := repositories.NewArtistNodeRepository(driver)
 	rr := repositories.NewGraphRelationRepository(driver)
 
-	return ur, gr, rr
+	return ur, gr, ar, rr
 }
 
 func createServices(
 	ur *repositories.UserNodeRepository,
 	gr *repositories.GenreNodeRepository,
+	ar *repositories.ArtistNodeRepository,
 	rr *repositories.GraphRelationRepository,
 ) (*services.Repositories, *services.RecommendationService) {
-	baseServices := services.NewServices(ur, gr, rr)
+	baseServices := services.NewServices(ur, gr, ar, rr)
 	recommendationService := services.NewRecommendationService(baseServices)
 	return baseServices, recommendationService
 }

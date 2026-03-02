@@ -13,5 +13,6 @@ RUN : "${API_BASE_URL:?API_BASE_URL build arg is required}" \
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime
 COPY --from=build /app/dist/spotlite/browser /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
