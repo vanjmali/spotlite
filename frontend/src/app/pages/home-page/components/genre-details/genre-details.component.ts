@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatIconModule } from '@angular/material/icon';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { AlbumService, type Album } from '@app/services/album.service';
@@ -11,7 +12,7 @@ import { MessageComponent } from '@app/shared/components/message';
 import { SongRatingBadgeComponent } from '@app/shared/components/song-rating-badge/song-rating-badge';
 import { formatDuration } from '@app/shared/utils/display';
 import { WidgetComponent } from '@app/shared/components/widget/widget.component';
-import { EMPTY, catchError, finalize, map, of } from 'rxjs';
+import { EMPTY, catchError, distinctUntilChanged, finalize, map, of } from 'rxjs';
 
 type GenreSongRow = {
   songId: string;
@@ -42,6 +43,7 @@ type GenreSongRow = {
 })
 export class GenreDetailsComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly genreService = inject(GenreService);
   private readonly albumService = inject(AlbumService);
   private readonly authService = inject(AuthService);
@@ -55,6 +57,7 @@ export class GenreDetailsComponent {
   readonly isSubscribedSg = signal(false);
   readonly isSubscribeBusySg = signal(false);
   readonly subscribeErrorSg = signal('');
+  readonly genreIdSg = signal('');
   readonly canManageSubscriptionSg = computed(() => this.authService.isAuthenticatedSg());
   readonly songsSg = computed<GenreSongRow[]>(() => {
     return this.albumsSg().flatMap((album) =>
@@ -76,17 +79,24 @@ export class GenreDetailsComponent {
   readonly activeSongIdSg = computed(() => this.playback.currentTrackSg()?.id ?? '');
 
   constructor() {
-    effect(() => {
-      const genreId = this.route.snapshot.paramMap.get('id');
-      if (!genreId) {
-        return;
-      }
-      this.load(genreId);
-      this.loadSubscriptionState(genreId);
-    });
+    this.route.paramMap
+      .pipe(
+        map((params) => params.get('id') ?? ''),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((genreId) => {
+        if (!genreId) {
+          return;
+        }
+
+        this.genreIdSg.set(genreId);
+        this.load(genreId);
+        this.loadSubscriptionState(genreId);
+      });
 
     effect(() => {
-      const genreId = this.route.snapshot.paramMap.get('id');
+      const genreId = this.genreIdSg();
       if (!genreId) {
         return;
       }
@@ -122,7 +132,7 @@ export class GenreDetailsComponent {
   }
 
   toggleGenreSubscription(): void {
-    const genreId = this.route.snapshot.paramMap.get('id');
+    const genreId = this.genreIdSg();
     if (!genreId || !this.canManageSubscriptionSg() || this.isSubscribeBusySg()) {
       return;
     }
