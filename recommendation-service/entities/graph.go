@@ -21,9 +21,20 @@ type GenreNode struct {
 	Name    string
 }
 
+// ArtistNode represents an artist node in the recommendation graph.
+type ArtistNode struct {
+	ArtistID string
+	Name     string
+}
+
 type GenreSubscription struct {
 	GenreID string
 	UserID  string
+}
+
+type ArtistSubscription struct {
+	ArtistID string
+	UserID   string
 }
 
 type SongRating struct {

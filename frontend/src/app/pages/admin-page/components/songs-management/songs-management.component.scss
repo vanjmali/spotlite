@@ -96,3 +96,42 @@
   font-size: 0.75rem;
   font-weight: 500;
 }
+
+.songs-management__delete-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.songs-management__delete-dialog-btn {
+  border: 0;
+  border-radius: 0.5rem;
+  padding: 0.55rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.songs-management__delete-dialog-btn--cancel {
+  background-color: $color-gray-700;
+  color: $color-gray-200;
+
+  &:hover:not(:disabled) {
+    background-color: $color-gray-600;
+  }
+}
+
+.songs-management__delete-dialog-btn--danger {
+  background-color: rgba($color-form-error, 0.18);
+  color: $color-form-error;
+
+  &:hover:not(:disabled) {
+    background-color: rgba($color-form-error, 0.28);
+  }
+}

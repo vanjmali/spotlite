@@ -69,6 +69,15 @@
               >
                 <mat-icon>edit</mat-icon>
               </button>
+              <button
+                class="item-table__btn-action item-table__btn-delete"
+                (click)="$event.stopPropagation(); onDelete(song)"
+                title="Delete song"
+                matTooltip="Delete"
+                [disabled]="isDeletingSg()"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
             </td>
           </tr>
         }
@@ -93,3 +102,33 @@
   (closed)="isDialogOpenSg.set(false)"
   (saved)="onDialogSaved()"
 ></app-song-editor-dialog>
+
+@if (isDeleteDialogOpenSg()) {
+  <app-dialog title="Delete song?" size="small" (closed)="cancelDelete()">
+    <div content>
+      <p>
+        Are you sure you want to delete
+        <strong>{{ songToDeleteSg()?.title }}</strong
+        >?
+      </p>
+      <p>This action sends a delete request and removes the song asynchronously.</p>
+    </div>
+    <div footer class="songs-management__delete-dialog-footer">
+      <button
+        class="songs-management__delete-dialog-btn songs-management__delete-dialog-btn--cancel"
+        type="button"
+        (click)="cancelDelete()"
+      >
+        Cancel
+      </button>
+      <button
+        class="songs-management__delete-dialog-btn songs-management__delete-dialog-btn--danger"
+        type="button"
+        (click)="confirmDelete()"
+        [disabled]="isDeletingSg()"
+      >
+        Delete
+      </button>
+    </div>
+  </app-dialog>
+}

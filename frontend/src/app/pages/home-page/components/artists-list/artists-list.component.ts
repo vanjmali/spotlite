@@ -38,7 +38,9 @@ export class ArtistsListComponent {
     forkJoin({
       subscription: this.recommendationService.getSubscriptionRecommendations().pipe(
         catchError(() => {
-          this.subscriptionErrorSg.set('Failed to load recommendation songs for your subscriptions.');
+          this.subscriptionErrorSg.set(
+            'Failed to load recommendation songs for your subscriptions.'
+          );
           return of([]);
         })
       ),

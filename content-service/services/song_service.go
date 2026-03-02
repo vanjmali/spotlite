@@ -162,6 +162,7 @@ func (s *SongService) Create(ctx context.Context, songDto *dtos.SongDto) (*SongP
 			}
 		}
 
+		artistNames = append(artistNames, artist.Name)
 		embeddedArtists = append(embeddedArtists, entities.Artist{
 			ID:          artist.ID,
 			Name:        artist.Name,
@@ -433,61 +434,113 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 
 // DeleteSong deletes a song by its ID.
 func (s *SongService) DeleteSong(ctx context.Context, idStr string) error {
-	ctx, span := s.tr.Start(ctx, "song.delete_song")
-	defer span.End()
+	deleteCtx, deleteSpan := s.tr.Start(ctx, "song.delete_song")
+	defer deleteSpan.End()
 
-	_, parseSpan := s.tr.Start(ctx, "song.delete_song.parse_id")
+	_, parseSpan := s.tr.Start(deleteCtx, "song.delete_song.parse_id")
+	defer parseSpan.End()
+
 	id, err := primitive.ObjectIDFromHex(idStr)
 	if err != nil {
 		parseSpan.RecordError(err)
-		parseSpan.End()
 		return ErrObjectIdCastFailed
 	}
-	parseSpan.End()
 
-	findSongCtx, findSongSpan := s.tr.Start(ctx, "song.delete_song.find_song")
+	findSongCtx, findSongSpan := s.tr.Start(deleteCtx, "song.delete_song.find_song")
+	defer findSongSpan.End()
+
 	song, err := s.songRepo.FindByID(findSongCtx, id)
 	if err != nil {
 		findSongSpan.RecordError(err)
-		findSongSpan.End()
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return ErrSongNotFound
 		}
 		return err
 	}
-	findSongSpan.End()
 
-	removeFromAlbumsCtx, removeFromAlbumsSpan := s.tr.Start(ctx, "song.delete_song.remove_from_albums")
+	removeFromAlbumsCtx, removeFromAlbumsSpan := s.tr.Start(deleteCtx, "song.delete_song.remove_from_albums")
+	defer removeFromAlbumsSpan.End()
+
 	if err := s.albumService.RemoveSongFromAllAlbums(removeFromAlbumsCtx, id.Hex()); err != nil {
 		removeFromAlbumsSpan.RecordError(err)
-		removeFromAlbumsSpan.End()
 		return err
 	}
-	removeFromAlbumsSpan.End()
 
-	repoCtx, repoSpan := s.tr.Start(ctx, "song.delete.repository_delete")
+	repoCtx, repoSpan := s.tr.Start(deleteCtx, "song.delete.repository_delete")
+	defer repoSpan.End()
+
 	res, err := s.songRepo.DeleteByID(repoCtx, id)
 	if err != nil {
 		repoSpan.RecordError(err)
-		repoSpan.End()
 		return err
 	}
 
 	if res.DeletedCount == 0 {
 		err = ErrSongNotFound
 		repoSpan.RecordError(err)
-		repoSpan.End()
 		return err
 	}
-	repoSpan.End()
 
 	if song.AudioPath != "" {
 		cleanupCtx, cleanupSpan := s.tr.Start(ctx, "song.delete_song.remove_audio")
+		defer cleanupSpan.End()
+
 		if err := s.hdfs.Remove(song.AudioPath); err != nil {
 			cleanupSpan.RecordError(err)
 			logging.Errorf(cleanupCtx, "failed to delete audio file at path %s: %v", song.AudioPath, err)
 		}
-		cleanupSpan.End()
+	}
+
+	return nil
+}
+
+func (s *SongService) RequestSongDelete(ctx context.Context, idStr string) error {
+	reqCtx, reqSpan := s.tr.Start(ctx, "song.delete_request")
+	defer reqSpan.End()
+
+	_, parseSpan := s.tr.Start(reqCtx, "song.delete_request.parse_id")
+	defer parseSpan.End()
+
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		parseSpan.RecordError(err)
+		return ErrObjectIdCastFailed
+	}
+
+	findSongCtx, findSongSpan := s.tr.Start(reqCtx, "song.delete_request.find_song")
+	defer findSongSpan.End()
+
+	// check if the song exists before initializing delete
+	_, err = s.songRepo.FindByID(findSongCtx, id)
+	if err != nil {
+		findSongSpan.RecordError(err)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return ErrSongNotFound
+		}
+		return err
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	eventCtx, eventSpan := s.tr.Start(timeoutCtx, "song.delete.event")
+	defer eventSpan.End()
+
+	sdp := toSongDeleteEvent(idStr)
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(eventCtx, events.SUBJECT_SONG_DELETED, sdp)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second*1),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(eventCtx),
+	)
+	if err != nil {
+		logging.Errorf(eventCtx, "failed to publish song delete event: %v", err)
+		eventSpan.RecordError(err)
+		return err
 	}
 
 	return nil
@@ -736,6 +789,12 @@ func toSongUpdatedEvent(songID string, songTitle string, duration int, genreIDs 
 		Duration:    duration,
 		GenreIDs:    genreIDs,
 		ArtistNames: artistNames,
+	}
+}
+
+func toSongDeleteEvent(songID string) *events.SongDeletePayload {
+	return &events.SongDeletePayload{
+		SongID: songID,
 	}
 }
 

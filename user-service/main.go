@@ -35,6 +35,7 @@ var (
 	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
 	certFilePath       = utils.MustGetEnv("CERT_PATH")
 	keyFilePath        = utils.MustGetEnv("KEY_PATH")
+	natsURL            = utils.MustGetEnv("NATS_URL")
 	config             = server.ServerRunConfiguration{
 		TelemetryName: "user-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
@@ -180,7 +181,7 @@ func createClients(ctx context.Context) (*mongodriver.Client, *mail.Client, *eve
 		return nil, nil, nil, fmt.Errorf("failed to initialize mail client: %w", err)
 	}
 
-	jsc, err := events.NewClient("tls://nats:4222", nats.RootCAs(rootCACertFilePath))
+	jsc, err := events.NewClient(natsURL, nats.RootCAs(rootCACertFilePath))
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("failed to initialized NATS jet strea, client: %w", err)
 	}
@@ -308,25 +309,25 @@ func setupActivityConsumers(
 		{
 			Stream:  events.RATINGS_STREAM,
 			Subject: events.SUBJECT_RATING_CREATED,
-			Durable: events.RATING_CREATED_DURABLE,
+			Durable: events.RATING_CREATE_ACTION_DURABLE,
 			Handler: consumer.HandleRatingCreated,
 		},
 		{
 			Stream:  events.RATINGS_STREAM,
 			Subject: events.SUBJECT_RATING_UPDATED,
-			Durable: events.RATING_UPDATED_DURABLE,
+			Durable: events.RATING_UPDATE_ACTION_DURABLE,
 			Handler: consumer.HandleRatingUpdated,
 		},
 		{
 			Stream:  events.SUBSCRIPTIONS_STREAM,
 			Subject: events.SUBJECT_SUBSCRIPTION_CREATED,
-			Durable: events.SUBSCRIPTION_CREATED_DURABLE,
+			Durable: events.SUBSCRIPTION_CREATED_ACTION_DURABLE,
 			Handler: consumer.HandleSubscriptionCreated,
 		},
 		{
 			Stream:  events.SUBSCRIPTIONS_STREAM,
 			Subject: events.SUBJECT_SUBSCRIPTION_DELETED,
-			Durable: events.SUBSCRIPTION_DELETED_DURABLE,
+			Durable: events.SUBSCRIPTION_DELETED_ACTION_DURABLE,
 			Handler: consumer.HandleSubscriptionDeleted,
 		},
 	}

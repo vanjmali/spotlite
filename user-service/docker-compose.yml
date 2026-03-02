@@ -33,6 +33,7 @@ services:
       LOG_ROTATE_MAX_BACKUPS: ${LOG_ROTATE_MAX_BACKUPS?}
       LOG_ROTATE_MAX_AGE_DAYS: ${LOG_ROTATE_MAX_AGE_DAYS?}
       LOG_ROTATE_COMPRESS: ${LOG_ROTATE_COMPRESS?}
+      NATS_URL: ${NATS_URL?}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
     labels:
       traefik.enable: true

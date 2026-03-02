@@ -8,6 +8,7 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/recommendation-service/entities"
+	"github.com/vanjmali/spotlite/recommendation-service/repositories"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -24,14 +25,21 @@ var (
 type GraphRelationRepository interface {
 	SaveSongWithGenres(ctx context.Context, sn entities.SongNode) error
 	CreateGenreSubscription(ctx context.Context, gs entities.GenreSubscription) error
+	CreateArtistSubscription(ctx context.Context, as entities.ArtistSubscription) error
 	CreateRating(ctx context.Context, sr entities.SongRating) error
 	UpdateSongWithGenres(ctx context.Context, sn entities.SongNode) error
 	UpdateGenre(ctx context.Context, gn entities.GenreNode) error
 	FindSubscriptionBasedRecommendations(ctx context.Context, userID string) ([]*entities.SongRecommendation, error)
 	FindLikeBasedRecommendation(ctx context.Context, userID string) ([]*entities.SongRecommendation, error)
+	DeleteSong(ctx context.Context, songID string) error
+	UpdateRating(ctx context.Context, songID string, userID string, rating int) error
 }
 type GenreNodeRepository interface {
 	Create(ctx context.Context, genre entities.GenreNode) error
+}
+
+type ArtistNodeRepository interface {
+	Create(ctx context.Context, artist entities.ArtistNode) error
 }
 
 type UserNodeRepository interface {
@@ -41,11 +49,13 @@ type UserNodeRepository interface {
 func NewServices(
 	ur UserNodeRepository,
 	gr GenreNodeRepository,
+	ar ArtistNodeRepository,
 	rr GraphRelationRepository,
 ) *Repositories {
 	return &Repositories{
 		ur: ur,
 		gr: gr,
+		ar: ar,
 		rr: rr,
 	}
 }
@@ -53,6 +63,7 @@ func NewServices(
 type Repositories struct {
 	ur UserNodeRepository
 	gr GenreNodeRepository
+	ar ArtistNodeRepository
 	rr GraphRelationRepository
 }
 
@@ -100,6 +111,26 @@ func (rs *RecommendationService) CreateGenre(g events.GenreCreationPayload, ctx 
 	return nil
 }
 
+func (rs *RecommendationService) CreateArtist(e events.EntityCreatedEventPayload, ctx context.Context) error {
+	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.artist.create")
+	defer createSpan.End()
+
+	if e.EntityType != events.ArtistType {
+		return nil
+	}
+
+	an := entities.ArtistNode{ArtistID: e.EntityID, Name: e.EntityName}
+
+	err := rs.r.ar.Create(createCtx, an)
+	if err != nil {
+		createSpan.RecordError(err)
+		logging.Errorf(createCtx, "critical: an error has occured while creating artist: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 func (rs *RecommendationService) CreateSong(e events.SongCreationPayload, ctx context.Context) error {
 	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.song.create")
 	defer createSpan.End()
@@ -132,11 +163,40 @@ func (rs *RecommendationService) CreateSubscription(e events.GenreSubscriptionEv
 	return nil
 }
 
-func (rs *RecommendationService) CreateRating(e events.SongRatingPayload, ctx context.Context) error {
+func (rs *RecommendationService) CreateSubscriptionFromEvent(e events.SubscriptionEventPayload, ctx context.Context) error {
+	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.subscription.create_from_event")
+	defer createSpan.End()
+
+	// Handle both GENRE and ARTIST subscription types
+	switch e.EntityType {
+	case events.SubscriptionEntityGenre:
+		gs := entities.GenreSubscription{GenreID: e.EntityID, UserID: e.UserID}
+		err := rs.r.rr.CreateGenreSubscription(createCtx, gs)
+		if err != nil {
+			createSpan.RecordError(err)
+			logging.Errorf(createCtx, "critical: an error has occured while creating genre subscription relationship: %v", err)
+			return err
+		}
+	case events.SubscriptionEntityArtist:
+		as := entities.ArtistSubscription{ArtistID: e.EntityID, UserID: e.UserID}
+		err := rs.r.rr.CreateArtistSubscription(createCtx, as)
+		if err != nil {
+			createSpan.RecordError(err)
+			logging.Errorf(createCtx, "critical: an error has occured while creating artist subscription relationship: %v", err)
+			return err
+		}
+	default:
+		logging.Warnf(createCtx, "unknown subscription entity type: %s", e.EntityType)
+	}
+
+	return nil
+}
+
+func (rs *RecommendationService) CreateRating(e events.RatingEventPayload, ctx context.Context) error {
 	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.rating.create")
 	defer createSpan.End()
 
-	sr := entities.SongRating{SongID: e.SongID, UserID: e.UserID, Value: e.Value}
+	sr := entities.SongRating{SongID: e.SongID, UserID: e.UserID, Value: e.Rating}
 
 	err := rs.r.rr.CreateRating(createCtx, sr)
 	if err != nil {
@@ -217,4 +277,32 @@ func (rs *RecommendationService) LikeBasedRecommendation(ctx context.Context) ([
 	}
 
 	return lr, nil
+}
+
+func (rs *RecommendationService) DeleteSong(e events.SongDeletePayload, ctx context.Context) error {
+	recCtx, recSpan := rs.tr.Start(ctx, "recommendation.delete_song")
+	defer recSpan.End()
+
+	err := rs.r.rr.DeleteSong(recCtx, e.SongID)
+	if err != nil {
+		if errors.Is(err, repositories.ErrSongNotFound) {
+			logging.Warnf(recCtx, "song %s already deleted; skipping duplicate delete event", e.SongID)
+			return nil
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (rs *RecommendationService) UpdateRating(e events.RatingEventPayload, ctx context.Context) error {
+	recCtx, recSpan := rs.tr.Start(ctx, "recommendation.update_rating")
+	defer recSpan.End()
+
+	err := rs.r.rr.UpdateRating(recCtx, e.SongID, e.UserID, e.Rating)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

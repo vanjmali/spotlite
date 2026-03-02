@@ -56,11 +56,23 @@ func NewClient(url string, opts ...nats.Option) (*JetStreamClient, error) {
 // EnsureStream function allows services (both subscribers and publishers) to initialize a stream, it is
 // going to be done only once by the service which gets up first and relies on this stream.
 func (c *JetStreamClient) EnsureStream(ctx context.Context, streamName string, subjects []string) error {
+	mergedSubjects := subjects
+
+	stream, err := c.js.Stream(ctx, streamName)
+	if err == nil {
+		info, infoErr := stream.Info(ctx)
+		if infoErr != nil {
+			return fmt.Errorf("failed to fetch stream info for %s: %w", streamName, infoErr)
+		}
+
+		mergedSubjects = mergeSubjects(info.Config.Subjects, subjects)
+	}
+
 	// CreateOrUpdateStream is idempotent.
 	// If the stream exists, it updates it. If it doesn't, it creates it.
-	_, err := c.js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
+	_, err = c.js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 		Name:     streamName,
-		Subjects: subjects,
+		Subjects: mergedSubjects,
 		Storage:  jetstream.FileStorage,
 	})
 	if err != nil {
@@ -68,6 +80,29 @@ func (c *JetStreamClient) EnsureStream(ctx context.Context, streamName string, s
 	}
 
 	return nil
+}
+
+func mergeSubjects(existing []string, incoming []string) []string {
+	seen := make(map[string]struct{}, len(existing)+len(incoming))
+	result := make([]string, 0, len(existing)+len(incoming))
+
+	for _, subject := range existing {
+		if _, ok := seen[subject]; ok {
+			continue
+		}
+		seen[subject] = struct{}{}
+		result = append(result, subject)
+	}
+
+	for _, subject := range incoming {
+		if _, ok := seen[subject]; ok {
+			continue
+		}
+		seen[subject] = struct{}{}
+		result = append(result, subject)
+	}
+
+	return result
 }
 
 // Publish function is used by.
