@@ -349,7 +349,7 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 	// Publish song played event for analytics tracking (non-blocking)
 	// Track play regardless of cache hit/miss
 	// Extract userID from the signed stream token (st param) or fall back to context
-	userID := getUserIDFromRequest(r)
+	userID = getUserIDFromRequest(r)
 	go func() {
 		if err := h.s.TrackSongPlay(context.Background(), id, userID); err != nil {
 			logging.Warnf(context.Background(), "failed to track song play for user %s, song %s: %v", userID, id, err)
