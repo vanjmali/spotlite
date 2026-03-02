@@ -23,11 +23,22 @@ import (
 )
 
 var (
-	certFilePath       = utils.MustGetEnv("CERT_PATH")
-	keyFilePath        = utils.MustGetEnv("KEY_PATH")
-	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
-	natsURL            = utils.MustGetEnv("NATS_URL")
-	config             = server.ServerRunConfiguration{
+	recommendationGenreCreateDurable         = "RECOMMENDATION_GENRE_CREATE_PROCESSOR"
+	recommendationGenreSubDurable            = "RECOMMENDATION_GENRE_SUBSCRIPTION_PROCESSOR"
+	recommendationGenreUpdateDurable         = "RECOMMENDATION_GENRE_UPDATE_PROCESSOR"
+	recommendationSongUpdateDurable          = "RECOMMENDATION_SONG_UPDATE_PROCESSOR"
+	recommendationSongDeleteDurable          = "RECOMMENDATION_SONG_DELETE_PROCESSOR"
+	recommendationSongCreateDurable          = "RECOMMENDATION_SONG_CREATE_PROCESSOR"
+	recommendationRatingCreateDurable        = "RECOMMENDATION_RATING_CREATE_PROCESSOR"
+	recommendationRatingUpdateDurable        = "RECOMMENDATION_RATING_UPDATE_PROCESSOR"
+	recommendationUserCreateDurable          = "RECOMMENDATION_USER_CREATE_PROCESSOR"
+	recommendationSubscriptionCreatedDurable = "RECOMMENDATION_SUBSCRIPTION_CREATED_PROCESSOR"
+	recommendationSubscriptionDeletedDurable = "RECOMMENDATION_SUBSCRIPTION_DELETED_PROCESSOR"
+	certFilePath                             = utils.MustGetEnv("CERT_PATH")
+	keyFilePath                              = utils.MustGetEnv("KEY_PATH")
+	rootCACertFilePath                       = utils.MustGetEnv("ROOT_CERT_PATH")
+	natsURL                                  = utils.MustGetEnv("NATS_URL")
+	config                                   = server.ServerRunConfiguration{
 		TelemetryName: "recommendation-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
 		CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
@@ -121,7 +132,7 @@ var (
 			startConsumer(
 				events.GENRES_STREAM,
 				events.SUBJECT_GENRE_CREATED,
-				events.GENRE_CREATE_DURABLE,
+				recommendationGenreCreateDurable,
 				"genre created",
 				c.HandleGenreCreation,
 			)
@@ -129,7 +140,7 @@ var (
 			startConsumer(
 				events.GENRES_STREAM,
 				events.SUBJECT_GENRE_SUBSCRIBED,
-				events.GENRE_SUB_DURABLE,
+				recommendationGenreSubDurable,
 				"genre subscription created",
 				c.HandleGenreSubscription,
 			)
@@ -137,7 +148,7 @@ var (
 			startConsumer(
 				events.GENRES_STREAM,
 				events.SUBJECT_GENRE_UPDATED,
-				events.GENRE_UPDATE_DURABLE,
+				recommendationGenreUpdateDurable,
 				"genre updated",
 				c.HandleGenreUpdate,
 			)
@@ -145,7 +156,7 @@ var (
 			startConsumer(
 				events.SONGS_STREAM,
 				events.SUBJECT_SONG_UPDATED,
-				events.SONG_UPDATE_DURABLE,
+				recommendationSongUpdateDurable,
 				"song updated",
 				c.HandleSongUpdate,
 			)
@@ -153,7 +164,7 @@ var (
 			startConsumer(
 				events.SONGS_STREAM,
 				events.SUBJECT_SONG_DELETED,
-				events.SONG_DELETE_DURABLE_RECOMMENDATION,
+				recommendationSongDeleteDurable,
 				"song deleted",
 				c.HandleSongDelete,
 			)
@@ -161,7 +172,7 @@ var (
 			startConsumer(
 				events.SONGS_STREAM,
 				events.SUBJECT_SONG_CREATED,
-				events.SONG_CREATE_DURABLE,
+				recommendationSongCreateDurable,
 				"song created",
 				c.HandleSongCreation,
 			)
@@ -169,7 +180,7 @@ var (
 			startConsumer(
 				events.RATINGS_STREAM,
 				events.SUBJECT_RATING_CREATED,
-				events.RATING_CREATE_DURABLE,
+				recommendationRatingCreateDurable,
 				"song rating created",
 				c.HandleSongRating,
 			)
@@ -177,7 +188,7 @@ var (
 			startConsumer(
 				events.RATINGS_STREAM,
 				events.SUBJECT_RATING_UPDATED,
-				events.RATING_UPDATE_DURABLE,
+				recommendationRatingUpdateDurable,
 				"song rating updated",
 				c.HandleRatingUpdate,
 			)
@@ -185,7 +196,7 @@ var (
 			startConsumer(
 				events.USERS_STREAM,
 				events.SUBJECT_USER_CREATED,
-				events.USER_DURABLE,
+				recommendationUserCreateDurable,
 				"user created",
 				c.HandleUserRegistration,
 			)
@@ -193,7 +204,7 @@ var (
 			startConsumer(
 				events.SUBSCRIPTIONS_STREAM,
 				events.SUBJECT_SUBSCRIPTION_CREATED,
-				events.SUBSCRIPTION_CREATED_RECCOMENDATION_DURABLE,
+				recommendationSubscriptionCreatedDurable,
 				"subscription created",
 				c.HandleSubscriptionCreated,
 			)
@@ -201,7 +212,7 @@ var (
 			startConsumer(
 				events.SUBSCRIPTIONS_STREAM,
 				events.SUBJECT_SUBSCRIPTION_DELETED,
-				events.SUBSCRIPTION_DELETED_RECOMMENDATION_DURABLE,
+				recommendationSubscriptionDeletedDurable,
 				"subscription deleted",
 				c.HandleSubscriptionDeleted,
 			)
