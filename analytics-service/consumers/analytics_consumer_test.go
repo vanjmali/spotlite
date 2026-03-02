@@ -3,6 +3,7 @@ package consumers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -14,22 +15,26 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/subscription"
 )
 
+var errMetadataUnsupported = errors.New("metadata not supported in fake message")
+
 type fakeJetStreamMsg struct {
 	data []byte
 }
 
-func (m fakeJetStreamMsg) Metadata() (*jetstream.MsgMetadata, error) { return nil, nil }
-func (m fakeJetStreamMsg) Data() []byte                              { return m.data }
-func (m fakeJetStreamMsg) Headers() nats.Header                      { return nil }
-func (m fakeJetStreamMsg) Subject() string                           { return "" }
-func (m fakeJetStreamMsg) Reply() string                             { return "" }
-func (m fakeJetStreamMsg) Ack() error                                { return nil }
-func (m fakeJetStreamMsg) DoubleAck(context.Context) error           { return nil }
-func (m fakeJetStreamMsg) Nak() error                                { return nil }
-func (m fakeJetStreamMsg) NakWithDelay(time.Duration) error          { return nil }
-func (m fakeJetStreamMsg) InProgress() error                         { return nil }
-func (m fakeJetStreamMsg) Term() error                               { return nil }
-func (m fakeJetStreamMsg) TermWithReason(string) error               { return nil }
+func (m fakeJetStreamMsg) Metadata() (*jetstream.MsgMetadata, error) {
+	return nil, errMetadataUnsupported
+}
+func (m fakeJetStreamMsg) Data() []byte                     { return m.data }
+func (m fakeJetStreamMsg) Headers() nats.Header             { return nil }
+func (m fakeJetStreamMsg) Subject() string                  { return "" }
+func (m fakeJetStreamMsg) Reply() string                    { return "" }
+func (m fakeJetStreamMsg) Ack() error                       { return nil }
+func (m fakeJetStreamMsg) DoubleAck(context.Context) error  { return nil }
+func (m fakeJetStreamMsg) Nak() error                       { return nil }
+func (m fakeJetStreamMsg) NakWithDelay(time.Duration) error { return nil }
+func (m fakeJetStreamMsg) InProgress() error                { return nil }
+func (m fakeJetStreamMsg) Term() error                      { return nil }
+func (m fakeJetStreamMsg) TermWithReason(string) error      { return nil }
 
 type fakeAnalyticsService struct {
 	oldRating int
