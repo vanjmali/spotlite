@@ -37,6 +37,7 @@ var (
 	userRatingUpdatedDurable       = "USER_RATING_UPDATED_PROCESSOR"
 	userSubscriptionCreatedDurable = "USER_SUBSCRIPTION_CREATED_PROCESSOR"
 	userSubscriptionDeletedDurable = "USER_SUBSCRIPTION_DELETED_PROCESSOR"
+	userAsynqSchedule              = utils.MustGetEnv("USER_ASYNQ_SCHEDULE")
 	rootCACertFilePath             = utils.MustGetEnv("ROOT_CERT_PATH")
 	certFilePath                   = utils.MustGetEnv("CERT_PATH")
 	keyFilePath                    = utils.MustGetEnv("KEY_PATH")
@@ -287,7 +288,7 @@ func setupAsynq(us *services.UserService, ms *services.MailService) func() error
 
 	// Initialize a scheduler
 	//    minutes *    hours *    day of month *     month *    day of week *
-	as.RegisterSchedule("01 19 * * *")
+	as.RegisterSchedule(userAsynqSchedule)
 
 	// Starts task router and scheduler in separate go routines
 	as.Start(mux)
