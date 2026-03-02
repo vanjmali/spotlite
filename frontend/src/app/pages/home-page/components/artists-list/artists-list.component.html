@@ -86,9 +86,16 @@
       @if (subscriptionRecommendationsSg().length === 0 && !subscriptionErrorSg()) {
         <p class="recommendations__empty">No subscription-based recommendations right now.</p>
       } @else {
+        @if (recommendationPlayErrorSg()) {
+          <app-message [message]="recommendationPlayErrorSg()" type="error" />
+        }
         <div class="recommendations__songs">
           @for (song of subscriptionRecommendationsSg(); track song.song_id) {
-            <div class="recommendations__song">
+            <button
+              type="button"
+              class="recommendations__song"
+              (click)="playOrToggleRecommendationSong(song)"
+            >
               <app-cover-art
                 class="recommendations__song-cover"
                 [name]="song.title"
@@ -100,7 +107,9 @@
               <div class="recommendations__song-main">
                 <span class="recommendations__song-title">{{ song.title }}</span>
                 <span class="recommendations__song-artists">
-                  {{ artistNames(song.artists) }}
+                  <span class="recommendations__song-artists-text">{{
+                    artistNames(song.artists)
+                  }}</span>
                 </span>
               </div>
               <app-song-trailing-meta
@@ -110,7 +119,7 @@
                 [count]="null"
                 [durationSeconds]="song.duration"
               />
-            </div>
+            </button>
           }
         </div>
       }
@@ -126,9 +135,16 @@
       @if (likeRecommendationsSg().length === 0 && !likeErrorSg()) {
         <p class="recommendations__empty">No like-based recommendations right now.</p>
       } @else {
+        @if (recommendationPlayErrorSg()) {
+          <app-message [message]="recommendationPlayErrorSg()" type="error" />
+        }
         <div class="recommendations__songs">
           @for (song of likeRecommendationsSg(); track song.song_id) {
-            <div class="recommendations__song">
+            <button
+              type="button"
+              class="recommendations__song"
+              (click)="playOrToggleRecommendationSong(song)"
+            >
               <app-cover-art
                 class="recommendations__song-cover"
                 [name]="song.title"
@@ -140,7 +156,9 @@
               <div class="recommendations__song-main">
                 <span class="recommendations__song-title">{{ song.title }}</span>
                 <span class="recommendations__song-artists">
-                  {{ artistNames(song.artists) }}
+                  <span class="recommendations__song-artists-text">{{
+                    artistNames(song.artists)
+                  }}</span>
                 </span>
               </div>
               <app-song-trailing-meta
@@ -150,7 +168,7 @@
                 [count]="null"
                 [durationSeconds]="song.duration"
               />
-            </div>
+            </button>
           }
         </div>
       }

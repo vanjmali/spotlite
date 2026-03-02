@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AlbumService, type Album } from '@app/services/album.service';
@@ -46,6 +47,8 @@ export class ArtistsListComponent {
   readonly likeRecommendationsSg = signal<SongRecommendation[]>([]);
   readonly subscriptionErrorSg = signal<string>('');
   readonly likeErrorSg = signal<string>('');
+  readonly recommendationPlayErrorSg = signal<string>('');
+  private readonly recommendationLookupAlbumsSg = signal<Album[] | null>(null);
 
   readonly recommendedArtistsSg = signal<Artist[]>([]);
   readonly recommendedAlbumsSg = signal<Album[]>([]);
@@ -65,6 +68,7 @@ export class ArtistsListComponent {
 
     this.subscriptionErrorSg.set('');
     this.likeErrorSg.set('');
+    this.recommendationPlayErrorSg.set('');
     this.artistsErrorSg.set('');
     this.albumsErrorSg.set('');
     this.genresErrorSg.set('');
@@ -180,6 +184,25 @@ export class ArtistsListComponent {
     this.playSong(song);
   }
 
+  async playOrToggleRecommendationSong(song: SongRecommendation): Promise<void> {
+    const currentTrack = this.playback.currentTrackSg();
+    if (currentTrack?.id === song.song_id) {
+      this.playback.togglePlayPause();
+      return;
+    }
+
+    this.recommendationPlayErrorSg.set('');
+    const resolved = await this.resolveRecommendedSong(song.song_id);
+    if (!resolved) {
+      this.recommendationPlayErrorSg.set(
+        'Could not play this recommendation right now. Please try another song.'
+      );
+      return;
+    }
+
+    this.playback.playSingleSong(resolved.song, resolved.album);
+  }
+
   toggleAlbumPlayback(album: Album, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
@@ -196,5 +219,37 @@ export class ArtistsListComponent {
   isAlbumPlaying(album: Album): boolean {
     const currentTrack = this.playback.currentTrackSg();
     return currentTrack?.albumId === album.id && this.playback.isPlayingSg();
+  }
+
+  private async resolveRecommendedSong(songId: string): Promise<{ song: Song; album: Album } | null> {
+    const loadedMatch = this.findSongInAlbums(songId, this.recommendedAlbumsSg());
+    if (loadedMatch) {
+      return loadedMatch;
+    }
+
+    const cachedAlbums = this.recommendationLookupAlbumsSg();
+    if (cachedAlbums) {
+      return this.findSongInAlbums(songId, cachedAlbums);
+    }
+
+    try {
+      const response = await firstValueFrom(this.albumService.getAlbums(1, 200));
+      const albums = response.items ?? [];
+      this.recommendationLookupAlbumsSg.set(albums);
+      return this.findSongInAlbums(songId, albums);
+    } catch {
+      return null;
+    }
+  }
+
+  private findSongInAlbums(songId: string, albums: Album[]): { song: Song; album: Album } | null {
+    for (const album of albums) {
+      const match = (album.songs ?? []).find((song) => song.id === songId);
+      if (match) {
+        return { song: match, album };
+      }
+    }
+
+    return null;
   }
 }
