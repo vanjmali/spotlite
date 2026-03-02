@@ -178,6 +178,21 @@ func (c *RecommendationConsumer) HandleRatingUpdate(ctx context.Context, msg jet
 	return nil
 }
 
+func (c *RecommendationConsumer) HandleRatingDelete(ctx context.Context, msg jetstream.Msg) error {
+	var p events.RatingEventPayload
+	if err := json.Unmarshal(msg.Data(), &p); err != nil {
+		logging.Errorf(ctx, "error: failed to unmarshal RatingEventPayload: %v", err)
+		return nil
+	}
+
+	if err := c.rs.DeleteRating(p, ctx); err != nil {
+		logging.Errorf(ctx, "error: an error has occured while handling rating delete event: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 func (c *RecommendationConsumer) HandleSubscriptionCreated(ctx context.Context, msg jetstream.Msg) error {
 	var p events.SubscriptionEventPayload
 	if err := json.Unmarshal(msg.Data(), &p); err != nil {

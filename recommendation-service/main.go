@@ -31,6 +31,7 @@ var (
 	recommendationSongCreateDurable          = "RECOMMENDATION_SONG_CREATE_PROCESSOR"
 	recommendationRatingCreateDurable        = "RECOMMENDATION_RATING_CREATE_PROCESSOR"
 	recommendationRatingUpdateDurable        = "RECOMMENDATION_RATING_UPDATE_PROCESSOR"
+	recommendationRatingDeleteDurable        = "RECOMMENDATION_RATING_DELETE_PROCESSOR"
 	recommendationUserCreateDurable          = "RECOMMENDATION_USER_CREATE_PROCESSOR"
 	recommendationSubscriptionCreatedDurable = "RECOMMENDATION_SUBSCRIPTION_CREATED_PROCESSOR"
 	recommendationSubscriptionDeletedDurable = "RECOMMENDATION_SUBSCRIPTION_DELETED_PROCESSOR"
@@ -65,7 +66,7 @@ var (
 			if err = jsc.EnsureStream(
 				ctx,
 				events.RATINGS_STREAM,
-				[]string{events.SUBJECT_RATING_CREATED, events.SUBJECT_RATING_UPDATED},
+				[]string{events.SUBJECT_RATING_CREATED, events.SUBJECT_RATING_UPDATED, events.SUBJECT_RATING_DELETED},
 			); err != nil {
 				err = fmt.Errorf("failed to ensure rating stream: %w", err)
 				return h, shutdown, err
@@ -191,6 +192,14 @@ var (
 				recommendationRatingUpdateDurable,
 				"song rating updated",
 				c.HandleRatingUpdate,
+			)
+
+			startConsumer(
+				events.RATINGS_STREAM,
+				events.SUBJECT_RATING_DELETED,
+				recommendationRatingDeleteDurable,
+				"song rating deleted",
+				c.HandleRatingDelete,
 			)
 
 			startConsumer(
