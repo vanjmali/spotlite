@@ -346,23 +346,19 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Publish song played event for analytics tracking (non-blocking)
-	// Track play regardless of cache hit/miss
-	// Extract userID from the signed stream token (st param) or fall back to context
+	// Extract userID from the signed stream token (st param) or fall back to context.
 	userID = getUserIDFromRequest(r)
-	go func() {
-		if err := h.s.TrackSongPlay(context.Background(), id, userID); err != nil {
-			logging.Warnf(context.Background(), "failed to track song play for user %s, song %s: %v", userID, id, err)
-			// Don't fail the request - tracking is non-critical
-		}
-	}()
 
 	cachedAudio, err := h.rc.Get(r.Context(), cacheKey).Bytes()
 	if err == nil && len(cachedAudio) > 0 {
 		logging.Infof(r.Context(), "Cache HIT song: %s", id)
 		setSongAudioResponseHeaders(w, int64(len(cachedAudio)), song.AudioMimeType)
 		if _, writeErr := w.Write(cachedAudio); writeErr == nil {
-			h.s.PublishListenEvent(r.Context(), userID, song)
+			go func() {
+				if err := h.s.TrackSongPlay(context.Background(), id, userID); err != nil {
+					logging.Warnf(context.Background(), "failed to track song play for user %s, song %s: %v", userID, id, err)
+				}
+			}()
 		}
 		return
 	}
@@ -411,7 +407,11 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 	setSongAudioResponseHeaders(w, int64(len(audioBytes)), song.AudioMimeType)
 
 	if _, writeErr := w.Write(audioBytes); writeErr == nil {
-		h.s.PublishListenEvent(r.Context(), userID, song)
+		go func() {
+			if err := h.s.TrackSongPlay(context.Background(), id, userID); err != nil {
+				logging.Warnf(context.Background(), "failed to track song play for user %s, song %s: %v", userID, id, err)
+			}
+		}()
 	}
 }
 

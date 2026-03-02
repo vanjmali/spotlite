@@ -142,7 +142,7 @@ func (h *AnalyticsConsumer) HandleRatingUpdated(ctx context.Context, msg jetstre
 		p.UserID,
 		entities.EventTypeRatingUpdated,
 		p.Rating,
-		0, // no old rating in unified payload
+		p.OldRating,
 	); err != nil {
 		logging.Errorf(ctx, "failed to project rating updated event: %v", err)
 		return err

@@ -245,32 +245,6 @@ func (s *SongService) FindSongById(ctx context.Context, idStr string) (*entities
 	return song, nil
 }
 
-func (s *SongService) PublishListenEvent(ctx context.Context, userID string, song *entities.Song) {
-	if s.jsc == nil || song == nil {
-		return
-	}
-
-	payload := events.ListenEventPayload{
-		UserID:    userID,
-		SongID:    song.ID.Hex(),
-		SongTitle: song.Title,
-		EventID:   primitive.NewObjectID().Hex(),
-		CreatedAt: time.Now().UTC(),
-	}
-
-	if err := retry.Do(
-		func() error {
-			return s.jsc.Publish(ctx, events.SUBJECT_LISTEN_CREATED, payload)
-		},
-		retry.Attempts(3),
-		retry.Delay(time.Second),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Context(ctx),
-	); err != nil {
-		logging.Errorf(ctx, "failed to publish listen event: %v", err)
-	}
-}
-
 // UpdateSong updates an existing song with the provided partial data.
 func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.UpdateSongDto) (*entities.Song, error) {
 	updateCtx, updateSpan := s.tr.Start(ctx, "song.update_song")

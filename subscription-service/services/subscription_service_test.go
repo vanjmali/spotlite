@@ -9,6 +9,7 @@ import (
 
 	"github.com/sony/gobreaker"
 	"github.com/stretchr/testify/require"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/subscription"
 	"github.com/vanjmali/spotlite/subscription-service/dtos"
@@ -464,6 +465,35 @@ func TestSubscribeSuccess(t *testing.T) {
 	require.NotNil(t, repo.created)
 	require.Equal(t, "My Genre", repo.created.EntityName)
 	require.Equal(t, subscription.GenreSubscription, repo.created.Type)
+}
+
+func TestSubscribePublishesCreatedEventOnceForArtistSubscription(t *testing.T) {
+	repo := &fakeSubscriptionRepo{}
+	getter := &fakeContentGetter{
+		getEntityFn: func(context.Context, string, subscription.SubscriptionType) (string, error) {
+			return "Artist A", nil
+		},
+	}
+	publisher := &fakeEventPublisher{}
+	svc := NewSubscriptionService(repo, getter, publisher)
+
+	userID := primitive.NewObjectID()
+	entityID := primitive.NewObjectID()
+	req := &dtos.CreateSubscriptionDto{
+		EntityID: entityID.Hex(),
+		Type:     subscription.ArtistSubscription,
+	}
+
+	err := svc.Subscribe(req, contextWithUserID(context.Background(), userID))
+	require.NoError(t, err)
+
+	createdEvents := 0
+	for _, subject := range publisher.subjects {
+		if subject == events.SUBJECT_SUBSCRIPTION_CREATED {
+			createdEvents++
+		}
+	}
+	require.Equal(t, 1, createdEvents, "expected exactly one subscription.created publish")
 }
 
 func TestSubscribeEntityNotFound(t *testing.T) {

@@ -394,6 +394,7 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 		SongID:    songId,
 		SongTitle: songTitle,
 		Rating:    rating.Value,
+		OldRating: existing.Value,
 		EventID:   primitive.NewObjectID().Hex(),
 		CreatedAt: rating.CreatedAt,
 	}
