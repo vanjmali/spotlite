@@ -249,7 +249,7 @@ func (r *GraphRelationRepository) FindSubscriptionBasedRecommendations(ctx conte
 			return nil, err
 		}
 
-		var songs []*entities.SongRecommendation
+		songs := make([]*entities.SongRecommendation, 0)
 		for records.Next(ctx) {
 			record := records.Record()
 
