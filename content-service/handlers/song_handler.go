@@ -346,12 +346,19 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Extract userID from the signed stream token (st param) or fall back to context.
+	userID = getUserIDFromRequest(r)
+
 	cachedAudio, err := h.rc.Get(r.Context(), cacheKey).Bytes()
 	if err == nil && len(cachedAudio) > 0 {
 		logging.Infof(r.Context(), "Cache HIT song: %s", id)
 		setSongAudioResponseHeaders(w, int64(len(cachedAudio)), song.AudioMimeType)
 		if _, writeErr := w.Write(cachedAudio); writeErr == nil {
-			h.s.PublishListenEvent(r.Context(), userID, song)
+			go func() {
+				if err := h.s.TrackSongPlay(context.Background(), id, userID); err != nil {
+					logging.Warnf(context.Background(), "failed to track song play for user %s, song %s: %v", userID, id, err)
+				}
+			}()
 		}
 		return
 	}
@@ -380,6 +387,7 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 	}
 	defer streamReader.Close()
 
+	// Read and cache audio bytes
 	audioBytes, err := io.ReadAll(streamReader)
 	if err != nil {
 		logging.Errorf(r.Context(), "failed to read audio stream for song %s: %v", id, err)
@@ -399,7 +407,11 @@ func (h *SongHandler) HandleStreamSongAudio(w http.ResponseWriter, r *http.Reque
 	setSongAudioResponseHeaders(w, int64(len(audioBytes)), song.AudioMimeType)
 
 	if _, writeErr := w.Write(audioBytes); writeErr == nil {
-		h.s.PublishListenEvent(r.Context(), userID, song)
+		go func() {
+			if err := h.s.TrackSongPlay(context.Background(), id, userID); err != nil {
+				logging.Warnf(context.Background(), "failed to track song play for user %s, song %s: %v", userID, id, err)
+			}
+		}()
 	}
 }
 
@@ -779,4 +791,17 @@ func setSongAudioResponseHeaders(w http.ResponseWriter, size int64, mime string)
 
 func logSecurityEvent(ctx context.Context, event string, details string) {
 	logging.Securityf(ctx, "security_event=%s %s", event, details)
+}
+
+// getUserIDFromRequest extracts the authenticated user ID from the stream token (?st=)
+// or falls back to the JWT middleware context value.
+func getUserIDFromRequest(r *http.Request) string {
+	if streamToken := strings.TrimSpace(r.URL.Query().Get("st")); streamToken != "" {
+		if claims, err := middlewares.ValidateJWTToken(streamToken); err == nil {
+			if sub, ok := claims["sub"].(string); ok && sub != "" {
+				return sub
+			}
+		}
+	}
+	return middlewares.GetUserIdFromContext(r.Context())
 }

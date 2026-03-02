@@ -12,6 +12,8 @@ tls:
       keyFile: /etc/traefik/certs/notification-service.key
     - certFile: /etc/traefik/certs/recommendation-service.crt
       keyFile: /etc/traefik/certs/recommendation-service.key
+    - certFile: /etc/traefik/certs/analytics-service.crt
+      keyFile: /etc/traefik/certs/analytics-service.key
 
   stores:
     default:

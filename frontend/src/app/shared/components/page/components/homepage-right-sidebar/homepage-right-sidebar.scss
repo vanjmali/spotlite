@@ -12,19 +12,11 @@
   gap: 8px;
   overflow: hidden;
 
-  &__top,
-  &__bottom {
+  &__top {
     min-height: 0;
     overflow-y: auto;
     @include m.scrollbar;
-  }
-
-  &__top {
-    flex: 2 1 0;
-  }
-
-  &__bottom {
-    flex: 1 1 0;
+    flex: 1 1 auto;
   }
 
   &__cover {
@@ -170,12 +162,6 @@
     flex-shrink: 0;
   }
 
-  &__stats-wrap {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
   &__empty-title,
   &__empty-text {
     margin: 0;
@@ -192,33 +178,6 @@
   &__empty-text {
     color: $color-text-secondary;
     font-size: 13px;
-  }
-
-  &__stats {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  &__stat {
-    border: 1px solid $color-border-primary;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.02);
-    padding: 8px 10px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  &__stat-label {
-    color: $color-text-secondary;
-    font-size: 12px;
-  }
-
-  &__stat-value {
-    color: $color-primary-light;
-    font-size: 14px;
   }
 }
 

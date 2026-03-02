@@ -9,6 +9,7 @@ import (
 
 	"github.com/sony/gobreaker"
 	"github.com/stretchr/testify/require"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/subscription"
 	"github.com/vanjmali/spotlite/subscription-service/dtos"
@@ -466,6 +467,35 @@ func TestSubscribeSuccess(t *testing.T) {
 	require.Equal(t, subscription.GenreSubscription, repo.created.Type)
 }
 
+func TestSubscribePublishesCreatedEventOnceForArtistSubscription(t *testing.T) {
+	repo := &fakeSubscriptionRepo{}
+	getter := &fakeContentGetter{
+		getEntityFn: func(context.Context, string, subscription.SubscriptionType) (string, error) {
+			return "Artist A", nil
+		},
+	}
+	publisher := &fakeEventPublisher{}
+	svc := NewSubscriptionService(repo, getter, publisher)
+
+	userID := primitive.NewObjectID()
+	entityID := primitive.NewObjectID()
+	req := &dtos.CreateSubscriptionDto{
+		EntityID: entityID.Hex(),
+		Type:     subscription.ArtistSubscription,
+	}
+
+	err := svc.Subscribe(req, contextWithUserID(context.Background(), userID))
+	require.NoError(t, err)
+
+	createdEvents := 0
+	for _, subject := range publisher.subjects {
+		if subject == events.SUBJECT_SUBSCRIPTION_CREATED {
+			createdEvents++
+		}
+	}
+	require.Equal(t, 1, createdEvents, "expected exactly one subscription.created publish")
+}
+
 func TestSubscribeEntityNotFound(t *testing.T) {
 	repo := &fakeSubscriptionRepo{}
 	getter := &fakeContentGetter{
@@ -654,36 +684,60 @@ func TestUnsubscribeSuccess(t *testing.T) {
 }
 
 func TestUnsubscribeNotFound(t *testing.T) {
+	// When repo has no subscriptions, FindSubscriptionsByUserID returns empty list
 	repo := &fakeSubscriptionRepo{
+		store: []entities.Subscription{}, // Empty store - subscription not found
 		deleteFn: func(primitive.ObjectID, primitive.ObjectID, context.Context) (int64, error) {
 			return 0, nil
 		},
 	}
 	svc := NewSubscriptionService(repo, &fakeContentGetter{}, &fakeEventPublisher{})
 
-	err := svc.Unsubscribe(primitive.NewObjectID(), contextWithUserID(context.Background(), primitive.NewObjectID()))
+	userID := primitive.NewObjectID()
+	entityID := primitive.NewObjectID()
+
+	err := svc.Unsubscribe(entityID, contextWithUserID(context.Background(), userID))
 
 	require.ErrorIs(t, err, ErrSubscriptionNotFound)
+	// deleteCalled will be false because the subscription wasn't found in the first place
+	require.False(t, repo.deleteCalled)
 }
 
 func TestUnsubscribeRepoError(t *testing.T) {
+	userID := primitive.NewObjectID()
+	entityID := primitive.NewObjectID()
+
+	// Setup: subscription exists in store so it will be found
 	repo := &fakeSubscriptionRepo{
+		store: []entities.Subscription{
+			{
+				ID:           primitive.NewObjectID(),
+				SubscriberID: userID,
+				EntityID:     entityID,
+				Type:         subscription.GenreSubscription,
+			},
+		},
 		deleteFn: func(primitive.ObjectID, primitive.ObjectID, context.Context) (int64, error) {
 			return 0, errors.New("delete failed")
 		},
 	}
 	svc := NewSubscriptionService(repo, &fakeContentGetter{}, &fakeEventPublisher{})
 
-	err := svc.Unsubscribe(primitive.NewObjectID(), contextWithUserID(context.Background(), primitive.NewObjectID()))
+	err := svc.Unsubscribe(entityID, contextWithUserID(context.Background(), userID))
 
 	require.Error(t, err)
+	require.EqualError(t, err, "delete failed")
+	require.True(t, repo.deleteCalled)
 }
 
 func TestUnsubscribeInvalidUserID(t *testing.T) {
 	repo := &fakeSubscriptionRepo{}
 	svc := NewSubscriptionService(repo, &fakeContentGetter{}, &fakeEventPublisher{})
 
+	// No user ID in context - GetUserIdFromContext will return empty string
+	// ObjectIDFromHex("") will fail
 	err := svc.Unsubscribe(primitive.NewObjectID(), context.Background())
 
 	require.Error(t, err)
+	require.False(t, repo.deleteCalled)
 }

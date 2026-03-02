@@ -107,6 +107,10 @@ func mergeSubjects(existing []string, incoming []string) []string {
 
 // Publish function is used by.
 func (c *JetStreamClient) Publish(ctx context.Context, subject string, payload interface{}) error {
+	if c == nil || c.js == nil || c.tracer == nil {
+		return errors.New("jetstream client not initialized")
+	}
+
 	// start new span of kind SpanKindProducer which is used when messages are sent to a message queue
 	ctx, span := c.tracer.Start(ctx, "publish "+subject, trace.WithSpanKind(trace.SpanKindProducer))
 	defer span.End()

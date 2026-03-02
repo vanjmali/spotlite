@@ -192,6 +192,8 @@ var (
 					}
 				}
 
+				jsc.Close()
+
 				return errors.Join(errs...)
 			}
 

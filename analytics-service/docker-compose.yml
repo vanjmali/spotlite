@@ -1,0 +1,76 @@
+services:
+  analytics-service:
+    build:
+      context: .
+      additional_contexts:
+        common-lib: ../common-lib
+      dockerfile: ../Dockerfile.microservice
+    environment:
+      APP_PORT: 3000
+      DB_HOST: analytics-mongodb
+      DB_PORT: 27017
+      DB_USER: ${SRV_ANALYTICS_MONGO_USERNAME?}
+      DB_PASS: ${SRV_ANALYTICS_MONGO_PASSWORD?}
+      DB_NAME: ${SRV_ANALYTICS_MONGO_DATABASE?}
+      NATS_URL: ${NATS_URL?}
+      LOG_DIR: ${LOG_DIR?}
+      LOG_ROTATE_MAX_SIZE_MB: ${LOG_ROTATE_MAX_SIZE_MB?}
+      LOG_ROTATE_MAX_BACKUPS: ${LOG_ROTATE_MAX_BACKUPS?}
+      LOG_ROTATE_MAX_AGE_DAYS: ${LOG_ROTATE_MAX_AGE_DAYS?}
+      LOG_ROTATE_COMPRESS: ${LOG_ROTATE_COMPRESS?}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    labels:
+      traefik.enable: true
+      traefik.docker.network: spotlite-api-gateway
+      traefik.http.routers.analytics-service.rule: PathPrefix(`/api/analytics`)
+      traefik.http.services.analytics-service.loadbalancer.server.scheme: https
+      traefik.http.routers.analytics-service.middlewares: analytics-service-strip-prefix,rate-limit-global@file
+      traefik.http.middlewares.analytics-service-strip-prefix.stripprefix.prefixes: /api/analytics
+      traefik.http.middlewares.analytics-service-strip-prefix.stripprefix.forceslash: false
+      traefik.http.services.analytics-service.loadbalancer.server.port: "3000"
+      traefik.http.services.analytics-service.loadbalancer.healthcheck.path: /healthz
+      traefik.http.services.analytics-service.loadbalancer.healthcheck.interval: 5s
+      traefik.http.services.analytics-service.loadbalancer.healthcheck.timeout: 2s
+      traefik.http.routers.analytics-service.entrypoints: websecure
+      traefik.http.routers.analytics-service.tls: true
+    depends_on:
+      analytics-mongodb:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    networks:
+      - api-gateway
+      - analytics-internal
+
+  analytics-mongodb:
+    image: mongo:8.2
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${SRV_ANALYTICS_MONGO_ROOT_USERNAME?}
+      MONGO_INITDB_ROOT_PASSWORD: ${SRV_ANALYTICS_MONGO_ROOT_PASSWORD?}
+      MONGO_INITDB_DATABASE: ${SRV_ANALYTICS_MONGO_DATABASE?}
+      SRV_ANALYTICS_MONGO_USERNAME: ${SRV_ANALYTICS_MONGO_USERNAME?}
+      SRV_ANALYTICS_MONGO_PASSWORD: ${SRV_ANALYTICS_MONGO_PASSWORD?}
+    healthcheck:
+      # healthcheck uses username and password value from analytics-mongodb environment variables defined above
+      test:
+        [
+          "CMD-SHELL",
+          "mongosh --norc --quiet --username $$MONGO_INITDB_ROOT_USERNAME --password $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval 'db.runCommand({ ping: 1 })'",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    volumes:
+      - analytics-mongodb-data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - analytics-internal
+
+volumes:
+  analytics-mongodb-data:
+
+networks:
+  api-gateway:
+    name: spotlite-api-gateway
+  analytics-internal:

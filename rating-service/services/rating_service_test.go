@@ -7,6 +7,7 @@ import (
 
 	"github.com/sony/gobreaker"
 	"github.com/stretchr/testify/require"
+	"github.com/vanjmali/spotlite/common-lib/events"
 	"github.com/vanjmali/spotlite/rating-service/dtos"
 	"github.com/vanjmali/spotlite/rating-service/entities"
 	"go.mongodb.org/mongo-driver/bson"
@@ -82,7 +83,8 @@ func TestCreateRatingMapsTimeout(t *testing.T) {
 			return "", status.Error(codes.DeadlineExceeded, "timeout")
 		},
 	}
-	svc := NewRatingService(repo, getter)
+	jsc := &events.JetStreamClient{}
+	svc := NewRatingService(repo, getter, jsc)
 
 	err := svc.CreateRating(&dtos.CreateRatingDto{SongID: primitive.NewObjectID().Hex(), Value: 5}, context.Background())
 
@@ -97,7 +99,8 @@ func TestCreateRatingMapsUnavailable(t *testing.T) {
 			return "", gobreaker.ErrOpenState
 		},
 	}
-	svc := NewRatingService(repo, getter)
+	jsc := &events.JetStreamClient{}
+	svc := NewRatingService(repo, getter, jsc)
 
 	err := svc.CreateRating(&dtos.CreateRatingDto{SongID: primitive.NewObjectID().Hex(), Value: 5}, context.Background())
 
@@ -112,7 +115,8 @@ func TestCreateRatingMapsThrottled(t *testing.T) {
 			return "", gobreaker.ErrTooManyRequests
 		},
 	}
-	svc := NewRatingService(repo, getter)
+	jsc := &events.JetStreamClient{}
+	svc := NewRatingService(repo, getter, jsc)
 
 	err := svc.CreateRating(&dtos.CreateRatingDto{SongID: primitive.NewObjectID().Hex(), Value: 5}, context.Background())
 

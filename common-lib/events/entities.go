@@ -58,6 +58,9 @@ const (
 	RATING_CREATE_ACTION_DURABLE = "RATING_CREATED_PROCESSOR"
 	RATING_UPDATE_ACTION_DURABLE = "RATING_UPDATED_PROCESSOR"
 	RATING_DURABLE               = "RATING_PROCESSOR"
+	RATING_CREATED_DURABLE       = "RATING_CREATED_PROCESSOR"
+	RATING_UPDATED_DURABLE       = "RATING_UPDATED_PROCESSOR"
+	RATING_DELETED_DURABLE       = "RATING_DELETED_PROCESSOR"
 
 	SUBJECT_LISTEN_CREATED = "listen.created"
 	LISTEN_DURABLE         = "LISTEN_PROCESSOR"
@@ -143,6 +146,7 @@ type RatingEventPayload struct {
 	SongID    string    `json:"song_id"`
 	SongTitle string    `json:"song_title"`
 	Rating    int       `json:"rating"`
+	OldRating int       `json:"old_rating"`
 	EventID   string    `json:"event_id"`
 	CreatedAt time.Time `json:"created_at"`
 }
@@ -151,6 +155,8 @@ type ListenEventPayload struct {
 	UserID    string    `json:"user_id"`
 	SongID    string    `json:"song_id"`
 	SongTitle string    `json:"song_title"`
+	ArtistID  string    `json:"artist_id"`
+	GenreID   string    `json:"genre_id"`
 	EventID   string    `json:"event_id"`
 	CreatedAt time.Time `json:"created_at"`
 }

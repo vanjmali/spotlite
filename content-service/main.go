@@ -89,6 +89,7 @@ var (
 				}
 			}()
 
+			// make sure stream is already initialized
 			err = jsc.EnsureStream(ctx, events.CONTENT_STREAM, []string{events.SUBJECT_ENTITY_CREATED, events.SUBJECT_ENTITY_UPDATED})
 			if err != nil {
 				err = fmt.Errorf("failed to ensure content stream: %w", err)

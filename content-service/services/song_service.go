@@ -77,7 +77,7 @@ type SongService struct {
 	tr            trace.Tracer
 }
 
-// NewSongService creates and returns a new SongService with the provided repository and artist service.
+// NewSongService creates and returns a new SongService with the provided repository, services, HDFS storage, and NATS JetStream client.
 func NewSongService(
 	songRepo repositories.SongRepository,
 	artistService ArtistService,
@@ -245,32 +245,6 @@ func (s *SongService) FindSongById(ctx context.Context, idStr string) (*entities
 	return song, nil
 }
 
-func (s *SongService) PublishListenEvent(ctx context.Context, userID string, song *entities.Song) {
-	if s.jsc == nil || song == nil {
-		return
-	}
-
-	payload := events.ListenEventPayload{
-		UserID:    userID,
-		SongID:    song.ID.Hex(),
-		SongTitle: song.Title,
-		EventID:   primitive.NewObjectID().Hex(),
-		CreatedAt: time.Now().UTC(),
-	}
-
-	if err := retry.Do(
-		func() error {
-			return s.jsc.Publish(ctx, events.SUBJECT_LISTEN_CREATED, payload)
-		},
-		retry.Attempts(3),
-		retry.Delay(time.Second),
-		retry.DelayType(retry.BackOffDelay),
-		retry.Context(ctx),
-	); err != nil {
-		logging.Errorf(ctx, "failed to publish listen event: %v", err)
-	}
-}
-
 // UpdateSong updates an existing song with the provided partial data.
 func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.UpdateSongDto) (*entities.Song, error) {
 	updateCtx, updateSpan := s.tr.Start(ctx, "song.update_song")
@@ -430,6 +404,60 @@ func (s *SongService) UpdateSong(ctx context.Context, idStr string, dto dtos.Upd
 	syncSpan.End()
 
 	return updatedSong, nil
+}
+
+// TrackSongPlay publishes a SONG_PLAYED event for analytics tracking.
+func (s *SongService) TrackSongPlay(ctx context.Context, idStr string, userID string) error {
+	ctx, span := s.tr.Start(ctx, "song.track_play")
+	defer span.End()
+
+	id, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		span.RecordError(err)
+		return ErrObjectIdCastFailed
+	}
+
+	// Fetch song details
+	findCtx, findSpan := s.tr.Start(ctx, "song.track_play.find")
+	song, err := s.songRepo.FindByID(findCtx, id)
+	findSpan.End()
+	if err != nil {
+		span.RecordError(err)
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return ErrSongNotFound
+		}
+		return err
+	}
+
+	// Extract primary artist and genre for analytics tracking
+	var artistID, genreID string
+	if len(song.Artists) > 0 {
+		artistID = song.Artists[0].ID.Hex()
+	}
+	if len(song.Genres) > 0 {
+		genreID = song.Genres[0].ID.Hex()
+	}
+
+	// Publish LISTEN_CREATED event
+	publishCtx, publishSpan := s.tr.Start(ctx, "song.track_play.publish")
+	defer publishSpan.End()
+
+	listenPayload := events.ListenEventPayload{
+		UserID:    userID,
+		SongID:    song.ID.Hex(),
+		ArtistID:  artistID,
+		GenreID:   genreID,
+		EventID:   primitive.NewObjectID().Hex(),
+		CreatedAt: time.Now(),
+	}
+
+	if err := s.jsc.Publish(publishCtx, events.SUBJECT_LISTEN_CREATED, listenPayload); err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish listen event: %v", err)
+		// Don't return error - tracking failure shouldn't block the response
+	}
+
+	return nil
 }
 
 // DeleteSong deletes a song by its ID.

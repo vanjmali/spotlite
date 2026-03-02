@@ -12,8 +12,11 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { AnalyticsService, UserAnalyticsResponse } from '@app/services/analytics.service';
 import { AuthService } from '@app/services/auth.service';
 import { AlbumService } from '@app/services/album.service';
+import { ArtistService } from '@app/services/artist.service';
+import { GenreService } from '@app/services/genre.service';
 import { Notification, NotificationService } from '@app/services/notification.service';
 import { UserActivity, UserActivityService } from '@app/services/user-activity.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
@@ -40,6 +43,9 @@ export class UserProfileDropdownComponent implements OnDestroy {
   readonly authService = inject(AuthService);
   readonly notificationService = inject(NotificationService);
   readonly userActivityService = inject(UserActivityService);
+  readonly analyticsService = inject(AnalyticsService);
+  readonly genreService = inject(GenreService);
+  readonly artistService = inject(ArtistService);
   readonly albumService = inject(AlbumService);
 
   private readonly router = inject(Router);
@@ -49,6 +55,7 @@ export class UserProfileDropdownComponent implements OnDestroy {
 
   readonly menuOpenSg = signal(false);
   readonly activityMenuOpenSg = signal(false);
+  readonly analyticsMenuOpenSg = signal(false);
   readonly profileMenuOpenSg = signal(false);
   readonly profileDialogOpenSg = signal(false);
   readonly changePasswordDialogOpenSg = signal(false);
@@ -59,6 +66,10 @@ export class UserProfileDropdownComponent implements OnDestroy {
   readonly activityLoadingMoreSg = signal(false);
   readonly activityPageSg = signal(0);
   readonly activityTotalSg = signal(0);
+  readonly analyticsSg = signal<UserAnalyticsResponse | null>(null);
+  readonly analyticsLoadingSg = signal(false);
+  readonly genreNamesSg = signal<Record<string, string>>({});
+  readonly artistNamesSg = signal<Record<string, string>>({});
   readonly dismissingIdsSg = signal<Set<string>>(new Set());
   readonly shouldFlashBadgeSg = signal(false);
   readonly unreadCountSg = computed(
@@ -78,6 +89,24 @@ export class UserProfileDropdownComponent implements OnDestroy {
   readonly hasMoreActivitiesSg = computed(
     () => this.activitiesSg().length < this.activityTotalSg()
   );
+  readonly songsByGenreEntriesSg = computed(() => {
+    const songsByGenre = this.analyticsSg()?.songs_by_genre ?? {};
+    const entries = Object.entries(songsByGenre).map(([genreId, playCount]) => ({
+      genreId,
+      playCount,
+      name: this.genreNamesSg()[genreId] ?? genreId,
+    }));
+
+    return entries.sort((a, b) => b.playCount - a.playCount);
+  });
+  readonly topArtistEntriesSg = computed(() => {
+    const artists = this.analyticsSg()?.top_artists ?? [];
+    return artists.map((entry) => ({
+      artistId: entry.artist_id,
+      playCount: entry.play_count,
+      name: this.artistNamesSg()[entry.artist_id] ?? entry.artist_id,
+    }));
+  });
   private readonly songAlbumCache = new Map<string, string>();
 
   constructor() {
@@ -98,7 +127,12 @@ export class UserProfileDropdownComponent implements OnDestroy {
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
-    if (!this.menuOpenSg() && !this.activityMenuOpenSg() && !this.profileMenuOpenSg()) {
+    if (
+      !this.menuOpenSg() &&
+      !this.activityMenuOpenSg() &&
+      !this.analyticsMenuOpenSg() &&
+      !this.profileMenuOpenSg()
+    ) {
       return;
     }
 
@@ -110,6 +144,7 @@ export class UserProfileDropdownComponent implements OnDestroy {
     if (!this.hostRef.nativeElement.contains(target)) {
       this.menuOpenSg.set(false);
       this.activityMenuOpenSg.set(false);
+      this.analyticsMenuOpenSg.set(false);
       this.profileMenuOpenSg.set(false);
     }
   }
@@ -123,6 +158,7 @@ export class UserProfileDropdownComponent implements OnDestroy {
 
   toggleNotificationsMenu(): void {
     this.activityMenuOpenSg.set(false);
+    this.analyticsMenuOpenSg.set(false);
     this.profileMenuOpenSg.set(false);
     this.menuOpenSg.set(!this.menuOpenSg());
     if (this.menuOpenSg()) {
@@ -133,6 +169,7 @@ export class UserProfileDropdownComponent implements OnDestroy {
 
   toggleActivityMenu(): void {
     this.menuOpenSg.set(false);
+    this.analyticsMenuOpenSg.set(false);
     this.profileMenuOpenSg.set(false);
     const nextOpen = !this.activityMenuOpenSg();
     this.activityMenuOpenSg.set(nextOpen);
@@ -142,9 +179,22 @@ export class UserProfileDropdownComponent implements OnDestroy {
     }
   }
 
+  toggleAnalyticsMenu(): void {
+    this.menuOpenSg.set(false);
+    this.activityMenuOpenSg.set(false);
+    this.profileMenuOpenSg.set(false);
+
+    const nextOpen = !this.analyticsMenuOpenSg();
+    this.analyticsMenuOpenSg.set(nextOpen);
+    if (nextOpen) {
+      this.loadAnalytics();
+    }
+  }
+
   toggleProfileMenu(): void {
     this.menuOpenSg.set(false);
     this.activityMenuOpenSg.set(false);
+    this.analyticsMenuOpenSg.set(false);
     this.profileMenuOpenSg.set(!this.profileMenuOpenSg());
   }
 
@@ -325,6 +375,7 @@ export class UserProfileDropdownComponent implements OnDestroy {
   logout(): void {
     this.menuOpenSg.set(false);
     this.activityMenuOpenSg.set(false);
+    this.analyticsMenuOpenSg.set(false);
     this.profileMenuOpenSg.set(false);
     this.authService.logout();
     this.router.navigate(['/']);
@@ -483,5 +534,102 @@ export class UserProfileDropdownComponent implements OnDestroy {
     }
 
     this.router.navigate(['/']);
+  }
+
+  openGenre(genreId: string): void {
+    this.analyticsMenuOpenSg.set(false);
+    this.router.navigate(['/genre', genreId]);
+  }
+
+  openArtist(artistId: string): void {
+    this.analyticsMenuOpenSg.set(false);
+    this.router.navigate(['/artist', artistId]);
+  }
+
+  private loadAnalytics(): void {
+    this.analyticsLoadingSg.set(true);
+    this.analyticsService
+      .getUserAnalytics()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          this.analyticsSg.set(response);
+          this.resolveGenreNames(Object.keys(response.songs_by_genre ?? {}));
+          this.resolveArtistNames((response.top_artists ?? []).map((entry) => entry.artist_id));
+          this.analyticsLoadingSg.set(false);
+        },
+        error: () => {
+          this.analyticsSg.set(null);
+          this.genreNamesSg.set({});
+          this.artistNamesSg.set({});
+          this.analyticsLoadingSg.set(false);
+        },
+      });
+  }
+
+  private resolveGenreNames(genreIds: string[]): void {
+    const uniqueIds = Array.from(new Set(genreIds.filter((id) => !!id)));
+    if (uniqueIds.length === 0) {
+      this.genreNamesSg.set({});
+      return;
+    }
+
+    const resolved = { ...this.genreNamesSg() };
+    for (const genreId of uniqueIds) {
+      if (resolved[genreId]) {
+        continue;
+      }
+
+      this.genreService
+        .getGenreById(genreId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (genre) => {
+            this.genreNamesSg.set({
+              ...this.genreNamesSg(),
+              [genreId]: genre.name || genreId,
+            });
+          },
+          error: () => {
+            this.genreNamesSg.set({
+              ...this.genreNamesSg(),
+              [genreId]: genreId,
+            });
+          },
+        });
+    }
+  }
+
+  private resolveArtistNames(artistIds: string[]): void {
+    const uniqueIds = Array.from(new Set(artistIds.filter((id) => !!id)));
+    if (uniqueIds.length === 0) {
+      this.artistNamesSg.set({});
+      return;
+    }
+
+    const resolved = { ...this.artistNamesSg() };
+    for (const artistId of uniqueIds) {
+      if (resolved[artistId]) {
+        continue;
+      }
+
+      this.artistService
+        .getArtistById(artistId)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (artist) => {
+            this.artistNamesSg.set({
+              ...this.artistNamesSg(),
+              [artistId]: artist.name || artistId,
+            });
+          },
+          error: () => {
+            this.artistNamesSg.set({
+              ...this.artistNamesSg(),
+              [artistId]: artistId,
+            });
+          },
+        });
+    }
   }
 }

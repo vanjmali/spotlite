@@ -417,6 +417,52 @@ services:
       - api-gateway
       - rating-internal
 
+  # --- Analytics Service ---
+  analytics-service:
+    volumes:
+      - keys:/run/keys:ro
+      - ./logs/analytics-service:/app/logs
+      - certs:/certs
+    environment:
+      JWT_PUBLIC_KEY_PATH: /run/keys/public.pem
+      ROOT_CERT_PATH: /certs/rootCA.crt
+      CERT_PATH: /certs/analytics-service.crt
+      KEY_PATH: /certs/analytics-service.key
+    depends_on:
+      logs-init:
+        condition: service_completed_successfully
+      cert-gen:
+        condition: service_completed_successfully
+      key-gen:
+        condition: service_completed_successfully
+
+  analytics-mongodb:
+    ports:
+      - 3105:27017 # expose MongoDB port
+
+  analytics-mongo-express: # MongoDB GUI
+    image: mongo-express:1
+    labels:
+      traefik.enable: true
+      traefik.docker.network: spotlite-api-gateway
+      traefik.http.routers.analytics-mongo-express.rule: PathPrefix(`/dev/analytics-service`)
+      traefik.http.routers.analytics-mongo-express.middlewares: analytics-mongo-express-strip-prefix
+      traefik.http.middlewares.analytics-mongo-express-strip-prefix.stripprefix.forceslash: false
+      traefik.http.services.analytics-mongo-express.loadbalancer.server.port: "8081"
+      traefik.http.services.analytics-mongo-express.loadbalancer.healthcheck.path: /dev/analytics-service
+      traefik.http.services.analytics-mongo-express.loadbalancer.healthcheck.interval: 5s
+      traefik.http.services.analytics-mongo-express.loadbalancer.healthcheck.timeout: 2s
+    environment:
+      ME_CONFIG_BASICAUTH: "false"
+      ME_CONFIG_SITE_BASEURL: /dev/analytics-service
+      ME_CONFIG_MONGODB_URL: mongodb://${SRV_ANALYTICS_MONGO_ROOT_USERNAME}:${SRV_ANALYTICS_MONGO_ROOT_PASSWORD}@analytics-mongodb:27017/?authSource=admin
+    depends_on:
+      analytics-mongodb:
+        condition: service_healthy
+    networks:
+      - api-gateway
+      - analytics-internal
+
 volumes:
   frontend-node-modules:
   keys:
@@ -426,3 +472,4 @@ networks:
   api-gateway:
     name: spotlite-api-gateway
   user-internal:
+  analytics-internal:

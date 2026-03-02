@@ -26,7 +26,7 @@ jobs:
           - subscription-service
           - rating-service
           - recommendation-service
-          # - analytics-service
+          - analytics-service
     defaults:
       run:
         working-directory: ${{ matrix.service }}

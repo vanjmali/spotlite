@@ -85,7 +85,7 @@ services:
     command: ["hdfs", "namenode"]
     environment:
       - CLUSTER_NAME=${SRV_CONTENT_HDFS_CLUSTER_NAME?}
-      - CORE-SITE.XML_fs.defaultFS=hdfs://content-hdfs-namenode:8020
+      - CORE-SITE.XML_fs.defaultFS=${SRV_CONTENT_HDFS_URI?}
       - HDFS-SITE.XML_dfs.replication=${SRV_CONTENT_HDFS_REPLICATION?}
       - HDFS-SITE.XML_dfs.permissions.enabled=${SRV_CONTENT_HDFS_PERMISSIONS_ENABLED?}
       - HDFS-SITE.XML_dfs.namenode.name.dir=file:///data/dfs/name
@@ -111,7 +111,7 @@ services:
     command: ["hdfs", "datanode"]
     environment:
       - CLUSTER_NAME=${SRV_CONTENT_HDFS_CLUSTER_NAME?}
-      - CORE-SITE.XML_fs.defaultFS=hdfs://content-hdfs-namenode:8020
+      - CORE-SITE.XML_fs.defaultFS=${SRV_CONTENT_HDFS_URI?}
       - HDFS-SITE.XML_dfs.replication=${SRV_CONTENT_HDFS_REPLICATION?}
       - HDFS-SITE.XML_dfs.permissions.enabled=${SRV_CONTENT_HDFS_PERMISSIONS_ENABLED?}
       - HDFS-SITE.XML_dfs.datanode.data.dir=file:///data/dfs/data
