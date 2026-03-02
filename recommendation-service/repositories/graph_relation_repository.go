@@ -544,3 +544,27 @@ func (r *GraphRelationRepository) UpdateRating(ctx context.Context, songID strin
 
 	return err
 }
+
+func (r *GraphRelationRepository) DeleteRating(ctx context.Context, songID string, userID string) error {
+	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		result, err := tx.Run(
+			ctx,
+			`MATCH (u:User {user_id: $userId})-[r:RATED]->(s:Song {song_id: $songId})
+             DELETE r`,
+			map[string]any{
+				"userId": userID,
+				"songId": songID,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		return result.Consume(ctx)
+	})
+
+	return err
+}

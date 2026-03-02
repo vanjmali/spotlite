@@ -35,6 +35,7 @@ type GraphRelationRepository interface {
 	FindLikeBasedRecommendation(ctx context.Context, userID string) ([]*entities.SongRecommendation, error)
 	DeleteSong(ctx context.Context, songID string) error
 	UpdateRating(ctx context.Context, songID string, userID string, rating int) error
+	DeleteRating(ctx context.Context, songID string, userID string) error
 }
 type GenreNodeRepository interface {
 	Create(ctx context.Context, genre entities.GenreNode) error
@@ -330,6 +331,18 @@ func (rs *RecommendationService) UpdateRating(e events.RatingEventPayload, ctx c
 	defer recSpan.End()
 
 	err := rs.r.rr.UpdateRating(recCtx, e.SongID, e.UserID, e.Rating)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (rs *RecommendationService) DeleteRating(e events.RatingEventPayload, ctx context.Context) error {
+	recCtx, recSpan := rs.tr.Start(ctx, "recommendation.delete_rating")
+	defer recSpan.End()
+
+	err := rs.r.rr.DeleteRating(recCtx, e.SongID, e.UserID)
 	if err != nil {
 		return err
 	}
