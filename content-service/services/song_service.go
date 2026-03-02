@@ -445,6 +445,7 @@ func (s *SongService) TrackSongPlay(ctx context.Context, idStr string, userID st
 	listenPayload := events.ListenEventPayload{
 		UserID:    userID,
 		SongID:    song.ID.Hex(),
+		SongTitle: song.Title,
 		ArtistID:  artistID,
 		GenreID:   genreID,
 		EventID:   primitive.NewObjectID().Hex(),
