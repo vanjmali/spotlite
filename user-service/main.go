@@ -32,11 +32,16 @@ import (
 )
 
 var (
-	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
-	certFilePath       = utils.MustGetEnv("CERT_PATH")
-	keyFilePath        = utils.MustGetEnv("KEY_PATH")
-	natsURL            = utils.MustGetEnv("NATS_URL")
-	config             = server.ServerRunConfiguration{
+	userListenDurable              = "USER_LISTEN_PROCESSOR"
+	userRatingCreatedDurable       = "USER_RATING_CREATED_PROCESSOR"
+	userRatingUpdatedDurable       = "USER_RATING_UPDATED_PROCESSOR"
+	userSubscriptionCreatedDurable = "USER_SUBSCRIPTION_CREATED_PROCESSOR"
+	userSubscriptionDeletedDurable = "USER_SUBSCRIPTION_DELETED_PROCESSOR"
+	rootCACertFilePath             = utils.MustGetEnv("ROOT_CERT_PATH")
+	certFilePath                   = utils.MustGetEnv("CERT_PATH")
+	keyFilePath                    = utils.MustGetEnv("KEY_PATH")
+	natsURL                        = utils.MustGetEnv("NATS_URL")
+	config                         = server.ServerRunConfiguration{
 		TelemetryName: "user-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
 		ConfigureValidation: func(v *validator.Validate) error {
@@ -303,31 +308,31 @@ func setupActivityConsumers(
 		{
 			Stream:  events.LISTENS_STREAM,
 			Subject: events.SUBJECT_LISTEN_CREATED,
-			Durable: events.LISTEN_DURABLE,
+			Durable: userListenDurable,
 			Handler: consumer.HandleListenCreated,
 		},
 		{
 			Stream:  events.RATINGS_STREAM,
 			Subject: events.SUBJECT_RATING_CREATED,
-			Durable: events.RATING_CREATE_ACTION_DURABLE,
+			Durable: userRatingCreatedDurable,
 			Handler: consumer.HandleRatingCreated,
 		},
 		{
 			Stream:  events.RATINGS_STREAM,
 			Subject: events.SUBJECT_RATING_UPDATED,
-			Durable: events.RATING_UPDATE_ACTION_DURABLE,
+			Durable: userRatingUpdatedDurable,
 			Handler: consumer.HandleRatingUpdated,
 		},
 		{
 			Stream:  events.SUBSCRIPTIONS_STREAM,
 			Subject: events.SUBJECT_SUBSCRIPTION_CREATED,
-			Durable: events.SUBSCRIPTION_CREATED_ACTION_DURABLE,
+			Durable: userSubscriptionCreatedDurable,
 			Handler: consumer.HandleSubscriptionCreated,
 		},
 		{
 			Stream:  events.SUBSCRIPTIONS_STREAM,
 			Subject: events.SUBJECT_SUBSCRIPTION_DELETED,
-			Durable: events.SUBSCRIPTION_DELETED_ACTION_DURABLE,
+			Durable: userSubscriptionDeletedDurable,
 			Handler: consumer.HandleSubscriptionDeleted,
 		},
 	}

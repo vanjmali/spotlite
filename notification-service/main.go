@@ -24,13 +24,14 @@ import (
 )
 
 var (
-	cassHost           = utils.MustGetEnv("CASSANDRA_HOST")
-	ks                 = utils.MustGetEnv("CASSANDRA_KEYSPACE")
-	natsURL            = utils.MustGetEnv("NATS_URL")
-	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
-	certFilePath       = utils.MustGetEnv("CERT_PATH")
-	keyFilePath        = utils.MustGetEnv("KEY_PATH")
-	config             = server.ServerRunConfiguration{
+	notificationSubscriberBatchDurable = "NOTIFICATION_SUBSCRIBER_BATCH_PROCESSOR"
+	cassHost                           = utils.MustGetEnv("CASSANDRA_HOST")
+	ks                                 = utils.MustGetEnv("CASSANDRA_KEYSPACE")
+	natsURL                            = utils.MustGetEnv("NATS_URL")
+	rootCACertFilePath                 = utils.MustGetEnv("ROOT_CERT_PATH")
+	certFilePath                       = utils.MustGetEnv("CERT_PATH")
+	keyFilePath                        = utils.MustGetEnv("KEY_PATH")
+	config                             = server.ServerRunConfiguration{
 		TelemetryName: "notification-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
 		CreateHandler: func(ctx context.Context, v *validator.Validate) (h http.Handler, shutdown func() error, err error) {
@@ -72,7 +73,7 @@ var (
 					consumerCtx,
 					events.SUBSCRIPTIONS_STREAM,
 					events.SUBJECT_SUBSCRIBER_BATCH,
-					events.SUB_DURABLE,
+					notificationSubscriberBatchDurable,
 					c.HandleSubscribersBatch,
 				)
 				close(consumerDone)

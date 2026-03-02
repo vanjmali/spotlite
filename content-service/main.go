@@ -37,11 +37,12 @@ import (
 )
 
 var (
-	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
-	certFilePath       = utils.MustGetEnv("CERT_PATH")
-	keyFilePath        = utils.MustGetEnv("KEY_PATH")
-	natsURL            = utils.MustGetEnv("NATS_URL")
-	config             = server.ServerRunConfiguration{
+	contentSongDeleteDurable = "CONTENT_SONG_DELETE_PROCESSOR"
+	rootCACertFilePath       = utils.MustGetEnv("ROOT_CERT_PATH")
+	certFilePath             = utils.MustGetEnv("CERT_PATH")
+	keyFilePath              = utils.MustGetEnv("KEY_PATH")
+	natsURL                  = utils.MustGetEnv("NATS_URL")
+	config                   = server.ServerRunConfiguration{
 		TelemetryName: "content-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
 		ConfigureValidation: func(v *validator.Validate) error {
@@ -150,7 +151,7 @@ var (
 			startConsumer(
 				events.SONGS_STREAM,
 				events.SUBJECT_SONG_DELETED,
-				events.SONG_DELETE_DURABLE_CONTENT,
+				contentSongDeleteDurable,
 				"song deleted",
 				cc.HandleSongDelete,
 			)

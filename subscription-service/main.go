@@ -37,10 +37,12 @@ import (
 )
 
 var (
-	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
-	certFilePath       = utils.MustGetEnv("CERT_PATH")
-	keyFilePath        = utils.MustGetEnv("KEY_PATH")
-	natsURL            = utils.MustGetEnv("NATS_URL")
+	subscriptionEntityCreatedDurable = "SUBSCRIPTION_ENTITY_CREATED_PROCESSOR"
+	subscriptionEntityUpdatedDurable = "SUBSCRIPTION_ENTITY_UPDATED_PROCESSOR"
+	rootCACertFilePath               = utils.MustGetEnv("ROOT_CERT_PATH")
+	certFilePath                     = utils.MustGetEnv("CERT_PATH")
+	keyFilePath                      = utils.MustGetEnv("KEY_PATH")
+	natsURL                          = utils.MustGetEnv("NATS_URL")
 
 	config = server.ServerRunConfiguration{
 		TelemetryName: "subscription-service",
@@ -113,13 +115,13 @@ var (
 				{
 					Stream:  events.CONTENT_STREAM,
 					Subject: events.SUBJECT_ENTITY_CREATED,
-					Durable: events.ENTITY_CREATE_DURABLE,
+					Durable: subscriptionEntityCreatedDurable,
 					Handler: c.HandleEntityCreated,
 				},
 				{
 					Stream:  events.CONTENT_STREAM,
 					Subject: events.SUBJECT_ENTITY_UPDATED,
-					Durable: events.ENTITY_UPDATE_DURABLE,
+					Durable: subscriptionEntityUpdatedDurable,
 					Handler: c.HandleEntityUpdated,
 				},
 			}
