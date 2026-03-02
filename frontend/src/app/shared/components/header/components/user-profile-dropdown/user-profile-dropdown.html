@@ -130,6 +130,92 @@
     }
   </div>
 
+  <div class="user-profile__analytics">
+    <button
+      class="user-profile__nav-button"
+      [class.user-profile__nav-button--active]="analyticsMenuOpenSg()"
+      (click)="toggleAnalyticsMenu()"
+      type="button"
+      aria-label="Analytics"
+      title="Analytics"
+    >
+      <mat-icon aria-hidden="true">insights</mat-icon>
+    </button>
+
+    @if (analyticsMenuOpenSg()) {
+      <div class="user-profile__menu">
+        <div class="user-profile__menu-header">
+          <strong>Your analytics</strong>
+        </div>
+
+        <div class="user-profile__menu-list">
+          @if (analyticsLoadingSg()) {
+            <p class="user-profile__empty">Loading analytics...</p>
+          } @else if (!analyticsSg()) {
+            <p class="user-profile__empty">No analytics available yet.</p>
+          } @else {
+            <div class="user-profile__analytics-section">
+              <article class="user-profile__analytics-stat">
+                <span class="user-profile__analytics-label">Total songs played</span>
+                <strong class="user-profile__analytics-value">{{
+                  analyticsSg()!.total_songs_played
+                }}</strong>
+              </article>
+              <article class="user-profile__analytics-stat">
+                <span class="user-profile__analytics-label">Average rating</span>
+                <strong class="user-profile__analytics-value">{{
+                  analyticsSg()!.average_rating.toFixed(1)
+                }}</strong>
+              </article>
+              <article class="user-profile__analytics-stat">
+                <span class="user-profile__analytics-label">Subscribed artists</span>
+                <strong class="user-profile__analytics-value">{{
+                  analyticsSg()!.subscribed_artists_count
+                }}</strong>
+              </article>
+            </div>
+
+            <div class="user-profile__analytics-subsection">
+              <p class="user-profile__analytics-title">Songs by genre</p>
+              @if (songsByGenreEntriesSg().length === 0) {
+                <p class="user-profile__empty user-profile__empty--compact">No genre plays yet.</p>
+              } @else {
+                @for (entry of songsByGenreEntriesSg(); track entry.genreId) {
+                  <button
+                    type="button"
+                    class="user-profile__analytics-row"
+                    (click)="openGenre(entry.genreId)"
+                  >
+                    <span class="user-profile__analytics-name">{{ entry.name }}</span>
+                    <strong class="user-profile__analytics-count">{{ entry.playCount }}</strong>
+                  </button>
+                }
+              }
+            </div>
+
+            <div class="user-profile__analytics-subsection">
+              <p class="user-profile__analytics-title">Top artists</p>
+              @if (topArtistEntriesSg().length === 0) {
+                <p class="user-profile__empty user-profile__empty--compact">No artist plays yet.</p>
+              } @else {
+                @for (entry of topArtistEntriesSg(); track entry.artistId) {
+                  <button
+                    type="button"
+                    class="user-profile__analytics-row"
+                    (click)="openArtist(entry.artistId)"
+                  >
+                    <span class="user-profile__analytics-name">{{ entry.name }}</span>
+                    <strong class="user-profile__analytics-count">{{ entry.playCount }}</strong>
+                  </button>
+                }
+              }
+            </div>
+          }
+        </div>
+      </div>
+    }
+  </div>
+
   @if (authService.isAdminSg()) {
     <button
       class="user-profile__nav-button"

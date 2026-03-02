@@ -158,14 +158,12 @@ All endpoints require authentication via JWT token (Bearer token in Authorizatio
 Retrieves aggregated analytics data for a specific user including listening statistics, top artists, genre preferences, and subscription counts.
 
 ```
-GET /analytics/:userID
+GET /
 ```
 
 **Authentication:** Required (JWT Bearer token)
 
-**Path Parameters:**
-
-- `userID` (string, required) - The unique identifier of the user
+The user ID is derived from the authenticated JWT context.
 
 **Response (200 OK):**
 
@@ -196,9 +194,8 @@ GET /analytics/:userID
 
 **Error Responses:**
 
-- `400 Bad Request` - Invalid userID format
 - `401 Unauthorized` - Missing or invalid authentication token
-- `404 Not Found` - Analytics not found for the specified user
+- `404 Not Found` - Analytics not found for the authenticated user
 - `500 Internal Server Error` - Server-side error
 
 ### Notes

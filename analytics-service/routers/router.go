@@ -20,8 +20,7 @@ func HandleRequests(ah *handlers.AnalyticsHandler) http.Handler {
 	api := r.PathPrefix("/").Subrouter()
 	telemetry.AttachMuxTracing(api, "analytics-service")
 
-	// Analytics endpoints (require authentication)
-	api.Handle("/analytics/{userID}",
+	api.Handle("/",
 		middlewares.RequireAuthenticated(http.HandlerFunc(ah.HandleGetUserAnalytics))).
 		Methods(http.MethodGet)
 

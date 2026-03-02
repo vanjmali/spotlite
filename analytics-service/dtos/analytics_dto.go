@@ -3,7 +3,6 @@ package dtos
 // UserAnalyticsResponseDto represents the analytics summary for a user.
 // This mirrors the spec-required metrics for analytics (requirement 1.16).
 type UserAnalyticsResponseDto struct {
-	UserID                 string         `json:"user_id"`
 	TotalSongsPlayed       int            `json:"total_songs_played"`
 	AverageRating          float64        `json:"average_rating"`
 	SongsByGenre           map[string]int `json:"songs_by_genre"`

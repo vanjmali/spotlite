@@ -20,7 +20,6 @@ func ToUserAnalyticsResponseDto(analytics *entities.UserAnalyticsReadModel) dtos
 	}
 
 	return dtos.UserAnalyticsResponseDto{
-		UserID:                 analytics.UserID,
 		TotalSongsPlayed:       analytics.TotalSongsPlayed,
 		AverageRating:          analytics.AverageRating,
 		SongsByGenre:           analytics.SongsByGenre,

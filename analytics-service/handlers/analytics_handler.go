@@ -5,10 +5,10 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gorilla/mux"
 	"github.com/vanjmali/spotlite/analytics-service/mappers"
 	"github.com/vanjmali/spotlite/analytics-service/services"
 	"github.com/vanjmali/spotlite/common-lib/logging"
+	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/common-lib/respond"
 )
 
@@ -26,15 +26,14 @@ func NewAnalyticsHandler(s *services.AnalyticsService, v *validator.Validate) *A
 	}
 }
 
-// HandleGetUserAnalytics handles GET /analytics/{userID}
-// Returns analytics summary for a user (total plays, ratings, top artists, etc.)
+// HandleGetUserAnalytics handles GET /
+// Returns analytics summary for the currently authenticated user.
 func (h *AnalyticsHandler) HandleGetUserAnalytics(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	vars := mux.Vars(r)
-	userID := vars["userID"]
+	userID := middlewares.GetUserIdFromContext(ctx)
 
 	if userID == "" {
-		_ = respond.BadRequest(w, respond.ErrorMessage("userID is required"))
+		_ = respond.Unauthorized(w)
 		return
 	}
 
