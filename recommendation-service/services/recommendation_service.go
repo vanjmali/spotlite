@@ -26,6 +26,8 @@ type GraphRelationRepository interface {
 	SaveSongWithGenres(ctx context.Context, sn entities.SongNode) error
 	CreateGenreSubscription(ctx context.Context, gs entities.GenreSubscription) error
 	CreateArtistSubscription(ctx context.Context, as entities.ArtistSubscription) error
+	DeleteGenreSubscription(ctx context.Context, gs entities.GenreSubscription) error
+	DeleteArtistSubscription(ctx context.Context, as entities.ArtistSubscription) error
 	CreateRating(ctx context.Context, sr entities.SongRating) error
 	UpdateSongWithGenres(ctx context.Context, sn entities.SongNode) error
 	UpdateGenre(ctx context.Context, gn entities.GenreNode) error
@@ -187,6 +189,34 @@ func (rs *RecommendationService) CreateSubscriptionFromEvent(e events.Subscripti
 		}
 	default:
 		logging.Warnf(createCtx, "unknown subscription entity type: %s", e.EntityType)
+	}
+
+	return nil
+}
+
+func (rs *RecommendationService) DeleteSubscriptionFromEvent(e events.SubscriptionEventPayload, ctx context.Context) error {
+	deleteCtx, deleteSpan := rs.tr.Start(ctx, "recommendation.subscription.delete_from_event")
+	defer deleteSpan.End()
+
+	switch e.EntityType {
+	case events.SubscriptionEntityGenre:
+		gs := entities.GenreSubscription{GenreID: e.EntityID, UserID: e.UserID}
+		err := rs.r.rr.DeleteGenreSubscription(deleteCtx, gs)
+		if err != nil {
+			deleteSpan.RecordError(err)
+			logging.Errorf(deleteCtx, "critical: an error has occured while deleting genre subscription relationship: %v", err)
+			return err
+		}
+	case events.SubscriptionEntityArtist:
+		as := entities.ArtistSubscription{ArtistID: e.EntityID, UserID: e.UserID}
+		err := rs.r.rr.DeleteArtistSubscription(deleteCtx, as)
+		if err != nil {
+			deleteSpan.RecordError(err)
+			logging.Errorf(deleteCtx, "critical: an error has occured while deleting artist subscription relationship: %v", err)
+			return err
+		}
+	default:
+		logging.Warnf(deleteCtx, "unknown subscription entity type: %s", e.EntityType)
 	}
 
 	return nil

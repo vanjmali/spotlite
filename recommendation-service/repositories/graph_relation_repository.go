@@ -192,6 +192,58 @@ func (r *GraphRelationRepository) CreateArtistSubscription(ctx context.Context, 
 	return err
 }
 
+// DeleteGenreSubscription removes a SUBSCRIBED_TO relationship between a user and a genre.
+func (r *GraphRelationRepository) DeleteGenreSubscription(ctx context.Context, gs entities.GenreSubscription) error {
+	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		result, err := tx.Run(
+			ctx,
+			`MATCH (u:User {user_id: $userId}), (g:Genre {genre_id: $genreId})
+             MATCH (u)-[r:SUBSCRIBED_TO]->(g)
+             DELETE r`,
+			map[string]any{
+				"userId":  gs.UserID,
+				"genreId": gs.GenreID,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		return result.Consume(ctx)
+	})
+
+	return err
+}
+
+// DeleteArtistSubscription removes a SUBSCRIBED_TO relationship between a user and an artist.
+func (r *GraphRelationRepository) DeleteArtistSubscription(ctx context.Context, as entities.ArtistSubscription) error {
+	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		result, err := tx.Run(
+			ctx,
+			`MATCH (u:User {user_id: $userId}), (a:Artist {artist_id: $artistId})
+             MATCH (u)-[r:SUBSCRIBED_TO]->(a)
+             DELETE r`,
+			map[string]any{
+				"userId":   as.UserID,
+				"artistId": as.ArtistID,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		return result.Consume(ctx)
+	})
+
+	return err
+}
+
 func (r *GraphRelationRepository) CreateRating(ctx context.Context, sr entities.SongRating) error {
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
