@@ -28,23 +28,3 @@ func ToUserAnalyticsResponseDto(analytics *entities.UserAnalyticsReadModel) dtos
 		SubscribedArtistsCount: analytics.SubscribedArtistsCount,
 	}
 }
-
-// ToUserActivityHistoryResponseDto converts UserActivityHistory entity to DTO
-func ToUserActivityHistoryResponseDto(history *entities.UserActivityHistory) dtos.UserActivityHistoryResponseDto {
-	if history == nil {
-		return dtos.UserActivityHistoryResponseDto{}
-	}
-
-	activities := make([]dtos.ActivitySummaryDto, len(history.Activities))
-	for i, activity := range history.Activities {
-		activities[i] = dtos.ActivitySummaryDto{
-			ActivityType: activity.ActivityType,
-			Timestamp:    activity.Timestamp,
-		}
-	}
-
-	return dtos.UserActivityHistoryResponseDto{
-		UserID:     history.UserID,
-		Activities: activities,
-	}
-}

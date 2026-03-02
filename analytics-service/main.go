@@ -228,12 +228,6 @@ func initializeReadModelIndexes(ctx context.Context, mongoClient *mongodriver.Cl
 		return fmt.Errorf("failed to initialize user analytics indexes: %w", err)
 	}
 
-	// Initialize user activity history read model indexes
-	uahr := repositories.NewUserActivityHistoryRepository(dbName, "user_activity_history", mongoClient)
-	if err := uahr.EnsureIndexes(ctx); err != nil {
-		return fmt.Errorf("failed to initialize user activity history indexes: %w", err)
-	}
-
 	return nil
 }
 
@@ -245,10 +239,9 @@ func createAnalyticsService(mongoClient *mongodriver.Client) *services.Analytics
 	// Create repositories
 	eventStoreRepo := repositories.NewEventStoreRepository(dbName, "events", mongoClient)
 	analyticsRepo := repositories.NewUserAnalyticsRepository(dbName, "user_analytics", mongoClient)
-	historyRepo := repositories.NewUserActivityHistoryRepository(dbName, "user_activity_history", mongoClient)
 
 	// Create and return analytics service
-	return services.NewAnalyticsService(eventStoreRepo, analyticsRepo, historyRepo)
+	return services.NewAnalyticsService(eventStoreRepo, analyticsRepo)
 }
 
 func main() {

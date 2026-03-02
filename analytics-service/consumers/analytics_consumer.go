@@ -3,7 +3,6 @@ package consumers
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/vanjmali/spotlite/analytics-service/entities"
@@ -15,9 +14,9 @@ import (
 // AnalyticsService defines the interface for analytics business logic operations
 type AnalyticsService interface {
 	StoreEvent(ctx context.Context, event *entities.Event) error
-	ProjectSongPlayedEvent(ctx context.Context, userID, genreID, artistID string, timestamp time.Time) error
-	ProjectRatingEvent(ctx context.Context, userID string, eventType string, rating int, oldRating int, timestamp time.Time) error
-	ProjectSubscriptionEvent(ctx context.Context, userID string, eventType string, subscriptionType subscription.SubscriptionType, timestamp time.Time) error
+	ProjectSongPlayedEvent(ctx context.Context, userID, genreID, artistID string) error
+	ProjectRatingEvent(ctx context.Context, userID string, eventType string, rating int, oldRating int) error
+	ProjectSubscriptionEvent(ctx context.Context, userID string, eventType string, subscriptionType subscription.SubscriptionType) error
 }
 
 // AnalyticsConsumer handles events from NATS JetStream and projects them into read models
@@ -64,7 +63,6 @@ func (h *AnalyticsConsumer) HandleListenCreated(ctx context.Context, msg jetstre
 		p.UserID,
 		p.GenreID,
 		p.ArtistID,
-		p.CreatedAt,
 	); err != nil {
 		logging.Errorf(ctx, "failed to project listen event: %v", err)
 		return err
@@ -105,7 +103,6 @@ func (h *AnalyticsConsumer) HandleRatingCreated(ctx context.Context, msg jetstre
 		entities.EventTypeRatingCreated,
 		p.Rating,
 		0, // no old rating for created
-		p.CreatedAt,
 	); err != nil {
 		logging.Errorf(ctx, "failed to project rating created event: %v", err)
 		return err
@@ -146,7 +143,6 @@ func (h *AnalyticsConsumer) HandleRatingUpdated(ctx context.Context, msg jetstre
 		entities.EventTypeRatingUpdated,
 		p.Rating,
 		0, // no old rating in unified payload
-		p.CreatedAt,
 	); err != nil {
 		logging.Errorf(ctx, "failed to project rating updated event: %v", err)
 		return err
@@ -187,7 +183,6 @@ func (h *AnalyticsConsumer) HandleRatingDeleted(ctx context.Context, msg jetstre
 		entities.EventTypeRatingDeleted,
 		p.Rating,
 		0, // no old rating for deleted
-		p.CreatedAt,
 	); err != nil {
 		logging.Errorf(ctx, "failed to project rating deleted event: %v", err)
 		return err
@@ -239,7 +234,6 @@ func (h *AnalyticsConsumer) HandleSubscriptionCreated(ctx context.Context, msg j
 		p.UserID,
 		entities.EventTypeSubscriptionCreated,
 		subType,
-		p.CreatedAt,
 	); err != nil {
 		logging.Errorf(ctx, "failed to project subscription created event: %v", err)
 		return err
@@ -291,7 +285,6 @@ func (h *AnalyticsConsumer) HandleSubscriptionDeleted(ctx context.Context, msg j
 		p.UserID,
 		entities.EventTypeSubscriptionDeleted,
 		subType,
-		p.CreatedAt,
 	); err != nil {
 		logging.Errorf(ctx, "failed to project subscription deleted event: %v", err)
 		return err

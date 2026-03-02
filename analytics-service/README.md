@@ -23,7 +23,6 @@ The purpose of this service is to:
 <ul>
     <li>Track all user listening activities (song plays, ratings, subscriptions)</li>
   <li>Build analytics summaries (top artists, genre preferences)</li>
-    <li>Provide user activity timeline and history</li>
     <li>Support query-optimized read models for fast analytics retrieval</li>
     <li>Maintain immutable event log for audit trail and replay capability</li>
 </ul>
@@ -33,7 +32,7 @@ The purpose of this service is to:
 This service uses a **dual-model persistence strategy**:
 
 - **Write Model (Event Store)**: Immutable, append-only event log stored in MongoDB `events` collection. Every state change is persisted as an event.
-- **Read Model (Denormalized Collections)**: Optimized views for fast queries (`user_analytics`, `user_activity_history` collections)
+- **Read Model (Denormalized Collections)**: Optimized views for fast queries (`user_analytics` collection)
 - **Event Projection**: NATS JetStream consumers subscribe to events and asynchronously update read models
 - **Consistency Model**: Eventual consistency - events are immediately committed to the store, read models are updated asynchronously
 
@@ -148,29 +147,6 @@ Denormalized read model with aggregated user statistics
   <li>user_id (primary lookup key)</li>
 </ul>
 
-#### `user_activity_history` Collection
-
-Individual activity records for user activity timeline
-
-```json
-{
-  "_id": "ObjectID",
-  "user_id": "string",
-  "activities": [
-    {
-      "activity_type": "string (song_played, rating_created, etc)",
-      "timestamp": "timestamp"
-    }
-  ]
-}
-```
-
-**Indexes:**
-
-<ul>
-  <li>compound index on (user_id, activities.timestamp) for activity timeline queries</li>
-</ul>
-
 ## API Endpoints
 
 All endpoints require authentication via JWT token (Bearer token in Authorization header). The API Gateway routes requests to the analytics-service at `/api/analytics/*`.
@@ -225,65 +201,10 @@ GET /analytics/:userID
 - `404 Not Found` - Analytics not found for the specified user
 - `500 Internal Server Error` - Server-side error
 
-### Activity History
-
-#### Get User Activity History
-
-Retrieves the chronological activity timeline for a specific user showing recent listening, rating, and subscription events.
-
-```
-GET /activity-history/:userID
-```
-
-**Authentication:** Required (JWT Bearer token)
-
-**Path Parameters:**
-
-- `userID` (string, required) - The unique identifier of the user
-
-**Response (200 OK):**
-
-```json
-{
-  "user_id": "507f1f77bcf86cd799439011",
-  "activities": [
-    {
-      "activity_type": "song_played",
-      "timestamp": "2026-02-27T14:30:00Z"
-    },
-    {
-      "activity_type": "rating_created",
-      "timestamp": "2026-02-27T14:25:00Z"
-    },
-    {
-      "activity_type": "subscription_created",
-      "timestamp": "2026-02-27T14:20:00Z"
-    }
-  ]
-}
-```
-
-**Activity Types:**
-
-- `listen_created` - User listened to a song
-- `rating_created` - User created a new rating
-- `rating_updated` - User updated an existing rating
-- `rating_deleted` - User deleted a rating
-- `subscription_created` - User subscribed to an artist or genre
-- `subscription_deleted` - User unsubscribed from an artist or genre
-
-**Error Responses:**
-
-- `400 Bad Request` - Invalid userID format
-- `401 Unauthorized` - Missing or invalid authentication token
-- `404 Not Found` - Activity history not found for the specified user
-- `500 Internal Server Error` - Server-side error
-
 ### Notes
 
-- Both endpoints return denormalized read models optimized for fast retrieval
+- The analytics endpoint returns a denormalized read model optimized for fast retrieval
 - Analytics data is eventually consistent with the event store
-- Activity history is limited to the most recent 1000 activities per user
 - All timestamps are in ISO 8601 format (UTC)
 - The `songs_by_genre` map returns only genres with at least one play
 - The `top_artists` array is sorted by play count (descending) and limited to top 5 artists

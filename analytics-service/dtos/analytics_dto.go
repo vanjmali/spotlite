@@ -1,7 +1,5 @@
 package dtos
 
-import "time"
-
 // UserAnalyticsResponseDto represents the analytics summary for a user.
 // This mirrors the spec-required metrics for analytics (requirement 1.16).
 type UserAnalyticsResponseDto struct {
@@ -17,17 +15,4 @@ type UserAnalyticsResponseDto struct {
 type TopArtistDto struct {
 	ArtistID  string `json:"artist_id"`
 	PlayCount int    `json:"play_count"`
-}
-
-// UserActivityHistoryResponseDto represents the activity history for a user.
-// This mirrors the spec-required activity timeline (requirement 1.15).
-type UserActivityHistoryResponseDto struct {
-	UserID     string               `json:"user_id"`
-	Activities []ActivitySummaryDto `json:"activities"`
-}
-
-// ActivitySummaryDto represents a single activity item in a user's history.
-type ActivitySummaryDto struct {
-	ActivityType string    `json:"activity_type"`
-	Timestamp    time.Time `json:"timestamp"`
 }

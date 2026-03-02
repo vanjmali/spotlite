@@ -25,9 +25,5 @@ func HandleRequests(ah *handlers.AnalyticsHandler) http.Handler {
 		middlewares.RequireAuthenticated(http.HandlerFunc(ah.HandleGetUserAnalytics))).
 		Methods(http.MethodGet)
 
-	api.Handle("/activity-history/{userID}",
-		middlewares.RequireAuthenticated(http.HandlerFunc(ah.HandleGetActivityHistory))).
-		Methods(http.MethodGet)
-
 	return r
 }

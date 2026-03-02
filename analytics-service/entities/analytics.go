@@ -1,8 +1,6 @@
 package entities
 
 import (
-	"time"
-
 	"github.com/vanjmali/spotlite/common-lib/subscription"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -83,36 +81,6 @@ type ArtistPlayCount struct {
 	PlayCount int `bson:"play_count" json:"play_count"`
 }
 
-// UserActivityHistory represents the timeline of user activities.
-// This read model is optimized for displaying activity history (requirement 1.15).
-// It is updated by appending activity summaries when events are processed.
-//
-// Stored in MongoDB collection: user_activity_history
-// Updated by: ActivityHistoryProjectionService when processing events
-type UserActivityHistory struct {
-	// ID is the MongoDB document ID
-	ID primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-
-	// UserID is the unique identifier of the user
-	UserID string `bson:"user_id" json:"user_id" validate:"required"`
-
-	// Activities is the list of user activities sorted by timestamp (most recent first)
-	// Limited to last 1000 activities to prevent unbounded growth
-	Activities []ActivitySummary `bson:"activities" json:"activities"`
-}
-
-// ActivitySummary represents a single user activity in the timeline.
-// This is a denormalized view designed for display purposes.
-type ActivitySummary struct {
-	// ActivityType describes the type of activity
-	// Values: "song_played", "rating_created", "rating_updated", "rating_deleted",
-	//         "subscription_created", "subscription_deleted"
-	ActivityType string `bson:"activity_type" json:"activity_type"`
-
-	// Timestamp is when the activity occurred
-	Timestamp time.Time `bson:"timestamp" json:"timestamp"`
-}
-
 // NewUserAnalyticsReadModel creates a new analytics read model for a user
 func NewUserAnalyticsReadModel(userID string) *UserAnalyticsReadModel {
 	return &UserAnalyticsReadModel{
@@ -124,14 +92,6 @@ func NewUserAnalyticsReadModel(userID string) *UserAnalyticsReadModel {
 		SongsByGenre:           make(map[string]int),
 		TopArtists:             []ArtistPlayCount{},
 		SubscribedArtistsCount: 0,
-	}
-}
-
-// NewUserActivityHistory creates a new activity history for a user
-func NewUserActivityHistory(userID string) *UserActivityHistory {
-	return &UserActivityHistory{
-		UserID:     userID,
-		Activities: []ActivitySummary{},
 	}
 }
 
@@ -230,17 +190,5 @@ func (u *UserAnalyticsReadModel) sortAndLimitTopArtists() {
 	// Keep only top 5
 	if len(u.TopArtists) > 5 {
 		u.TopArtists = u.TopArtists[:5]
-	}
-}
-
-// AddActivity appends a new activity to the history
-// Maintains a maximum of 1000 activities (removes oldest if exceeded)
-func (h *UserActivityHistory) AddActivity(activity ActivitySummary) {
-	// Prepend (most recent first)
-	h.Activities = append([]ActivitySummary{activity}, h.Activities...)
-
-	// Limit to 1000 most recent activities
-	if len(h.Activities) > 1000 {
-		h.Activities = h.Activities[:1000]
 	}
 }

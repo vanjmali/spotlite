@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/vanjmali/spotlite/analytics-service/entities"
 	"github.com/vanjmali/spotlite/analytics-service/repositories"
@@ -14,9 +13,8 @@ import (
 )
 
 var (
-	ErrAnalyticsNotFound       = errors.New("user analytics not found")
-	ErrActivityHistoryNotFound = errors.New("user activity history not found")
-	ErrInvalidEvent            = errors.New("invalid event data")
+	ErrAnalyticsNotFound = errors.New("user analytics not found")
+	ErrInvalidEvent      = errors.New("invalid event data")
 )
 
 // EventStoreRepository defines the interface for event store persistence operations
@@ -30,20 +28,12 @@ type UserAnalyticsRepository interface {
 	GetUserAnalytics(ctx context.Context, userID string) (*entities.UserAnalyticsReadModel, error)
 }
 
-// UserActivityHistoryRepository defines the interface for user activity history read model operations
-type UserActivityHistoryRepository interface {
-	UpsertUserActivityHistory(ctx context.Context, history *entities.UserActivityHistory) error
-	AddActivityToHistory(ctx context.Context, userID string, activity entities.ActivitySummary) error
-	GetActivityHistory(ctx context.Context, userID string) (*entities.UserActivityHistory, error)
-}
-
 // AnalyticsService provides business logic for analytics and event sourcing operations.
 // It coordinates between the event store (write model) and read models (query models)
 // following the CQRS pattern.
 type AnalyticsService struct {
 	eventStoreRepo EventStoreRepository
 	analyticsRepo  UserAnalyticsRepository
-	historyRepo    UserActivityHistoryRepository
 	tracer         trace.Tracer
 }
 
@@ -51,12 +41,10 @@ type AnalyticsService struct {
 func NewAnalyticsService(
 	eventStoreRepo EventStoreRepository,
 	analyticsRepo UserAnalyticsRepository,
-	historyRepo UserActivityHistoryRepository,
 ) *AnalyticsService {
 	return &AnalyticsService{
 		eventStoreRepo: eventStoreRepo,
 		analyticsRepo:  analyticsRepo,
-		historyRepo:    historyRepo,
 		tracer:         otel.Tracer("analytics-service/analytics-service"),
 	}
 }
@@ -95,23 +83,6 @@ func (s *AnalyticsService) GetUserAnalytics(ctx context.Context, userID string) 
 	return analytics, nil
 }
 
-// GetUserActivityHistory retrieves the activity timeline for a specific user.
-// Returns the chronological list of user activities (most recent first).
-func (s *AnalyticsService) GetUserActivityHistory(ctx context.Context, userID string) (*entities.UserActivityHistory, error) {
-	ctx, span := s.tracer.Start(ctx, "AnalyticsService.GetUserActivityHistory")
-	defer span.End()
-
-	history, err := s.historyRepo.GetActivityHistory(ctx, userID)
-	if err != nil {
-		if errors.Is(err, repositories.ErrReadModelNotFound) {
-			return nil, ErrActivityHistoryNotFound
-		}
-		return nil, fmt.Errorf("failed to get user activity history: %w", err)
-	}
-
-	return history, nil
-}
-
 // GetOrCreateUserAnalytics retrieves existing analytics or creates a new empty aggregate.
 // Used by event projections to ensure analytics record exists before updating.
 func (s *AnalyticsService) GetOrCreateUserAnalytics(ctx context.Context, userID string) (*entities.UserAnalyticsReadModel, error) {
@@ -128,24 +99,6 @@ func (s *AnalyticsService) GetOrCreateUserAnalytics(ctx context.Context, userID 
 	}
 
 	return analytics, nil
-}
-
-// GetOrCreateUserActivityHistory retrieves existing history or creates a new empty record.
-// Used by event projections to ensure activity history record exists before appending.
-func (s *AnalyticsService) GetOrCreateUserActivityHistory(ctx context.Context, userID string) (*entities.UserActivityHistory, error) {
-	ctx, span := s.tracer.Start(ctx, "AnalyticsService.GetOrCreateUserActivityHistory")
-	defer span.End()
-
-	history, err := s.historyRepo.GetActivityHistory(ctx, userID)
-	if err != nil {
-		if errors.Is(err, repositories.ErrReadModelNotFound) {
-			// Create new activity history record
-			return entities.NewUserActivityHistory(userID), nil
-		}
-		return nil, fmt.Errorf("failed to get user activity history: %w", err)
-	}
-
-	return history, nil
 }
 
 // UpdateUserAnalytics persists updated analytics aggregate to the read model.
@@ -165,31 +118,13 @@ func (s *AnalyticsService) UpdateUserAnalytics(ctx context.Context, analytics *e
 	return nil
 }
 
-// UpdateUserActivityHistory persists updated activity history aggregate to the read model.
-// Used by event projections after appending new activities.
-func (s *AnalyticsService) UpdateUserActivityHistory(ctx context.Context, history *entities.UserActivityHistory) error {
-	ctx, span := s.tracer.Start(ctx, "AnalyticsService.UpdateUserActivityHistory")
-	defer span.End()
-
-	if history == nil {
-		return ErrInvalidEvent
-	}
-
-	if err := s.historyRepo.UpsertUserActivityHistory(ctx, history); err != nil {
-		return fmt.Errorf("failed to update user activity history: %w", err)
-	}
-
-	return nil
-}
-
 // ProjectSongPlayedEvent applies a song played event to read models.
-// Updates analytics (play counts, genre stats, top artists) and appends activity.
+// Updates analytics (play counts, genre stats, top artists).
 func (s *AnalyticsService) ProjectSongPlayedEvent(
 	ctx context.Context,
 	userID string,
 	genreID string,
 	artistID string,
-	timestamp time.Time,
 ) error {
 	ctx, span := s.tracer.Start(ctx, "AnalyticsService.ProjectSongPlayedEvent")
 	defer span.End()
@@ -208,25 +143,16 @@ func (s *AnalyticsService) ProjectSongPlayedEvent(
 		return err
 	}
 
-	// Append activity to history (atomic operation)
-	if err := s.historyRepo.AddActivityToHistory(ctx, userID, entities.ActivitySummary{
-		ActivityType: entities.EventTypeSongPlayed,
-		Timestamp:    timestamp,
-	}); err != nil {
-		return err
-	}
-
 	return nil
 }
 
 // ProjectSubscriptionEvent applies a subscription created/deleted event to read models.
-// Updates subscription counts and appends activity.
+// Updates subscription counts.
 func (s *AnalyticsService) ProjectSubscriptionEvent(
 	ctx context.Context,
 	userID string,
 	eventType string,
 	subscriptionType subscription.SubscriptionType,
-	timestamp time.Time,
 ) error {
 	ctx, span := s.tracer.Start(ctx, "AnalyticsService.ProjectSubscriptionEvent")
 	defer span.End()
@@ -249,26 +175,17 @@ func (s *AnalyticsService) ProjectSubscriptionEvent(
 		return err
 	}
 
-	// Append activity to history (atomic operation)
-	if err := s.historyRepo.AddActivityToHistory(ctx, userID, entities.ActivitySummary{
-		ActivityType: eventType,
-		Timestamp:    timestamp,
-	}); err != nil {
-		return err
-	}
-
 	return nil
 }
 
 // ProjectRatingEvent applies a rating event to read models.
-// Updates analytics (average rating) and appends activity to history.
+// Updates analytics (average rating).
 func (s *AnalyticsService) ProjectRatingEvent(
 	ctx context.Context,
 	userID string,
 	eventType string,
 	rating int,
 	oldRating int,
-	timestamp time.Time,
 ) error {
 	ctx, span := s.tracer.Start(ctx, "AnalyticsService.ProjectRatingEvent")
 	defer span.End()
@@ -291,14 +208,6 @@ func (s *AnalyticsService) ProjectRatingEvent(
 
 	// Persist updated analytics
 	if err := s.UpdateUserAnalytics(ctx, analytics); err != nil {
-		return err
-	}
-
-	// Append activity to history (atomic operation)
-	if err := s.historyRepo.AddActivityToHistory(ctx, userID, entities.ActivitySummary{
-		ActivityType: eventType,
-		Timestamp:    timestamp,
-	}); err != nil {
 		return err
 	}
 
