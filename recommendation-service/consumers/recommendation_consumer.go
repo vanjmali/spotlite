@@ -91,7 +91,7 @@ func (c *RecommendationConsumer) HandleGenreSubscription(ctx context.Context, ms
 		return nil
 	}
 
-	logging.Infof(ctx, "%s", p)
+	logging.Infof(ctx, "%+v", p)
 
 	if err := c.rs.CreateSubscription(p, ctx); err != nil {
 		logging.Errorf(ctx, "error: an error has occured while handling genre subscription event: %v", err)
@@ -168,7 +168,7 @@ func (c *RecommendationConsumer) HandleRatingUpdate(ctx context.Context, msg jet
 		return nil
 	}
 
-	logging.Infof(ctx, "%s", p)
+	logging.Infof(ctx, "%+v", p)
 
 	if err := c.rs.UpdateRating(p, ctx); err != nil {
 		logging.Errorf(ctx, "error: an error has occured while handling rating update event: %v", err)

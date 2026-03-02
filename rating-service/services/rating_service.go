@@ -466,14 +466,14 @@ func (s *RatingService) DeleteSongRatings(ctx context.Context, songIDStr string)
 
 	songID, err := primitive.ObjectIDFromHex(songIDStr)
 	if err != nil {
-		logging.Errorf(deleteCtx, "an error has occured while parsing song ID: ", err)
+		logging.Errorf(deleteCtx, "an error has occured while parsing song ID: %v", err)
 		deleteSpan.RecordError(err)
 		return ErrObjectIdCastFailed
 	}
 
 	_, err = s.rr.DeleteSongRatings(songID, deleteCtx)
 	if err != nil {
-		logging.Errorf(deleteCtx, "an error has occured while deleting song ratings: ", err)
+		logging.Errorf(deleteCtx, "an error has occured while deleting song ratings: %v", err)
 		deleteSpan.RecordError(err)
 		return err
 	}
