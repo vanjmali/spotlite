@@ -66,10 +66,14 @@ func (f *fakeUserAnalyticsRepo) GetUserAnalytics(ctx context.Context, userID str
 
 type fakeUserActivityHistoryRepo struct {
 	upsertFn     func(ctx context.Context, history *entities.UserActivityHistory) error
+	addFn        func(ctx context.Context, userID string, activity entities.ActivitySummary) error
 	getFn        func(ctx context.Context, userID string) (*entities.UserActivityHistory, error)
 	upsertCalled bool
+	addCalled    bool
 	getCalled    bool
 	lastHistory  *entities.UserActivityHistory
+	lastUserID   string
+	lastActivity entities.ActivitySummary
 	historyStore map[string]*entities.UserActivityHistory
 }
 
@@ -96,6 +100,16 @@ func (f *fakeUserActivityHistoryRepo) GetActivityHistory(ctx context.Context, us
 		}
 	}
 	return nil, repositories.ErrReadModelNotFound
+}
+
+func (f *fakeUserActivityHistoryRepo) AddActivityToHistory(ctx context.Context, userID string, activity entities.ActivitySummary) error {
+	f.addCalled = true
+	f.lastUserID = userID
+	f.lastActivity = activity
+	if f.addFn != nil {
+		return f.addFn(ctx, userID, activity)
+	}
+	return nil
 }
 
 // Test StoreEvent
