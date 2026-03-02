@@ -220,6 +220,36 @@ func (s *RatingService) DeleteRating(ratingID primitive.ObjectID, ctx context.Co
 
 	// TODO, add graph db sync event publishing
 
+	// Publish rating deleted event with retry for reliability
+	payload := events.RatingEventPayload{
+		UserID:    userID.Hex(),
+		SongID:    existing.SongID.Hex(),
+		SongTitle: "",
+		Rating:    existing.Value,
+		EventID:   primitive.NewObjectID().Hex(),
+		CreatedAt: existing.CreatedAt,
+	}
+
+	publishCtx, publishSpan := s.tr.Start(ctx, "rating.delete.publish")
+	defer publishSpan.End()
+	if s.jsc == nil {
+		return nil
+	}
+
+	err = retry.Do(
+		func() error {
+			return s.jsc.Publish(publishCtx, events.SUBJECT_RATING_DELETED, payload)
+		},
+		retry.Attempts(3),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.Context(publishCtx),
+	)
+	if err != nil {
+		publishSpan.RecordError(err)
+		logging.Errorf(publishCtx, "failed to publish rating deleted event: %v", err)
+	}
+
 	return nil
 }
 
@@ -347,6 +377,12 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 		return nil, err
 	}
 
+	songId := rating.SongID.Hex()
+	songTitle, err := s.gcc.GetSong(ctx, songId)
+	if err != nil {
+		return nil, err
+	}
+
 	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -355,8 +391,9 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 
 	payload := events.RatingEventPayload{
 		UserID:    rating.UserID.Hex(),
-		SongID:    rating.SongID.Hex(),
-		Rating:    *dto.Value,
+		SongID:    songId,
+		SongTitle: songTitle,
+		Rating:    rating.Value,
 		EventID:   primitive.NewObjectID().Hex(),
 		CreatedAt: rating.CreatedAt,
 	}

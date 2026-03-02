@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: spotlite
+resources:
+  - namespace.yaml
+  - platform/ingress-traefik.yaml
+  - deps/nats.yaml
+  - deps/user-mongodb.yaml
+  - deps/user-redis.yaml
+  - deps/content-mongodb.yaml
+  - deps/content-redis.yaml
+  - deps/content-hdfs.yaml
+  - deps/notification-cassandra.yaml
+  - deps/notification-redis.yaml
+  - deps/subscription-mongodb.yaml
+  - deps/rating-mongodb.yaml
+  - deps/recommendation-neo4j.yaml
+  - services/user-service.yaml
+  - services/content-service.yaml
+  - services/notification-service.yaml
+  - services/subscription-service.yaml
+  - services/rating-service.yaml
+  - services/recommendation-service.yaml
+  - services/frontend.yaml
