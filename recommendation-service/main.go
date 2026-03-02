@@ -193,7 +193,7 @@ var (
 			startConsumer(
 				events.SUBSCRIPTIONS_STREAM,
 				events.SUBJECT_SUBSCRIPTION_CREATED,
-				events.SUBSCRIPTION_CREATED_SUBSCRIBE_DURABLE,
+				events.SUBSCRIPTION_CREATED_RECCOMENDATION_DURABLE,
 				"subscription created",
 				c.HandleSubscriptionCreated,
 			)
