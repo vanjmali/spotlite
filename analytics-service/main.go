@@ -24,10 +24,16 @@ import (
 )
 
 var (
-	rootCACertFilePath = utils.MustGetEnv("ROOT_CERT_PATH")
-	certFilePath       = utils.MustGetEnv("CERT_PATH")
-	keyFilePath        = utils.MustGetEnv("KEY_PATH")
-	config             = server.ServerRunConfiguration{
+	analyticsListenDurable              = "ANALYTICS_LISTEN_PROCESSOR"
+	analyticsRatingCreatedDurable       = "ANALYTICS_RATING_CREATED_PROCESSOR"
+	analyticsRatingUpdatedDurable       = "ANALYTICS_RATING_UPDATED_PROCESSOR"
+	analyticsRatingDeletedDurable       = "ANALYTICS_RATING_DELETED_PROCESSOR"
+	analyticsSubscriptionCreatedDurable = "ANALYTICS_SUBSCRIPTION_CREATED_PROCESSOR"
+	analyticsSubscriptionDeletedDurable = "ANALYTICS_SUBSCRIPTION_DELETED_PROCESSOR"
+	rootCACertFilePath                  = utils.MustGetEnv("ROOT_CERT_PATH")
+	certFilePath                        = utils.MustGetEnv("CERT_PATH")
+	keyFilePath                         = utils.MustGetEnv("KEY_PATH")
+	config                              = server.ServerRunConfiguration{
 		TelemetryName: "analytics-service",
 		Port:          utils.GetEnv("APP_PORT", "3000"),
 		ConfigureValidation: func(v *validator.Validate) error {
@@ -105,37 +111,37 @@ var (
 				{
 					Stream:  events.LISTENS_STREAM,
 					Subject: events.SUBJECT_LISTEN_CREATED,
-					Durable: events.LISTEN_DURABLE,
+					Durable: analyticsListenDurable,
 					Handler: c.HandleListenCreated,
 				},
 				{
 					Stream:  events.RATINGS_STREAM,
 					Subject: events.SUBJECT_RATING_CREATED,
-					Durable: events.RATING_CREATED_DURABLE,
+					Durable: analyticsRatingCreatedDurable,
 					Handler: c.HandleRatingCreated,
 				},
 				{
 					Stream:  events.RATINGS_STREAM,
 					Subject: events.SUBJECT_RATING_UPDATED,
-					Durable: events.RATING_UPDATED_DURABLE,
+					Durable: analyticsRatingUpdatedDurable,
 					Handler: c.HandleRatingUpdated,
 				},
 				{
 					Stream:  events.RATINGS_STREAM,
 					Subject: events.SUBJECT_RATING_DELETED,
-					Durable: events.RATING_DELETED_DURABLE,
+					Durable: analyticsRatingDeletedDurable,
 					Handler: c.HandleRatingDeleted,
 				},
 				{
 					Stream:  events.SUBSCRIPTIONS_STREAM,
 					Subject: events.SUBJECT_SUBSCRIPTION_CREATED,
-					Durable: events.SUBSCRIPTION_CREATED_DURABLE,
+					Durable: analyticsSubscriptionCreatedDurable,
 					Handler: c.HandleSubscriptionCreated,
 				},
 				{
 					Stream:  events.SUBSCRIPTIONS_STREAM,
 					Subject: events.SUBJECT_SUBSCRIPTION_DELETED,
-					Durable: events.SUBSCRIPTION_DELETED_DURABLE,
+					Durable: analyticsSubscriptionDeletedDurable,
 					Handler: c.HandleSubscriptionDeleted,
 				},
 			}
