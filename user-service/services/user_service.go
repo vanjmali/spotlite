@@ -41,6 +41,7 @@ var (
 	ErrTooFrequentPasswordChange = errors.New("password changed too frequently")
 	ErrObjectIdCastFailed        = errors.New("failed to convert hex to objectId")
 	ErrVerificationRequired      = errors.New("verification required")
+	loginOtpTTL                  = time.Duration(utils.GetPositiveIntEnv("APP_LOGIN_OTP_TTL_MINUTES", 5)) * time.Minute
 )
 
 // UserRepository defines the persistence methods required by UserService.
@@ -402,8 +403,7 @@ func (s *UserService) sendLoginOtpToUser(ctx context.Context, user *entities.Use
 
 	otpHash, _ := bcrypt.GenerateFromPassword([]byte(otp), bcrypt.DefaultCost)
 
-	// TODO: make time NOT be hardcoded
-	if err := s.r.SetLoginOtp(ctx, user.ID, string(otpHash), s.c.Now().Add(5*time.Minute)); err != nil {
+	if err := s.r.SetLoginOtp(ctx, user.ID, string(otpHash), s.c.Now().Add(loginOtpTTL)); err != nil {
 		span.RecordError(err)
 		return err
 	}

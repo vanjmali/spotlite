@@ -110,6 +110,11 @@ spec:
                 secretKeyRef:
                   name: spotlite-app-secrets
                   key: APP_LOGIN_OTP_TTL_MINUTES
+            - name: USER_ASYNQ_SCHEDULE
+              valueFrom:
+                secretKeyRef:
+                  name: spotlite-app-secrets
+                  key: USER_ASYNQ_SCHEDULE
             - name: APP_REFRESH_COOKIE_NAME
               valueFrom:
                 secretKeyRef:
