@@ -24,6 +24,7 @@ var (
 type GraphRelationRepository interface {
 	SaveSongWithGenres(ctx context.Context, sn entities.SongNode) error
 	CreateGenreSubscription(ctx context.Context, gs entities.GenreSubscription) error
+	CreateArtistSubscription(ctx context.Context, as entities.ArtistSubscription) error
 	CreateRating(ctx context.Context, sr entities.SongRating) error
 	UpdateSongWithGenres(ctx context.Context, sn entities.SongNode) error
 	UpdateGenre(ctx context.Context, gn entities.GenreNode) error
@@ -36,6 +37,10 @@ type GenreNodeRepository interface {
 	Create(ctx context.Context, genre entities.GenreNode) error
 }
 
+type ArtistNodeRepository interface {
+	Create(ctx context.Context, artist entities.ArtistNode) error
+}
+
 type UserNodeRepository interface {
 	Create(ctx context.Context, user entities.UserNode) error
 }
@@ -43,11 +48,13 @@ type UserNodeRepository interface {
 func NewServices(
 	ur UserNodeRepository,
 	gr GenreNodeRepository,
+	ar ArtistNodeRepository,
 	rr GraphRelationRepository,
 ) *Repositories {
 	return &Repositories{
 		ur: ur,
 		gr: gr,
+		ar: ar,
 		rr: rr,
 	}
 }
@@ -55,6 +62,7 @@ func NewServices(
 type Repositories struct {
 	ur UserNodeRepository
 	gr GenreNodeRepository
+	ar ArtistNodeRepository
 	rr GraphRelationRepository
 }
 
@@ -102,6 +110,26 @@ func (rs *RecommendationService) CreateGenre(g events.GenreCreationPayload, ctx 
 	return nil
 }
 
+func (rs *RecommendationService) CreateArtist(e events.EntityCreatedEventPayload, ctx context.Context) error {
+	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.artist.create")
+	defer createSpan.End()
+
+	if e.EntityType != events.ArtistType {
+		return nil
+	}
+
+	an := entities.ArtistNode{ArtistID: e.EntityID, Name: e.EntityName}
+
+	err := rs.r.ar.Create(createCtx, an)
+	if err != nil {
+		createSpan.RecordError(err)
+		logging.Errorf(createCtx, "critical: an error has occured while creating artist: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 func (rs *RecommendationService) CreateSong(e events.SongCreationPayload, ctx context.Context) error {
 	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.song.create")
 	defer createSpan.End()
@@ -129,6 +157,35 @@ func (rs *RecommendationService) CreateSubscription(e events.GenreSubscriptionEv
 		createSpan.RecordError(err)
 		logging.Errorf(createCtx, "critical: an error has occured while creating subscription relationship: %v", err)
 		return err
+	}
+
+	return nil
+}
+
+func (rs *RecommendationService) CreateSubscriptionFromEvent(e events.SubscriptionEventPayload, ctx context.Context) error {
+	createCtx, createSpan := rs.tr.Start(ctx, "recommendation.subscription.create_from_event")
+	defer createSpan.End()
+
+	// Handle both GENRE and ARTIST subscription types
+	switch e.EntityType {
+	case events.SubscriptionEntityGenre:
+		gs := entities.GenreSubscription{GenreID: e.EntityID, UserID: e.UserID}
+		err := rs.r.rr.CreateGenreSubscription(createCtx, gs)
+		if err != nil {
+			createSpan.RecordError(err)
+			logging.Errorf(createCtx, "critical: an error has occured while creating genre subscription relationship: %v", err)
+			return err
+		}
+	case events.SubscriptionEntityArtist:
+		as := entities.ArtistSubscription{ArtistID: e.EntityID, UserID: e.UserID}
+		err := rs.r.rr.CreateArtistSubscription(createCtx, as)
+		if err != nil {
+			createSpan.RecordError(err)
+			logging.Errorf(createCtx, "critical: an error has occured while creating artist subscription relationship: %v", err)
+			return err
+		}
+	default:
+		logging.Warnf(createCtx, "unknown subscription entity type: %s", e.EntityType)
 	}
 
 	return nil

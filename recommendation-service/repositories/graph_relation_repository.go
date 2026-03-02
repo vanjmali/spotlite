@@ -167,6 +167,31 @@ func (r *GraphRelationRepository) CreateGenreSubscription(ctx context.Context, g
 	return err
 }
 
+// CreateArtistSubscription creates a SUBSCRIBED_TO relationship between a user and an artist.
+func (r *GraphRelationRepository) CreateArtistSubscription(ctx context.Context, as entities.ArtistSubscription) error {
+	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close(ctx)
+
+	_, err := session.ExecuteWrite(ctx, func(tx neo4j.ManagedTransaction) (any, error) {
+		result, err := tx.Run(
+			ctx,
+			`MATCH (u:User {user_id: $userId}), (a:Artist {artist_id: $artistId})
+             MERGE (u)-[:SUBSCRIBED_TO]->(a)`,
+			map[string]any{
+				"userId":   as.UserID,
+				"artistId": as.ArtistID,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		return result.Consume(ctx)
+	})
+
+	return err
+}
+
 func (r *GraphRelationRepository) CreateRating(ctx context.Context, sr entities.SongRating) error {
 	session := r.Driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close(ctx)
@@ -459,7 +484,6 @@ func (r *GraphRelationRepository) UpdateRating(ctx context.Context, songID strin
 		}
 
 		if summary.Counters().PropertiesSet() == 0 && summary.Counters().RelationshipsCreated() == 0 {
-
 			logging.Warnf(ctx, "Neo4j update had no effect. User %s or Song %s might be missing.", userID, songID)
 		}
 

@@ -78,8 +78,26 @@ var (
 				return h, shutdown, err
 			}
 
-			ur, gr, rr := createRepositories(dbc)
-			_, rs := createServices(ur, gr, rr)
+			if err = jsc.EnsureStream(
+				ctx,
+				events.SUBSCRIPTIONS_STREAM,
+				[]string{events.SUBJECT_SUBSCRIPTION_CREATED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure subscriptions stream: %w", err)
+				return h, shutdown, err
+			}
+
+			if err = jsc.EnsureStream(
+				ctx,
+				events.CONTENT_STREAM,
+				[]string{events.SUBJECT_ENTITY_CREATED, events.SUBJECT_ENTITY_UPDATED},
+			); err != nil {
+				err = fmt.Errorf("failed to ensure content stream: %w", err)
+				return h, shutdown, err
+			}
+
+			ur, gr, ar, rr := createRepositories(dbc)
+			_, rs := createServices(ur, gr, ar, rr)
 			h = createHandlers(rs)
 			c := createConsumers(rs)
 
@@ -172,6 +190,22 @@ var (
 				c.HandleUserRegistration,
 			)
 
+			startConsumer(
+				events.SUBSCRIPTIONS_STREAM,
+				events.SUBJECT_SUBSCRIPTION_CREATED,
+				events.SUBSCRIPTION_CREATED_SUBSCRIBE_DURABLE,
+				"subscription created",
+				c.HandleSubscriptionCreated,
+			)
+
+			startConsumer(
+				events.CONTENT_STREAM,
+				events.SUBJECT_ENTITY_CREATED,
+				"ENTITY_CREATED_RECOMMENDATION",
+				"entity created",
+				c.HandleEntityCreated,
+			)
+
 			shutdown = func() error {
 				var errs []error
 
@@ -225,6 +259,7 @@ func ensureConstraints(ctx context.Context, d neo4j.DriverWithContext) error {
 		"CREATE CONSTRAINT user_id_unique IF NOT EXISTS FOR (u:User) REQUIRE u.user_id IS UNIQUE",
 		"CREATE CONSTRAINT genre_id_unique IF NOT EXISTS FOR (g:Genre) REQUIRE g.genre_id IS UNIQUE",
 		"CREATE CONSTRAINT song_id_unique IF NOT EXISTS FOR (s:Song) REQUIRE s.song_id IS UNIQUE",
+		"CREATE CONSTRAINT artist_id_unique IF NOT EXISTS FOR (a:Artist) REQUIRE a.artist_id IS UNIQUE",
 	}
 
 	for _, query := range queries {
@@ -269,21 +304,24 @@ func createClients() (neo4j.DriverWithContext, *events.JetStreamClient, error) {
 func createRepositories(driver neo4j.DriverWithContext) (
 	*repositories.UserNodeRepository,
 	*repositories.GenreNodeRepository,
+	*repositories.ArtistNodeRepository,
 	*repositories.GraphRelationRepository,
 ) {
 	ur := repositories.NewUserNodeRepository(driver)
 	gr := repositories.NewGenreNodeRepository(driver)
+	ar := repositories.NewArtistNodeRepository(driver)
 	rr := repositories.NewGraphRelationRepository(driver)
 
-	return ur, gr, rr
+	return ur, gr, ar, rr
 }
 
 func createServices(
 	ur *repositories.UserNodeRepository,
 	gr *repositories.GenreNodeRepository,
+	ar *repositories.ArtistNodeRepository,
 	rr *repositories.GraphRelationRepository,
 ) (*services.Repositories, *services.RecommendationService) {
-	baseServices := services.NewServices(ur, gr, rr)
+	baseServices := services.NewServices(ur, gr, ar, rr)
 	recommendationService := services.NewRecommendationService(baseServices)
 	return baseServices, recommendationService
 }

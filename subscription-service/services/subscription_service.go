@@ -124,7 +124,7 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 	defer span.End()
 
 	entityName, err := s.cb.Execute(func() (any, error) {
-		entityCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+		entityCtx, cancel := context.WithTimeout(ctx, 4*time.Second)
 		defer cancel()
 
 		entityExistenceCtx, entityExistenceSpan := s.tr.Start(entityCtx, "subscription.subscribe.entity_exists")
@@ -132,6 +132,7 @@ func (s *SubscriptionService) Subscribe(req *dtos.CreateSubscriptionDto, ctx con
 
 		name, err := s.gcc.GetEntity(entityExistenceCtx, req.EntityID, req.Type)
 		if err != nil {
+			logging.Errorf(entityExistenceCtx, "failed to get entity from gRPC: %v", err)
 			return nil, err
 		}
 		return name, nil
