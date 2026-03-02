@@ -11,9 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var (
-	ErrReadModelNotFound = errors.New("read model not found")
-)
+var ErrReadModelNotFound = errors.New("read model not found")
 
 // UserAnalyticsRepository provides data access helpers for CQRS read models.
 // It persists denormalized analytics aggregates for efficient queries.

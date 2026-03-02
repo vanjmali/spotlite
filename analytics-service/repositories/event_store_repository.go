@@ -11,9 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var (
-	ErrInvalidEvent = errors.New("invalid event data")
-)
+var ErrInvalidEvent = errors.New("invalid event data")
 
 // EventStoreRepository provides data access helpers for immutable event log.
 // It implements the write model of the Event Sourcing pattern, persisting all domain events

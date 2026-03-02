@@ -125,7 +125,6 @@ func (u *UserAnalyticsReadModel) AddSongPlayed(genreID, artistID string) {
 		// Sort and keep top 5 artists
 		u.sortAndLimitTopArtists()
 	}
-
 }
 
 // AddSubscription updates subscription counts
