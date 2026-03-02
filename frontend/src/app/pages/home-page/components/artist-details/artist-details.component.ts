@@ -1,4 +1,5 @@
-import { Component, computed, inject, signal, effect } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal, effect } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -10,7 +11,7 @@ import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 import { MessageComponent } from '@app/shared/components/message';
 import { AuthService } from '@app/services/auth.service';
 import { SubscriptionService } from '@app/services/subscription.service';
-import { EMPTY, catchError, finalize, map, of } from 'rxjs';
+import { EMPTY, catchError, distinctUntilChanged, finalize, map, of } from 'rxjs';
 
 @Component({
   selector: 'app-artist-details',
@@ -28,6 +29,7 @@ import { EMPTY, catchError, finalize, map, of } from 'rxjs';
 })
 export class ArtistDetailsComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly router = inject(Router);
   private readonly artistService = inject(ArtistService);
   private readonly albumService = inject(AlbumService);
@@ -50,15 +52,22 @@ export class ArtistDetailsComponent {
   );
 
   constructor() {
-    effect(() => {
-      const artistId = this.route.snapshot.paramMap.get('id');
-      if (artistId) {
+    this.route.paramMap
+      .pipe(
+        map((params) => params.get('id') ?? ''),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((artistId) => {
+        if (!artistId) {
+          return;
+        }
+
         this.artistIdSg.set(artistId);
         this.loadArtist(artistId);
         this.loadAlbums(artistId);
         this.loadSubscriptionState(artistId);
-      }
-    });
+      });
 
     effect(() => {
       const artistId = this.artistIdSg();

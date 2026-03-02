@@ -1,4 +1,5 @@
-import { Component, computed, inject, signal, effect } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,6 +10,7 @@ import { PlaybackService } from '@app/services/playback.service';
 import { CoverArtComponent } from '@app/shared/components/cover-art/cover-art';
 import { MessageComponent } from '@app/shared/components/message';
 import { SongTrailingMetaComponent } from '@app/shared/components/song-trailing-meta/song-trailing-meta';
+import { distinctUntilChanged, map } from 'rxjs';
 
 @Component({
   selector: 'app-album-details',
@@ -27,6 +29,7 @@ import { SongTrailingMetaComponent } from '@app/shared/components/song-trailing-
 })
 export class AlbumDetailsComponent {
   private readonly route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly albumService = inject(AlbumService);
   readonly playback = inject(PlaybackService);
 
@@ -36,12 +39,18 @@ export class AlbumDetailsComponent {
   readonly activeSongIdSg = computed(() => this.playback.currentTrackSg()?.id ?? '');
 
   constructor() {
-    effect(() => {
-      const albumId = this.route.snapshot.paramMap.get('id');
-      if (albumId) {
+    this.route.paramMap
+      .pipe(
+        map((params) => params.get('id') ?? ''),
+        distinctUntilChanged(),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe((albumId) => {
+        if (!albumId) {
+          return;
+        }
         this.loadAlbum(albumId);
-      }
-    });
+      });
   }
 
   private loadAlbum(albumId: string): void {
