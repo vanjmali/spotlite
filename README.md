@@ -3,6 +3,9 @@
 A simple clone of Spotify, a music streaming platform built using Go microservices with an Angular frontend.
 For education purposes only.
 
+<img width="1598" height="1048" alt="image" src="https://github.com/user-attachments/assets/074df975-4279-475f-b318-1a307395cce4" />
+
+
 ## Structure
 
 - `frontend` – Angular web client for browsing, playback, and user features.
