@@ -221,7 +221,9 @@ export class ArtistsListComponent {
     return currentTrack?.albumId === album.id && this.playback.isPlayingSg();
   }
 
-  private async resolveRecommendedSong(songId: string): Promise<{ song: Song; album: Album } | null> {
+  private async resolveRecommendedSong(
+    songId: string
+  ): Promise<{ song: Song; album: Album } | null> {
     const loadedMatch = this.findSongInAlbums(songId, this.recommendedAlbumsSg());
     if (loadedMatch) {
       return loadedMatch;
