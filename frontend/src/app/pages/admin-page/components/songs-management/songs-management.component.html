@@ -69,6 +69,15 @@
               >
                 <mat-icon>edit</mat-icon>
               </button>
+              <button
+                class="item-table__btn-action item-table__btn-delete"
+                (click)="$event.stopPropagation(); onDelete(song)"
+                title="Delete song"
+                matTooltip="Delete"
+                [disabled]="isDeletingSg()"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
             </td>
           </tr>
         }

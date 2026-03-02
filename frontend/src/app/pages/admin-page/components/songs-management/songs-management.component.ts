@@ -28,6 +28,7 @@ export class SongsManagementComponent {
 
   readonly songsSg = signal<Song[]>([]);
   readonly isLoadingSg = signal(false);
+  readonly isDeletingSg = signal(false);
   readonly currentPageSg = signal(1);
   readonly pageSizeSg = signal(10);
   readonly totalSg = signal(0);
@@ -78,6 +79,32 @@ export class SongsManagementComponent {
   onPageSizeChange(size: number): void {
     this.pageSizeSg.set(size);
     this.currentPageSg.set(1);
+  }
+
+  onDelete(song: Song): void {
+    if (this.isDeletingSg()) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete song "${song.title}"?\n\nThis sends a delete request and removes the song asynchronously.`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    this.isDeletingSg.set(true);
+    this.songService.deleteSong(song.id).subscribe({
+      next: () => {
+        this.songsSg.set(this.songsSg().filter((s) => s.id !== song.id));
+        this.totalSg.set(Math.max(0, this.totalSg() - 1));
+        this.isDeletingSg.set(false);
+      },
+      error: (error) => {
+        console.error('Failed to delete song:', error);
+        this.isDeletingSg.set(false);
+      },
+    });
   }
 
   formatDuration(seconds: number): string {
