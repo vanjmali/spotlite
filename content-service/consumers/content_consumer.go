@@ -3,6 +3,7 @@ package consumers
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/vanjmali/spotlite/common-lib/events"
@@ -28,6 +29,10 @@ func (c *ContentConsumer) HandleSongDelete(ctx context.Context, msg jetstream.Ms
 	}
 
 	if err := c.ss.DeleteSong(ctx, p.SongID); err != nil {
+		if errors.Is(err, services.ErrSongNotFound) {
+			logging.Warnf(ctx, "song %s already deleted; acknowledging duplicate delete event", p.SongID)
+			return nil
+		}
 		logging.Errorf(ctx, "error: an error has occured while handling delete song event: %v", err)
 		return err
 	}

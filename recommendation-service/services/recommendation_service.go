@@ -8,6 +8,7 @@ import (
 	"github.com/vanjmali/spotlite/common-lib/logging"
 	"github.com/vanjmali/spotlite/common-lib/middlewares"
 	"github.com/vanjmali/spotlite/recommendation-service/entities"
+	"github.com/vanjmali/spotlite/recommendation-service/repositories"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/trace"
@@ -284,6 +285,10 @@ func (rs *RecommendationService) DeleteSong(e events.SongDeletePayload, ctx cont
 
 	err := rs.r.rr.DeleteSong(recCtx, e.SongID)
 	if err != nil {
+		if errors.Is(err, repositories.ErrSongNotFound) {
+			logging.Warnf(recCtx, "song %s already deleted; skipping duplicate delete event", e.SongID)
+			return nil
+		}
 		return err
 	}
 
