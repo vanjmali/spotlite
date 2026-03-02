@@ -140,6 +140,10 @@ func (s *RatingService) CreateRating(req *dtos.CreateRatingDto, ctx context.Cont
 		CreatedAt: ratingEntity.CreatedAt,
 	}
 
+	if s.jsc == nil {
+		return nil
+	}
+
 	err = retry.Do(
 		func() error {
 			return s.jsc.Publish(eventCtx, events.SUBJECT_RATING_CREATED, payload)
@@ -355,6 +359,10 @@ func (s *RatingService) UpdateRating(ctx context.Context, ratingIdStr string, dt
 		Rating:    *dto.Value,
 		EventID:   primitive.NewObjectID().Hex(),
 		CreatedAt: rating.CreatedAt,
+	}
+
+	if s.jsc == nil {
+		return rating, nil
 	}
 
 	err = retry.Do(
