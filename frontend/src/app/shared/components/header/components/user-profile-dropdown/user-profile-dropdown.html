@@ -157,26 +157,32 @@
             <div class="user-profile__analytics-section">
               <article class="user-profile__analytics-stat">
                 <span class="user-profile__analytics-label">Total songs played</span>
-                <strong class="user-profile__analytics-value">{{
-                  analyticsSg()!.total_songs_played
-                }}</strong>
+                <strong class="user-profile__analytics-value">
+                  <mat-icon aria-hidden="true">headphones</mat-icon>
+                  {{ analyticsSg()!.total_songs_played }}
+                </strong>
               </article>
               <article class="user-profile__analytics-stat">
                 <span class="user-profile__analytics-label">Average rating</span>
-                <strong class="user-profile__analytics-value">{{
-                  analyticsSg()!.average_rating.toFixed(1)
-                }}</strong>
+                <strong class="user-profile__analytics-value">
+                  <mat-icon aria-hidden="true">star</mat-icon>
+                  {{ analyticsSg()!.average_rating.toFixed(1) }}
+                </strong>
               </article>
               <article class="user-profile__analytics-stat">
                 <span class="user-profile__analytics-label">Subscribed artists</span>
-                <strong class="user-profile__analytics-value">{{
-                  analyticsSg()!.subscribed_artists_count
-                }}</strong>
+                <strong class="user-profile__analytics-value">
+                  <mat-icon aria-hidden="true">person_add</mat-icon>
+                  {{ analyticsSg()!.subscribed_artists_count }}
+                </strong>
               </article>
             </div>
 
             <div class="user-profile__analytics-subsection">
-              <p class="user-profile__analytics-title">Songs by genre</p>
+              <p class="user-profile__analytics-title">
+                <mat-icon aria-hidden="true">category</mat-icon>
+                Songs by genre
+              </p>
               @if (songsByGenreEntriesSg().length === 0) {
                 <p class="user-profile__empty user-profile__empty--compact">No genre plays yet.</p>
               } @else {
@@ -186,15 +192,24 @@
                     class="user-profile__analytics-row"
                     (click)="openGenre(entry.genreId)"
                   >
-                    <span class="user-profile__analytics-name">{{ entry.name }}</span>
-                    <strong class="user-profile__analytics-count">{{ entry.playCount }}</strong>
+                    <span class="user-profile__analytics-name">
+                      <mat-icon aria-hidden="true">sell</mat-icon>
+                      {{ entry.name }}
+                    </span>
+                    <span class="user-profile__analytics-row-side">
+                      <strong class="user-profile__analytics-count">{{ entry.playCount }}</strong>
+                      <mat-icon aria-hidden="true">chevron_right</mat-icon>
+                    </span>
                   </button>
                 }
               }
             </div>
 
             <div class="user-profile__analytics-subsection">
-              <p class="user-profile__analytics-title">Top artists</p>
+              <p class="user-profile__analytics-title">
+                <mat-icon aria-hidden="true">mic</mat-icon>
+                Top artists
+              </p>
               @if (topArtistEntriesSg().length === 0) {
                 <p class="user-profile__empty user-profile__empty--compact">No artist plays yet.</p>
               } @else {
@@ -204,8 +219,14 @@
                     class="user-profile__analytics-row"
                     (click)="openArtist(entry.artistId)"
                   >
-                    <span class="user-profile__analytics-name">{{ entry.name }}</span>
-                    <strong class="user-profile__analytics-count">{{ entry.playCount }}</strong>
+                    <span class="user-profile__analytics-name">
+                      <mat-icon aria-hidden="true">person</mat-icon>
+                      {{ entry.name }}
+                    </span>
+                    <span class="user-profile__analytics-row-side">
+                      <strong class="user-profile__analytics-count">{{ entry.playCount }}</strong>
+                      <mat-icon aria-hidden="true">chevron_right</mat-icon>
+                    </span>
                   </button>
                 }
               }
