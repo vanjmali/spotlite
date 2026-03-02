@@ -61,24 +61,14 @@ type UserAnalyticsReadModel struct {
 	// Updated on: EventTypeSongPlayed
 	SongsByGenre map[string]int `bson:"songs_by_genre" json:"songs_by_genre"`
 
-	// TopArtists contains the top artists the user has listened to
-	// Sorted by play count (descending), limited to top 5
+	// TopArtists stores artist play counts
+	// Key: artist ID, Value: play count
 	// Updated on: EventTypeSongPlayed
-	TopArtists []ArtistPlayCount `bson:"top_artists" json:"top_artists"`
+	TopArtists map[string]int `bson:"top_artists" json:"top_artists"`
 
 	// SubscribedArtistsCount is the number of artists the user is subscribed to
 	// Updated on: EventTypeSubscriptionCreated, EventTypeSubscriptionDeleted
 	SubscribedArtistsCount int `bson:"subscribed_artists_count" json:"subscribed_artists_count"`
-}
-
-// ArtistPlayCount represents the play count for a specific artist
-// Used in TopArtists slice to track most listened artists
-type ArtistPlayCount struct {
-	// ArtistID is the unique identifier of the artist
-	ArtistID string `bson:"artist_id" json:"artist_id"`
-
-	// PlayCount is how many times the user has listened to songs by this artist
-	PlayCount int `bson:"play_count" json:"play_count"`
 }
 
 // NewUserAnalyticsReadModel creates a new analytics read model for a user
@@ -90,7 +80,7 @@ func NewUserAnalyticsReadModel(userID string) *UserAnalyticsReadModel {
 		RatingSum:              0,
 		RatingsCount:           0,
 		SongsByGenre:           make(map[string]int),
-		TopArtists:             []ArtistPlayCount{},
+		TopArtists:             make(map[string]int),
 		SubscribedArtistsCount: 0,
 	}
 }
@@ -107,23 +97,10 @@ func (u *UserAnalyticsReadModel) AddSongPlayed(genreID, artistID string) {
 
 	// Update artist play count
 	if artistID != "" {
-		updated := false
-		for i := range u.TopArtists {
-			if u.TopArtists[i].ArtistID == artistID {
-				u.TopArtists[i].PlayCount++
-				updated = true
-				break
-			}
+		if u.TopArtists == nil {
+			u.TopArtists = make(map[string]int)
 		}
-		if !updated {
-			u.TopArtists = append(u.TopArtists, ArtistPlayCount{
-				ArtistID:  artistID,
-				PlayCount: 1,
-			})
-		}
-
-		// Sort and keep top 5 artists
-		u.sortAndLimitTopArtists()
+		u.TopArtists[artistID]++
 	}
 }
 
@@ -172,22 +149,5 @@ func (u *UserAnalyticsReadModel) calculateAverageRating() {
 		u.AverageRating = 0.0
 	} else {
 		u.AverageRating = float64(u.RatingSum) / float64(u.RatingsCount)
-	}
-}
-
-// sortAndLimitTopArtists sorts artists by play count and keeps only top 5
-func (u *UserAnalyticsReadModel) sortAndLimitTopArtists() {
-	// Simple bubble sort (sufficient for small arrays)
-	for i := 0; i < len(u.TopArtists); i++ {
-		for j := i + 1; j < len(u.TopArtists); j++ {
-			if u.TopArtists[j].PlayCount > u.TopArtists[i].PlayCount {
-				u.TopArtists[i], u.TopArtists[j] = u.TopArtists[j], u.TopArtists[i]
-			}
-		}
-	}
-
-	// Keep only top 5
-	if len(u.TopArtists) > 5 {
-		u.TopArtists = u.TopArtists[:5]
 	}
 }

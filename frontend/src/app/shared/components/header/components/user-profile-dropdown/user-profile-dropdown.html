@@ -180,33 +180,6 @@
 
             <div class="user-profile__analytics-subsection">
               <p class="user-profile__analytics-title">
-                <mat-icon aria-hidden="true">category</mat-icon>
-                Songs by genre
-              </p>
-              @if (songsByGenreEntriesSg().length === 0) {
-                <p class="user-profile__empty user-profile__empty--compact">No genre plays yet.</p>
-              } @else {
-                @for (entry of songsByGenreEntriesSg(); track entry.genreId) {
-                  <button
-                    type="button"
-                    class="user-profile__analytics-row"
-                    (click)="openGenre(entry.genreId)"
-                  >
-                    <span class="user-profile__analytics-name">
-                      <mat-icon aria-hidden="true">sell</mat-icon>
-                      {{ entry.name }}
-                    </span>
-                    <span class="user-profile__analytics-row-side">
-                      <strong class="user-profile__analytics-count">{{ entry.playCount }}</strong>
-                      <mat-icon aria-hidden="true">chevron_right</mat-icon>
-                    </span>
-                  </button>
-                }
-              }
-            </div>
-
-            <div class="user-profile__analytics-subsection">
-              <p class="user-profile__analytics-title">
                 <mat-icon aria-hidden="true">mic</mat-icon>
                 Top artists
               </p>
@@ -221,6 +194,33 @@
                   >
                     <span class="user-profile__analytics-name">
                       <mat-icon aria-hidden="true">person</mat-icon>
+                      {{ entry.name }}
+                    </span>
+                    <span class="user-profile__analytics-row-side">
+                      <strong class="user-profile__analytics-count">{{ entry.playCount }}</strong>
+                      <mat-icon aria-hidden="true">chevron_right</mat-icon>
+                    </span>
+                  </button>
+                }
+              }
+            </div>
+
+            <div class="user-profile__analytics-subsection">
+              <p class="user-profile__analytics-title">
+                <mat-icon aria-hidden="true">category</mat-icon>
+                Songs by genre
+              </p>
+              @if (songsByGenreEntriesSg().length === 0) {
+                <p class="user-profile__empty user-profile__empty--compact">No genre plays yet.</p>
+              } @else {
+                @for (entry of songsByGenreEntriesSg(); track entry.genreId) {
+                  <button
+                    type="button"
+                    class="user-profile__analytics-row"
+                    (click)="openGenre(entry.genreId)"
+                  >
+                    <span class="user-profile__analytics-name">
+                      <mat-icon aria-hidden="true">sell</mat-icon>
                       {{ entry.name }}
                     </span>
                     <span class="user-profile__analytics-row-side">

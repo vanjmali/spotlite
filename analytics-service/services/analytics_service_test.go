@@ -128,7 +128,7 @@ func TestProjectSongPlayedEventCreatesNewAnalytics(t *testing.T) {
 	require.True(t, analyticsRepo.upsertCalled)
 	require.Equal(t, 1, analyticsRepo.lastAnalytics.TotalSongsPlayed)
 	require.Equal(t, 1, analyticsRepo.lastAnalytics.SongsByGenre["genre1"])
-	require.Equal(t, "artist1", analyticsRepo.lastAnalytics.TopArtists[0].ArtistID)
+	require.Equal(t, 1, analyticsRepo.lastAnalytics.TopArtists["artist1"])
 }
 
 func TestProjectRatingCreatedEventUpdatesAnalytics(t *testing.T) {

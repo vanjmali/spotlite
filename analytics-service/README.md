@@ -135,8 +135,8 @@ Denormalized read model with aggregated user statistics
   "average_rating": "number",
   "rating_sum": "number",
   "ratings_count": "number",
-  "songs_by_genre": {"genre_id": 12, "genre_id_2": 4, ...},
-  "top_artists": [{"artist_id": "string", "play_count": 5}],
+  "songs_by_genre": {"rock": 15, "jazz": 12, "pop": 8, "classical": 7},
+  "top_artists": [{"artist_id": "artist_id_1", "play_count": 18}, {"artist_id": "artist_id_2", "play_count": 12}],
   "subscribed_artists_count": "number"
 }
 ```
@@ -204,4 +204,5 @@ The user ID is derived from the authenticated JWT context.
 - Analytics data is eventually consistent with the event store
 - All timestamps are in ISO 8601 format (UTC)
 - The `songs_by_genre` map returns only genres with at least one play
-- The `top_artists` array is sorted by play count (descending) and limited to top 5 artists
+- The read model stores `top_artists` as a map of `artist_id -> play_count`
+- `GET /` returns `top_artists` sorted by play count (descending) and limited to top 5 artists
